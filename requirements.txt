@@ -17,5 +17,3 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 python-multipart>=0.0.12
 pypdf>=5.0.0
-=======
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
