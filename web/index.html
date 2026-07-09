@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"
+  />
+  <meta name="theme-color" content="#030712" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="로드로그" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>로드로그 · RoadLog — AI 운행일지</title>
+
+  <meta name="description" content="AI 운행일지. 주행거리·방문지를 입력하면 회사 서식에 맞춰 제출용 일지를 작성합니다. Excel · PDF · DOCX." />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <!-- 본문: SUIT (단정한 한글 UI 폰트) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
+  <!-- 영문 포인트 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body class="session-checking">
+  <!-- NAV -->
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="brand" data-nav="home">
+        <img class="brand-logo" src="/icons/logo.svg" width="36" height="36" alt="RoadLog" />
+        <div class="brand-text">
+          <span class="brand-name">로드로그</span>
+          <span class="brand-en">RoadLog</span>
+        </div>
+      </div>
+
+      <nav class="nav-links" id="navLinks">
+        <a href="#home" data-nav="home" class="active" data-i18n="nav.home">홈</a>
+        <a href="#features" data-nav="features" data-i18n="nav.features">기능</a>
+        <a href="#create" data-nav="create" data-i18n="nav.create">일지 작성</a>
+        <a href="#pricing" data-nav="pricing" data-i18n="nav.pricing">요금제</a>
+        <a href="#contact" data-nav="contact" data-i18n="nav.contact">문의</a>
+        <a href="#about" data-nav="about" data-i18n="nav.about">About</a>
+        <a href="#style" data-nav="style" id="navStyle" class="hidden" data-i18n="nav.style">회사 서식</a>
+        <a href="#settings" data-nav="settings" id="navSettings" data-i18n="nav.settings">설정</a>
+        <a href="#admin" data-nav="admin" id="navAdmin" class="hidden" data-i18n="nav.admin">관리자</a>
+      </nav>
+
+      <div class="nav-actions">
+        <label class="nav-lang" title="Language">
+          <span class="nav-lang-icon" aria-hidden="true">文A</span>
+          <select id="navLang" aria-label="Language / 언어">
+            <option value="ko">KO</option>
+            <option value="en">EN</option>
+          </select>
+        </label>
+        <button class="btn btn-ghost btn-settings" type="button" data-nav="settings" data-i18n="nav.settings" data-i18n-title="nav.settings" title="설정">
+          설정
+        </button>
+        <button class="btn btn-ghost btn-install install-action" id="btnInstallApp" type="button" hidden data-install-app data-i18n-title="nav.install" title="홈 화면에 로드로그 설치">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M12 4v10m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span data-i18n="nav.install">앱 다운로드</span>
+        </button>
+        <button class="btn btn-ghost" id="btnAuth" type="button" data-i18n="nav.login">로그인</button>
+        <button class="btn btn-primary" id="btnStart" type="button" data-nav="create" data-i18n="nav.start">시작하기</button>
+        <button class="menu-toggle" id="menuToggle" type="button" data-i18n-aria="nav.menu" aria-label="메뉴">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HOME: 비로그인 랜딩 / 로그인 대시보드 -->
+  <main>
+    <section class="view active" id="view-home">
+      <div id="guestHome" class="landing">
+        <!-- 1. Hero -->
+        <section class="landing-hero" aria-label="소개">
+          <div class="container landing-hero-inner">
+            <div class="landing-hero-copy">
+              <div class="hero-badge" data-i18n="landing.badge">CoreLabs · 1초 기록 · 따뜻한 퇴근</div>
+              <h1>
+                <span data-i18n="landing.headline_1">퇴근이 빨라지는,</span><br />
+                <span data-i18n="landing.headline_2">당신만의 일지 비서</span><br />
+                <span class="grad" data-i18n="landing.headline_3">‘로드로그(RoadLog)’</span>
+              </h1>
+              <p class="hero-sub landing-sub">
+                <span data-i18n="landing.sub">버튼 한 번으로 오늘 하루를 기록하고, 감동적인 퇴근길을 맞이하세요.</span>
+                <strong data-i18n="landing.sub_strong">1초면 충분합니다.</strong>
+              </p>
+              <div class="hero-cta landing-cta">
+                <button type="button" class="btn btn-primary btn-lg btn-install-cta install-action" data-install-app data-install-primary data-i18n-keep-html>
+                  <span class="install-cta-icon" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M12 4v10m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                  </span>
+                  <span data-i18n-text data-i18n="landing.install">로드로그 앱 설치하기</span>
+                </button>
+                <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-i18n="landing.try">바로 써보기</button>
+              </div>
+              <p class="landing-trust" data-i18n="landing.trust">설치 후 홈 화면에서 · 로그인 유지 · 근무 시간에 맞춰 화면 자동 전환</p>
+            </div>
+
+            <div class="landing-phone" aria-hidden="true">
+              <div class="landing-phone-frame">
+                <div class="landing-phone-notch"></div>
+                <div class="landing-phone-screen">
+                  <div class="lp-kicker">지금 위치 스탬프</div>
+                  <div class="lp-time">18:42</div>
+                  <div class="lp-addr">한일유앤아이아파트, 후평2동</div>
+                  <div class="lp-chip">기록 완료 · 1초</div>
+                  <div class="lp-care">
+                    “오늘 하루 정말 고생 많으셨습니다.<br />이제 푹 쉬세요.”
+                  </div>
+                </div>
+              </div>
+              <div class="landing-phone-glow"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. Core Values -->
+        <section class="landing-values" id="features" aria-label="핵심 가치">
+          <div class="container">
+            <div class="section-head landing-section-head">
+              <div class="eyebrow" data-i18n="landing.values_eyebrow">Core Values</div>
+              <h2 data-i18n="landing.values_title">업무 효율을 2배로, 퇴근은 더 가볍게</h2>
+              <p data-i18n="landing.values_sub">복잡한 일지 도구가 아니라, 현장에서 바로 쓰는 필수 파트너입니다.</p>
+            </div>
+            <div class="landing-value-grid">
+              <article class="landing-value-card">
+                <div class="lv-icon" aria-hidden="true">📍</div>
+                <h3 data-i18n="landing.v1_title">1초 기록</h3>
+                <p data-i18n="landing.v1_body">복잡한 주소 입력 대신, 현재 위치를 버튼 한 번으로 캡처합니다. 짧은 주소만 남겨 한눈에 알아봅니다.</p>
+              </article>
+              <article class="landing-value-card">
+                <div class="lv-icon" aria-hidden="true">🧠</div>
+                <h3 data-i18n="landing.v2_title">스마트 분류</h3>
+                <p data-i18n="landing.v2_body">오전·오후 업무를 알아서 나누고, AI가 회사 제출용 일지로 정리합니다. 시간은 아끼고 완성도는 높입니다.</p>
+              </article>
+              <article class="landing-value-card is-accent">
+                <div class="lv-icon" aria-hidden="true">🌙</div>
+                <h3 data-i18n="landing.v3_title">나만을 위한 비서</h3>
+                <p data-i18n="landing.v3_body">근무 시간엔 업무 모드, 퇴근 후엔 따뜻한 위로 모드로 자동 전환. 지금 해야 할 일을 앱이 먼저 엽니다.</p>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Emotional Hook -->
+        <section class="landing-emotion" id="demo" aria-label="브랜드 메시지">
+          <div class="container landing-emotion-inner">
+            <p class="landing-emotion-quote" data-i18n="landing.quote">
+              “오늘 하루도 정말 고생 많으셨습니다.”
+            </p>
+            <p class="landing-emotion-body">
+              <span data-i18n="landing.emotion_body">로드로그는 단순한 기록 도구가 아닙니다.</span><br />
+              <span data-i18n="landing.emotion_body2">퇴근길에 당신의 하루를 응원해 주는</span>
+              <strong data-i18n="landing.emotion_strong">따뜻한 일지 비서</strong>
+            </p>
+            <div class="landing-emotion-tags">
+              <span data-i18n="landing.tag_stamp">퀵 스탬프</span>
+              <span data-i18n="landing.tag_route">스마트 라우팅</span>
+              <span data-i18n="landing.tag_care">퇴근 위로 메시지</span>
+              <span data-i18n="landing.tag_pwa">PWA 홈 화면 설치</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Final CTA (설치 버튼은 히어로 1곳만 — 하단 중복 제거) -->
+        <section class="landing-final" aria-label="마무리">
+          <div class="container landing-final-inner">
+            <h2 data-i18n="landing.final_title">더 이상 일지 작성 때문에 퇴근이 늦어지지 마세요.</h2>
+            <p data-i18n="landing.final_sub">상단에서 앱을 설치하거나, 바로 써보기로 시작할 수 있습니다.</p>
+            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">바로 써보기</button>
+            <button type="button" class="btn btn-ghost landing-login-link" id="btnLandingLogin" data-i18n="landing.login_link">이미 계정이 있다면 로그인</button>
+          </div>
+        </section>
+
+        <!-- 숨김 데모 노드: 기존 JS 호환 (에러 방지) -->
+        <div class="hidden" aria-hidden="true">
+          <div id="demoStage"></div>
+          <div id="demoVideoWrap" class="hidden"><video id="demoVideo"></video></div>
+          <div id="demoPlayer"></div>
+          <button type="button" id="demoPlayBtn"></button>
+          <div id="demoProgress"></div>
+          <div id="demoSteps"></div>
+        </div>
+      </div><!-- /guestHome -->
+
+      <!-- 로그인 후: 작업 홈 (대시보드) -->
+      <div id="appHome" class="hidden">
+        <div class="container app-home">
+          <header class="app-home-head">
+            <div>
+              <p class="app-home-kicker" id="appHomeDate">—</p>
+              <h1 class="app-home-title" id="appHomeGreeting">안녕하세요</h1>
+              <p class="app-home-sub" id="appHomeSub">오늘 운행일지를 작성하거나 서식을 관리하세요.</p>
+            </div>
+            <div class="app-home-usage" id="appHomeUsage">
+              <span class="uil-badge uil-badge-free">Free</span>
+              <span id="appHomeUsageText">—</span>
+            </div>
+          </header>
+
+          <div class="app-home-primary">
+            <button type="button" class="btn btn-primary btn-lg" data-nav="create">AI로 일지 작성</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">퀵 스탬프</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
+          </div>
+
+          <div class="app-home-grid">
+            <button type="button" class="app-tile" data-nav="create">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.5"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.75"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </span>
+              <strong>일지 작성</strong>
+              <span class="app-tile-desc">차량·거리·방문지 입력 후 AI 작성</span>
+            </button>
+            <button type="button" class="app-tile" data-nav="style">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="9" cy="11" r="2.2" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 17.5 9 14l3 2.5 4.5-4 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.75"/><circle cx="9" cy="11" r="2.2" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 17.5 9 14l3 2.5 4.5-4 3 3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <strong>회사 서식</strong>
+              <span class="app-tile-desc">양식 사진·문서 등록 및 학습</span>
+            </button>
+            <button type="button" class="app-tile" data-nav="settings">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.5"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M6.1 17.9l1.6-1.6M16.3 7.7l1.6-1.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.75"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M6.1 17.9l1.6-1.6M16.3 7.7l1.6-1.6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </span>
+              <strong>내 설정</strong>
+              <span class="app-tile-desc">기본 차량번호·점심시간·거점</span>
+            </button>
+            <button type="button" class="app-tile" data-nav="pricing">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h18M7 15h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.75"/><path d="M3 10h18M7 15h3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </span>
+              <strong>요금제</strong>
+              <span class="app-tile-desc">Free · Pro · Enterprise</span>
+            </button>
+            <button type="button" class="app-tile hidden" id="appTileAdmin" data-nav="admin">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6.5v4.2c0 5 3.3 8.7 7.5 10.3 4.2-1.6 7.5-5.3 7.5-10.3V6.5L12 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6.5v4.2c0 5 3.3 8.7 7.5 10.3 4.2-1.6 7.5-5.3 7.5-10.3V6.5L12 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <strong>관리자</strong>
+              <span class="app-tile-desc">매출 · 요금 · VIP 관리</span>
+            </button>
+          </div>
+
+          <div class="app-home-panel panel">
+            <div class="panel-head">
+              <h2>작업 체크</h2>
+            </div>
+            <ul class="app-checklist" id="appChecklist">
+              <li>불러오는 중…</li>
+            </ul>
+          </div>
+
+          <div class="app-home-panel panel" id="appLastResult" style="display:none">
+            <div class="panel-head">
+              <h2>최근 생성 결과</h2>
+              <button type="button" class="btn btn-ghost" data-nav="create">이어서 보기</button>
+            </div>
+            <div id="appLastResultBody" class="app-last-body"></div>
+          </div>
+        </div>
+      </div><!-- /appHome -->
+    </section>
+
+    <!-- CREATE -->
+    <section class="view" id="view-create">
+      <div class="container" id="app-panel">
+        <div class="section-head" style="text-align:left;margin-bottom:1.25rem">
+          <div class="eyebrow" data-i18n="create.eyebrow">Create</div>
+          <h2 data-i18n="create.title">운행일지 작성</h2>
+          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="create.sub">퀵 스탬프로 위치·시간을 찍고, 주행거리만 보완하면 AI가 일지를 완성합니다.</p>
+        </div>
+
+        <!-- 퀵 스탬프 -->
+        <div class="panel quick-stamp-panel" id="quickStampPanel">
+          <div class="panel-head">
+            <h2 data-i18n="create.stamp_title">퀵 스탬프</h2>
+            <span class="pill">GPS · 시간</span>
+          </div>
+          <p class="quick-stamp-desc" data-i18n="create.stamp_desc">
+            버튼 한 번으로 현재 시각과 GPS 주소를 기록합니다. 현장 도착·출발 시 바로 찍어 두면 방문지 입력이 끝납니다.
+          </p>
+          <div class="quick-stamp-actions">
+            <button class="btn btn-primary" id="btnQuickStamp" type="button" data-i18n-keep-html>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+              </svg>
+              <span data-i18n-text data-i18n="create.stamp_btn">지금 위치 스탬프</span>
+            </button>
+            <button class="btn btn-ghost" id="btnStampsToMorning" type="button" data-i18n="create.stamp_to_am">오전 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnStampsToAfternoon" type="button" data-i18n="create.stamp_to_pm">오후 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnClearStamps" type="button" data-i18n="create.stamp_clear">오늘 스탬프 비우기</button>
+          </div>
+          <ul class="quick-stamp-list" id="quickStampList" aria-live="polite">
+            <li class="quick-stamp-empty" data-i18n="create.stamp_empty">아직 스탬프가 없습니다. 현장에서 「지금 위치 스탬프」를 눌러 주세요.</li>
+          </ul>
+          <div id="stampAlert"></div>
+        </div>
+
+        <div class="panel" id="reportFormPanel">
+          <div class="panel-head">
+            <h2 data-i18n="create.form_title">오늘 운행 정보</h2>
+            <div class="usage-bar-wrap" id="usageWrap">
+              <div class="usage-meta">
+                <span id="usageLabel">로그인 후 사용량 표시</span>
+                <span id="usageRemain"></span>
+              </div>
+              <div class="usage-track"><div class="usage-fill" id="usageFill" style="width:0%"></div></div>
+            </div>
+          </div>
+
+          <div class="settings-grid" style="margin-bottom:1rem">
+            <div class="full">
+              <label class="field-label" for="vehicleNumber" data-i18n="create.vehicle">차량번호</label>
+              <input type="text" id="vehicleNumber" placeholder="예: 12가3456" autocomplete="off" />
+            </div>
+            <div>
+              <label class="field-label" for="odoStart" data-i18n="create.odo_start">최초 누적 주행거리 (km)</label>
+              <input type="number" id="odoStart" inputmode="decimal" step="0.1" min="0" placeholder="예: 45230.5" />
+            </div>
+            <div>
+              <label class="field-label" for="odoEnd" data-i18n="create.odo_end">운행 종료 주행거리 (km)</label>
+              <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="예: 45267.5" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 — 어느 식당에 갔나요?</label>
+              <input type="text" id="lunchPlace" placeholder="예: 강남역 근처 OO국밥" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="morningPlaces" data-i18n="create.morning">오늘 오전에 간 곳</label>
+              <textarea id="morningPlaces" style="min-height:88px" placeholder="여러 곳이면 쉼표 또는 줄바꿈으로 구분&#10;예: 강남 고객사, 역삼 협력사"></textarea>
+            </div>
+            <div class="full">
+              <label class="field-label" for="afternoonPlaces" data-i18n="create.afternoon">오늘 오후에 간 곳</label>
+              <textarea id="afternoonPlaces" style="min-height:88px" placeholder="여러 곳이면 쉼표 또는 줄바꿈으로 구분&#10;예: 판교 미팅"></textarea>
+            </div>
+            <div class="full">
+              <label class="field-label" for="rawText" data-i18n="create.memo">추가 메모 (선택)</label>
+              <textarea id="rawText" style="min-height:72px" placeholder="특별히 남길 내용이 있으면 적어 주세요. (시간·목적 등은 AI가 채웁니다)"></textarea>
+            </div>
+          </div>
+
+          <p id="distHint" style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">금일 주행거리: — km</p>
+
+          <div class="form-actions form-actions-desktop">
+            <button class="btn btn-primary btn-lg" id="btnGenerate" type="button" data-i18n="create.generate">✨ AI로 일지 작성</button>
+            <button class="btn btn-ghost" id="btnExample" type="button" data-i18n="create.example">예시 불러오기</button>
+          </div>
+
+          <div id="genAlert"></div>
+
+          <div class="result" id="resultBox">
+            <div class="panel-head" style="margin-top:0.5rem">
+              <h2 data-i18n="create.result">생성 결과</h2>
+              <span class="pill" id="engineBadge">AI</span>
+            </div>
+            <div class="metrics" id="metrics"></div>
+            <div class="summary-box" id="summaryBox"></div>
+            <div class="trips" id="trips"></div>
+            <div class="download-row">
+              <button class="btn btn-ghost" id="btnCopyLog" type="button" data-i18n="create.copy">📋 텍스트 복사</button>
+              <button class="btn btn-dark" data-export="excel" type="button">📊 Excel</button>
+              <button class="btn btn-dark" data-export="pdf" type="button">📕 PDF</button>
+              <button class="btn btn-dark" data-export="docx" type="button">📝 DOCX</button>
+            </div>
+
+            <div class="print-panel">
+              <div class="panel-head" style="margin:1.25rem 0 0.75rem">
+                <h2>인쇄</h2>
+              </div>
+              <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+                연결된 프린터(회사 공용·개인)로 바로 인쇄합니다. 기본 용지는 <strong style="color:#e2e8f0">A4</strong>입니다.
+              </p>
+              <div class="settings-grid" style="margin-bottom:0.85rem">
+                <div>
+                  <label class="field-label" for="paperSize">용지 크기</label>
+                  <select id="paperSize">
+                    <option value="A4" selected>A4 (기본 · 210×297mm)</option>
+                    <option value="A5">A5 (148×210mm)</option>
+                    <option value="B5">B5 (176×250mm)</option>
+                    <option value="Letter">Letter (8.5×11in)</option>
+                    <option value="Legal">Legal (8.5×14in)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="field-label" for="printOrient">방향</label>
+                  <select id="printOrient">
+                    <option value="portrait" selected>세로</option>
+                    <option value="landscape">가로</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button class="btn btn-primary" id="btnPrint" type="button">🖨 프린터로 인쇄</button>
+                <button class="btn btn-ghost" id="btnPrintPreview" type="button">미리보기</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRICING -->
+    <section class="view" id="view-pricing">
+      <div class="container">
+        <div class="section-head">
+          <div class="eyebrow">Pricing</div>
+          <h2>개인은 Pro, 팀은 Enterprise</h2>
+          <p>7일 무료 체험으로 먼저 확인하세요. 기업 고객은 세금계산서 발행과 좌석(인원) 기반 과금으로 규모에 맞게 확장할 수 있습니다.</p>
+        </div>
+        <div class="pricing pricing-3">
+          <div class="price-card">
+            <span class="badge">Free</span>
+            <div class="price-amount">
+              <h3>₩0 <small>/ 월</small></h3>
+            </div>
+            <p class="price-desc">개인 체험 · 기본 기능</p>
+            <ul>
+              <li>월 <span id="priceFreeLimit">10</span>회 생성</li>
+              <li>개인용 일지 작성</li>
+              <li>Excel · PDF · DOCX</li>
+              <li>회사 서식 학습</li>
+            </ul>
+            <button class="btn btn-ghost btn-block" data-nav="create" type="button">무료로 시작</button>
+          </div>
+          <div class="price-card">
+            <span class="badge">Pro</span>
+            <div class="price-amount">
+              <h3>₩<span id="pricePro">8,900</span> <small>/ 월</small></h3>
+            </div>
+            <p class="price-desc">개인·프리랜서 무제한</p>
+            <ul>
+              <li>무제한 생성 · 광고 제거</li>
+              <li>개인용 모드 유지</li>
+              <li>말투·서식 학습</li>
+              <li>우선 지원</li>
+            </ul>
+            <p class="trial-hint">카드 등록 없이 · 7일 무료 체험</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">7일 무료 체험 시작하기</button>
+            <a class="price-link" id="proLink" href="#" target="_blank" rel="noopener">외부 결제 링크</a>
+          </div>
+          <div class="price-card featured">
+            <span class="badge">Enterprise</span>
+            <div class="price-amount">
+              <span class="price-from">시작 가격 · 기본 5인 기준</span>
+              <h3>₩<span id="priceEnt">89,000</span> <small>/ 월</small></h3>
+              <p class="price-seat">추가 인원당 <strong>₩5,000</strong></p>
+            </div>
+            <p class="price-desc">팀·법인 · 좌석 기반 확장</p>
+            <div class="trust-signals" aria-label="기업 신뢰 안내">
+              <span class="trust-badge">세금계산서 발행 가능</span>
+              <span class="trust-badge">기업용 관리자 페이지 제공</span>
+            </div>
+            <ul>
+              <li>팀 통계 · 일지 승인/반려</li>
+              <li>공통 거점·정책 설정</li>
+              <li>기업용 대시보드 · 관리자 콘솔</li>
+              <li>무제한 생성 · 좌석 확장</li>
+            </ul>
+            <p class="trial-hint">7일 무료 체험 후 유료 전환 · 언제든 해지</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">7일 무료 체험 시작하기</button>
+            <a class="price-link" id="entLink" href="#" target="_blank" rel="noopener">외부 결제 링크</a>
+          </div>
+        </div>
+        <p class="pricing-note" id="pricingNote">
+          Enterprise는 기본 5인 패키지 기준 시작가이며, 인원 추가 시 좌석당 월 ₩5,000이 가산됩니다.
+          법인 결제·세금계산서 발행을 지원합니다. 체험 시작은 로그인 후 가능합니다.
+        </p>
+      </div>
+    </section>
+
+    <!-- COMPANY FORM / STYLE -->
+    <section class="view" id="view-style">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">Company Form</div>
+          <h2>회사 운행일지 서식</h2>
+          <p style="margin:0.4rem 0 0;max-width:54ch">
+            회사마다 서식이 다릅니다. 우리 회사 운행일지 양식을 올리면
+            <strong style="color:#e2e8f0">저장·삭제·학습</strong>하고,
+            그 서식에 맞춰 AI가 작성합니다.
+          </p>
+        </div>
+
+        <div class="panel style-status-panel" style="margin-bottom:1rem">
+          <div class="panel-head">
+            <h2>서식 학습 상태</h2>
+            <span class="learn-status-badge" id="styleStatusPill" data-state="empty">미등록</span>
+          </div>
+
+          <div class="learn-status-layout">
+            <div class="learn-ring-wrap">
+              <div class="learn-ring" id="styleLearnRing" style="--pct:0">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="learn-ring-bg" cx="60" cy="60" r="52" />
+                  <circle class="learn-ring-fg" cx="60" cy="60" r="52" />
+                </svg>
+                <div class="learn-ring-center">
+                  <strong id="styleRingPct">0%</strong>
+                  <span id="styleRingLabel">준비도</span>
+                </div>
+              </div>
+              <p class="learn-ring-cap" id="styleProgressLabel">등록 0 / 5장</p>
+            </div>
+
+            <div class="learn-status-main">
+              <p class="learn-status-msg" id="styleStatusMsg">로그인 후 학습 상태를 확인할 수 있습니다.</p>
+
+              <div class="learn-steps" id="styleLearnSteps">
+                <div class="learn-step" data-step="1">
+                  <span class="learn-step-num">1</span>
+                  <div>
+                    <strong>서식 등록</strong>
+                    <span id="step1Cap">사진·문서 업로드</span>
+                  </div>
+                </div>
+                <div class="learn-step-line" aria-hidden="true"></div>
+                <div class="learn-step" data-step="2">
+                  <span class="learn-step-num">2</span>
+                  <div>
+                    <strong>AI 학습</strong>
+                    <span id="step2Cap">구조·말투 분석</span>
+                  </div>
+                </div>
+                <div class="learn-step-line" aria-hidden="true"></div>
+                <div class="learn-step" data-step="3">
+                  <span class="learn-step-num">3</span>
+                  <div>
+                    <strong>작성 반영</strong>
+                    <span id="step3Cap">일지 생성 시 적용</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="learn-stat-row" id="styleStatRow">
+                <div class="learn-stat">
+                  <span class="learn-stat-k">등록 서식</span>
+                  <strong id="statSamples">0</strong>
+                </div>
+                <div class="learn-stat">
+                  <span class="learn-stat-k">사진</span>
+                  <strong id="statPhotos">0</strong>
+                </div>
+                <div class="learn-stat">
+                  <span class="learn-stat-k">문서</span>
+                  <strong id="statDocs">0</strong>
+                </div>
+                <div class="learn-stat">
+                  <span class="learn-stat-k">인식 컬럼</span>
+                  <strong id="statCols">0</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="styleSummaryBox" class="learn-insight" style="display:none">
+            <div class="learn-insight-head">
+              <span class="learn-insight-dot"></span>
+              <span>AI가 파악한 서식 요약</span>
+            </div>
+            <div id="styleSummaryText" class="learn-insight-body"></div>
+            <div id="styleFormMeta" class="form-meta-chips" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>기본 제공 서식 (처음 쓰는 회사)</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            회사 양식이 아직 없다면, 아래 기본 서식을 받은 뒤 그대로 쓰거나 수정해 쓰세요.
+            다운로드한 파일을 아래에서 다시 올려 AI 학습에 쓸 수도 있습니다.
+          </p>
+          <div id="defaultTemplateList" class="template-pack-grid">
+            <p style="color:var(--muted);font-size:0.9rem">기본 서식을 불러오는 중…</p>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>회사 서식 업로드 · 저장</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 1rem">
+            <strong style="color:#e2e8f0">사진 촬영 권장</strong> — 양식을 찍어 올리면 AI가 서식을 읽습니다.
+            문서(PDF/Excel/Word)도 가능 · 최대 5장 · 12MB
+          </p>
+          <div class="style-drop" id="styleDrop">
+            <input
+              type="file"
+              id="styleFile"
+              accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.pdf,.docx,.xlsx,.xls,.txt,.md,.csv,.json"
+              capture="environment"
+              multiple
+              hidden
+            />
+            <p style="margin:0 0 0.5rem;font-weight:700;color:#e2e8f0">📷 양식 사진 찍기 · 앨범에서 선택 · 문서 올리기</p>
+            <p style="margin:0;color:var(--muted);font-size:0.85rem">휴대폰으로 회사 운행일지를 찍어 바로 등록할 수 있습니다</p>
+          </div>
+          <div class="form-actions" style="margin-top:1rem">
+            <button class="btn btn-primary" id="btnPickStyleFile" type="button">서식 파일 선택</button>
+            <button class="btn btn-ghost" id="btnStyleLearn" type="button">서식 다시 학습</button>
+          </div>
+          <div id="styleUploadAlert"></div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>텍스트로 붙여넣기</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">
+            스캔본 등으로 텍스트 추출이 안 되면, 양식·작성 내용을 복사해 붙여넣으세요.
+          </p>
+          <div class="settings-grid">
+            <div class="full">
+              <label class="field-label" for="stylePasteTitle">서식 이름 (선택)</label>
+              <input type="text" id="stylePasteTitle" placeholder="예: OO회사 운행일지 양식" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="stylePasteText">서식 / 일지 본문</label>
+              <textarea id="stylePasteText" style="min-height:140px" placeholder="회사 운행일지 서식 또는 작성본을 붙여넣으세요."></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnStylePaste" type="button">서식으로 저장</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>저장된 회사 서식</h2></div>
+          <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.85rem">
+            주 사용 서식을 지정하거나, 필요 없는 서식은 삭제할 수 있습니다.
+          </p>
+          <div id="styleSampleList" class="style-samples">
+            <p style="color:var(--muted);font-size:0.9rem">아직 저장된 회사 서식이 없습니다.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADMIN -->
+    <section class="view" id="view-admin">
+      <div class="container">
+        <div class="section-head admin-section-head" style="text-align:left">
+          <div class="admin-head-row">
+            <div>
+              <div class="eyebrow">Admin</div>
+              <h2>관리자 페이지</h2>
+              <p style="margin:0.4rem 0 0;max-width:none">일·월 매출 확인 · 구독 요금 변경 · VIP(평생 무료) 회원 관리 · 고객 문의 메일</p>
+            </div>
+            <a
+              class="btn btn-ghost admin-mail-btn"
+              id="btnAdminMail"
+              href="https://mail.google.com/mail/u/0/#inbox"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Gmail 수신함 열기 (corelabs.studio@gmail.com)"
+            >
+              <svg class="admin-mail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              <span>메일 확인</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="admin-quick-bar" aria-label="관리자 바로가기">
+          <a
+            class="admin-quick-link"
+            href="https://mail.google.com/mail/u/0/#inbox"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Gmail 수신함
+          </a>
+          <span class="admin-quick-sep" aria-hidden="true">·</span>
+          <a
+            class="admin-quick-link"
+            href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=corelabs.studio@gmail.com&tf=1"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            빠른 회신 작성
+          </a>
+          <span class="admin-quick-hint">문의: corelabs.studio@gmail.com</span>
+        </div>
+
+        <!-- 관리자 전용: 요금제 UX 미리보기 전환 -->
+        <div class="panel admin-view-as-panel" id="adminViewAsPanel" hidden>
+          <div class="panel-head" style="margin-bottom:0.65rem">
+            <h2 style="font-size:1.05rem;margin:0">역할 미리보기 (기능 테스트)</h2>
+          </div>
+          <p class="admin-view-as-desc">
+            관리자 계정은 그대로 두고, 화면만 Pro / Enterprise / Free 사용자처럼 보여 줍니다.
+            로그아웃 없이 전환할 수 있습니다. (서버 권한·생성 한도는 관리자 기준 유지)
+          </p>
+          <div class="admin-view-as-btns" role="group" aria-label="역할 미리보기">
+            <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="admin" aria-pressed="true">
+              관리자로 보기
+            </button>
+            <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="pro" aria-pressed="false">
+              Pro 사용자로 보기
+            </button>
+            <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="enterprise" aria-pressed="false">
+              Enterprise로 보기
+            </button>
+            <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="free" aria-pressed="false">
+              Free로 보기
+            </button>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>매출 현황</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            기간을 지정하면 <strong style="color:#e2e8f0">날짜별 합계</strong>와 결제 내역을 계산합니다.
+          </p>
+          <div class="settings-grid" style="margin-bottom:0.85rem">
+            <div>
+              <label class="field-label" for="revDateFrom">시작일</label>
+              <input type="date" id="revDateFrom" />
+            </div>
+            <div>
+              <label class="field-label" for="revDateTo">종료일</label>
+              <input type="date" id="revDateTo" />
+            </div>
+          </div>
+          <div class="form-actions" style="margin-bottom:1rem">
+            <button class="btn btn-primary" id="btnRevApply" type="button">기간 매출 조회</button>
+            <button class="btn btn-ghost" id="btnRevThisMonth" type="button">이번 달</button>
+            <button class="btn btn-ghost" id="btnRevToday" type="button">오늘</button>
+            <button class="btn btn-ghost" id="btnRev7" type="button">최근 7일</button>
+            <button class="btn btn-ghost" id="btnRev30" type="button">최근 30일</button>
+          </div>
+          <div class="metrics" id="adminMetrics"></div>
+          <div class="settings-grid" style="margin-top:1rem">
+            <div class="full">
+              <label class="field-label" id="adminRangeLabel">선택 기간 · 날짜별 매출</label>
+              <div id="adminDailyBars" class="admin-bars"></div>
+            </div>
+            <div class="full">
+              <label class="field-label">최근 6개월 월매출</label>
+              <div id="adminMonthlyBars" class="admin-bars"></div>
+            </div>
+          </div>
+          <div style="margin-top:1rem">
+            <label class="field-label" id="adminPayTableLabel">선택 기간 결제 내역</label>
+            <div id="adminPayTable" class="admin-table-wrap"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>구독 결제 금액 변경</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            변경한 금액이 요금제·결제 업그레이드에 즉시 반영됩니다.
+          </p>
+          <div class="settings-grid">
+            <div>
+              <label class="field-label" for="adminProPrice">Pro 월 요금 (원)</label>
+              <input type="number" id="adminProPrice" min="0" step="100" />
+            </div>
+            <div>
+              <label class="field-label" for="adminEntPrice">Enterprise 월 요금 (원)</label>
+              <input type="number" id="adminEntPrice" min="0" step="100" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnSaveBilling" type="button">요금 저장</button>
+          </div>
+          <div id="adminBillingAlert"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>VIP 회원 (평생 무료)</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            VIP로 등록된 아이디/이메일은 구독 결제 없이 무제한 이용합니다.
+          </p>
+          <div class="settings-grid">
+            <div>
+              <label class="field-label" for="vipId">VIP 아이디 또는 이메일</label>
+              <input type="text" id="vipId" placeholder="예: vip_user 또는 vip@company.com" />
+            </div>
+            <div>
+              <label class="field-label" for="vipNote">메모 (선택)</label>
+              <input type="text" id="vipNote" placeholder="예: 파트너 / 내부 테스트" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnAddVip" type="button">VIP 등록</button>
+          </div>
+          <div id="adminVipAlert"></div>
+          <div id="vipList" class="style-samples" style="margin-top:1rem"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow" data-i18n="settings.eyebrow">Settings</div>
+          <h2 data-i18n="settings.title">내 설정</h2>
+          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="settings.sub">근무 시간에 따라 앱이 스탬프/일지 화면을 자동으로 엽니다. 언어와 차량 설정을 관리하세요.</p>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head">
+            <h2 data-i18n="settings.lang_title">언어 · Language</h2>
+            <span class="pill">i18n</span>
+          </div>
+          <div class="settings-grid">
+            <div class="full">
+              <label class="field-label" for="s_lang" data-i18n="settings.lang_label">표시 언어</label>
+              <select id="s_lang">
+                <option value="ko">한국어</option>
+                <option value="en">English</option>
+              </select>
+            </div>
+          </div>
+          <p style="margin:0.75rem 0 0;font-size:0.82rem;color:var(--muted)" data-i18n="settings.lang_hint">선택 즉시 화면에 반영되며, 이 기기에 저장됩니다.</p>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head">
+            <h2 data-i18n="settings.work_title">근무 시간 · 스마트 라우팅</h2>
+            <span class="pill">Local</span>
+          </div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem;line-height:1.5" data-i18n="settings.work_desc">
+            근무 중에는 퀵 스탬프, 그 외 시간에는 일지 작성 화면으로 바로 이동합니다.
+          </p>
+          <div class="settings-grid">
+            <div>
+              <label class="field-label" for="s_work_start" data-i18n="settings.work_start">업무 시작 시간</label>
+              <input type="time" id="s_work_start" value="09:00" />
+            </div>
+            <div>
+              <label class="field-label" for="s_work_end" data-i18n="settings.work_end">업무 종료 시간</label>
+              <input type="time" id="s_work_end" value="18:00" />
+            </div>
+          </div>
+          <p id="workHoursHint" class="work-hours-hint" style="margin:0.75rem 0 0;font-size:0.82rem;color:var(--muted)"></p>
+          <div class="form-actions" style="margin-top:0.9rem">
+            <button class="btn btn-primary" id="btnSaveWorkHours" type="button" data-i18n="settings.work_save">근무 시간 저장</button>
+            <button class="btn btn-ghost" id="btnResetWorkHours" type="button" data-i18n="settings.work_reset">기본값 (09:00~18:00)</button>
+          </div>
+          <div id="workHoursAlert"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2 data-i18n="settings.vehicle_title">차량 · 생성 기본값</h2></div>
+          <div class="settings-grid">
+            <div>
+              <label class="field-label">차량번호</label>
+              <input type="text" id="s_vehicle" placeholder="12가3456" />
+            </div>
+            <div>
+              <label class="field-label">운전자명</label>
+              <input type="text" id="s_driver" placeholder="홍길동" />
+            </div>
+            <div>
+              <label class="field-label">회사명</label>
+              <input type="text" id="s_company" placeholder="(주)예시" />
+            </div>
+            <div>
+              <label class="field-label">유종</label>
+              <select id="s_fuel">
+                <option>휘발유</option><option>경유</option><option>LPG</option>
+                <option>전기</option><option>하이브리드</option><option>기타</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label">점심 시작</label>
+              <input type="text" id="s_lunch_start" placeholder="12:00" />
+            </div>
+            <div>
+              <label class="field-label">점심 종료</label>
+              <input type="text" id="s_lunch_end" placeholder="13:00" />
+            </div>
+            <div class="full checkbox-row">
+              <input type="checkbox" id="s_exclude_lunch" checked />
+              <label for="s_exclude_lunch">점심 구간을 운행시간에서 제외</label>
+            </div>
+            <div class="full">
+              <label class="field-label">기본 운행 목적</label>
+              <input type="text" id="s_purpose" placeholder="업무 출장" />
+            </div>
+            <div class="full">
+              <label class="field-label">자주 가는 곳 (한 줄에 하나 · 장소명 | 주소)</label>
+              <textarea id="s_places" style="min-height:100px" placeholder="본사 | 서울시...&#10;강남 고객사 |"></textarea>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnSaveSettings" type="button" data-i18n="settings.save">설정 저장</button>
+          </div>
+          <div id="settingsAlert"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LEGAL: 이용약관 -->
+    <section class="view" id="view-terms">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">Legal</div>
+          <h2>이용약관</h2>
+          <p>로드로그(RoadLog) 서비스 이용에 관한 약관입니다.</p>
+        </div>
+        <article class="legal-doc" id="termsBody" aria-live="polite">
+          <p class="legal-loading">약관을 불러오는 중…</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="view" id="view-privacy">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">Legal</div>
+          <h2>개인정보처리방침</h2>
+          <p>로드로그(RoadLog) 개인정보 수집·이용·보호에 관한 안내입니다.</p>
+        </div>
+        <article class="legal-doc" id="privacyBody" aria-live="polite">
+          <p class="legal-loading">개인정보처리방침을 불러오는 중…</p>
+        </article>
+      </div>
+    </section>
+
+    <!-- ABOUT / CORELABS -->
+    <section class="view" id="view-about">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">About</div>
+          <h2>제품은 로드로그, 운영은 코어랩스</h2>
+          <p>RoadLog is a product. CoreLabs is the studio behind it.</p>
+        </div>
+
+        <div class="about-hero">
+          <div class="about-badge">Technology Studio</div>
+          <h3 class="about-title">
+            <span class="about-product">로드로그</span>
+            <span class="about-en">RoadLog</span>
+          </h3>
+          <p class="about-lead">
+            로드로그(RoadLog)는 데이터의 본질을 연구하고 가치를 창출하는 기술 스튜디오,
+            <strong>코어랩스(CoreLabs)</strong>에 의해 운영됩니다.
+          </p>
+        </div>
+
+        <div class="about-grid">
+          <article class="about-card">
+            <span class="about-card-label">Product</span>
+            <h4>로드로그 · RoadLog</h4>
+            <p>
+              AI 기반 운행일지 자동 생성, 문서 변환, 팀 승인까지 —
+              현장 업무에 바로 쓰이는 SaaS 제품입니다.
+            </p>
+          </article>
+          <article class="about-card about-card-accent">
+            <span class="about-card-label">Studio</span>
+            <h4>코어랩스 · CoreLabs</h4>
+            <p>
+              데이터와 업무 흐름을 설계하는 기술 스튜디오입니다.
+              로드로그를 포함한 전문 솔루션을 연구·개발·운영합니다.
+            </p>
+          </article>
+          <article class="about-card">
+            <span class="about-card-label">Trust</span>
+            <h4>검증된 운영 체계</h4>
+            <p>
+              요금제·보안·약관·개인정보 보호까지 스튜디오 단위로 관리하여
+              기업 고객이 안심하고 도입할 수 있는 전문 솔루션을 지향합니다.
+            </p>
+          </article>
+        </div>
+
+        <p class="about-foot">
+          Powered by <span class="corelabs-mark">CoreLabs</span>
+          ·
+          <a href="#contact" data-nav="contact">문의하기</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- CONTACT / FEEDBACK -->
+    <section class="view" id="view-contact">
+      <div class="container">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">Contact &amp; Feedback</div>
+          <h2>서비스 피드백 및 문의하기</h2>
+          <p>
+            코어랩스는 사용자의 피드백을 기술적 자산으로 여깁니다. 어떤 의견이든 환영합니다.
+          </p>
+        </div>
+
+        <div class="feedback-hero" id="contact">
+          <div class="feedback-hero-top">
+            <div class="about-badge">CoreLabs Support</div>
+            <h3 class="feedback-title">로드로그를 더 좋게 만드는 의견이 있으신가요?</h3>
+            <p class="feedback-lead">
+              버그 제보, 기능 요청, 도입 상담, 기술 협업 제안까지 —
+              접수된 내용은 코어랩스 운영 체계에서 분류·검토 후 답변드립니다.
+            </p>
+          </div>
+
+          <div class="feedback-actions">
+            <a
+              class="btn btn-primary btn-lg"
+              id="btnFeedbackForm"
+              href="https://docs.google.com/forms/d/e/1FAIpQLScl9ZJD_crv1d6JPDzdNaYTDzUQXKkLNx_X6pmyEwsg_1DnGg/viewform?usp=sf_link"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              서비스 피드백 및 문의하기
+            </a>
+            <a
+              class="btn btn-ghost"
+              id="btnFeedbackMail"
+              href="mailto:corelabs.studio@gmail.com"
+            >
+              이메일로 바로 보내기
+            </a>
+          </div>
+
+          <div class="feedback-types" aria-label="문의 유형 안내">
+            <div class="feedback-type">
+              <span class="feedback-type-tag">버그</span>
+              <p>오류·장애·예상과 다른 동작</p>
+            </div>
+            <div class="feedback-type">
+              <span class="feedback-type-tag">기능 요청</span>
+              <p>개선 아이디어·신규 기능 제안</p>
+            </div>
+            <div class="feedback-type">
+              <span class="feedback-type-tag">단순 문의</span>
+              <p>요금·도입·계정·일반 상담</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="contact-panel">
+          <div class="contact-panel-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+              <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="contact-panel-body">
+            <span class="contact-panel-label">공식 문의 채널</span>
+            <p class="contact-panel-text">
+              서비스 관련 문의나 기술 협업 제안은 언제든 환영합니다.
+              <a class="contact-mail" id="contactMailLink" href="mailto:corelabs.studio@gmail.com">corelabs.studio@gmail.com</a>
+            </p>
+          </div>
+          <a class="btn btn-ghost contact-cta" id="contactMailBtn" href="mailto:corelabs.studio@gmail.com">메일 보내기</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer" role="contentinfo">
+    <div class="container footer-inner">
+      <div class="footer-brand-block">
+        <div class="brand footer-brand">
+          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="RoadLog" />
+          <div class="brand-text">
+            <span class="brand-name">로드로그</span>
+            <span class="brand-en">RoadLog</span>
+          </div>
+        </div>
+        <p class="footer-copy">© 2026 CoreLabs. All rights reserved.</p>
+        <a class="footer-contact" href="mailto:corelabs.studio@gmail.com">
+          <svg class="footer-mail-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>문의: corelabs.studio@gmail.com</span>
+        </a>
+        <p class="footer-powered">Powered by <span class="corelabs-mark">CoreLabs</span></p>
+      </div>
+      <nav class="footer-links" aria-label="법적 고지 및 메뉴">
+        <a href="#about" data-nav="about" data-i18n="footer.about">About</a>
+        <a href="#contact" data-nav="contact" data-i18n="footer.contact">문의</a>
+        <a href="#terms" data-nav="terms" data-i18n="footer.terms">이용약관</a>
+        <a href="#privacy" data-nav="privacy" data-i18n="footer.privacy">개인정보처리방침</a>
+        <span class="footer-dot" aria-hidden="true">·</span>
+        <a href="#pricing" data-nav="pricing" data-i18n="footer.pricing">요금제</a>
+        <a href="#create" data-nav="create" data-i18n="footer.create">일지 작성</a>
+      </nav>
+    </div>
+  </footer>
+
+  <!-- AUTH MODAL -->
+  <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="modal" role="document">
+      <button class="modal-close" id="authClose" type="button" aria-label="닫기">×</button>
+      <h3 id="authTitle" data-i18n="auth.title">계정</h3>
+      <p class="sub" data-i18n="auth.sub">로그인하면 생성·다운로드·설정이 저장됩니다.</p>
+      <div class="tabs">
+        <button type="button" class="active" data-auth-tab="login" data-i18n="auth.login_tab">로그인</button>
+        <button type="button" data-auth-tab="register" data-i18n="auth.register_tab">회원가입</button>
+      </div>
+      <form id="authLoginForm" autocomplete="on" novalidate>
+        <div id="authLogin">
+          <div class="field">
+            <label class="field-label" for="loginEmail">이메일 또는 ID</label>
+            <input type="text" id="loginEmail" name="username" placeholder="you@company.com" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="loginPw">비밀번호</label>
+            <input type="password" id="loginPw" name="password" placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <label class="auth-remember" for="loginRemember">
+            <input type="checkbox" id="loginRemember" name="remember" />
+            <span data-i18n="auth.remember">로그인 정보 저장</span>
+          </label>
+          <p class="auth-remember-hint" data-i18n="auth.remember_hint">이 기기에서 다음 로그인 때 이메일·비밀번호를 자동 입력합니다.</p>
+          <button class="btn btn-primary btn-block" id="btnLogin" type="submit">로그인</button>
+        </div>
+      </form>
+      <form id="authRegisterForm" class="hidden" autocomplete="on" novalidate>
+        <div id="authRegister">
+          <div class="field">
+            <label class="field-label" for="regName">이름 (선택)</label>
+            <input type="text" id="regName" name="name" placeholder="홍길동" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="regEmail">이메일</label>
+            <input type="email" id="regEmail" name="email" placeholder="you@company.com" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="regPw">비밀번호</label>
+            <input type="password" id="regPw" name="new-password" placeholder="4자 이상" autocomplete="new-password" />
+          </div>
+          <div class="field">
+            <label class="field-label" for="regPw2">비밀번호 확인</label>
+            <input type="password" id="regPw2" name="new-password-confirm" placeholder="다시 입력" autocomplete="new-password" />
+          </div>
+          <button class="btn btn-primary btn-block" id="btnRegister" type="submit">가입하기</button>
+        </div>
+      </form>
+      <div id="authAlert" style="margin-top:0.85rem"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 관리자 역할 미리보기 중 상단 바 -->
+  <div class="admin-view-as-bar" id="adminViewAsBar" hidden role="status" aria-live="polite">
+    <span class="admin-view-as-bar-dot" aria-hidden="true"></span>
+    <span id="adminViewAsLabel">역할 미리보기 중</span>
+    <button type="button" class="btn btn-primary btn-sm" data-view-as="admin">관리자로 돌아가기</button>
+  </div>
+
+  <!-- 퇴근 위로 모달 -->
+  <div class="modal-backdrop care-modal-backdrop" id="careModal" role="dialog" aria-modal="true" aria-labelledby="careModalTitle" hidden>
+    <div class="modal care-modal" role="document">
+      <div class="care-modal-glow" aria-hidden="true"></div>
+      <p class="care-modal-kicker" data-i18n="care.kicker">RoadLog · 오늘 하루 마무리</p>
+      <h3 id="careModalTitle" class="care-modal-title" data-i18n="care.title">수고하셨습니다</h3>
+      <p class="care-modal-msg" id="careModalMsg"></p>
+      <p class="care-modal-visit" id="careModalVisit"></p>
+      <button class="btn btn-primary btn-block" id="careModalOk" type="button" data-i18n="care.ok">확인</button>
+    </div>
+  </div>
+
+  <!-- 모바일 하단 고정: 일지 작성 CTA -->
+  <div class="mobile-sticky-cta" id="mobileStickyCta" hidden>
+    <button type="button" class="btn btn-primary btn-lg btn-block" id="btnGenerateSticky">
+      ✨ AI로 일지 작성
+    </button>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

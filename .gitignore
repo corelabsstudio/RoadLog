@@ -1,0 +1,25 @@
+.venv/
+venv/
+<<<<<<< HEAD
+env/
+__pycache__/
+*.pyc
+.streamlit/
+.DS_Store
+.env
+=======
+__pycache__/
+*.py[cod]
+.env
+.streamlit/secrets.toml
+data/users.json
+data/usage.json
+data/payments.json
+data/settings/
+*.xlsx
+*.pdf
+*.docx
+.DS_Store
+.idea/
+.vscode/
+>>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)

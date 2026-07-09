@@ -1,0 +1,4 @@
+﻿id,created_at,member_email,member_name,date,vehicle,total_distance_km,summary,status,reviewer_note,reviewed_at
+demo1,2026-07-09T17:20:39.090209+00:00,kim@company.com,김대리,2026-07-10,12가3456,37.0,강남 고객사 미팅 후 복귀,pending,,
+demo2,2026-07-09T17:20:39.090209+00:00,lee@company.com,이과장,2026-07-10,34나7890,52.5,판교 협력사 현장 점검,approved,확인,2026-07-09T17:20:39.090209+00:00
+demo3,2026-07-09T17:20:39.090209+00:00,park@company.com,박사원,2026-07-10,12가3456,18.0,송파 거래처 방문,rejected,거리 재확인 필요,2026-07-09T17:20:39.090209+00:00

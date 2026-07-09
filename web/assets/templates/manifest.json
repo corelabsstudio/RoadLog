@@ -1,0 +1,42 @@
+[
+  {
+    "id": "01_기본형_운행일지",
+    "title": "기본형",
+    "full_title": "차량 운행일지 (기본형)",
+    "desc": "가장 많이 쓰는 일반 업무 운행 양식",
+    "xlsx": "/assets/templates/01_기본형_운행일지.xlsx",
+    "docx": "/assets/templates/01_기본형_운행일지.docx"
+  },
+  {
+    "id": "02_간단형_운행일지",
+    "title": "간단형",
+    "full_title": "차량 운행일지 (간단형)",
+    "desc": "항목을 줄인 빠른 기록용 양식",
+    "xlsx": "/assets/templates/02_간단형_운행일지.xlsx",
+    "docx": "/assets/templates/02_간단형_운행일지.docx"
+  },
+  {
+    "id": "03_상세형_누적거리",
+    "title": "상세형",
+    "full_title": "차량 운행일지 (상세형 · 누적거리)",
+    "desc": "누적거리·점심까지 적는 상세 양식",
+    "xlsx": "/assets/templates/03_상세형_누적거리.xlsx",
+    "docx": "/assets/templates/03_상세형_누적거리.docx"
+  },
+  {
+    "id": "04_영업외근형",
+    "title": "영업·외근형",
+    "full_title": "차량 운행일지 (영업·외근형)",
+    "desc": "거래처 방문·영업 외근 기록용",
+    "xlsx": "/assets/templates/04_영업외근형.xlsx",
+    "docx": "/assets/templates/04_영업외근형.docx"
+  },
+  {
+    "id": "05_현장공사형",
+    "title": "현장·공사형",
+    "full_title": "차량 운행일지 (현장·공사형)",
+    "desc": "현장 이동·공사 지원 운행용",
+    "xlsx": "/assets/templates/05_현장공사형.xlsx",
+    "docx": "/assets/templates/05_현장공사형.docx"
+  }
+]
