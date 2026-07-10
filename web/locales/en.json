@@ -71,7 +71,7 @@
   "create.vehicle": "Vehicle number",
   "create.odo_start": "Odometer start (km)",
   "create.odo_end": "Odometer end (km)",
-  "create.lunch": "Lunch — where did you eat?",
+  "create.lunch": "Whereabouts did you have lunch?",
   "create.morning": "Morning visits",
   "create.afternoon": "Afternoon visits",
   "create.memo": "Notes (optional)",

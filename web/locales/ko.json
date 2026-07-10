@@ -71,7 +71,7 @@
   "create.vehicle": "차량번호",
   "create.odo_start": "최초 누적 주행거리 (km)",
   "create.odo_end": "운행 종료 주행거리 (km)",
-  "create.lunch": "점심 — 어느 식당에 갔나요?",
+  "create.lunch": "점심은 어디쯤에서 드셨나요?",
   "create.morning": "오늘 오전에 간 곳",
   "create.afternoon": "오늘 오후에 간 곳",
   "create.memo": "추가 메모 (선택)",
