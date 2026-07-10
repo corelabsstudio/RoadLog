@@ -13,9 +13,9 @@ Streamlit 주소와 **별개**입니다.
 
 로컬 저장소에 이미 포함:
 
+- `Dockerfile` (권장 빌드 — Nixpacks pip 오류 회피)
+- `railway.toml` (DOCKERFILE 빌더)
 - `Procfile`
-- `railway.toml`
-- `nixpacks.toml`
 
 ---
 
