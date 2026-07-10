@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libjpeg62-turbo-dev \
     zlib1g-dev \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.prod.txt .
@@ -22,17 +21,13 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 COPY modules ./modules
 COPY web ./web
 COPY server.py ./
-COPY start.sh ./
 COPY supabase_schema.sql ./
 
 RUN mkdir -p /app/data \
-    && chmod +x /app/start.sh \
     && python -c "import server; print('import_ok', server.app.title)"
 
 EXPOSE 8000
 
-# Healthcheck inside container (optional; Railway UI healthcheck can be disabled)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${PORT:-8000}/healthz" || exit 1
-
-CMD ["/app/start.sh"]
+# Shell form so $PORT expands. Avoid start.sh CRLF issues on Windows git.
+# Railway sets PORT (e.g. 8080).
+CMD sh -c 'P="${PORT:-8000}"; if [ -z "$P" ]; then P=8000; fi; echo "[RoadLog] listen 0.0.0.0:$P"; exec python -m uvicorn server:app --host 0.0.0.0 --port "$P" --proxy-headers --forwarded-allow-ips="*"'

@@ -1,0 +1,4 @@
+# Shell scripts must be LF in containers (Windows CRLF breaks shebang)
+*.sh text eol=lf
+start.sh text eol=lf
+Dockerfile text eol=lf

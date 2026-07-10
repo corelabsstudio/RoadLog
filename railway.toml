@@ -1,10 +1,9 @@
-# Railway — Dockerfile only. Do NOT set healthcheck here.
-# If dashboard still shows Healthcheck failure:
-#   Service → Settings → Deploy → Healthcheck Path → clear/empty → Save → Redeploy
-
+# Railway — Dockerfile
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
 restartPolicyType = "ON_FAILURE"
+# 대시보드 Healthcheck Path 는 비워 두세요.
+# 수동 확인: https://<domain>/healthz
