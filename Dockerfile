@@ -28,5 +28,5 @@ RUN mkdir -p /app/data
 
 EXPOSE 8000
 
-# Railway injects $PORT
-CMD ["sh", "-c", "exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Railway injects $PORT (often 8080)
+CMD ["sh", "-c", "echo Starting RoadLog on PORT=${PORT:-8000} && exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
