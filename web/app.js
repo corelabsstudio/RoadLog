@@ -1125,12 +1125,15 @@
   function updateAuthUI() {
     const btn = $("#btnAuth");
     const navSettings = $("#navSettings");
+    const navCreate = $("#navCreate");
     const navStyle = $("#navStyle");
     const navAdmin = $("#navAdmin");
     const btnStart = $("#btnStart");
     const eu = getEffectiveUser();
     // 설정(근무 시간)은 로그인 없이 사용 가능
     navSettings?.classList.remove("hidden");
+    // 관리자 보기 모드: 운영 화면에 일지 작성·회사 서식 메뉴 비노출
+    const adminOnlyUi = isRealAdmin() && getViewAsMode() === "admin";
     if (eu) {
       const name = eu.name || eu.email?.split("@")[0] || "계정";
       let plan = (eu.plan || "free").toUpperCase();
@@ -1143,16 +1146,28 @@
       } else {
         btn.textContent = `${name} · ${plan}`;
       }
-      navStyle?.classList.remove("hidden");
+      if (adminOnlyUi) {
+        navCreate?.classList.add("hidden");
+        navStyle?.classList.add("hidden");
+      } else {
+        navCreate?.classList.remove("hidden");
+        navStyle?.classList.remove("hidden");
+      }
       // 관리자 메뉴: 실제 관리자 + 관리자 보기 모드일 때만
-      if (isRealAdmin() && getViewAsMode() === "admin") navAdmin?.classList.remove("hidden");
+      if (adminOnlyUi) navAdmin?.classList.remove("hidden");
       else navAdmin?.classList.add("hidden");
       if (btnStart) {
-        btnStart.textContent = t("nav.write_log");
-        btnStart.dataset.nav = isWithinWorkHours() ? "stamp" : "report";
+        if (adminOnlyUi) {
+          btnStart.textContent = t("nav.admin") || "관리자";
+          btnStart.dataset.nav = "admin";
+        } else {
+          btnStart.textContent = t("nav.write_log");
+          btnStart.dataset.nav = isWithinWorkHours() ? "stamp" : "report";
+        }
       }
     } else {
       btn.textContent = t("nav.login");
+      navCreate?.classList.remove("hidden");
       navStyle?.classList.add("hidden");
       navAdmin?.classList.add("hidden");
       if (btnStart) {
