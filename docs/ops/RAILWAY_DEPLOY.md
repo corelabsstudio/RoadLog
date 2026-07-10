@@ -13,7 +13,7 @@ Streamlit 주소와 **별개**입니다.
 
 로컬 저장소에 이미 포함:
 
-- `Dockerfile` (권장 빌드 — Nixpacks pip 오류 회피)
+- `Dockerfile` + `requirements.prod.txt` (FastAPI 전용, Streamlit 제외)
 - `railway.toml` (DOCKERFILE 빌더)
 - `Procfile`
 
