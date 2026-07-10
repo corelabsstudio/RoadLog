@@ -409,8 +409,10 @@ ADSENSE_SLOT = _get_secret("ADSENSE_SLOT", "xxxxxxxxxx")
 USERS_JSON = DATA_DIR / "users.json"
 USAGE_JSON = DATA_DIR / "usage.json"
 PAYMENTS_JSON = DATA_DIR / "payments.json"
+LOGS_DIR = DATA_DIR / "logs"
 SETTINGS_DIR = DATA_DIR / "settings"
 try:
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
     SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
 except Exception:
     pass

@@ -688,3 +688,144 @@ def seed_demo_payments_if_empty() -> None:
         return
     # 의도적으로 비움 — 관리자가 수동 등록. 데모 시드 원하면 주석 해제.
     pass
+
+# ── 사용자 일지 이력 (서버 영속 저장) ───────────────────
+
+
+def _logs_path(email: str) -> Path:
+    from modules.config import LOGS_DIR
+
+    safe = "".join(c if c.isalnum() or c in "._@+-" else "_" for c in email.strip().lower())
+    LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    return LOGS_DIR / f"{safe}.json"
+
+
+def _load_user_logs_raw(email: str) -> list[dict[str, Any]]:
+    email = email.strip().lower()
+    data = _read_json(_logs_path(email), [])
+    if not isinstance(data, list):
+        return []
+    return [x for x in data if isinstance(x, dict)]
+
+
+def _summary_from_log(log: dict[str, Any]) -> str:
+    s = str(log.get("summary") or "").strip()
+    if s:
+        return s[:160]
+    visits = log.get("visits") or []
+    if visits and isinstance(visits, list):
+        places = [str(v.get("place") or "") for v in visits if isinstance(v, dict)]
+        places = [p for p in places if p]
+        if places:
+            return "·".join(places[:4])[:160]
+    trips = log.get("trips") or []
+    if trips and isinstance(trips, list):
+        parts = []
+        for t in trips[:3]:
+            if isinstance(t, dict):
+                parts.append(f"{t.get('from') or ''}→{t.get('to') or ''}")
+        if parts:
+            return " · ".join(parts)[:160]
+    return "(요약 없음)"
+
+
+def save_user_log(
+    email: str,
+    log: dict[str, Any],
+    *,
+    report_type: str = "driving",
+    title: str = "",
+    log_id: str | None = None,
+) -> dict[str, Any]:
+    """일지 저장(신규 또는 동일 id 덮어쓰기). 반환: 저장 메타 + log."""
+    email = email.strip().lower()
+    if not isinstance(log, dict) or not log:
+        raise ValueError("빈 일지는 저장할 수 없습니다.")
+
+    items = _load_user_logs_raw(email)
+    now = _now_iso()
+    rid = (log_id or "").strip() or secrets.token_hex(8)
+    rtype = (report_type or log.get("report_type") or "driving").lower().strip()
+    if rtype in ("field", "field_visit", "outing"):
+        rtype = "field"
+    else:
+        rtype = "driving"
+
+    # log 본문에 메타 보강
+    body = dict(log)
+    body["report_type"] = rtype if rtype == "field" else body.get("report_type") or "driving"
+    if rtype == "field":
+        body["report_type"] = "field"
+
+    entry = {
+        "id": rid,
+        "email": email,
+        "report_type": rtype,
+        "title": (title or "").strip()
+        or f"{'외근' if rtype == 'field' else '운행'} {body.get('date') or now[:10]}",
+        "date": str(body.get("date") or now[:10]),
+        "summary": _summary_from_log(body),
+        "vehicle": str(body.get("vehicle") or ""),
+        "created_at": now,
+        "updated_at": now,
+        "log": body,
+    }
+
+    # 기존 id 있으면 갱신
+    found = False
+    for i, it in enumerate(items):
+        if it.get("id") == rid:
+            entry["created_at"] = it.get("created_at") or now
+            items[i] = entry
+            found = True
+            break
+    if not found:
+        items.insert(0, entry)
+
+    # 사용자당 최대 200건 유지
+    items = items[:200]
+    _write_json(_logs_path(email), items)
+    return entry
+
+
+def list_user_logs(email: str, limit: int = 50) -> list[dict[str, Any]]:
+    """목록용(본문 log 제외 가능하지만 간단히 메타+요약)."""
+    email = email.strip().lower()
+    items = _load_user_logs_raw(email)
+    # 최신순
+    items.sort(key=lambda x: str(x.get("updated_at") or x.get("created_at") or ""), reverse=True)
+    out = []
+    for it in items[: max(1, min(limit, 200))]:
+        out.append(
+            {
+                "id": it.get("id"),
+                "report_type": it.get("report_type") or "driving",
+                "title": it.get("title") or "",
+                "date": it.get("date") or "",
+                "summary": it.get("summary") or "",
+                "vehicle": it.get("vehicle") or "",
+                "created_at": it.get("created_at") or "",
+                "updated_at": it.get("updated_at") or "",
+            }
+        )
+    return out
+
+
+def get_user_log(email: str, log_id: str) -> dict[str, Any] | None:
+    email = email.strip().lower()
+    log_id = (log_id or "").strip()
+    for it in _load_user_logs_raw(email):
+        if it.get("id") == log_id:
+            return it
+    return None
+
+
+def delete_user_log(email: str, log_id: str) -> bool:
+    email = email.strip().lower()
+    log_id = (log_id or "").strip()
+    items = _load_user_logs_raw(email)
+    new_items = [it for it in items if it.get("id") != log_id]
+    if len(new_items) == len(items):
+        return False
+    _write_json(_logs_path(email), new_items)
+    return True

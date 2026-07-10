@@ -211,6 +211,14 @@ class StyleTextBody(BaseModel):
     text: str
 
 
+class SaveLogBody(BaseModel):
+    """일지 저장 요청."""
+    log: dict[str, Any]
+    report_type: str = "driving"
+    title: str = ""
+    id: str | None = None
+
+
 # ── API ───────────────────────────────────────────────
 
 
@@ -632,15 +640,75 @@ def generate(body: GenerateBody, authorization: str | None = Header(default=None
 
     log = result.get("log") or {}
     has_content = bool(log.get("trips") or log.get("visits"))
+    saved = None
     if result.get("log") and has_content:
         used = db.increment_usage(user["email"], 1)
+        # 생성 성공 시 서버에 자동 저장 (이력)
+        try:
+            saved = db.save_user_log(
+                user["email"],
+                log,
+                report_type=report_type,
+            )
+            # 클라이언트 동기화용 id
+            if isinstance(result.get("log"), dict) and saved.get("id"):
+                result = {**result, "log": {**result["log"], "_saved_id": saved["id"]}}
+        except Exception as e:
+            print(f"[RoadLog] auto-save log failed: {e}", flush=True)
 
     return {
         **result,
         "usage": used,
         "limit": FREE_MONTHLY_LIMIT,
         "plan": plan,
+        "saved": saved,
     }
+
+
+@app.get("/api/logs")
+def api_list_logs(
+    limit: int = Query(default=50, ge=1, le=200),
+    authorization: str | None = Header(default=None),
+):
+    """내 일지 이력 목록."""
+    user = _token_user(authorization)
+    items = db.list_user_logs(user["email"], limit=limit)
+    return {"ok": True, "items": items, "count": len(items)}
+
+
+@app.get("/api/logs/{log_id}")
+def api_get_log(log_id: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    item = db.get_user_log(user["email"], log_id)
+    if not item:
+        raise HTTPException(404, "일지를 찾을 수 없습니다.")
+    return {"ok": True, "item": item}
+
+
+@app.post("/api/logs")
+def api_save_log(body: SaveLogBody, authorization: str | None = Header(default=None)):
+    """일지 수동 저장·업데이트."""
+    user = _token_user(authorization)
+    try:
+        entry = db.save_user_log(
+            user["email"],
+            body.log,
+            report_type=body.report_type,
+            title=body.title,
+            log_id=body.id,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+    return {"ok": True, "item": entry}
+
+
+@app.delete("/api/logs/{log_id}")
+def api_delete_log(log_id: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    ok = db.delete_user_log(user["email"], log_id)
+    if not ok:
+        raise HTTPException(404, "일지를 찾을 수 없습니다.")
+    return {"ok": True}
 
 
 @app.post("/api/validate")

@@ -461,9 +461,24 @@
           <div class="form-actions form-actions-desktop">
             <button class="btn btn-primary btn-lg" id="btnGenerate" type="button" data-i18n="create.generate">✨ AI로 일지 작성</button>
             <button class="btn btn-ghost" id="btnExample" type="button" data-i18n="create.example">예시 불러오기</button>
+            <button class="btn btn-ghost" id="btnSaveLog" type="button">💾 저장</button>
           </div>
 
           <div id="genAlert"></div>
+
+          <!-- 저장된 일지 이력 -->
+          <div class="panel log-history-panel" id="logHistoryPanel" style="margin-top:1rem">
+            <div class="panel-head">
+              <h2>저장된 일지</h2>
+              <button type="button" class="btn btn-ghost" id="btnRefreshLogs">새로고침</button>
+            </div>
+            <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">
+              생성한 일지는 자동으로 계정에 저장됩니다. 다시 열어 다운로드·인쇄할 수 있습니다.
+            </p>
+            <div id="logHistoryList" class="log-history-list">
+              <p class="log-history-empty">아직 저장된 일지가 없습니다. 일지를 생성하면 여기에 쌓입니다.</p>
+            </div>
+          </div>
 
           <div class="result" id="resultBox">
             <div class="panel-head" style="margin-top:0.5rem">

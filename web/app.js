@@ -21,6 +21,8 @@
   const TOKEN_KEY = "rl_token";
   const STAMPS_KEY_PREFIX = "rl_stamps_";
   const LAST_LOG_KEY = "rl_last_log";
+  /** 기기 로컬 일지 이력 (서버 동기화 보조) */
+  const LOG_HISTORY_KEY = "rl_log_history";
   const REMEMBER_KEY = "rl_remember_session";
   /** 로그인 폼 자동입력 (이메일·비밀번호) — 이 기기 localStorage */
   const SAVED_LOGIN_KEY = "rl_saved_login";
@@ -334,26 +336,18 @@
     toast(t("toast.lang"));
   }
 
-  function loadLastLogFromStorage() {
-    try {
-      const raw = sessionStorage.getItem(LAST_LOG_KEY);
-      if (!raw) return null;
-      const log = JSON.parse(raw);
-      if (log && typeof log === "object") {
-        state.lastLog = log;
-        return log;
-      }
-    } catch {
-      /* ignore */
-    }
-    return null;
-  }
-
   function persistLastLog(log) {
     state.lastLog = log || null;
     try {
-      if (log) sessionStorage.setItem(LAST_LOG_KEY, JSON.stringify(log));
-      else sessionStorage.removeItem(LAST_LOG_KEY);
+      // 탭을 닫아도 남도록 localStorage 사용 (기존 sessionStorage 병행)
+      if (log) {
+        const raw = JSON.stringify(log);
+        localStorage.setItem(LAST_LOG_KEY, raw);
+        sessionStorage.setItem(LAST_LOG_KEY, raw);
+      } else {
+        localStorage.removeItem(LAST_LOG_KEY);
+        sessionStorage.removeItem(LAST_LOG_KEY);
+      }
     } catch {
       /* quota */
     }
@@ -361,21 +355,236 @@
     saveData({ type: "lastLog", payload: log || null }).catch(() => {});
   }
 
+  function loadLastLogFromStorage() {
+    try {
+      const raw =
+        localStorage.getItem(LAST_LOG_KEY) ||
+        sessionStorage.getItem(LAST_LOG_KEY);
+      if (!raw) return false;
+      const log = JSON.parse(raw);
+      if (log && typeof log === "object") {
+        state.lastLog = log;
+        return true;
+      }
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function pushLocalHistoryMeta(meta) {
+    try {
+      const raw = localStorage.getItem(LOG_HISTORY_KEY);
+      let list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+      list = list.filter((x) => x && x.id !== meta.id);
+      list.unshift(meta);
+      localStorage.setItem(LOG_HISTORY_KEY, JSON.stringify(list.slice(0, 50)));
+    } catch {
+      /* ignore */
+    }
+  }
+
   /**
-   * 향후 서버 연동용 동기화 스텁
-   * - 현재는 no-op resolve (오프라인 우선)
-   * - 나중에 POST /api/sync 로 교체하면 됨
+   * 일지를 서버(+로컬)에 저장. 생성 직후·수동 저장 버튼에서 사용.
    */
-  function syncData(bundle) {
-    return new Promise((resolve) => {
-      // TODO: 인증 토큰 + fetch('/api/sync', { method:'POST', body: JSON.stringify(bundle) })
-      // 네트워크 없으면 여기서 resolve({ skipped: true }) 로 로컬만 유지
-      if (!state.token) {
-        resolve({ ok: true, skipped: true, reason: "no_token" });
+  async function saveLogToServer(log, opts = {}) {
+    if (!log) throw new Error("저장할 일지가 없습니다.");
+    const reportType =
+      opts.reportType ||
+      (String(log.report_type || "").toLowerCase() === "field" ? "field" : "driving");
+
+    // 로컬 최신본 유지
+    persistLastLog(log);
+
+    if (!state.token) {
+      // 비로그인: 로컬만
+      const localId = log._saved_id || `local_${Date.now().toString(36)}`;
+      log._saved_id = localId;
+      pushLocalHistoryMeta({
+        id: localId,
+        report_type: reportType,
+        title: opts.title || `${reportType === "field" ? "외근" : "운행"} ${log.date || ""}`,
+        date: log.date || "",
+        summary: log.summary || "",
+        vehicle: log.vehicle || "",
+        updated_at: new Date().toISOString(),
+        _local: true,
+        log,
+      });
+      return { ok: true, local: true, id: localId };
+    }
+
+    const data = await api("/api/logs", {
+      method: "POST",
+      body: JSON.stringify({
+        log,
+        report_type: reportType,
+        title: opts.title || "",
+        id: opts.id || log._saved_id || null,
+      }),
+    });
+    const item = data.item || {};
+    if (item.id && state.lastLog) {
+      state.lastLog._saved_id = item.id;
+      persistLastLog(state.lastLog);
+    }
+    pushLocalHistoryMeta({
+      id: item.id,
+      report_type: item.report_type,
+      title: item.title,
+      date: item.date,
+      summary: item.summary,
+      vehicle: item.vehicle,
+      updated_at: item.updated_at,
+    });
+    return { ok: true, item };
+  }
+
+  async function loadLogHistory() {
+    const listEl = $("#logHistoryList");
+    if (!listEl) return;
+
+    if (!state.token) {
+      // 로컬 이력
+      try {
+        const raw = localStorage.getItem(LOG_HISTORY_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        renderLogHistoryList(Array.isArray(list) ? list : []);
+      } catch {
+        renderLogHistoryList([]);
+      }
+      return;
+    }
+
+    try {
+      const data = await api("/api/logs?limit=30");
+      renderLogHistoryList(data.items || []);
+    } catch (err) {
+      listEl.innerHTML = `<p class="log-history-empty">이력을 불러오지 못했습니다. ${escapeHtml(
+        err.message || ""
+      )}</p>`;
+    }
+  }
+
+  function renderLogHistoryList(items) {
+    const listEl = $("#logHistoryList");
+    if (!listEl) return;
+    if (!items.length) {
+      listEl.innerHTML =
+        '<p class="log-history-empty">아직 저장된 일지가 없습니다. 일지를 생성하면 여기에 쌓입니다.</p>';
+      return;
+    }
+    listEl.innerHTML = items
+      .map((it) => {
+        const kind = it.report_type === "field" ? "외근" : "운행";
+        const when = String(it.updated_at || it.created_at || "").slice(0, 16).replace("T", " ");
+        return `<div class="log-history-item" data-log-id="${escapeHtml(it.id || "")}">
+          <div>
+            <strong>${escapeHtml(it.title || `${kind} 일지`)}</strong>
+            <div class="lh-meta">${escapeHtml(kind)} · ${escapeHtml(it.date || "—")} · ${escapeHtml(
+          it.summary || ""
+        )}${when ? ` · ${escapeHtml(when)}` : ""}</div>
+          </div>
+          <div class="lh-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-log-open="${escapeHtml(
+              it.id || ""
+            )}">열기</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-log-del="${escapeHtml(
+              it.id || ""
+            )}">삭제</button>
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  async function openSavedLog(logId) {
+    if (!logId) return;
+    // 로컬 우선
+    try {
+      const raw = localStorage.getItem(LOG_HISTORY_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      const local = Array.isArray(list) ? list.find((x) => x && x.id === logId) : null;
+      if (local && local.log) {
+        persistLastLog(local.log);
+        renderResult({ log: local.log, engine: "restored" });
+        toast("저장된 일지를 불러왔습니다");
+        document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth" });
         return;
       }
-      // 서버 API 미구현 단계: 성공으로 간주해 UI 흐름을 막지 않음
-      resolve({ ok: true, skipped: true, reason: "api_not_wired", bundleKeys: Object.keys(bundle || {}) });
+    } catch {
+      /* continue server */
+    }
+    if (!state.token) {
+      toast("로그인이 필요합니다");
+      openAuth();
+      return;
+    }
+    try {
+      const data = await api(`/api/logs/${encodeURIComponent(logId)}`);
+      const log = data.item?.log;
+      if (!log) {
+        toast("일지를 찾을 수 없습니다");
+        return;
+      }
+      log._saved_id = data.item.id;
+      persistLastLog(log);
+      renderResult({ log, engine: "restored" });
+      toast("저장된 일지를 불러왔습니다");
+      document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth" });
+    } catch (err) {
+      toast(err.message || "불러오기 실패");
+    }
+  }
+
+  async function deleteSavedLog(logId) {
+    if (!logId || !confirm("이 일지를 삭제할까요?")) return;
+    // 로컬 제거
+    try {
+      const raw = localStorage.getItem(LOG_HISTORY_KEY);
+      let list = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(list)) {
+        list = list.filter((x) => x && x.id !== logId);
+        localStorage.setItem(LOG_HISTORY_KEY, JSON.stringify(list));
+      }
+    } catch {
+      /* ignore */
+    }
+    if (state.token) {
+      try {
+        await api(`/api/logs/${encodeURIComponent(logId)}`, { method: "DELETE" });
+      } catch (err) {
+        toast(err.message || "삭제 실패");
+        return;
+      }
+    }
+    toast("삭제했습니다");
+    loadLogHistory();
+  }
+
+  function bindLogHistory() {
+    $("#btnRefreshLogs")?.addEventListener("click", () => loadLogHistory());
+    $("#btnSaveLog")?.addEventListener("click", async () => {
+      if (!state.lastLog) {
+        toast("먼저 일지를 생성해 주세요");
+        return;
+      }
+      try {
+        await saveLogToServer(state.lastLog, {
+          reportType: state.reportMode === "field" ? "field" : "driving",
+        });
+        toast("일지를 저장했습니다");
+        loadLogHistory();
+      } catch (err) {
+        toast(err.message || "저장 실패");
+      }
+    });
+    $("#logHistoryList")?.addEventListener("click", (e) => {
+      const openId = e.target.closest("[data-log-open]")?.getAttribute("data-log-open");
+      const delId = e.target.closest("[data-log-del]")?.getAttribute("data-log-del");
+      if (openId) openSavedLog(openId);
+      else if (delId) deleteSavedLog(delId);
     });
   }
 
@@ -384,7 +593,7 @@
    * @param {{ type?: string, payload?: any }} [opts] 부분 저장 시 힌트
    */
   async function saveData(opts = {}) {
-    // 1) 로컬 영속화 — 스탬프(일자별) + 세션 일지
+    // 1) 로컬 영속화 — 스탬프(일자별) + 최근 일지
     try {
       const stampKey = typeof stampStorageKey === "function"
         ? stampStorageKey()
@@ -395,7 +604,9 @@
     }
     try {
       if (state.lastLog) {
-        sessionStorage.setItem(LAST_LOG_KEY, JSON.stringify(state.lastLog));
+        const raw = JSON.stringify(state.lastLog);
+        localStorage.setItem(LAST_LOG_KEY, raw);
+        sessionStorage.setItem(LAST_LOG_KEY, raw);
       }
     } catch (e) {
       console.warn("[saveData] session lastLog failed", e);
@@ -778,9 +989,10 @@
       prefillVehicleFromSettings();
       loadStamps();
       renderStampList();
-      // 세션에 남은 최근 일지 복원 (새로고침 후 출력·공유 가능)
+      // 저장된 최근 일지 복원 + 이력 목록
       if (!state.lastLog) loadLastLogFromStorage();
       if (state.lastLog) renderResult({ log: state.lastLog, engine: "restored" });
+      loadLogHistory();
       // stamp: 퀵 스탬프 포커스 / report: 일지 입력 폼 포커스
       if (!opts.skipScroll) {
         setTimeout(() => {
@@ -2167,9 +2379,28 @@
             alertBox($("#genAlert"), "error", errs);
             return;
           }
+          if (data.saved?.id) data.log._saved_id = data.saved.id;
           persistLastLog(data.log);
+          if (data.saved) {
+            pushLocalHistoryMeta({
+              id: data.saved.id,
+              report_type: data.saved.report_type,
+              title: data.saved.title,
+              date: data.saved.date,
+              summary: data.saved.summary,
+              vehicle: data.saved.vehicle,
+              updated_at: data.saved.updated_at,
+            });
+          } else {
+            try {
+              await saveLogToServer(data.log, { reportType: "field" });
+            } catch {
+              /* local already persisted */
+            }
+          }
           renderResult(data);
           if (state.user) renderAppHome();
+          loadLogHistory();
           alertBox(
             $("#genAlert"),
             data.engine === "openai" ? "ok" : "warn",
@@ -2177,10 +2408,10 @@
           );
           toast(
             data.engine === "openai"
-              ? "외근일지 생성 완료"
+              ? "외근일지 생성·저장 완료"
               : data.engine_title
-                ? `${data.engine_title} · 규칙 초안 완료`
-                : "규칙 초안으로 생성 완료"
+                ? `${data.engine_title} · 저장됨`
+                : "일지 저장 완료"
           );
           document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth", block: "start" });
           showCareModal(data.log, form);
@@ -2255,10 +2486,29 @@
           return;
         }
 
-        // ② 결과 즉시 표시 + sessionStorage 보존 (새로고침 대비)
+        // ② 결과 표시 + 영구 저장 (서버 자동저장 or 로컬)
+        if (data.saved?.id) data.log._saved_id = data.saved.id;
         persistLastLog(data.log);
+        if (data.saved) {
+          pushLocalHistoryMeta({
+            id: data.saved.id,
+            report_type: data.saved.report_type,
+            title: data.saved.title,
+            date: data.saved.date,
+            summary: data.saved.summary,
+            vehicle: data.saved.vehicle,
+            updated_at: data.saved.updated_at,
+          });
+        } else {
+          try {
+            await saveLogToServer(data.log, { reportType: "driving" });
+          } catch {
+            /* local already persisted */
+          }
+        }
         renderResult(data);
         if (state.user) renderAppHome();
+        loadLogHistory();
         const genMsg = formatGenerateUserMessage(data);
         alertBox(
           $("#genAlert"),
@@ -2267,10 +2517,10 @@
         );
         toast(
           data.engine === "openai"
-            ? "AI 일지 생성 완료"
+            ? "AI 일지 생성·저장 완료"
             : data.engine_title
-              ? `${data.engine_title} · 규칙 초안 완료`
-              : "규칙 초안으로 생성 완료"
+              ? `${data.engine_title} · 저장됨`
+              : "일지 저장 완료"
         );
         document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth", block: "start" });
         showCareModal(data.log, form);
@@ -4661,6 +4911,7 @@
     bindHistoryNav();
     bindAuth();
     bindGenerate();
+    bindLogHistory();
     setReportMode(state.reportMode || "driving");
     bindCareModal();
     bindQuickStamp();
