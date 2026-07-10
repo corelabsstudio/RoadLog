@@ -127,20 +127,78 @@
       const key = el.getAttribute("data-i18n-aria");
       if (key) el.setAttribute("aria-label", t(key));
     });
-    // 로그인 버튼 등 동적 라벨
-    const btnAuth = $("#btnAuth");
-    if (btnAuth && !state.user) btnAuth.textContent = t("nav.login");
-    const btnStart = $("#btnStart");
-    if (btnStart && !state.user) btnStart.textContent = t("nav.start");
-    if (btnStart && state.user) btnStart.textContent = t("nav.write_log");
-    // generate buttons
+    // 로그인/시작 버튼 — 비로그인만 여기서 고정 라벨 (로그인 후는 refreshAuthButtons)
+    refreshAuthNavLabels();
+    // generate buttons (외근 모드 반영)
+    const genLabel =
+      state.reportMode === "field"
+        ? t("create.generate_field") || "✨ AI로 외근일지 작성"
+        : t("create.generate") || "✨ AI로 일지 작성";
     ["#btnGenerate", "#btnGenerateSticky"].forEach((sel) => {
       const b = $(sel);
-      if (b && !b.disabled) b.textContent = t("create.generate");
+      if (b && !b.disabled) b.textContent = genLabel;
     });
     // stamp empty state if list is empty placeholder
     const stampEmpty = document.querySelector(".quick-stamp-empty");
     if (stampEmpty) stampEmpty.textContent = t("create.stamp_empty");
+    // 작성 모드 탭 문구 동기화 (함수 정의 후에만)
+    if (typeof setReportMode === "function" && state.reportMode) {
+      try {
+        setReportMode(state.reportMode);
+      } catch {
+        /* init 순서상 미정의일 수 있음 */
+      }
+    }
+  }
+
+  /** 상단 로그인·시작 버튼 라벨 (한글 깨짐 방지용 폴백 포함) */
+  function refreshAuthNavLabels() {
+    const btnAuth = $("#btnAuth");
+    const btnStart = $("#btnStart");
+    if (!btnAuth && !btnStart) return;
+
+    if (!state.user) {
+      if (btnAuth) btnAuth.textContent = t("nav.login") || "로그인";
+      if (btnStart) {
+        btnStart.textContent = t("nav.start") || "시작하기";
+        btnStart.dataset.nav = "create";
+      }
+      return;
+    }
+
+    const eu = typeof getEffectiveUser === "function" ? getEffectiveUser() : state.user;
+    const name = (eu && (eu.name || eu.email?.split("@")[0])) || "계정";
+    let plan = ((eu && eu.plan) || "free").toUpperCase();
+    if (eu?.is_admin) plan = "ADMIN";
+    else if (eu?.is_vip) plan = "VIP";
+    else if (eu?.plan_type === "enterprise" || eu?._viewAs === "enterprise") plan = "ENT";
+
+    const adminOnly =
+      typeof isAdminMainMode === "function" ? isAdminMainMode() : !!(eu && eu.is_admin);
+    if (btnAuth) {
+      if (
+        typeof isRealAdmin === "function" &&
+        isRealAdmin() &&
+        typeof getViewAsMode === "function" &&
+        getViewAsMode() !== "admin"
+      ) {
+        btnAuth.textContent = `${name} · ${plan} (미리보기)`;
+      } else {
+        btnAuth.textContent = `${name} · ${plan}`;
+      }
+    }
+    if (btnStart) {
+      if (adminOnly) {
+        btnStart.textContent = t("nav.admin") || "관리자";
+        btnStart.dataset.nav = "admin";
+      } else {
+        btnStart.textContent = t("nav.write_log") || "일지 작성";
+        btnStart.dataset.nav =
+          typeof isWithinWorkHours === "function" && isWithinWorkHours()
+            ? "stamp"
+            : "report";
+      }
+    }
   }
 
   async function setLanguage(lang) {
@@ -861,17 +919,22 @@
     const sub = $("#createSub");
     const formTitle = $("#reportFormTitle");
     const genBtn = $("#btnGenerate");
+    const genLabel =
+      m === "field"
+        ? t("create.generate_field") || "✨ AI로 외근일지 작성"
+        : t("create.generate") || "✨ AI로 일지 작성";
     if (m === "field") {
-      if (title) title.textContent = t("create.title_field");
-      if (sub) sub.textContent = t("create.sub_field");
-      if (formTitle) formTitle.textContent = t("create.form_title_field");
-      if (genBtn) genBtn.textContent = t("create.generate_field");
+      if (title) title.textContent = t("create.title_field") || "외근·출장 일지";
+      if (sub) sub.textContent = t("create.sub_field") || "";
+      if (formTitle) formTitle.textContent = t("create.form_title_field") || "오늘 외근 정보";
     } else {
-      if (title) title.textContent = t("create.title");
-      if (sub) sub.textContent = t("create.sub");
-      if (formTitle) formTitle.textContent = t("create.form_title");
-      if (genBtn) genBtn.textContent = t("create.generate");
+      if (title) title.textContent = t("create.title") || "운행일지 작성";
+      if (sub) sub.textContent = t("create.sub") || "";
+      if (formTitle) formTitle.textContent = t("create.form_title") || "오늘 운행 정보";
     }
+    if (genBtn && !genBtn.disabled) genBtn.textContent = genLabel;
+    const genSticky = $("#btnGenerateSticky");
+    if (genSticky && !genSticky.disabled) genSticky.textContent = genLabel;
     if (opts.toast) {
       toast(m === "field" ? "외근·출장 일지 모드" : "운행일지 모드");
     }
@@ -1207,29 +1270,16 @@
   }
 
   function updateAuthUI() {
-    const btn = $("#btnAuth");
     const navSettings = $("#navSettings");
     const navCreate = $("#navCreate");
     const navStyle = $("#navStyle");
     const navAdmin = $("#navAdmin");
-    const btnStart = $("#btnStart");
     const eu = getEffectiveUser();
     // 설정(근무 시간)은 로그인 없이 사용 가능
     navSettings?.classList.remove("hidden");
     // 관리자 보기 모드: 운영 화면에 일지 작성·회사 서식 메뉴 비노출
     const adminOnlyUi = isAdminMainMode();
     if (eu) {
-      const name = eu.name || eu.email?.split("@")[0] || "계정";
-      let plan = (eu.plan || "free").toUpperCase();
-      if (eu.is_admin) plan = "ADMIN";
-      else if (eu.is_vip) plan = "VIP";
-      else if (eu.plan_type === "enterprise" || eu._viewAs === "enterprise") plan = "ENT";
-      // 미리보기 중이면 배지에 힌트
-      if (isRealAdmin() && getViewAsMode() !== "admin") {
-        btn.textContent = `${name} · ${plan} (미리보기)`;
-      } else {
-        btn.textContent = `${name} · ${plan}`;
-      }
       if (adminOnlyUi) {
         navCreate?.classList.add("hidden");
         navStyle?.classList.add("hidden");
@@ -1240,25 +1290,13 @@
       // 관리자 메뉴: 실제 관리자 + 관리자 보기 모드일 때만
       if (adminOnlyUi) navAdmin?.classList.remove("hidden");
       else navAdmin?.classList.add("hidden");
-      if (btnStart) {
-        if (adminOnlyUi) {
-          btnStart.textContent = t("nav.admin") || "관리자";
-          btnStart.dataset.nav = "admin";
-        } else {
-          btnStart.textContent = t("nav.write_log");
-          btnStart.dataset.nav = isWithinWorkHours() ? "stamp" : "report";
-        }
-      }
     } else {
-      btn.textContent = t("nav.login");
       navCreate?.classList.remove("hidden");
       navStyle?.classList.add("hidden");
       navAdmin?.classList.add("hidden");
-      if (btnStart) {
-        btnStart.textContent = t("nav.start");
-        btnStart.dataset.nav = "create";
-      }
     }
+    // 로그인·시작 버튼 한글 라벨
+    refreshAuthNavLabels();
     syncViewAsControls();
     updateHomeMode();
     renderUsage();

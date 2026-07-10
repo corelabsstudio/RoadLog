@@ -49,10 +49,12 @@
   --shadow: 0 0 0 1px rgba(34, 211, 238, 0.12), 0 20px 60px rgba(0, 0, 0, 0.55);
   --glow: 0 0 40px rgba(34, 211, 238, 0.18);
   /* 본문: SUIT — 현대적·단정한 한글 UI */
-  --font: "SUIT Variable", SUIT, -apple-system, BlinkMacSystemFont,
-    "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --font: "SUIT Variable", SUIT, "Malgun Gothic", "맑은 고딕",
+    -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR",
+    "Segoe UI", sans-serif;
   /* 제목: Paperlogy — 더 예쁜 디스플레이 */
-  --font-display: "Paperlogy", "SUIT Variable", SUIT, sans-serif;
+  --font-display: "Paperlogy", "SUIT Variable", SUIT, "Malgun Gothic", "맑은 고딕",
+    sans-serif;
   --font-en: "Plus Jakarta Sans", var(--font);
   --nav-h: 72px;
   --max: 1120px;
@@ -513,6 +515,21 @@ img {
   align-items: center;
   gap: 0.45rem;
   flex-shrink: 0;
+  min-width: 0;
+}
+
+/* 로그인 / 시작하기 — 한글 깨짐·잘림 방지 */
+.nav-actions #btnAuth,
+.nav-actions #btnStart {
+  flex-shrink: 0;
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  letter-spacing: -0.02em;
+  font-family: var(--font);
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: none;
 }
 
 /* 상단 언어 스위처 — 항상 노출 */
@@ -3030,8 +3047,16 @@ body.session-ready #appHome {
 
   .nav-actions .btn {
     min-height: 42px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .nav-actions #btnAuth,
+  .nav-actions #btnStart {
+    font-size: 0.9rem !important;
+    padding: 0.5rem 0.85rem !important;
+    min-height: 42px;
   }
 
   /* 모바일: 설정·언어는 항상 보이도록 유지 */
@@ -3205,8 +3230,29 @@ body.session-ready #appHome {
     font-size: 0.58rem;
   }
 
+  .nav-actions {
+    gap: 0.3rem;
+  }
+
+  /* 좁은 화면: 시작하기는 숨기고 로그인 라벨은 유지 */
   .nav-actions #btnStart {
-    display: none; /* 좁은 화면: 햄버거 + 로그인만 */
+    display: none;
+  }
+
+  .nav-actions #btnAuth {
+    font-size: 0.88rem !important;
+    padding: 0.48rem 0.75rem !important;
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-actions .btn-install span {
+    display: none; /* 아이콘만 */
+  }
+
+  .hero {
+    padding-top: 2.5rem;
   }
 
   .hero-badge {
@@ -3219,11 +3265,6 @@ body.session-ready #appHome {
 
   .metric .value {
     font-size: 1.05rem;
-  }
-}
-
-  .hero {
-    padding-top: 2.5rem;
   }
 }
 
@@ -4393,6 +4434,13 @@ input[type="date"]:focus {
 
 .btn {
   min-height: 2.75rem;
+}
+
+/* 상단 네비 버튼은 가독성 패치에서도 잘리지 않게 */
+.nav-actions .btn {
+  min-height: 2.5rem;
+  font-size: max(0.9rem, 14.5px) !important;
+  white-space: nowrap !important;
 }
 
 textarea,

@@ -841,13 +841,33 @@ def admin_vip_remove(member_id: str, authorization: str | None = Header(default=
 
 # ── 정적 파일 ─────────────────────────────────────────
 
+_TEXT_MEDIA = {
+    ".html": "text/html; charset=utf-8",
+    ".js": "application/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
+    ".webmanifest": "application/manifest+json; charset=utf-8",
+    ".svg": "image/svg+xml; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
+    ".md": "text/markdown; charset=utf-8",
+}
+
+
+def _file_response(path: Path) -> FileResponse:
+    """UTF-8 charset을 붙여 한글 UI 깨짐을 방지."""
+    media = _TEXT_MEDIA.get(path.suffix.lower())
+    if media:
+        return FileResponse(path, media_type=media)
+    return FileResponse(path)
+
+
 if WEB.exists():
     app.mount("/assets", StaticFiles(directory=WEB / "assets"), name="assets")
 
 
 @app.get("/")
 def index():
-    return FileResponse(WEB / "index.html")
+    return _file_response(WEB / "index.html")
 
 
 @app.get("/{path:path}")
@@ -857,5 +877,5 @@ def spa_fallback(path: str):
         raise HTTPException(404, "Not Found")
     candidate = WEB / path
     if candidate.is_file():
-        return FileResponse(candidate)
-    return FileResponse(WEB / "index.html")
+        return _file_response(candidate)
+    return _file_response(WEB / "index.html")
