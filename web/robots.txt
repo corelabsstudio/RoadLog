@@ -1,0 +1,5 @@
+# RoadLog — https://roadlog.co.kr
+User-agent: *
+Allow: /
+
+Sitemap: https://roadlog.co.kr/sitemap.xml

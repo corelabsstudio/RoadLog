@@ -12,9 +12,44 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="RoadLog" />
   <meta name="format-detection" content="telephone=no" />
-  <title>RoadLog — AI 운행일지</title>
+  <title>RoadLog — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX</title>
 
-  <meta name="description" content="AI 운행일지. 주행거리·방문지를 입력하면 회사 서식에 맞춰 제출용 일지를 작성합니다. Excel · PDF · DOCX." />
+  <meta
+    name="description"
+    content="RoadLog(로드로그) — AI 운행일지·외근일지. 한 줄 입력으로 회사 제출용 문서를 작성합니다. Free 월 15회 · Pro 월 2,900원. Excel · PDF · DOCX."
+  />
+  <meta
+    name="keywords"
+    content="운행일지, 외근일지, AI 운행일지, 업무일지, 법인차, 운행기록, RoadLog, 로드로그, 엑셀 운행일지, 회사 제출용 일지"
+  />
+  <meta name="author" content="CoreLabs" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://roadlog.co.kr/" />
+
+  <!-- Open Graph (카카오·링크 미리보기) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:site_name" content="RoadLog" />
+  <meta property="og:url" content="https://roadlog.co.kr/" />
+  <meta property="og:title" content="RoadLog — AI 운행·외근 일지" />
+  <meta
+    property="og:description"
+    content="한 줄 입력으로 회사 제출용 운행·외근 일지. Free 월 15회 · Pro 월 2,900원. Excel · PDF · DOCX."
+  />
+  <meta property="og:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="RoadLog — AI Trip Log" />
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="RoadLog — AI 운행·외근 일지" />
+  <meta
+    name="twitter:description"
+    content="한 줄 입력으로 회사 제출용 운행·외근 일지. Free 체험 · Pro 월 2,900원."
+  />
+  <meta name="twitter:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
+
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="apple-touch-icon" href="/icons/icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" />
@@ -25,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-navfix" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-promo" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -1265,6 +1300,29 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-navfix"></script>
+  <script src="/app.js?v=20260711-promo"></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "RoadLog",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "url": "https://roadlog.co.kr/",
+    "description": "AI 운행일지·외근일지. 회사 제출용 Excel·PDF·DOCX 생성.",
+    "offers": {
+      "@type": "AggregateOffer",
+      "lowPrice": "0",
+      "highPrice": "19900",
+      "priceCurrency": "KRW",
+      "offerCount": "3"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "CoreLabs",
+      "email": "corelabs.studio@gmail.com"
+    }
+  }
+  </script>
 </body>
 </html>
