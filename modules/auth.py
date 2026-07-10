@@ -7,10 +7,9 @@ from __future__ import annotations
 import streamlit as st
 
 from modules.config import (
-    ADMIN_PASSWORD,
-    ADMIN_USERNAME,
     FREE_MONTHLY_LIMIT,
     PRO_PAYMENT_URL,
+    get_admin_credentials,
 )
 from modules import db
 from modules.styles import render_pro_cta, render_usage_bar
@@ -108,8 +107,8 @@ def login_admin(username: str, password: str) -> tuple[bool, str]:
     if ok and user:
         _apply_login_session(user)
         return True, msg
-    if username.strip() == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        # 폴백: ensure admin user
+    admin_user, admin_password, _ = get_admin_credentials()
+    if username.strip() == admin_user and password == admin_password:
         user = db.ensure_admin_owner()
         _apply_login_session(user)
         return True, "관리자 로그인 성공"
@@ -207,11 +206,20 @@ def show_login_page() -> None:
 
     render_landing_hero()
     st.markdown("### 로그인")
-    st.caption("회원가입 없이 등록된 계정으로 접속하세요. 관리자 계정은 기업용 대시보드로 이동합니다.")
+    admin_user, _, _ = get_admin_credentials()
+    st.caption(
+        "이 사이트에서 가입한 계정으로 로그인하세요. "
+        f"관리자는 가입 없이 ID **`{admin_user}`** (Secrets의 ADMIN_USERNAME) 로 로그인합니다. "
+        "로컬 PC 회원 정보는 클라우드와 공유되지 않습니다."
+    )
 
     tab_login, tab_reg = st.tabs(["로그인", "회원가입"])
     with tab_login:
-        email = st.text_input("이메일 또는 ID", key="login_email_main", placeholder="you@company.com")
+        email = st.text_input(
+            "이메일 또는 관리자 ID",
+            key="login_email_main",
+            placeholder=f"you@company.com 또는 {admin_user}",
+        )
         pw = st.text_input("비밀번호", type="password", key="login_pw_main")
         if st.button("로그인", type="primary", use_container_width=True, key="btn_login_main"):
             ok, msg = login_user(email, pw)
@@ -221,6 +229,7 @@ def show_login_page() -> None:
             else:
                 st.error(msg)
     with tab_reg:
+        st.caption("클라우드에서 처음 쓰는 경우 여기서 새로 가입하세요. 로컬 계정은 자동 이전되지 않습니다.")
         name = st.text_input("이름 (선택)", key="reg_name_main")
         email = st.text_input("이메일", key="reg_email_main", placeholder="you@company.com")
         pw = st.text_input("비밀번호", type="password", key="reg_pw_main")
@@ -228,14 +237,17 @@ def show_login_page() -> None:
         if st.button("가입하기", use_container_width=True, key="btn_reg_main"):
             if pw != pw2:
                 st.error("비밀번호가 일치하지 않습니다.")
+            elif not email or "@" not in email:
+                st.error("올바른 이메일을 입력해 주세요.")
+            elif len(pw or "") < 4:
+                st.error("비밀번호는 4자 이상 입력해 주세요.")
             else:
                 ok, msg = db.register_user(email, pw, name)
                 if ok:
-                    # 기본 personal config 생성
                     from modules.user_config import load_user_config
 
                     load_user_config(email)
-                    st.success(msg + " 로그인해 주세요.")
+                    st.success(msg + " 이제 로그인 탭에서 로그인해 주세요.")
                 else:
                     st.error(msg)
 

@@ -19,18 +19,58 @@ load_dotenv(ROOT_DIR / ".env")
 
 
 def _get_secret(key: str, default: str = "") -> str:
-    """환경변수 → Streamlit secrets 순으로 값을 조회합니다."""
+    """
+    환경변수 → Streamlit secrets 순으로 값을 조회합니다.
+    Streamlit Cloud 는 Secrets 가 런타임에만 안정적으로 열리므로,
+    관리자 인증 등에서는 이 함수를 호출 시점에 다시 읽으세요.
+    """
     val = os.getenv(key, "").strip()
     if val:
         return val
+    # Streamlit secrets (Cloud / secrets.toml)
     try:
         import streamlit as st
 
-        if hasattr(st, "secrets") and key in st.secrets:
-            return str(st.secrets[key]).strip()
+        secrets = getattr(st, "secrets", None)
+        if secrets is None:
+            return default
+        # 1) 최상위 키
+        try:
+            if key in secrets:
+                return str(secrets[key]).strip()
+        except Exception:
+            pass
+        # 2) secrets[key] 직접 (일부 버전)
+        try:
+            v = secrets[key]
+            if v is not None and str(v).strip():
+                return str(v).strip()
+        except Exception:
+            pass
+        # 3) 중첩 섹션 예: [admin] username=
+        try:
+            lower = key.lower()
+            if lower.startswith("admin_") and "admin" in secrets:
+                sub = secrets["admin"]
+                sub_key = key[len("ADMIN_") :].lower() if key.startswith("ADMIN_") else key
+                if sub_key in sub:
+                    return str(sub[sub_key]).strip()
+        except Exception:
+            pass
     except Exception:
         pass
     return default
+
+
+def get_admin_credentials() -> tuple[str, str, str]:
+    """
+    관리자 (username, password, email) — 항상 최신 secrets/env 를 읽음.
+    Streamlit Cloud 에서 import 시점 기본값에 고정되는 문제를 막습니다.
+    """
+    username = _get_secret("ADMIN_USERNAME", "admin") or "admin"
+    password = _get_secret("ADMIN_PASSWORD", "admin123") or "admin123"
+    email = _get_secret("ADMIN_EMAIL", "") or f"{username}@roadlog.local"
+    return username.strip(), password, email.strip().lower()
 
 
 # ── 브랜딩 ──────────────────────────────────────────────

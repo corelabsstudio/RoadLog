@@ -13,9 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from modules.config import (
-    ADMIN_EMAIL,
-    ADMIN_PASSWORD,
-    ADMIN_USERNAME,
     ENTERPRISE_PRICE_KRW,
     PAYMENTS_JSON,
     SETTINGS_DIR,
@@ -25,6 +22,7 @@ from modules.config import (
     USERS_JSON,
     DEFAULT_USER_SETTINGS,
     PRO_PRICE_KRW,
+    get_admin_credentials,
 )
 
 
@@ -156,7 +154,8 @@ def ensure_admin_owner() -> dict:
     회원가입 없이 ADMIN_USERNAME / ADMIN_PASSWORD 로 일반 로그인 가능.
     plan=pro, is_admin=True
     """
-    email = (ADMIN_EMAIL or f"{ADMIN_USERNAME}@roadlog.local").strip().lower()
+    admin_user, admin_password, admin_email = get_admin_credentials()
+    email = (admin_email or f"{admin_user}@roadlog.local").strip().lower()
     users = _read_json(USERS_JSON, {})
 
     # 예전 admin@roadlog.local 계정이 있으면 정리하고 새 관리자 이메일로 통일
@@ -165,7 +164,7 @@ def ensure_admin_owner() -> dict:
         users.pop(legacy, None)
 
     existing = users.get(email)
-    pw_hash, salt = _hash_password(ADMIN_PASSWORD)
+    pw_hash, salt = _hash_password(admin_password)
     if existing:
         existing["plan"] = "pro"
         existing["is_admin"] = True
@@ -194,31 +193,40 @@ def authenticate_admin_credentials(login_id: str, password: str) -> tuple[bool, 
     관리자 자격 확인 (UI 탭 없음 — 일반 로그인 폼에서 동일 입력).
     login_id: ADMIN_USERNAME 또는 ADMIN_EMAIL
     password: ADMIN_PASSWORD
+    secrets/env 는 호출 시점마다 다시 읽음 (Streamlit Cloud 대응).
     """
+    admin_user, admin_password, admin_email = get_admin_credentials()
     lid = (login_id or "").strip().lower()
-    admin_email = (ADMIN_EMAIL or "hhs126@roadlog.local").strip().lower()
-    admin_user = (ADMIN_USERNAME or "hhs126").strip().lower()
+    admin_email = (admin_email or f"{admin_user}@roadlog.local").strip().lower()
+    admin_user = (admin_user or "admin").strip().lower()
 
     # 대소문자 무시 비교 (ID)
     id_ok = lid in {admin_user, admin_email}
-    # 비밀번호는 설정된 값과 정확히 일치
-    pw_ok = password == ADMIN_PASSWORD
+    # 비밀번호는 설정된 값과 정확히 일치 (앞뒤 공백 제거)
+    pw_ok = (password or "") == admin_password or (password or "").strip() == admin_password
     if not id_ok or not pw_ok:
         return False, None, "관리자 계정 정보가 올바르지 않습니다."
 
-    user = ensure_admin_owner()
+    try:
+        user = ensure_admin_owner()
+    except Exception as e:
+        return False, None, f"관리자 계정 준비 실패(저장소 권한?): {e}"
+
     # 비밀번호가 설정에서 바뀌었을 수 있으므로 해시 동기화
     users = _read_json(USERS_JSON, {})
     u = users.get(user["email"])
     if u:
-        pw_hash, salt = _hash_password(ADMIN_PASSWORD)
+        pw_hash, salt = _hash_password(admin_password)
         u["password_hash"] = pw_hash
         u["salt"] = salt
         u["plan"] = "pro"
         u["is_admin"] = True
         u["name"] = u.get("name") or "관리자"
         users[user["email"]] = u
-        _write_json(USERS_JSON, users)
+        try:
+            _write_json(USERS_JSON, users)
+        except Exception as e:
+            return False, None, f"로그인 저장 실패: {e}"
         user = _normalize_user(u)
     return True, user, "로그인 성공"
 
@@ -226,6 +234,10 @@ def authenticate_admin_credentials(login_id: str, password: str) -> tuple[bool, 
 def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
     """로그인. (성공, user_dict, 메시지)"""
     email = (email or "").strip().lower()
+    password = password or ""
+
+    if not email or not password:
+        return False, None, "이메일(또는 관리자 ID)과 비밀번호를 입력해 주세요."
 
     # 관리자 자격으로 먼저 시도 (회원가입 불필요)
     ok_a, user_a, msg_a = authenticate_admin_credentials(email, password)
@@ -244,10 +256,14 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
                 .execute()
             )
             if not res.data:
-                return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
+                return (
+                    False,
+                    None,
+                    "가입된 계정이 없습니다. 클라우드에서는 로컬 계정이 공유되지 않으니 여기서 회원가입 해 주세요.",
+                )
             u = res.data[0]
             if not _verify_password(password, u["password_hash"], u["salt"]):
-                return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
+                return False, None, "비밀번호가 올바르지 않습니다."
             from modules.admin_ops import enrich_user_flags
 
             return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
@@ -257,9 +273,17 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
     users = _read_json(USERS_JSON, {})
     u = users.get(email)
     if not u:
-        return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
+        # 관리자 ID를 이메일처럼 친 경우 안내
+        admin_user, _, admin_email = get_admin_credentials()
+        hint = ""
+        if email not in {(admin_user or "").lower(), (admin_email or "").lower()}:
+            hint = (
+                " 클라우드·로컬 회원 DB는 서로 다릅니다. "
+                "이 사이트에서 회원가입을 다시 하거나, 관리자는 Secrets의 ADMIN_USERNAME으로 로그인해 주세요."
+            )
+        return False, None, "가입된 계정이 없습니다." + hint
     if not _verify_password(password, u["password_hash"], u["salt"]):
-        return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
+        return False, None, "비밀번호가 올바르지 않습니다."
     from modules.admin_ops import enrich_user_flags
 
     return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
