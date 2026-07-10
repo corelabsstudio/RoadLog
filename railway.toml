@@ -1,9 +1,9 @@
-# Railway — Dockerfile
+# Railway
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
+# Explicit start so Railway routes traffic to the same PORT the app binds
+startCommand = "sh -c 'P=\"${PORT:-8080}\"; echo start:$P; exec python -m uvicorn server:app --host 0.0.0.0 --port \"$P\" --proxy-headers --forwarded-allow-ips=\"*\"'"
 restartPolicyType = "ON_FAILURE"
-# 대시보드 Healthcheck Path 는 비워 두세요.
-# 수동 확인: https://<domain>/healthz

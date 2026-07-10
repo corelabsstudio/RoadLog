@@ -23,11 +23,19 @@ COPY web ./web
 COPY server.py ./
 COPY supabase_schema.sql ./
 
+# Entrypoint written inside image (always LF, expands $PORT at runtime)
 RUN mkdir -p /app/data \
+    && printf '%s\n' \
+        '#!/bin/sh' \
+        'set -eu' \
+        'P="${PORT:-8080}"' \
+        'if [ -z "$P" ]; then P=8080; fi' \
+        'echo "[RoadLog] starting 0.0.0.0:${P} APP_ENV=${APP_ENV:-unset}"' \
+        'exec python -m uvicorn server:app --host 0.0.0.0 --port "${P}" --proxy-headers --forwarded-allow-ips="*"' \
+        > /app/entrypoint.sh \
+    && chmod +x /app/entrypoint.sh \
     && python -c "import server; print('import_ok', server.app.title)"
 
-EXPOSE 8000
+EXPOSE 8080
 
-# Shell form so $PORT expands. Avoid start.sh CRLF issues on Windows git.
-# Railway sets PORT (e.g. 8080).
-CMD sh -c 'P="${PORT:-8000}"; if [ -z "$P" ]; then P=8000; fi; echo "[RoadLog] listen 0.0.0.0:$P"; exec python -m uvicorn server:app --host 0.0.0.0 --port "$P" --proxy-headers --forwarded-allow-ips="*"'
+CMD ["/app/entrypoint.sh"]
