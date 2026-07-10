@@ -579,6 +579,20 @@
     contact: "view-contact",
   };
   const VALID_VIEWS = Object.keys(VIEW_MAP);
+  /** 관리자 대시보드에 있어도 메뉴로 바로 이동 가능한 화면 */
+  const ADMIN_FREE_VIEWS = new Set([
+    "pricing",
+    "contact",
+    "settings",
+    "about",
+    "terms",
+    "privacy",
+    "create",
+    "style",
+    "admin",
+    "features",
+    "demo",
+  ]);
   let currentViewName = "home";
   /** 히스토리 조작 중 hashchange 무시 */
   let navSilent = false;
@@ -649,10 +663,31 @@
 
   /**
    * @param {string} name
-   * @param {{ pushHistory?: boolean, replaceHistory?: boolean, skipScroll?: boolean, promptAuth?: boolean }} [opts]
+   * @param {{ pushHistory?: boolean, replaceHistory?: boolean, skipScroll?: boolean, promptAuth?: boolean, skipAdminHomeRemap?: boolean }} [opts]
    */
   function showView(name, opts = {}) {
-    name = resolveAdminMainView(normalizeViewName(name));
+    // 화면 전환 시 떠 있는 모달이 네비 클릭을 가로채지 않게 정리
+    if (isAuthOpen()) {
+      try {
+        closeAuth({ fromHistory: true });
+      } catch {
+        /* ignore */
+      }
+    }
+    if ($("#careModal")?.classList.contains("is-open")) {
+      try {
+        hideCareModal();
+      } catch {
+        /* ignore */
+      }
+    }
+
+    let next = normalizeViewName(name);
+    // 사용자가 요금제·문의·설정 등을 누른 경우 관리자 홈 치환 금지
+    // (홈/스마트 진입만 admin 대시보드로 보냄)
+    if (!opts.skipAdminHomeRemap) {
+      next = resolveAdminMainView(next);
+    }
     const replaceHistory = opts.replaceHistory === true;
     const pushHistory = opts.pushHistory !== false && !replaceHistory;
     const mode = replaceHistory ? "replace" : pushHistory ? "push" : "none";
@@ -662,14 +697,17 @@
         ? opts.promptAuth
         : mode === "push" || mode === "replace";
 
-    syncUrl(name, mode);
-    currentViewName = name;
-    applyView(name, { ...opts, promptAuth });
+    syncUrl(next, mode);
+    currentViewName = next;
+    applyView(next, { ...opts, promptAuth, skipAdminHomeRemap: true });
   }
 
   function applyView(name, opts = {}) {
     const requested = normalizeViewName(name);
-    name = resolveAdminMainView(requested);
+    // showView에서 이미 치환했으면 재치환하지 않음 (요금제 등 이탈 방지)
+    name = opts.skipAdminHomeRemap
+      ? requested
+      : resolveAdminMainView(requested);
     // 관리자 메인으로 치환 시 URL 해시(#admin) 정합
     if (name !== requested) {
       navSilent = true;
@@ -773,7 +811,20 @@
   }
 
   function isAuthOpen() {
-    return !!$("#authModal")?.classList.contains("show");
+    const modal = $("#authModal");
+    if (!modal || !modal.classList.contains("show")) return false;
+    // display:none 인데 show 클래스만 남은 좀비 모달 방지
+    try {
+      const d = window.getComputedStyle(modal).display;
+      if (d === "none") {
+        modal.classList.remove("show");
+        document.body.classList.remove("modal-open");
+        return false;
+      }
+    } catch {
+      /* ignore */
+    }
+    return true;
   }
 
   /** 히스토리/해시 복원 (뒤로·앞으로 가기) — 로그인 모달 강제 재오픈 없음 */
@@ -1060,18 +1111,34 @@
 
   function bindNav() {
     document.body.addEventListener("click", (e) => {
-      // 로그인 모달이 열린 동안 배경 네비 클릭 차단
-      if (isAuthOpen()) {
-        if (!e.target.closest("#authModal")) {
+      const nav = e.target.closest("[data-nav]");
+      if (!nav) {
+        // 모달 바깥 일반 클릭만 차단 (네비는 아래 분기에서 처리)
+        if (isAuthOpen() && !e.target.closest("#authModal")) {
           e.preventDefault();
           e.stopPropagation();
         }
         return;
       }
-      const nav = e.target.closest("[data-nav]");
-      if (!nav) return;
+
+      // data-nav 클릭: 모달이 덮여 있어도 닫고 화면 이동 (관리자→요금제 등)
       e.preventDefault();
       e.stopPropagation();
+      if (isAuthOpen()) {
+        try {
+          closeAuth({ fromHistory: true });
+        } catch {
+          /* ignore */
+        }
+      }
+      if ($("#careModal")?.classList.contains("is-open")) {
+        try {
+          hideCareModal();
+        } catch {
+          /* ignore */
+        }
+      }
+
       const target = nav.dataset.nav;
       if (
         nav.dataset.reportMode &&
@@ -1079,8 +1146,9 @@
       ) {
         setReportMode(nav.dataset.reportMode);
       }
-      // 같은 화면 재클릭 시에도 해시/히스토리 정합성 유지
-      showView(target);
+      // 관리자 모드: 요금제·문의·설정 등은 홈 치환 없이 그대로 이동
+      const free = ADMIN_FREE_VIEWS.has(normalizeViewName(target));
+      showView(target, { skipAdminHomeRemap: free && target !== "home" });
       const scrollId = nav.dataset.scroll;
       if (scrollId) {
         setTimeout(() => {
@@ -1262,7 +1330,10 @@
     return isRealAdmin() && getViewAsMode() === "admin";
   }
 
-  /** 홈·근무시간 스마트 진입을 관리자 대시보드로 치환 */
+  /**
+   * 관리자 운영 모드일 때 기본 진입(홈·스마트 라우팅)만 대시보드로 보냄.
+   * 요금제·문의·설정·작성·서식 등 명시적 메뉴는 절대 가로채지 않음.
+   */
   function resolveAdminMainView(name) {
     if (!isAdminMainMode()) return name;
     if (name === "home" || name === "stamp" || name === "report") return "admin";

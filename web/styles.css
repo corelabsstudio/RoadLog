@@ -404,13 +404,15 @@ img {
 .nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  /* 관리자 페이지·오버레이 위에서도 메뉴 클릭 가능 */
+  z-index: 1100;
   height: var(--nav-h);
   display: flex;
   align-items: center;
   backdrop-filter: blur(18px);
   background: rgba(3, 7, 18, 0.72);
   border-bottom: 1px solid rgba(34, 211, 238, 0.12);
+  pointer-events: auto;
 }
 
 .nav-inner {
@@ -1906,7 +1908,8 @@ input[type="number"] {
   inset: 0;
   background: rgba(2, 6, 23, 0.72);
   backdrop-filter: blur(8px);
-  z-index: 200;
+  /* 네비(1100)보다 위 — 의도적 로그인 모달일 때만 덮음 */
+  z-index: 1300;
   display: none;
   align-items: center;
   justify-content: center;
@@ -4175,15 +4178,19 @@ body.session-ready #appHome {
   font-size: 0.86rem;
   font-weight: 650;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: none; /* 기본 비활성 — 헤더 클릭 가로채기 방지 */
 }
 
-.admin-view-as-bar.is-visible,
-.admin-view-as-bar:not([hidden]) {
+/* is-visible 일 때만 표시·클릭 (hidden 속성만으로 오표시되던 문제 방지) */
+.admin-view-as-bar.is-visible {
   display: flex;
+  pointer-events: auto;
 }
 
-.admin-view-as-bar[hidden] {
+.admin-view-as-bar[hidden],
+.admin-view-as-bar:not(.is-visible) {
   display: none !important;
+  pointer-events: none !important;
 }
 
 .admin-view-as-bar-dot {
