@@ -1,14 +1,25 @@
 /* RoadLog PWA Service Worker — offline shell + static cache */
-const CACHE = "roadlog-v2";
+const CACHE = "roadlog-v3";
 const PRECACHE = [
   "/",
   "/index.html",
-  "/styles.css",
-  "/app.js",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
+  "/icons/logo.svg",
 ];
+
+/** 항상 네트워크 우선 — 옛 캐시에 막혀 UI 키(nav.start 등)가 남는 것 방지 */
+function isNetworkFirst(pathname) {
+  return (
+    pathname === "/app.js" ||
+    pathname === "/styles.css" ||
+    pathname.startsWith("/locales/") ||
+    pathname.endsWith(".js") ||
+    pathname.endsWith(".css") ||
+    pathname.endsWith(".json")
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -38,17 +49,34 @@ self.addEventListener("fetch", (event) => {
   // API는 네트워크 우선 (세션·생성 데이터)
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
-      fetch(req).catch(() =>
-        new Response(JSON.stringify({ detail: "오프라인 상태입니다." }), {
-          status: 503,
-          headers: { "Content-Type": "application/json" },
-        })
+      fetch(req).catch(
+        () =>
+          new Response(JSON.stringify({ detail: "오프라인 상태입니다." }), {
+            status: 503,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+          })
       )
     );
     return;
   }
 
-  // 정적 자원: 캐시 우선, 없으면 네트워크
+  // JS/CSS/locale: 네트워크 우선 (배포 직시 반영)
+  if (url.origin === self.location.origin && isNetworkFirst(url.pathname)) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          if (res.ok) {
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // 그 외 정적: 캐시 우선
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;

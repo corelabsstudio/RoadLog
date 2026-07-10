@@ -47,9 +47,86 @@
   };
 
   // ── i18n ──────────────────────────────────────────
+  /** JSON 로드 실패·지연 시에도 키가 화면에 안 나오게 하는 기본 문구 */
+  const I18N_FALLBACK = {
+    ko: {
+      "nav.home": "홈",
+      "nav.features": "기능",
+      "nav.create": "일지 작성",
+      "nav.pricing": "요금제",
+      "nav.contact": "문의",
+      "nav.about": "About",
+      "nav.style": "회사 서식",
+      "nav.settings": "설정",
+      "nav.admin": "관리자",
+      "nav.install": "앱 다운로드",
+      "nav.login": "로그인",
+      "nav.logout": "로그아웃",
+      "nav.start": "시작하기",
+      "nav.write_log": "일지 작성",
+      "nav.menu": "메뉴",
+      "create.generate": "✨ AI로 일지 작성",
+      "create.generate_field": "✨ AI로 외근일지 작성",
+      "create.title": "운행일지 작성",
+      "create.title_field": "외근·출장 일지",
+      "create.sub": "퀵 스탬프로 위치·시간을 찍고, 주행거리만 보완하면 AI가 일지를 완성합니다.",
+      "create.sub_field": "오늘 방문한 곳과 결과만 적으면 AI가 회사 제출용 외근일지로 정리합니다.",
+      "create.form_title": "오늘 운행 정보",
+      "create.form_title_field": "오늘 외근 정보",
+      "create.mode_driving": "운행일지",
+      "create.mode_driving_hint": "차량 · 거리 · 방문지",
+      "create.mode_field": "외근·출장",
+      "create.mode_field_hint": "방문 · 결과 · 후속",
+      "create.stamp_empty": "아직 스탬프가 없습니다. 현장에서 「지금 위치 스탬프」를 눌러 주세요.",
+      "create.example": "예시 불러오기",
+    },
+    en: {
+      "nav.home": "Home",
+      "nav.features": "Features",
+      "nav.create": "Write log",
+      "nav.pricing": "Pricing",
+      "nav.contact": "Contact",
+      "nav.about": "About",
+      "nav.style": "Company form",
+      "nav.settings": "Settings",
+      "nav.admin": "Admin",
+      "nav.install": "Install app",
+      "nav.login": "Log in",
+      "nav.logout": "Log out",
+      "nav.start": "Get started",
+      "nav.write_log": "Write log",
+      "nav.menu": "Menu",
+      "create.generate": "✨ Generate with AI",
+      "create.generate_field": "✨ Write field report with AI",
+      "create.title": "Write driving log",
+      "create.title_field": "Field / trip report",
+      "create.form_title": "Today's trips",
+      "create.form_title_field": "Today's field work",
+      "create.mode_driving": "Driving log",
+      "create.mode_driving_hint": "Vehicle · distance · stops",
+      "create.mode_field": "Field visit",
+      "create.mode_field_hint": "Visits · outcomes · follow-ups",
+      "create.stamp_empty": "No stamps yet. Tap “Stamp location now” in the field.",
+      "create.example": "Load example",
+    },
+  };
+
+  // 시작 직 폴백을 dict에 넣어 두면 로드 전에도 키 노출 방지
+  state.dict = { ...I18N_FALLBACK.ko };
+
+  function fallbackDict(lang) {
+    return I18N_FALLBACK[lang === "en" ? "en" : "ko"] || I18N_FALLBACK.ko;
+  }
+
+  /**
+   * 번역 조회. 없으면 폴백 사전 → fallback 인자 → 키 순.
+   * 절대 UI에 "nav.start" 같은 raw key 를 쓰지 않도록 tt() 권장.
+   */
   function t(key, vars) {
     const dict = state.dict || {};
+    const fb = fallbackDict(state.lang);
     let s = dict[key];
+    if (s == null || s === "") s = fb[key];
     if (s == null || s === "") s = key;
     if (vars && typeof vars === "object") {
       Object.keys(vars).forEach((k) => {
@@ -57,6 +134,15 @@
       });
     }
     return s;
+  }
+
+  /** UI 라벨 전용: 키가 그대로면 한글/영문 폴백 문자열 사용 */
+  function tt(key, hardFallback) {
+    const v = t(key);
+    if (v && v !== key) return v;
+    const fb = fallbackDict(state.lang)[key];
+    if (fb) return fb;
+    return hardFallback || key;
   }
 
   /**
@@ -68,24 +154,49 @@
     const code = (lang || state.lang || localStorage.getItem(LANG_KEY) || "ko") === "en"
       ? "en"
       : "ko";
-    try {
-      const res = await fetch(`/locales/${code}.json`, { cache: "no-cache" });
-      if (!res.ok) throw new Error(`locale HTTP ${res.status}`);
-      // 키-값 사전을 그대로 state.dict 에 올린다 (t('key') 조회용)
-      state.dict = await res.json();
+    // 로드 전에도 폴백 적용
+    state.dict = { ...fallbackDict(code) };
+    state.lang = code;
+    const urls = [
+      `/locales/${code}.json`,
+      `locales/${code}.json`,
+      `./locales/${code}.json`,
+    ];
+    let loaded = null;
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { cache: "no-cache" });
+        if (!res.ok) throw new Error(`locale HTTP ${res.status} @ ${url}`);
+        const ct = (res.headers.get("content-type") || "").toLowerCase();
+        const text = await res.text();
+        // SPA 폴백으로 HTML이 오면 JSON 파싱 실패 — 명시적으로 거름
+        if (ct.includes("text/html") || text.trimStart().startsWith("<!")) {
+          throw new Error(`locale returned HTML @ ${url}`);
+        }
+        loaded = JSON.parse(text);
+        if (!loaded || typeof loaded !== "object") {
+          throw new Error("locale JSON invalid");
+        }
+        break;
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    if (loaded) {
+      // 파일 번역 + 내장 폴백 병합 (파일 우선)
+      state.dict = { ...fallbackDict(code), ...loaded };
       state.lang = code;
       localStorage.setItem(LANG_KEY, code);
       document.documentElement.lang = code === "en" ? "en" : "ko";
       return true;
-    } catch (e) {
-      console.warn("[i18n] initLocales failed", e);
-      // 실패 시에도 lang 은 고정해 두고, 빈 dict 면 키 문자열이 그대로 노출됨
-      if (!state.dict || !Object.keys(state.dict).length) state.dict = {};
-      state.lang = code;
-      localStorage.setItem(LANG_KEY, code);
-      document.documentElement.lang = code === "en" ? "en" : "ko";
-      return false;
     }
+    console.warn("[i18n] initLocales failed", lastErr);
+    state.dict = { ...fallbackDict(code) };
+    state.lang = code;
+    localStorage.setItem(LANG_KEY, code);
+    document.documentElement.lang = code === "en" ? "en" : "ko";
+    return false;
   }
 
   // 하위 호환: 기존 loadLocale 호출부를 initLocales 로 연결
@@ -98,8 +209,7 @@
     scope.querySelectorAll("[data-i18n]").forEach((el) => {
       const key = el.getAttribute("data-i18n");
       if (!key) return;
-      const val = t(key);
-      if (val === key && !state.dict[key]) return;
+      const val = tt(key);
       // keep child icons: only replace text nodes or use data-i18n-target
       if (el.hasAttribute("data-i18n-keep-html")) {
         const span = el.querySelector("[data-i18n-text]");
@@ -112,36 +222,35 @@
     scope.querySelectorAll("[data-i18n-html]").forEach((el) => {
       const key = el.getAttribute("data-i18n-html");
       if (!key) return;
-      const val = t(key);
-      if (val !== key || state.dict[key]) el.innerHTML = val;
+      el.innerHTML = tt(key);
     });
     scope.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
       const key = el.getAttribute("data-i18n-placeholder");
-      if (key) el.setAttribute("placeholder", t(key));
+      if (key) el.setAttribute("placeholder", tt(key));
     });
     scope.querySelectorAll("[data-i18n-title]").forEach((el) => {
       const key = el.getAttribute("data-i18n-title");
-      if (key) el.setAttribute("title", t(key));
+      if (key) el.setAttribute("title", tt(key));
     });
     scope.querySelectorAll("[data-i18n-aria]").forEach((el) => {
       const key = el.getAttribute("data-i18n-aria");
-      if (key) el.setAttribute("aria-label", t(key));
+      if (key) el.setAttribute("aria-label", tt(key));
     });
-    // 로그인/시작 버튼 — 비로그인만 여기서 고정 라벨 (로그인 후는 refreshAuthButtons)
+    // 로그인/시작 버튼
     refreshAuthNavLabels();
     // generate buttons (외근 모드 반영)
     const genLabel =
       state.reportMode === "field"
-        ? t("create.generate_field") || "✨ AI로 외근일지 작성"
-        : t("create.generate") || "✨ AI로 일지 작성";
+        ? tt("create.generate_field", "✨ AI로 외근일지 작성")
+        : tt("create.generate", "✨ AI로 일지 작성");
     ["#btnGenerate", "#btnGenerateSticky"].forEach((sel) => {
       const b = $(sel);
       if (b && !b.disabled) b.textContent = genLabel;
     });
     // stamp empty state if list is empty placeholder
     const stampEmpty = document.querySelector(".quick-stamp-empty");
-    if (stampEmpty) stampEmpty.textContent = t("create.stamp_empty");
-    // 작성 모드 탭 문구 동기화 (함수 정의 후에만)
+    if (stampEmpty) stampEmpty.textContent = tt("create.stamp_empty");
+    // 작성 모드 탭 문구 동기화
     if (typeof setReportMode === "function" && state.reportMode) {
       try {
         setReportMode(state.reportMode);
@@ -151,16 +260,16 @@
     }
   }
 
-  /** 상단 로그인·시작 버튼 라벨 (한글 깨짐 방지용 폴백 포함) */
+  /** 상단 로그인·시작 버튼 라벨 (raw key 절대 노출 금지) */
   function refreshAuthNavLabels() {
     const btnAuth = $("#btnAuth");
     const btnStart = $("#btnStart");
     if (!btnAuth && !btnStart) return;
 
     if (!state.user) {
-      if (btnAuth) btnAuth.textContent = t("nav.login") || "로그인";
+      if (btnAuth) btnAuth.textContent = tt("nav.login", "로그인");
       if (btnStart) {
-        btnStart.textContent = t("nav.start") || "시작하기";
+        btnStart.textContent = tt("nav.start", "시작하기");
         btnStart.dataset.nav = "create";
       }
       return;
@@ -189,10 +298,10 @@
     }
     if (btnStart) {
       if (adminOnly) {
-        btnStart.textContent = t("nav.admin") || "관리자";
+        btnStart.textContent = tt("nav.admin", "관리자");
         btnStart.dataset.nav = "admin";
       } else {
-        btnStart.textContent = t("nav.write_log") || "일지 작성";
+        btnStart.textContent = tt("nav.write_log", "일지 작성");
         btnStart.dataset.nav =
           typeof isWithinWorkHours === "function" && isWithinWorkHours()
             ? "stamp"
@@ -921,16 +1030,16 @@
     const genBtn = $("#btnGenerate");
     const genLabel =
       m === "field"
-        ? t("create.generate_field") || "✨ AI로 외근일지 작성"
-        : t("create.generate") || "✨ AI로 일지 작성";
+        ? tt("create.generate_field", "✨ AI로 외근일지 작성")
+        : tt("create.generate", "✨ AI로 일지 작성");
     if (m === "field") {
-      if (title) title.textContent = t("create.title_field") || "외근·출장 일지";
-      if (sub) sub.textContent = t("create.sub_field") || "";
-      if (formTitle) formTitle.textContent = t("create.form_title_field") || "오늘 외근 정보";
+      if (title) title.textContent = tt("create.title_field", "외근·출장 일지");
+      if (sub) sub.textContent = tt("create.sub_field", "");
+      if (formTitle) formTitle.textContent = tt("create.form_title_field", "오늘 외근 정보");
     } else {
-      if (title) title.textContent = t("create.title") || "운행일지 작성";
-      if (sub) sub.textContent = t("create.sub") || "";
-      if (formTitle) formTitle.textContent = t("create.form_title") || "오늘 운행 정보";
+      if (title) title.textContent = tt("create.title", "운행일지 작성");
+      if (sub) sub.textContent = tt("create.sub", "");
+      if (formTitle) formTitle.textContent = tt("create.form_title", "오늘 운행 정보");
     }
     if (genBtn && !genBtn.disabled) genBtn.textContent = genLabel;
     const genSticky = $("#btnGenerateSticky");
@@ -2009,7 +2118,7 @@
         } finally {
           btns.forEach((btn) => {
             btn.disabled = false;
-            btn.innerHTML = t("create.generate_field");
+            btn.innerHTML = tt("create.generate_field", "✨ AI로 외근일지 작성");
           });
         }
         return;
@@ -2099,7 +2208,7 @@
       } finally {
         btns.forEach((btn) => {
           btn.disabled = false;
-          btn.innerHTML = t("create.generate");
+          btn.innerHTML = tt("create.generate", "✨ AI로 일지 작성");
         });
       }
     }
