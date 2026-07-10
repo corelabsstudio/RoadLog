@@ -85,10 +85,67 @@ ADMIN_PASSWORD = _get_secret("ADMIN_PASSWORD", "hh921544hh@1013")
 ADMIN_EMAIL = _get_secret("ADMIN_EMAIL", "hhs126@roadlog.local")
 APP_SECRET = _get_secret("APP_SECRET", "roadlog-v2-secret-change-me")
 
-# ── OpenAI / Supabase / AdSense ... (나머지 코드 생략, 동일하게 유지)
+# ── OpenAI ──────────────────────────────────────────────
 OPENAI_API_KEY = _get_secret("OPENAI_API_KEY", "")
 OPENAI_MODEL = _get_secret("OPENAI_MODEL", "gpt-4o-mini")
+
+# ── Supabase ────────────────────────────────────────────
 SUPABASE_URL = _get_secret("SUPABASE_URL", "")
 SUPABASE_KEY = _get_secret("SUPABASE_KEY", "")
+
+# ── AdSense (Free 결과 하단 전용) ───────────────────────
 ADSENSE_CLIENT = _get_secret("ADSENSE_CLIENT", "ca-pub-xxxxxxxxxxxxxxxx")
 ADSENSE_SLOT = _get_secret("ADSENSE_SLOT", "xxxxxxxxxx")
+
+# ── 로컬 저장 경로 ──────────────────────────────────────
+USERS_JSON = DATA_DIR / "users.json"
+USAGE_JSON = DATA_DIR / "usage.json"
+PAYMENTS_JSON = DATA_DIR / "payments.json"
+SETTINGS_DIR = DATA_DIR / "settings"
+SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── 기본 사용자 설정 ────────────────────────────────────
+DEFAULT_USER_SETTINGS = {
+    "vehicle_number": "",
+    "driver_name": "",
+    "company_name": "",
+    "lunch_start": "12:00",
+    "lunch_end": "13:00",
+    "exclude_lunch": True,
+    "frequent_places": [],
+    "default_purpose": "업무 출장",
+    "fuel_type": "휘발유",
+}
+
+# ── Few-shot 예시 (OpenAI 폴백/프롬프트) ────────────────
+FEW_SHOT_EXAMPLES = [
+    {
+        "input": "오늘 아침 9시에 본사 출발해서 강남 고객사 미팅 갔다가 오후 2시에 복귀. 차량 12가3456",
+        "output": {
+            "date": "자동",
+            "vehicle": "12가3456",
+            "trips": [
+                {
+                    "depart_time": "09:00",
+                    "arrive_time": "09:50",
+                    "from": "본사",
+                    "to": "강남 고객사",
+                    "purpose": "고객 미팅",
+                    "distance_km": 18.5,
+                    "memo": "정기 미팅 참석",
+                },
+                {
+                    "depart_time": "13:10",
+                    "arrive_time": "14:00",
+                    "from": "강남 고객사",
+                    "to": "본사",
+                    "purpose": "업무 복귀",
+                    "distance_km": 18.5,
+                    "memo": "",
+                },
+            ],
+            "total_distance_km": 37.0,
+            "summary": "강남 고객사 정기 미팅 참석 후 본사 복귀",
+        },
+    },
+]

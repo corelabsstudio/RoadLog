@@ -13,13 +13,10 @@ from pathlib import Path
 from typing import Any
 
 from modules.config import (
-<<<<<<< HEAD
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     ADMIN_USERNAME,
     ENTERPRISE_PRICE_KRW,
-=======
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
     PAYMENTS_JSON,
     SETTINGS_DIR,
     SUPABASE_KEY,
@@ -153,7 +150,6 @@ def register_user(email: str, password: str, name: str = "") -> tuple[bool, str]
     return True, "가입이 완료되었습니다. 로그인해 주세요."
 
 
-<<<<<<< HEAD
 def ensure_admin_owner() -> dict:
     """
     사이트 관리자(소유자) 계정을 보장합니다.
@@ -237,11 +233,6 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
         from modules.admin_ops import enrich_user_flags
 
         return True, enrich_user_flags(user_a), msg_a
-=======
-def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
-    """로그인. (성공, user_dict, 메시지)"""
-    email = email.strip().lower()
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 
     if _sb.enabled:
         try:
@@ -257,13 +248,9 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
             u = res.data[0]
             if not _verify_password(password, u["password_hash"], u["salt"]):
                 return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
-<<<<<<< HEAD
             from modules.admin_ops import enrich_user_flags
 
             return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
-=======
-            return True, _normalize_user(u), "로그인 성공"
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
         except Exception as e:
             return False, None, f"로그인 오류: {e}"
 
@@ -273,13 +260,9 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
         return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
     if not _verify_password(password, u["password_hash"], u["salt"]):
         return False, None, "이메일 또는 비밀번호가 올바르지 않습니다."
-<<<<<<< HEAD
     from modules.admin_ops import enrich_user_flags
 
     return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
-=======
-    return True, _normalize_user(u), "로그인 성공"
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 
 
 def _normalize_user(u: dict) -> dict:
@@ -287,21 +270,15 @@ def _normalize_user(u: dict) -> dict:
         "email": u.get("email", ""),
         "name": u.get("name", ""),
         "plan": u.get("plan", "free"),
-<<<<<<< HEAD
         "is_admin": bool(u.get("is_admin")),
-=======
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
         "created_at": u.get("created_at", ""),
     }
 
 
 def get_user(email: str) -> dict | None:
     email = email.strip().lower()
-<<<<<<< HEAD
     from modules.admin_ops import enrich_user_flags
 
-=======
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
     if _sb.enabled:
         try:
             res = (
@@ -312,21 +289,13 @@ def get_user(email: str) -> dict | None:
                 .execute()
             )
             if res.data:
-<<<<<<< HEAD
                 return enrich_user_flags(_normalize_user(res.data[0]))
-=======
-                return _normalize_user(res.data[0])
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
         except Exception:
             pass
         return None
     users = _read_json(USERS_JSON, {})
     u = users.get(email)
-<<<<<<< HEAD
     return enrich_user_flags(_normalize_user(u)) if u else None
-=======
-    return _normalize_user(u) if u else None
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 
 
 def set_user_plan(email: str, plan: str) -> bool:
@@ -494,7 +463,6 @@ def record_payment(
     plan: str = "pro",
     note: str = "",
 ) -> bool:
-<<<<<<< HEAD
     """결제 기록 추가 + 사용자 plan 갱신. plan=enterprise 시 plan_type도 전환."""
     email = email.strip().lower()
     # DB plan 필드: free | pro (enterprise는 pro + plan_type)
@@ -503,14 +471,6 @@ def record_payment(
         "email": email,
         "amount": amount,
         "plan": plan,  # 결제 기록에는 enterprise 표기 유지
-=======
-    """결제 기록 추가 + 사용자 plan 갱신."""
-    email = email.strip().lower()
-    row = {
-        "email": email,
-        "amount": amount,
-        "plan": plan,
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
         "note": note,
         "paid_at": _now_iso(),
         "month": _month_key(),
@@ -519,13 +479,9 @@ def record_payment(
     if _sb.enabled:
         try:
             _sb.client.table("payments").insert(row).execute()
-<<<<<<< HEAD
             set_user_plan(email, db_plan)
             if plan == "enterprise":
                 _apply_enterprise_config(email)
-=======
-            set_user_plan(email, plan)
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
             return True
         except Exception:
             pass
@@ -533,7 +489,6 @@ def record_payment(
     payments = _read_json(PAYMENTS_JSON, [])
     payments.append(row)
     _write_json(PAYMENTS_JSON, payments)
-<<<<<<< HEAD
     set_user_plan(email, db_plan)
     if plan == "enterprise":
         _apply_enterprise_config(email)
@@ -581,12 +536,6 @@ def upgrade_to_enterprise(
     return record_payment(email, amount, "enterprise", note)
 
 
-=======
-    set_user_plan(email, plan)
-    return True
-
-
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 def get_payments(month: str | None = None) -> list[dict]:
     month = month or _month_key()
     if _sb.enabled:

@@ -40,16 +40,11 @@ def _trips_dataframe(log: dict) -> pd.DataFrame:
 
 
 def _meta(log: dict) -> dict[str, str]:
-<<<<<<< HEAD
     meta = {
-=======
-    return {
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
         "작성일": str(log.get("date") or datetime.now().strftime("%Y-%m-%d")),
         "차량번호": str(log.get("vehicle") or ""),
         "운전자": str(log.get("driver_name") or ""),
         "회사명": str(log.get("company_name") or ""),
-<<<<<<< HEAD
         "최초 누적(km)": str(log.get("odometer_start") if log.get("odometer_start") is not None else ""),
         "종료 누적(km)": str(log.get("odometer_end") if log.get("odometer_end") is not None else ""),
         "총 거리(km)": str(log.get("total_distance_km") or ""),
@@ -59,13 +54,6 @@ def _meta(log: dict) -> dict[str, str]:
         "요약": str(log.get("summary") or ""),
     }
     return meta
-=======
-        "총 거리(km)": str(log.get("total_distance_km") or ""),
-        "총 운행시간": format_minutes_kr(int(log.get("total_net_minutes") or 0)),
-        "점심 제외시간": format_minutes_kr(int(log.get("total_lunch_excluded_minutes") or 0)),
-        "요약": str(log.get("summary") or ""),
-    }
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 
 
 def _filename_base(log: dict) -> str:
@@ -508,7 +496,6 @@ def _set_cell_shading(cell, hex_color: str) -> None:
 
 
 # ────────────────────────────────────────────────────────
-<<<<<<< HEAD
 # 메모리 전용 빌더 (서버 디스크 저장 없음)
 # ────────────────────────────────────────────────────────
 
@@ -730,61 +717,3 @@ def clear_download_cache() -> None:
                 del st.session_state[k]
     except Exception:
         pass
-=======
-# Streamlit 다운로드 버튼 3종
-# ────────────────────────────────────────────────────────
-
-
-def render_download_buttons(log: dict) -> None:
-    """Excel / PDF / DOCX 다운로드 버튼 — Free·Pro 동일 클린 파일."""
-    import streamlit as st
-
-    st.markdown("#### 문서 다운로드")
-    st.caption("워터마크 없는 제출용 파일입니다.")
-
-    c1, c2, c3 = st.columns(3)
-    try:
-        x_bytes, x_name = export_excel(log)
-        with c1:
-            st.download_button(
-                label="Excel",
-                data=x_bytes,
-                file_name=x_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True,
-                key="dl_excel",
-            )
-    except Exception as e:
-        with c1:
-            st.error(f"Excel 생성 오류: {e}")
-
-    try:
-        p_bytes, p_name = export_pdf(log)
-        with c2:
-            st.download_button(
-                label="PDF",
-                data=p_bytes,
-                file_name=p_name,
-                mime="application/pdf",
-                use_container_width=True,
-                key="dl_pdf",
-            )
-    except Exception as e:
-        with c2:
-            st.error(f"PDF 생성 오류: {e}")
-
-    try:
-        d_bytes, d_name = export_docx(log)
-        with c3:
-            st.download_button(
-                label="DOCX",
-                data=d_bytes,
-                file_name=d_name,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True,
-                key="dl_docx",
-            )
-    except Exception as e:
-        with c3:
-            st.error(f"DOCX 생성 오류: {e}")
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)

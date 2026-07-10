@@ -19,16 +19,11 @@ from modules.styles import render_page_header
 
 def render_admin_dashboard() -> None:
     """관리자 페이지 전체 렌더."""
-<<<<<<< HEAD
     render_page_header("관리자", "매출 · 사용자 · 결제 관리 · 고객 문의 메일")
-=======
-    render_page_header("관리자", "매출 · 사용자 · 결제 관리")
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
 
     if not admin_login_form():
         return
 
-<<<<<<< HEAD
     # 메일 확인 — Gmail 수신함 (API 없이 바로 열기)
     m1, m2, m3 = st.columns([1.2, 1.2, 2])
     with m1:
@@ -47,8 +42,6 @@ def render_admin_dashboard() -> None:
     with m3:
         st.caption("문의 채널 · corelabs.studio@gmail.com · 새 탭에서 Gmail 열림")
 
-=======
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
     stats = db.admin_stats()
     c_top1, c_top2, c_top3, c_top4 = st.columns(4)
     c_top1.metric("이번 달 결제자", f"{stats['payer_count']}명")

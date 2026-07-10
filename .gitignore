@@ -1,25 +1,26 @@
 .venv/
 venv/
-<<<<<<< HEAD
 env/
 __pycache__/
-*.pyc
-.streamlit/
+*.py[cod]
+.streamlit/secrets.toml
 .DS_Store
 .env
-=======
-__pycache__/
-*.py[cod]
-.env
-.streamlit/secrets.toml
+.idea/
+.vscode/
+
+# runtime / local data
 data/users.json
 data/usage.json
 data/payments.json
+data/sessions.json
 data/settings/
+data/admin/
+data/styles/
+data/user_configs/
+data/team_logs.csv
+
+# generated exports
 *.xlsx
 *.pdf
 *.docx
-.DS_Store
-.idea/
-.vscode/
->>>>>>> 1e1d5d4d (운행일지 v2 저장 지점)
