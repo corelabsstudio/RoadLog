@@ -5,15 +5,15 @@
 실행:
   streamlit run app.py
 """
-# 1. 파이썬 미래 기능 선언 (반드시 가장 첫 줄에 위치해야 합니다)
+# 1. 이 구문은 파일의 가장 처음에 있어야만 합니다.
 from __future__ import annotations
 
-# 2. 경로 문제 해결을 위해 시스템 패스 추가 (임포트 전 실행)
+# 2. 경로 설정을 여기서 합니다.
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# 3. 이제 라이브러리 및 모듈 임포트
+# 3. 그다음 일반 import를 수행합니다.
 import streamlit as st
 
 from modules.config import (
@@ -51,7 +51,6 @@ from modules.styles import (
 from modules.admin import render_admin_dashboard
 from modules.validator import format_minutes_kr
 
-# (이후 코드부터는 기존과 동일합니다. 파일의 나머지는 그대로 두시면 됩니다.)
 # ── 페이지 설정 ────────────────────────────────────────
 st.set_page_config(
     page_title=APP_FULL,
@@ -63,4 +62,4 @@ st.set_page_config(
 init_session()
 inject_global_css()
 
-# ... 이하 생략 (기존 코드 그대로 붙여넣기 하시면 됩니다)
+# ... (나머지 코드는 그대로 두시면 됩니다)
