@@ -9,6 +9,7 @@ import streamlit as st
 from modules.config import (
     FREE_MONTHLY_LIMIT,
     PRO_PAYMENT_URL,
+    admin_secrets_status,
     get_admin_credentials,
 )
 from modules import db
@@ -206,19 +207,39 @@ def show_login_page() -> None:
 
     render_landing_hero()
     st.markdown("### 로그인")
-    admin_user, _, _ = get_admin_credentials()
+    admin_user, _, admin_email = get_admin_credentials()
+    sec = admin_secrets_status()
+
+    if sec["is_default"]:
+        st.warning(
+            "⚠️ 관리자 Secrets가 아직 적용되지 않았습니다. "
+            "Manage app → Settings → Secrets 에 ADMIN_USERNAME / ADMIN_PASSWORD 를 넣고 "
+            "**Save 후 Reboot** 하세요. (지금은 기본값 admin / admin123 만 통합니다)"
+        )
+    else:
+        st.info(
+            f"관리자 로그인: ID **`{admin_user}`** "
+            f"(설정 출처: `{sec['source']}`, 비번 길이 {sec['password_len']}자) · "
+            f"또는 이메일 `{admin_email}`"
+        )
+
     st.caption(
-        "이 사이트에서 가입한 계정으로 로그인하세요. "
-        f"관리자는 가입 없이 ID **`{admin_user}`** (Secrets의 ADMIN_USERNAME) 로 로그인합니다. "
-        "로컬 PC 회원 정보는 클라우드와 공유되지 않습니다."
+        "일반 회원은 이 사이트에서 가입한 계정만 사용됩니다. "
+        "로컬 PC 회원 DB는 클라우드와 공유되지 않습니다."
     )
+
+    # 앱 기동 시 관리자 계정 파일 준비
+    try:
+        db.ensure_admin_owner()
+    except Exception as e:
+        st.error(f"관리자 계정 저장 실패: {e}")
 
     tab_login, tab_reg = st.tabs(["로그인", "회원가입"])
     with tab_login:
         email = st.text_input(
             "이메일 또는 관리자 ID",
             key="login_email_main",
-            placeholder=f"you@company.com 또는 {admin_user}",
+            placeholder=f"{admin_user} 또는 you@company.com",
         )
         pw = st.text_input("비밀번호", type="password", key="login_pw_main")
         if st.button("로그인", type="primary", use_container_width=True, key="btn_login_main"):
@@ -228,6 +249,15 @@ def show_login_page() -> None:
                 st.rerun()
             else:
                 st.error(msg)
+                # 관리자 ID를 쳤는데 실패하면 Secrets 안내
+                typed = (email or "").strip().lower()
+                if typed in {admin_user.lower(), admin_email.lower()} or typed == "hhs126":
+                    st.caption(
+                        "관리자 ID는 맞는데 실패한 경우: Secrets의 ADMIN_PASSWORD 가 "
+                        "입력한 비번과 같은지, Save 후 Reboot 했는지 확인하세요. "
+                        "비밀번호에 @ 가 있으면 반드시 큰따옴표로 감싸세요."
+                    )
+
     with tab_reg:
         st.caption("클라우드에서 처음 쓰는 경우 여기서 새로 가입하세요. 로컬 계정은 자동 이전되지 않습니다.")
         name = st.text_input("이름 (선택)", key="reg_name_main")

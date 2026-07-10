@@ -12,10 +12,88 @@ from dotenv import load_dotenv
 
 # 프로젝트 루트
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = ROOT_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _resolve_data_dir() -> Path:
+    """
+    쓰기 가능한 data 디렉터리.
+    Streamlit Cloud 에서 저장소 경로가 읽기 전용이면 home/tmp 로 폴백.
+    """
+    candidates = [
+        ROOT_DIR / "data",
+        Path.home() / ".roadlog" / "data",
+        Path("/tmp") / "roadlog" / "data",
+    ]
+    for d in candidates:
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            probe = d / ".write_test"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            return d
+        except Exception:
+            continue
+    d = ROOT_DIR / "data"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+DATA_DIR = _resolve_data_dir()
 
 load_dotenv(ROOT_DIR / ".env")
+
+
+def _clean_secret_value(val: object) -> str:
+    """Secrets/환경값 정리 — 따옴표·공백 제거."""
+    if val is None:
+        return ""
+    s = str(val).strip()
+    # TOML/복사 실수로 감싼 따옴표 제거
+    if len(s) >= 2 and ((s[0] == s[-1] == '"') or (s[0] == s[-1] == "'")):
+        s = s[1:-1].strip()
+    return s
+
+
+def _streamlit_secrets_map() -> dict:
+    """st.secrets 를 dict 로 평탄화."""
+    try:
+        import streamlit as st
+
+        sec = getattr(st, "secrets", None)
+        if sec is None:
+            return {}
+        if hasattr(sec, "to_dict"):
+            try:
+                return dict(sec.to_dict())  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        out: dict = {}
+        # 키 순회 시도
+        try:
+            for k in sec:  # type: ignore[attr-defined]
+                try:
+                    out[str(k)] = sec[k]
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        # 흔한 관리자 키 직접 조회
+        for k in (
+            "ADMIN_USERNAME",
+            "ADMIN_PASSWORD",
+            "ADMIN_EMAIL",
+            "APP_SECRET",
+            "OPENAI_API_KEY",
+        ):
+            if k in out:
+                continue
+            try:
+                out[k] = sec[k]
+            except Exception:
+                pass
+        return out
+    except Exception:
+        return {}
 
 
 def _get_secret(key: str, default: str = "") -> str:
@@ -24,41 +102,33 @@ def _get_secret(key: str, default: str = "") -> str:
     Streamlit Cloud 는 Secrets 가 런타임에만 안정적으로 열리므로,
     관리자 인증 등에서는 이 함수를 호출 시점에 다시 읽으세요.
     """
-    val = os.getenv(key, "").strip()
+    # 1) 환경변수
+    val = _clean_secret_value(os.getenv(key, ""))
     if val:
         return val
-    # Streamlit secrets (Cloud / secrets.toml)
-    try:
-        import streamlit as st
 
-        secrets = getattr(st, "secrets", None)
-        if secrets is None:
-            return default
-        # 1) 최상위 키
-        try:
-            if key in secrets:
-                return str(secrets[key]).strip()
-        except Exception:
-            pass
-        # 2) secrets[key] 직접 (일부 버전)
-        try:
-            v = secrets[key]
-            if v is not None and str(v).strip():
-                return str(v).strip()
-        except Exception:
-            pass
-        # 3) 중첩 섹션 예: [admin] username=
-        try:
-            lower = key.lower()
-            if lower.startswith("admin_") and "admin" in secrets:
-                sub = secrets["admin"]
-                sub_key = key[len("ADMIN_") :].lower() if key.startswith("ADMIN_") else key
-                if sub_key in sub:
-                    return str(sub[sub_key]).strip()
-        except Exception:
-            pass
-    except Exception:
-        pass
+    # 2) Streamlit secrets
+    smap = _streamlit_secrets_map()
+    if key in smap:
+        v = _clean_secret_value(smap[key])
+        if v:
+            return v
+    # 대소문자 무시
+    for k, v in smap.items():
+        if str(k).upper() == key.upper():
+            vv = _clean_secret_value(v)
+            if vv:
+                return vv
+    # 중첩 [admin] username / password
+    admin_sec = smap.get("admin") or smap.get("ADMIN")
+    if isinstance(admin_sec, dict) and key.upper().startswith("ADMIN_"):
+        sub = key.split("_", 1)[-1].lower()  # username / password / email
+        for sk, sv in admin_sec.items():
+            if str(sk).lower() == sub:
+                vv = _clean_secret_value(sv)
+                if vv:
+                    return vv
+
     return default
 
 
@@ -71,6 +141,25 @@ def get_admin_credentials() -> tuple[str, str, str]:
     password = _get_secret("ADMIN_PASSWORD", "admin123") or "admin123"
     email = _get_secret("ADMIN_EMAIL", "") or f"{username}@roadlog.local"
     return username.strip(), password, email.strip().lower()
+
+
+def admin_secrets_status() -> dict:
+    """로그인 화면 안내용 — 비밀번호는 노출하지 않음."""
+    u, p, e = get_admin_credentials()
+    from_env = bool(os.getenv("ADMIN_USERNAME") or os.getenv("ADMIN_PASSWORD"))
+    smap = _streamlit_secrets_map()
+    from_secrets = any(
+        k.upper() in {str(x).upper() for x in smap.keys()}
+        for k in ("ADMIN_USERNAME", "ADMIN_PASSWORD")
+    )
+    return {
+        "username": u,
+        "email": e,
+        "password_set": bool(p),
+        "password_len": len(p),
+        "source": "env" if from_env else ("streamlit_secrets" if from_secrets else "default"),
+        "is_default": u == "admin" and p == "admin123",
+    }
 
 
 # ── 브랜딩 ──────────────────────────────────────────────
@@ -289,12 +378,15 @@ SUPABASE_KEY = _get_secret("SUPABASE_KEY", "")
 ADSENSE_CLIENT = _get_secret("ADSENSE_CLIENT", "ca-pub-xxxxxxxxxxxxxxxx")
 ADSENSE_SLOT = _get_secret("ADSENSE_SLOT", "xxxxxxxxxx")
 
-# ── 로컬 저장 경로 ──────────────────────────────────────
+# ── 로컬 저장 경로 (쓰기 가능한 DATA_DIR 기준) ──────────
 USERS_JSON = DATA_DIR / "users.json"
 USAGE_JSON = DATA_DIR / "usage.json"
 PAYMENTS_JSON = DATA_DIR / "payments.json"
 SETTINGS_DIR = DATA_DIR / "settings"
-SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 
 # ── 기본 사용자 설정 ────────────────────────────────────
 DEFAULT_USER_SETTINGS = {
