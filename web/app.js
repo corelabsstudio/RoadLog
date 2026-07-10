@@ -475,7 +475,7 @@
    * @param {{ pushHistory?: boolean, replaceHistory?: boolean, skipScroll?: boolean, promptAuth?: boolean }} [opts]
    */
   function showView(name, opts = {}) {
-    name = normalizeViewName(name);
+    name = resolveAdminMainView(normalizeViewName(name));
     const replaceHistory = opts.replaceHistory === true;
     const pushHistory = opts.pushHistory !== false && !replaceHistory;
     const mode = replaceHistory ? "replace" : pushHistory ? "push" : "none";
@@ -491,7 +491,19 @@
   }
 
   function applyView(name, opts = {}) {
-    name = normalizeViewName(name);
+    const requested = normalizeViewName(name);
+    name = resolveAdminMainView(requested);
+    // 관리자 메인으로 치환 시 URL 해시(#admin) 정합
+    if (name !== requested) {
+      navSilent = true;
+      try {
+        history.replaceState(buildHistoryState(name), "", viewHash(name));
+      } finally {
+        setTimeout(() => {
+          navSilent = false;
+        }, 0);
+      }
+    }
     currentViewName = name;
 
     $$(".view").forEach((v) => v.classList.remove("active"));
@@ -504,7 +516,9 @@
         "active",
         nav === name ||
           ((name === "features" || name === "demo") && nav === "home") ||
-          (name === "home" && nav === "home")
+          (name === "home" && nav === "home") ||
+          // 관리자 메인은 홈 진입도 관리자 탭으로 표시
+          (name === "admin" && nav === "admin")
       );
     });
 
@@ -1013,6 +1027,18 @@
     return "admin";
   }
 
+  /** 관리자 운영 화면 모드 (역할 미리보기 아님) — 메인은 관리자 대시보드 */
+  function isAdminMainMode() {
+    return isRealAdmin() && getViewAsMode() === "admin";
+  }
+
+  /** 홈·근무시간 스마트 진입을 관리자 대시보드로 치환 */
+  function resolveAdminMainView(name) {
+    if (!isAdminMainMode()) return name;
+    if (name === "home" || name === "stamp" || name === "report") return "admin";
+    return name;
+  }
+
   /**
    * UI에 쓰는 유효 사용자.
    * 관리자가 Pro/Enterprise/Free 미리보기 중이면 해당 플랜처럼 보이게 가공.
@@ -1070,11 +1096,11 @@
       free: "Free 사용자 화면",
     };
     toast(`${labels[next] || next}으로 전환했습니다`);
-    // 미리보기 중 관리자 페이지에 있으면 홈으로 (일반 유저 UX)
+    // 미리보기 → 일반 유저 홈 / 관리자로 복귀 → 관리자 대시보드가 메인
     if (next !== "admin" && currentViewName === "admin") {
       showView("home", { replaceHistory: true });
-    } else if (next === "admin" && currentViewName === "home") {
-      updateHomeMode();
+    } else if (next === "admin") {
+      showView("admin", { replaceHistory: true });
     }
   }
 
@@ -1133,7 +1159,7 @@
     // 설정(근무 시간)은 로그인 없이 사용 가능
     navSettings?.classList.remove("hidden");
     // 관리자 보기 모드: 운영 화면에 일지 작성·회사 서식 메뉴 비노출
-    const adminOnlyUi = isRealAdmin() && getViewAsMode() === "admin";
+    const adminOnlyUi = isAdminMainMode();
     if (eu) {
       const name = eu.name || eu.email?.split("@")[0] || "계정";
       let plan = (eu.plan || "free").toUpperCase();
@@ -1245,13 +1271,10 @@
       }
     }
 
-    // 관리자 타일 — 실제 관리자 + 관리자 보기 모드
+    // 관리자 타일 — 관리자 메인은 대시보드로 바로 가므로 홈 타일은 숨김
     const adminTile = $("#appTileAdmin");
     if (adminTile) {
-      adminTile.classList.toggle(
-        "hidden",
-        !(isRealAdmin() && getViewAsMode() === "admin")
-      );
+      adminTile.classList.add("hidden");
     }
 
     // 체크리스트
@@ -1497,7 +1520,8 @@
       }
       toast(successMsg || "로그인 성공 · 세션이 유지됩니다");
       await refreshMe();
-      showView("home", { replaceHistory: true });
+      // 관리자: 메인 = 매출·회원 대시보드 / 일반: 홈
+      showView(isAdminMainMode() ? "admin" : "home", { replaceHistory: true });
     }
 
     async function doLogin() {
@@ -4235,28 +4259,36 @@
     markSessionReady();
 
     // 스마트 라우팅: 홈/빈 해시로 실행 시 근무 시간에 따라 stamp | report
+    // 관리자 세션: 메인은 관리자 대시보드 (매출·사용 건수)
     // 딥링크(#pricing, #settings 등)는 그대로 존중
     let initial;
     if (shouldApplySmartRoute()) {
-      const isPwa =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true;
-      const hasSessionHint =
-        sessionOk || localStorage.getItem(REMEMBER_KEY) === "1" || isPwa;
-      // 세션·PWA·바로가기: 비서형 진입 / 첫 방문 게스트: 랜딩
-      initial = hasSessionHint ? resolveSmartRoute() : "home";
+      if (sessionOk && isAdminMainMode()) {
+        initial = "admin";
+      } else {
+        const isPwa =
+          window.matchMedia("(display-mode: standalone)").matches ||
+          window.navigator.standalone === true;
+        const hasSessionHint =
+          sessionOk || localStorage.getItem(REMEMBER_KEY) === "1" || isPwa;
+        // 세션·PWA·바로가기: 비서형 진입 / 첫 방문 게스트: 랜딩
+        initial = hasSessionHint ? resolveSmartRoute() : "home";
+      }
     } else {
       initial = getViewFromLocation();
     }
 
     showView(initial, { replaceHistory: true });
 
-    if (sessionOk && initial === "home") {
+    if (sessionOk && currentViewName === "home") {
       updateHomeMode();
     }
 
-    // 스마트 진입 안내 (stamp/report 일 때만 1회성)
-    if (initial === "stamp" || initial === "report") {
+    // 스마트 진입 안내 (stamp/report 일 때만 1회성 · 관리자 제외)
+    if (
+      !isAdminMainMode() &&
+      (initial === "stamp" || initial === "report")
+    ) {
       const wh = getWorkHours();
       const label =
         initial === "stamp"
