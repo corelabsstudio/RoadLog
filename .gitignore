@@ -20,7 +20,9 @@ data/styles/
 data/user_configs/
 data/team_logs.csv
 
-# generated exports
+# generated user exports (keep default templates tracked)
 *.xlsx
 *.pdf
 *.docx
+!web/assets/templates/*.xlsx
+!web/assets/templates/*.docx
