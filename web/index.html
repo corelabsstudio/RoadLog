@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-proland" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-warm" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -117,14 +117,15 @@
         <section class="landing-hero" aria-label="소개">
           <div class="container landing-hero-inner">
             <div class="landing-hero-copy">
-              <div class="hero-badge" data-i18n="landing.badge">CoreLabs · 업무용 AI 일지 SaaS</div>
+              <div class="hero-badge" data-i18n="landing.badge">CoreLabs · 제출용 AI 일지</div>
               <h1>
-                <span data-i18n="landing.headline_1">운행·외근 기록을</span><br />
-                <span data-i18n="landing.headline_2">제출 가능한 문서로.</span><br />
+                <span data-i18n="landing.headline_1">오늘 현장 기록,</span><br />
+                <span data-i18n="landing.headline_2">제출까지 한 번에.</span><br />
                 <span class="grad" data-i18n="landing.headline_3">RoadLog</span>
               </h1>
               <p class="hero-sub landing-sub">
-                <span data-i18n="landing.sub">자연어 입력을 회사 제출용 운행·외근 일지로 정리합니다. Excel · PDF · DOCX 다운로드, 회사 서식 학습을 지원합니다.</span>
+                <span data-i18n="landing.sub">운행·외근 메모를 회사 제출용 문서로 정리합니다. Excel · PDF · DOCX로 받고, 필요할 때 다시 열어 수정할 수 있습니다.</span>
+                <strong data-i18n="landing.sub_strong">일과 마무리를 조금 더 가볍게.</strong>
               </p>
               <ul class="landing-proof" aria-label="핵심 지표">
                 <li><strong>Free</strong><span data-i18n="landing.proof_1">월 15회 체험</span></li>
@@ -144,21 +145,21 @@
                   <span data-i18n-text data-i18n="landing.install">앱으로 설치</span>
                 </button>
               </div>
-              <p class="landing-trust" data-i18n="landing.trust">로그인 유지 · 계정별 일지 저장 · 근무시간 스마트 진입 · PWA 지원</p>
+              <p class="landing-trust" data-i18n="landing.trust">로그인 유지 · 계정별 저장 · 근무시간 맞춤 진입 · 집에서 이어쓰기</p>
             </div>
 
             <div class="landing-phone" aria-hidden="true">
               <div class="landing-phone-frame landing-doc-frame">
                 <div class="landing-phone-screen landing-doc-screen">
-                  <div class="lp-kicker">제출용 문서 미리보기</div>
+                  <div class="lp-kicker">오늘 일지 미리보기</div>
                   <div class="lp-doc-title">차량 운행일지</div>
                   <div class="lp-doc-row"><span>일자</span><b>2026-07-11</b></div>
                   <div class="lp-doc-row"><span>차량</span><b>12가 3456</b></div>
                   <div class="lp-doc-row"><span>구간</span><b>본사 → 강남 고객사</b></div>
                   <div class="lp-doc-row"><span>형식</span><b>Excel · PDF · DOCX</b></div>
-                  <div class="lp-chip">AI 정리 완료 · 저장됨</div>
+                  <div class="lp-chip">정리 완료 · 저장됨</div>
                   <div class="lp-care lp-doc-note">
-                    업무용 격식 문체 · 회사 서식 반영<br />제출 전 요약·차량번호 수정 가능
+                    제출은 단정하게 · 입력은 편하게<br />요약·차량번호는 제출 전에 고칠 수 있어요
                   </div>
                 </div>
               </div>
@@ -171,9 +172,9 @@
         <section class="landing-values" id="features" aria-label="핵심 기능">
           <div class="container">
             <div class="section-head landing-section-head">
-              <div class="eyebrow" data-i18n="landing.values_eyebrow">Capabilities</div>
-              <h2 data-i18n="landing.values_title">현장에서 입력하고, 사무실에서 제출합니다</h2>
-              <p data-i18n="landing.values_sub">개인 업무 기록부터 팀·법인 제출 문서까지. 반복 작업을 줄이고 완성도를 유지합니다.</p>
+              <div class="eyebrow" data-i18n="landing.values_eyebrow">What you get</div>
+              <h2 data-i18n="landing.values_title">현장에서 남기고, 퇴근 전에 끝냅니다</h2>
+              <p data-i18n="landing.values_sub">복잡한 일지 도구 대신, 매일 쓰는 사람에게 맞춰 설계했습니다.</p>
             </div>
             <div class="landing-value-grid">
               <article class="landing-value-card">
@@ -181,21 +182,21 @@
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
                 </div>
                 <h3 data-i18n="landing.v1_title">현장 위치 스탬프</h3>
-                <p data-i18n="landing.v1_body">GPS로 시각·위치를 즉시 기록합니다. 불필요한 주소 입력을 줄이고 방문지를 자동 반영합니다.</p>
+                <p data-i18n="landing.v1_body">도착·출발 때 버튼 한 번으로 시각과 위치를 남깁니다. 방문지 입력이 훨씬 수월해집니다.</p>
               </article>
               <article class="landing-value-card is-accent">
                 <div class="lv-icon lv-icon-svg" aria-hidden="true">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
-                <h3 data-i18n="landing.v2_title">AI 제출용 문체</h3>
-                <p data-i18n="landing.v2_body">운행·외근 메모를 회사 제출에 맞는 격식 문서로 정리합니다. Excel · PDF · DOCX로 바로 내보냅니다.</p>
+                <h3 data-i18n="landing.v2_title">AI 제출용 정리</h3>
+                <p data-i18n="landing.v2_body">메모를 회사 톤의 운행·외근 일지로 정리합니다. Excel · PDF · DOCX로 바로 제출할 수 있습니다.</p>
               </article>
               <article class="landing-value-card">
                 <div class="lv-icon lv-icon-svg" aria-hidden="true">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
-                <h3 data-i18n="landing.v3_title">이력 저장 · 재사용</h3>
-                <p data-i18n="landing.v3_body">생성 일지를 계정에 저장하고 다시 열어 수정·다운로드합니다. 제출 전 요약과 차량 정보를 보정할 수 있습니다.</p>
+                <h3 data-i18n="landing.v3_title">저장하고 다시 열기</h3>
+                <p data-i18n="landing.v3_body">작성한 일지를 계정에 보관합니다. 나중에 열어 요약·차량을 고치고 다시 받을 수 있습니다.</p>
               </article>
             </div>
           </div>
@@ -204,20 +205,20 @@
         <!-- 3. Use cases / trust -->
         <section class="landing-emotion landing-usecase" id="demo" aria-label="도입 대상">
           <div class="container landing-emotion-inner">
-            <div class="eyebrow" data-i18n="landing.use_eyebrow">Use cases</div>
+            <div class="eyebrow" data-i18n="landing.use_eyebrow">For whom</div>
             <p class="landing-emotion-quote" data-i18n="landing.quote">
-              영업 · 외근 · 법인차 업무에 맞춘 기록 도구
+              영업 · 외근 · 법인차, 매일 기록하는 분들을 위해
             </p>
             <p class="landing-emotion-body">
-              <span data-i18n="landing.emotion_body">RoadLog는 개인 메모 앱이 아니라,</span>
-              <strong data-i18n="landing.emotion_strong">회사 제출을 전제로 한 업무 일지 솔루션</strong>
-              <span data-i18n="landing.emotion_body2">입니다. 초기 런칭가로 Free부터 시작할 수 있습니다.</span>
+              <span data-i18n="landing.emotion_body">RoadLog는 딱딱한 양식만 강요하지 않습니다.</span>
+              <strong data-i18n="landing.emotion_strong">제출은 단정하게, 입력은 편하게</strong>
+              <span data-i18n="landing.emotion_body2">— 그 균형을 맞춥니다. Free로 부담 없이 시작할 수 있습니다.</span>
             </p>
             <div class="landing-emotion-tags">
               <span data-i18n="landing.tag_stamp">퀵 스탬프</span>
-              <span data-i18n="landing.tag_route">운행 · 외근 모드</span>
+              <span data-i18n="landing.tag_route">운행 · 외근</span>
               <span data-i18n="landing.tag_care">회사 서식 학습</span>
-              <span data-i18n="landing.tag_pwa">계정별 저장 · PWA</span>
+              <span data-i18n="landing.tag_pwa">저장 · 이어쓰기</span>
             </div>
           </div>
         </section>
@@ -225,8 +226,8 @@
         <!-- 4. Final CTA -->
         <section class="landing-final" aria-label="마무리">
           <div class="container landing-final-inner">
-            <h2 data-i18n="landing.final_title">제출용 일지 작업을 줄이고, 본업에 집중하세요.</h2>
-            <p data-i18n="landing.final_sub">Free로 바로 체험하고, 필요 시 Pro·Enterprise로 확장할 수 있습니다.</p>
+            <h2 data-i18n="landing.final_title">일지 때문에 하루가 길어지지 않게.</h2>
+            <p data-i18n="landing.final_sub">Free로 바로 써 보고, 필요할 때 Pro·Enterprise로 키우면 됩니다.</p>
             <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">무료로 시작하기</button>
             <button type="button" class="btn btn-ghost landing-login-link" id="btnLandingLogin" data-i18n="landing.login_link">이미 계정이 있다면 로그인</button>
           </div>
@@ -1374,7 +1375,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-proland"></script>
+  <script src="/app.js?v=20260711-warm"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

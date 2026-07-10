@@ -646,10 +646,10 @@ img {
   padding: 0 0 2rem;
 }
 .landing-pro .hero-badge {
-  border-color: rgba(148, 163, 184, 0.28);
-  background: rgba(15, 23, 42, 0.72);
-  color: #cbd5e1;
-  letter-spacing: 0.04em;
+  border-color: rgba(34, 211, 238, 0.28);
+  background: rgba(34, 211, 238, 0.08);
+  color: #a5f3fc;
+  letter-spacing: 0.03em;
   text-transform: none;
   font-weight: 650;
 }
@@ -691,13 +691,15 @@ img {
 }
 .landing-sub {
   max-width: 42ch;
-  margin-bottom: 1.25rem !important;
+  margin-bottom: 0.55rem !important;
   font-size: 1.02rem !important;
   line-height: 1.7 !important;
   color: #94a3b8 !important;
 }
 .landing-sub strong {
-  color: #e2e8f0;
+  display: block;
+  margin-top: 0.45rem;
+  color: #a5f3fc;
   font-weight: 650;
 }
 .landing-proof {
@@ -1003,7 +1005,7 @@ img {
   word-break: keep-all;
 }
 .landing-emotion-body strong {
-  color: #e2e8f0;
+  color: #a5f3fc;
   font-weight: 700;
 }
 .landing-emotion-tags {
