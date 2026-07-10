@@ -29,6 +29,7 @@ from modules.config import (
     ADMIN_PASSWORD,
     ADMIN_USERNAME,
     ALLOW_DEMO_BILLING_UPGRADE,
+    APP_ENV,
     APP_FULL,
     APP_TAGLINE,
     APP_TITLE,
@@ -44,6 +45,10 @@ from modules.config import (
     PRO_PRICE_KRW,
     STUDIO_NAME,
     STUDIO_NAME_EN,
+    assert_secure_for_production,
+    cors_allow_origins,
+    is_production,
+    security_issues,
 )
 from modules.export import export_docx, export_excel, export_pdf
 from modules.generator import generate_driving_log
@@ -54,11 +59,27 @@ from modules.validator import validate_log
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
 
+# 프로덕션: 약한 비밀키/데모 결제 등이 있으면 기동 자체를 막음
+assert_secure_for_production()
+
+# 개발: 경고만 출력
+for _issue in security_issues():
+    if _issue["level"] == "info" and not is_production():
+        continue
+    print(
+        f"[RoadLog security:{_issue['level']}] {_issue['code']}: {_issue['message']}",
+        flush=True,
+    )
+
+_cors_origins = cors_allow_origins()
+# credentials + "*" 조합은 브라우저에서 거부되므로 와일드카드일 때 credentials 비활성
+_cors_credentials = _cors_origins != ["*"]
+
 app = FastAPI(title=APP_FULL, version="3.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -191,8 +212,11 @@ def health():
     return {
         "ok": True,
         "app": APP_TITLE,
+        "env": APP_ENV,
+        "production": is_production(),
         "storage": db.supabase_status(),
         "openai": bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx")),
+        "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
     }
 
 

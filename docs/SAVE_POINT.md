@@ -38,6 +38,11 @@ streamlit run app.py
 - `.env` (API 키 등)
 - `data/users.json`, 세션, 사용량, 개인 서식 샘플 등 런타임 데이터
 
+## 배포 보안
+
+공개 배포 전: `docs/ops/DEPLOY_SECURITY_CHECKLIST.md`  
+자동 점검: `python scripts/check_security.py`
+
 ## Git
 
 - 브랜치: `master`
