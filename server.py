@@ -28,6 +28,7 @@ from modules.config import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
     ADMIN_USERNAME,
+    ALLOW_DEMO_BILLING_UPGRADE,
     APP_FULL,
     APP_TAGLINE,
     APP_TITLE,
@@ -213,6 +214,7 @@ def meta():
         ),
         "pro_url": PRO_PAYMENT_URL,
         "enterprise_url": ENTERPRISE_PAYMENT_URL,
+        "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
         "default_settings": DEFAULT_USER_SETTINGS,
         "default_templates_url": "/assets/templates/manifest.json",
     }
@@ -225,16 +227,25 @@ class UpgradeBody(BaseModel):
 @app.post("/api/billing/upgrade")
 def billing_upgrade(body: UpgradeBody, authorization: str | None = Header(default=None)):
     """
-    요금제 업그레이드 (로컬/데모: 결제 완료 시뮬레이션).
-    실서비스에서는 결제 웹훅에서 동일 로직 호출.
+    요금제 업그레이드.
+
+    기본: 비활성 (결제 없이 plan 변경 불가).
+    로컬 데모에서만 ALLOW_DEMO_BILLING_UPGRADE=true 로 허용.
+    운영에서는 결제 웹훅/관리자 수동 등록으로 plan을 변경하세요.
     """
     user = _token_user(authorization)
+    if not ALLOW_DEMO_BILLING_UPGRADE:
+        raise HTTPException(
+            403,
+            "결제가 확인된 뒤 요금제가 적용됩니다. 아래 결제 링크로 진행하거나 문의해 주세요.",
+        )
+
     plan = (body.plan or "").strip().lower()
     email = user["email"]
     if plan == "pro":
-        ok = db.upgrade_to_pro(email, note="웹 요금제 Pro 업그레이드")
+        ok = db.upgrade_to_pro(email, note="웹 요금제 Pro 업그레이드 (데모)")
     elif plan in ("enterprise", "ent"):
-        ok = db.upgrade_to_enterprise(email, note="웹 요금제 Enterprise 업그레이드")
+        ok = db.upgrade_to_enterprise(email, note="웹 요금제 Enterprise 업그레이드 (데모)")
     else:
         raise HTTPException(400, "plan은 pro 또는 enterprise 여야 합니다.")
     if not ok:
@@ -249,9 +260,10 @@ def billing_upgrade(body: UpgradeBody, authorization: str | None = Header(defaul
     return {
         "ok": True,
         "user": fresh,
-        "message": "Enterprise로 전환되었습니다."
+        "message": "Enterprise로 전환되었습니다. (데모)"
         if plan in ("enterprise", "ent")
-        else "Pro로 전환되었습니다.",
+        else "Pro로 전환되었습니다. (데모)",
+        "demo": True,
     }
 
 

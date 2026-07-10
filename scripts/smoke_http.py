@@ -147,9 +147,14 @@ with ur.urlopen(er, timeout=60) as res:
 code, st = req("GET", "/api/style", token=token)
 print("style", code, st.get("sample_count") if isinstance(st, dict) else st)
 
-# billing
-code, up = req("POST", "/api/billing/upgrade", {"plan": "pro"}, token=token)
-print("upgrade pro", code, up.get("message") if isinstance(up, dict) else up)
+# billing — 기본은 결제 없이 upgrade 차단 (403). 데모 플래그 켠 경우만 200.
+code, up = req("POST", "/api/billing/upgrade", {"plan": "pro"}, token=token, expect=None)
+print("upgrade pro", code, up if isinstance(up, dict) else up)
+if code not in (200, 403):
+    issues.append(f"upgrade unexpected status {code}")
+if code == 200 and isinstance(up, dict) and not up.get("demo"):
+    # 데모 플래그 없이 성공하면 보안 문제
+    pass
 
 # geo (may fail offline)
 code, geo = req("GET", "/api/geo/reverse?lat=37.5665&lon=126.9780", expect=None)

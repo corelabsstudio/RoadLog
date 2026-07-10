@@ -78,6 +78,14 @@ ENTERPRISE_PAYMENT_URL = _get_secret(
     "ENTERPRISE_PAYMENT_URL",
     _get_secret("PRO_PAYMENT_URL", "https://your-payment-link.example.com"),
 )
+# 결제 없이 /api/billing/upgrade 로 plan 변경 허용 여부 (로컬 데모 전용)
+# 운영/공개 배포에서는 반드시 false 유지. 관리자 화면의 수동 플랜 변경은 별도.
+ALLOW_DEMO_BILLING_UPGRADE = _get_secret("ALLOW_DEMO_BILLING_UPGRADE", "false").lower() in (
+    "1",
+    "true",
+    "yes",
+    "on",
+)
 
 # ── 인증 / 관리자 ──────────────────────────────────────
 ADMIN_USERNAME = _get_secret("ADMIN_USERNAME", "hhs126")

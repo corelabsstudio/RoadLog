@@ -3146,6 +3146,7 @@
 
   function applyPricingFromMeta(meta) {
     if (!meta) return;
+    state.meta = { ...(state.meta || {}), ...meta };
     if (meta.free_limit && $("#priceFreeLimit")) {
       $("#priceFreeLimit").textContent = String(meta.free_limit);
     }
@@ -3159,10 +3160,7 @@
       const el = $(sel);
       if (!el) return;
       const u = (url || "").trim();
-      const isPlaceholder =
-        !u ||
-        /example\.com|your-payment|localhost/i.test(u) ||
-        !/^https?:\/\//i.test(u);
+      const isPlaceholder = isPlaceholderPayUrl(u);
       if (!isPlaceholder) {
         el.href = u;
         el.target = "_blank";
@@ -3182,6 +3180,7 @@
       "#entLink",
       meta.enterprise_url || meta.pro_url || ""
     );
+    applyPricingCtaLabels();
     applyContactFromMeta(meta);
   }
 
@@ -3870,14 +3869,85 @@
     updateInstallButtonVisibility();
   }
 
+  function isPlaceholderPayUrl(url) {
+    const u = (url || "").trim();
+    return (
+      !u ||
+      /example\.com|your-payment|localhost/i.test(u) ||
+      !/^https?:\/\//i.test(u)
+    );
+  }
+
+  function paymentUrlForPlan(plan) {
+    const meta = state.meta || {};
+    if (plan === "enterprise") {
+      return (meta.enterprise_url || meta.pro_url || "").trim();
+    }
+    return (meta.pro_url || "").trim();
+  }
+
+  /** 결제 없이 plan 올리는 데모 API — 운영에서는 비활성 */
+  function demoBillingUpgradeEnabled() {
+    return Boolean(state.meta?.demo_billing_upgrade);
+  }
+
+  function applyPricingCtaLabels() {
+    const demo = demoBillingUpgradeEnabled();
+    const proBtn = $("#btnUpgradePro");
+    const entBtn = $("#btnUpgradeEnt");
+    const proHint = $("#proTrialHint");
+    const entHint = $("#entTrialHint");
+    const note = $("#pricingNote");
+    if (demo) {
+      if (proBtn) proBtn.textContent = "7일 무료 체험 시작하기 (데모)";
+      if (entBtn) entBtn.textContent = "7일 무료 체험 시작하기 (데모)";
+      if (proHint) proHint.textContent = "데모 모드 · 결제 없이 체험 플랜 적용";
+      if (entHint) entHint.textContent = "데모 모드 · 결제 없이 체험 플랜 적용";
+      if (note) {
+        note.textContent =
+          "데모 업그레이드가 켜져 있습니다. 운영 배포 전 ALLOW_DEMO_BILLING_UPGRADE=false 로 끄세요.";
+      }
+    } else {
+      if (proBtn) proBtn.textContent = "Pro 결제하기";
+      if (entBtn) entBtn.textContent = "Enterprise 결제하기";
+      if (proHint) proHint.textContent = "결제 완료 후 Pro 요금제가 적용됩니다";
+      if (entHint) entHint.textContent = "법인 결제 · 세금계산서 지원";
+    }
+  }
+
   function bindPricing() {
-    async function startTrial(plan) {
-      if (!state.token) {
-        openAuth();
-        toast("7일 무료 체험은 로그인 후 시작할 수 있습니다");
+    async function startPaidOrDemo(plan) {
+      const planLabel = plan === "enterprise" ? "Enterprise" : "Pro";
+
+      // 운영 기본: 결제 링크로 이동 (무료 plan 변경 없음)
+      if (!demoBillingUpgradeEnabled()) {
+        if (!state.token) {
+          openAuth();
+          toast("결제·업그레이드는 로그인 후 진행할 수 있습니다");
+          return;
+        }
+        const url = paymentUrlForPlan(plan);
+        if (!isPlaceholderPayUrl(url)) {
+          window.open(url, "_blank", "noopener,noreferrer");
+          toast(
+            `${planLabel} 결제 페이지를 열었습니다. 결제 완료 후 관리자 확인 또는 웹훅으로 요금제가 적용됩니다.`
+          );
+          return;
+        }
+        const contact =
+          (state.meta && state.meta.contact_email) || "corelabs.studio@gmail.com";
+        toast(
+          `${planLabel} 결제 링크가 아직 연결되지 않았습니다. ${contact} 로 문의해 주세요.`
+        );
         return;
       }
-      const planLabel = plan === "enterprise" ? "Enterprise" : "Pro";
+
+      // 로컬 데모 전용 (ALLOW_DEMO_BILLING_UPGRADE=true)
+      if (!state.token) {
+        openAuth();
+        toast("데모 체험은 로그인 후 시작할 수 있습니다");
+        return;
+      }
       try {
         const data = await api("/api/billing/upgrade", {
           method: "POST",
@@ -3890,7 +3960,7 @@
         await refreshMe();
         toast(
           data.message ||
-            `${planLabel} 7일 무료 체험이 시작되었습니다. 체험 기간 중 전 기능을 이용할 수 있습니다.`
+            `${planLabel} 데모 체험이 시작되었습니다. (결제 없음 · 데모 전용)`
         );
         if (plan === "enterprise") {
           showView("home");
@@ -3899,8 +3969,10 @@
         toast(err.message);
       }
     }
-    $("#btnUpgradePro")?.addEventListener("click", () => startTrial("pro"));
-    $("#btnUpgradeEnt")?.addEventListener("click", () => startTrial("enterprise"));
+    $("#btnUpgradePro")?.addEventListener("click", () => startPaidOrDemo("pro"));
+    $("#btnUpgradeEnt")?.addEventListener("click", () =>
+      startPaidOrDemo("enterprise")
+    );
   }
 
   // ── Init ──
