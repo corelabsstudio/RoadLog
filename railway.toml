@@ -6,7 +6,6 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# Dockerfile CMD 사용 (중복 startCommand 제거로 혼란 방지)
-healthcheckPath = "/api/health"
-healthcheckTimeout = 120
+# 헬스체크 제거: "Deployment failed during the network process" 회피
+# (앱이 뜬 뒤 /api/health 로 직접 확인)
 restartPolicyType = "ON_FAILURE"

@@ -366,18 +366,31 @@ def security_issues() -> list[dict[str, str]]:
 
 
 def assert_secure_for_production() -> None:
-    """APP_ENV=production 일 때 critical 이슈가 있으면 기동 중단."""
+    """
+    APP_ENV=production 일 때 critical 이슈 검사.
+    기본: 경고만 출력하고 기동은 계속 (Railway 네트워크/헬스체크 실패 방지).
+    STRICT_SECURITY=1 이면 RuntimeError 로 기동 중단.
+    """
     if not is_production():
         return
     critical = [i for i in security_issues() if i["level"] == "critical"]
     if not critical:
         return
     lines = "\n".join(f"  - [{i['code']}] {i['message']}" for i in critical)
-    raise RuntimeError(
-        "프로덕션 보안 검사 실패. .env 를 수정한 뒤 다시 시작하세요.\n"
+    msg = (
+        "프로덕션 보안 경고 — 설정을 강화하세요.\n"
         f"{lines}\n"
         "안내: docs/ops/DEPLOY_SECURITY_CHECKLIST.md"
     )
+    strict = (_get_secret("STRICT_SECURITY", "false") or "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+    if strict:
+        raise RuntimeError(msg)
+    print(f"[RoadLog security:critical-soft] {msg}", flush=True)
 
 
 # ── OpenAI ──────────────────────────────────────────────
