@@ -139,11 +139,107 @@ def validate_trip(trip: dict, settings: dict) -> list[str]:
     return errors
 
 
+def validate_field_log(log: dict, settings: dict) -> dict[str, Any]:
+    """
+    외근·출장 일지 검증 (거리·속도 검증 없음).
+    반환: { ok, errors, warnings, enriched_log }
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    visits = list(log.get("visits") or [])
+    if not visits:
+        # trips 호환
+        for t in log.get("trips") or []:
+            if not isinstance(t, dict):
+                continue
+            place = str(t.get("to") or t.get("place") or "").strip()
+            if place:
+                visits.append(
+                    {
+                        "time": str(t.get("depart_time") or t.get("time") or "").strip(),
+                        "place": place,
+                        "purpose": str(t.get("purpose") or "업무 방문").strip(),
+                        "result": str(t.get("result") or "").strip(),
+                        "next_action": str(t.get("next_action") or "").strip(),
+                        "memo": str(t.get("memo") or "").strip(),
+                    }
+                )
+
+    if not visits:
+        errors.append("방문 기록이 없습니다.")
+
+    for i, v in enumerate(visits, start=1):
+        if not str(v.get("place") or "").strip():
+            errors.append(f"[{i}행] 방문처가 비어 있습니다.")
+        if not str(v.get("purpose") or "").strip():
+            v["purpose"] = settings.get("default_purpose", "업무 방문")
+
+    enriched = dict(log)
+    enriched["report_type"] = "field"
+    enriched["visits"] = visits
+    # 기존 다운로드 UI·export trips 경로 호환
+    if not enriched.get("trips") and visits:
+        origin = "본사"
+        places = settings.get("frequent_places") or []
+        if places and places[0].get("name"):
+            origin = places[0]["name"]
+        trips = []
+        prev = origin
+        for v in visits:
+            t0 = str(v.get("time") or "09:30")
+            trips.append(
+                {
+                    "depart_time": t0,
+                    "arrive_time": t0,
+                    "from": prev,
+                    "to": v.get("place") or "",
+                    "purpose": v.get("purpose") or "업무 방문",
+                    "distance_km": 0,
+                    "memo": " / ".join(
+                        x
+                        for x in (
+                            f"결과: {v['result']}" if v.get("result") else "",
+                            f"후속: {v['next_action']}" if v.get("next_action") else "",
+                            v.get("memo") or "",
+                        )
+                        if x
+                    ),
+                    "result": v.get("result") or "",
+                    "next_action": v.get("next_action") or "",
+                    "raw_minutes": 0,
+                    "lunch_excluded_minutes": 0,
+                    "net_minutes": 0,
+                    "duration_display": "-",
+                }
+            )
+            prev = v.get("place") or prev
+        enriched["trips"] = trips
+    enriched["total_distance_km"] = float(enriched.get("total_distance_km") or 0)
+    enriched["total_net_minutes"] = int(enriched.get("total_net_minutes") or 0)
+    enriched["total_lunch_excluded_minutes"] = 0
+    if settings.get("driver_name") and not enriched.get("driver_name"):
+        enriched["driver_name"] = settings["driver_name"]
+    if settings.get("company_name") and not enriched.get("company_name"):
+        enriched["company_name"] = settings["company_name"]
+    if not enriched.get("author_name"):
+        enriched["author_name"] = enriched.get("driver_name") or ""
+
+    return {
+        "ok": len(errors) == 0,
+        "errors": errors,
+        "warnings": warnings,
+        "enriched_log": enriched,
+    }
+
+
 def validate_log(log: dict, settings: dict) -> dict[str, Any]:
     """
     전체 운행일지 검증 + 점심 제외 적용 필드 보강.
     반환: { ok, errors, warnings, enriched_log }
     """
+    if str(log.get("report_type") or "").lower() in ("field", "field_visit", "outing"):
+        return validate_field_log(log, settings)
+
     errors: list[str] = []
     warnings: list[str] = []
     trips = list(log.get("trips") or [])

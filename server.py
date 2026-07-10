@@ -180,13 +180,20 @@ class GenerateBody(BaseModel):
     """구조화 입력 우선. raw_text는 선택(추가 메모)."""
     raw_text: str = ""
     settings: dict[str, Any] | None = None
-    # 구조화 필드 (권장)
+    # driving | field (외근·출장)
+    report_type: str = "driving"
+    # 구조화 필드 (권장) — 운행
     vehicle_number: str = ""
     odometer_start: float | None = None
     odometer_end: float | None = None
     lunch_restaurant: str = ""
     morning_places: str = ""
     afternoon_places: str = ""
+    # 외근
+    visits_text: str = ""
+    work_summary: str = ""
+    next_actions: str = ""
+    department: str = ""
     form: dict[str, Any] | None = None
 
 
@@ -586,23 +593,46 @@ def generate(body: GenerateBody, authorization: str | None = Header(default=None
         )
 
     settings = body.settings or db.load_settings(user["email"])
-    form = body.form or {
-        "vehicle_number": body.vehicle_number,
-        "odometer_start": body.odometer_start,
-        "odometer_end": body.odometer_end,
-        "lunch_restaurant": body.lunch_restaurant,
-        "morning_places": body.morning_places,
-        "afternoon_places": body.afternoon_places,
-        "extra_note": body.raw_text,
-    }
+    report_type = (body.report_type or "driving").lower().strip()
+    if report_type in ("field", "field_visit", "outing", "외근"):
+        report_type = "field"
+    else:
+        report_type = "driving"
+
+    if body.form:
+        form = body.form
+    elif report_type == "field":
+        form = {
+            "visits_text": body.visits_text,
+            "work_summary": body.work_summary,
+            "next_actions": body.next_actions,
+            "department": body.department,
+            "extra_note": body.raw_text,
+            "author_name": (body.settings or {}).get("driver_name")
+            if isinstance(body.settings, dict)
+            else "",
+        }
+    else:
+        form = {
+            "vehicle_number": body.vehicle_number,
+            "odometer_start": body.odometer_start,
+            "odometer_end": body.odometer_end,
+            "lunch_restaurant": body.lunch_restaurant,
+            "morning_places": body.morning_places,
+            "afternoon_places": body.afternoon_places,
+            "extra_note": body.raw_text,
+        }
     result = generate_driving_log(
         body.raw_text or "",
         settings,
         form=form,
         user_email=user["email"],
+        report_type=report_type,
     )
 
-    if result.get("log") and result.get("log", {}).get("trips"):
+    log = result.get("log") or {}
+    has_content = bool(log.get("trips") or log.get("visits"))
+    if result.get("log") and has_content:
         used = db.increment_usage(user["email"], 1)
 
     return {

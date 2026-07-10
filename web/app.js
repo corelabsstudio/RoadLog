@@ -9,6 +9,14 @@
     afternoonPlaces: "역삼 협력사 방문",
     rawText: "",
   };
+  const EXAMPLE_FIELD = {
+    department: "영업1팀",
+    summary: "강남·판교 고객 방문 및 견적 협의",
+    visits:
+      "강남 A사 — 계약 조건 협의 / 견적 재요청 예정\n판교 B사 — 제품 데모 / 다음 주 본사 방문 조율",
+    next: "목요일까지 견적서 송부, 금요일 팔로업 콜",
+    memo: "",
+  };
 
   const TOKEN_KEY = "rl_token";
   const STAMPS_KEY_PREFIX = "rl_stamps_";
@@ -34,6 +42,8 @@
     dict: {},
     /** admin | pro | enterprise | free — 실제 is_admin 일 때만 적용 */
     viewAs: localStorage.getItem(VIEW_AS_KEY) || "admin",
+    /** driving | field — 일지 작성 유형 */
+    reportMode: "driving",
   };
 
   // ── i18n ──────────────────────────────────────────
@@ -559,6 +569,7 @@
     if (name === "style") loadStyleStatus({ promptAuth: false });
     if (name === "admin") loadAdminDashboard({ promptAuth: false });
     if (name === "create" || name === "stamp" || name === "report") {
+      setReportMode(state.reportMode || "driving");
       prefillVehicleFromSettings();
       loadStamps();
       renderStampList();
@@ -568,18 +579,19 @@
       // stamp: 퀵 스탬프 포커스 / report: 일지 입력 폼 포커스
       if (!opts.skipScroll) {
         setTimeout(() => {
-          if (name === "stamp") {
+          if (name === "stamp" && state.reportMode !== "field") {
             document.getElementById("quickStampPanel")?.scrollIntoView({
               behavior: "smooth",
               block: "start",
             });
             $("#btnQuickStamp")?.focus?.();
-          } else if (name === "report") {
+          } else if (name === "report" || state.reportMode === "field") {
             document.getElementById("reportFormPanel")?.scrollIntoView({
               behavior: "smooth",
               block: "start",
             });
-            $("#vehicleNumber")?.focus?.();
+            if (state.reportMode === "field") $("#fieldVisits")?.focus?.();
+            else $("#vehicleNumber")?.focus?.();
           }
         }, 80);
       }
@@ -834,6 +846,46 @@
     if (v) el.value = v;
   }
 
+  function setReportMode(mode, opts = {}) {
+    const m = mode === "field" ? "field" : "driving";
+    state.reportMode = m;
+    $$(".report-mode-tab").forEach((el) => {
+      const on = el.dataset.reportMode === m;
+      el.classList.toggle("is-active", on);
+      el.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    $$("[data-mode-panel]").forEach((el) => {
+      el.classList.toggle("hidden", el.dataset.modePanel !== m);
+    });
+    const title = $("#createTitle");
+    const sub = $("#createSub");
+    const formTitle = $("#reportFormTitle");
+    const genBtn = $("#btnGenerate");
+    if (m === "field") {
+      if (title) title.textContent = t("create.title_field");
+      if (sub) sub.textContent = t("create.sub_field");
+      if (formTitle) formTitle.textContent = t("create.form_title_field");
+      if (genBtn) genBtn.textContent = t("create.generate_field");
+    } else {
+      if (title) title.textContent = t("create.title");
+      if (sub) sub.textContent = t("create.sub");
+      if (formTitle) formTitle.textContent = t("create.form_title");
+      if (genBtn) genBtn.textContent = t("create.generate");
+    }
+    if (opts.toast) {
+      toast(m === "field" ? "외근·출장 일지 모드" : "운행일지 모드");
+    }
+  }
+
+  function bindReportModeTabs() {
+    document.body.addEventListener("click", (e) => {
+      const tab = e.target.closest(".report-mode-tab[data-report-mode]");
+      if (!tab) return;
+      e.preventDefault();
+      setReportMode(tab.dataset.reportMode, { toast: true });
+    });
+  }
+
   function bindNav() {
     document.body.addEventListener("click", (e) => {
       // 로그인 모달이 열린 동안 배경 네비 클릭 차단
@@ -849,6 +901,12 @@
       e.preventDefault();
       e.stopPropagation();
       const target = nav.dataset.nav;
+      if (
+        nav.dataset.reportMode &&
+        (target === "create" || target === "stamp" || target === "report")
+      ) {
+        setReportMode(nav.dataset.reportMode);
+      }
       // 같은 화면 재클릭 시에도 해시/히스토리 정합성 유지
       showView(target);
       const scrollId = nav.dataset.scroll;
@@ -1238,10 +1296,10 @@
           "Enterprise · 팀 운행일지와 회사 서식을 관리하세요.";
       } else if (eu.plan === "pro") {
         $("#appHomeSub").textContent =
-          "Pro · 무제한으로 오늘 운행일지를 작성하세요.";
+          "Pro · 운행·외근 일지를 무제한으로 작성하세요.";
       } else {
         $("#appHomeSub").textContent =
-          "오늘 운행일지를 작성하거나 회사 서식을 관리하세요.";
+          "오늘 운행·외근 일지를 작성하거나 회사 서식을 관리하세요.";
       }
     }
 
@@ -1791,6 +1849,16 @@
     };
   }
 
+  function readFieldForm() {
+    return {
+      department: $("#fieldDepartment")?.value?.trim() ?? "",
+      work_summary: $("#fieldSummary")?.value?.trim() ?? "",
+      visits_text: $("#fieldVisits")?.value?.trim() ?? "",
+      next_actions: $("#fieldNext")?.value?.trim() ?? "",
+      raw_text: $("#fieldMemo")?.value?.trim() ?? "",
+    };
+  }
+
   function updateDistHint() {
     const s = parseFloat($("#odoStart")?.value);
     const e = parseFloat($("#odoEnd")?.value);
@@ -1815,6 +1883,15 @@
     updateDistHint();
 
     $("#btnExample")?.addEventListener("click", () => {
+      if (state.reportMode === "field") {
+        if ($("#fieldDepartment")) $("#fieldDepartment").value = EXAMPLE_FIELD.department;
+        if ($("#fieldSummary")) $("#fieldSummary").value = EXAMPLE_FIELD.summary;
+        if ($("#fieldVisits")) $("#fieldVisits").value = EXAMPLE_FIELD.visits;
+        if ($("#fieldNext")) $("#fieldNext").value = EXAMPLE_FIELD.next;
+        if ($("#fieldMemo")) $("#fieldMemo").value = EXAMPLE_FIELD.memo;
+        toast("외근 예시 내용을 불러왔습니다");
+        return;
+      }
       if ($("#vehicleNumber")) $("#vehicleNumber").value = EXAMPLE_FORM.vehicleNumber;
       $("#odoStart").value = EXAMPLE_FORM.odoStart;
       $("#odoEnd").value = EXAMPLE_FORM.odoEnd;
@@ -1830,6 +1907,73 @@
       if (!state.token) {
         alertBox($("#genAlert"), "info", "로그인한 뒤 생성할 수 있습니다.");
         openAuth();
+        return;
+      }
+
+      const isField = state.reportMode === "field";
+      const btns = [$("#btnGenerate"), $("#btnGenerateSticky")].filter(Boolean);
+
+      if (isField) {
+        const form = readFieldForm();
+        if (!form.visits_text && !form.work_summary && !form.next_actions && !form.raw_text) {
+          alertBox(
+            $("#genAlert"),
+            "warn",
+            "방문·업무 내용, 한 줄 요약, 후속 조치 중 하나 이상 입력해 주세요."
+          );
+          $("#fieldVisits")?.focus?.();
+          return;
+        }
+        btns.forEach((btn) => {
+          btn.disabled = true;
+          btn.innerHTML = `<span class="spinner"></span> 생성 중...`;
+        });
+        alertBox($("#genAlert"), "info", "입력 내용으로 AI가 외근·출장 일지를 작성 중입니다…");
+        try {
+          const data = await api("/api/generate", {
+            method: "POST",
+            body: JSON.stringify({
+              report_type: "field",
+              raw_text: form.raw_text,
+              settings: state.settings || undefined,
+              visits_text: form.visits_text,
+              work_summary: form.work_summary,
+              next_actions: form.next_actions,
+              department: form.department,
+            }),
+          });
+          state.usage = data.usage ?? state.usage;
+          renderUsage();
+          if (!data.log) {
+            const errs = (data.errors || []).join(" / ") || "생성에 실패했습니다.";
+            alertBox($("#genAlert"), "error", errs);
+            return;
+          }
+          persistLastLog(data.log);
+          renderResult(data);
+          if (state.user) renderAppHome();
+          alertBox(
+            $("#genAlert"),
+            data.engine === "openai" ? "ok" : "warn",
+            formatGenerateUserMessage(data)
+          );
+          toast(
+            data.engine === "openai"
+              ? "외근일지 생성 완료"
+              : data.engine_title
+                ? `${data.engine_title} · 규칙 초안 완료`
+                : "규칙 초안으로 생성 완료"
+          );
+          document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          showCareModal(data.log, form);
+        } catch (err) {
+          alertBox($("#genAlert"), "error", err.message);
+        } finally {
+          btns.forEach((btn) => {
+            btn.disabled = false;
+            btn.innerHTML = t("create.generate_field");
+          });
+        }
         return;
       }
 
@@ -1855,7 +1999,6 @@
         }
       }
 
-      const btns = [$("#btnGenerate"), $("#btnGenerateSticky")].filter(Boolean);
       btns.forEach((btn) => {
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner"></span> 생성 중...`;
@@ -1874,6 +2017,7 @@
         const data = await api("/api/generate", {
           method: "POST",
           body: JSON.stringify({
+            report_type: "driving",
             raw_text: form.raw_text,
             settings: state.settings || undefined,
             vehicle_number: form.vehicle_number,
@@ -1960,6 +2104,32 @@
 
   function logToPlainText(log) {
     if (!log) return "";
+    const isField = String(log.report_type || "").toLowerCase() === "field";
+    if (isField) {
+      const lines = [
+        `[로드로그 외근일지] ${log.date || ""}`,
+        `작성자: ${log.author_name || log.driver_name || "—"}`,
+        `부서: ${log.department || "—"}`,
+        `회사: ${log.company_name || "—"}`,
+        "",
+      ];
+      const visits = log.visits || [];
+      if (visits.length) {
+        visits.forEach((v, i) => {
+          lines.push(
+            `${i + 1}. ${v.time || "—"} ${v.place || "—"} | ${v.purpose || ""} | 결과: ${v.result || "—"} | 후속: ${v.next_action || "—"}`
+          );
+        });
+      } else {
+        (log.trips || []).forEach((t, i) => {
+          lines.push(
+            `${i + 1}. ${t.depart_time || "—"} ${t.to || "—"} | ${t.purpose || ""} | ${t.memo || ""}`
+          );
+        });
+      }
+      if (log.summary) lines.push("", `요약: ${log.summary}`);
+      return lines.join("\n");
+    }
     const lines = [
       `[로드로그 운행일지] ${log.date || ""}`,
       `차량: ${log.vehicle || "—"}`,
@@ -2090,6 +2260,7 @@
       }
     }
 
+    const isField = String(log.report_type || "").toLowerCase() === "field";
     const mins = log.total_net_minutes || 0;
     const dur =
       mins >= 60 ? `${Math.floor(mins / 60)}시간 ${mins % 60}분` : `${mins}분`;
@@ -2097,15 +2268,24 @@
     const odoS = log.odometer_start != null && log.odometer_start !== "" ? `${log.odometer_start}` : "—";
     const odoE = log.odometer_end != null && log.odometer_end !== "" ? `${log.odometer_end}` : "—";
     if ($("#metrics")) {
-      $("#metrics").innerHTML = [
-        ["작성일", log.date || "—"],
-        ["차량번호", log.vehicle || "—"],
-        ["최초 누적", odoS === "—" ? "—" : `${odoS} km`],
-        ["종료 누적", odoE === "—" ? "—" : `${odoE} km`],
-        ["총 거리", `${log.total_distance_km ?? 0} km`],
-        ["순수 운행", dur],
-        ["점심", log.lunch_place || "—"],
-      ]
+      const metrics = isField
+        ? [
+            ["작성일", log.date || "—"],
+            ["작성자", log.author_name || log.driver_name || "—"],
+            ["부서", log.department || "—"],
+            ["회사", log.company_name || "—"],
+            ["방문 건수", String((log.visits || log.trips || []).length)],
+          ]
+        : [
+            ["작성일", log.date || "—"],
+            ["차량번호", log.vehicle || "—"],
+            ["최초 누적", odoS === "—" ? "—" : `${odoS} km`],
+            ["종료 누적", odoE === "—" ? "—" : `${odoE} km`],
+            ["총 거리", `${log.total_distance_km ?? 0} km`],
+            ["순수 운행", dur],
+            ["점심", log.lunch_place || "—"],
+          ];
+      $("#metrics").innerHTML = metrics
         .map(
           ([k, v]) =>
             `<div class="metric"><div class="label">${escapeHtml(k)}</div><div class="value">${escapeHtml(
@@ -2116,36 +2296,75 @@
     }
 
     if (log.summary) {
-      $("#summaryBox").innerHTML = `<div class="label">운행 요약</div><div>${escapeHtml(
-        log.summary
-      )}</div>`;
+      $("#summaryBox").innerHTML = `<div class="label">${
+        isField ? "업무 요약" : "운행 요약"
+      }</div><div>${escapeHtml(log.summary)}</div>`;
       $("#summaryBox").style.display = "";
     } else if ($("#summaryBox")) {
       $("#summaryBox").style.display = "none";
     }
 
-    const trips = log.trips || [];
     if ($("#trips")) {
-      if (!trips.length) {
-        $("#trips").innerHTML =
-          '<div class="trip"><div class="trip-route"><strong>기록된 구간 없음</strong><span>오전 또는 오후 방문지를 추가한 뒤 다시 생성해 주세요.</span></div></div>';
+      if (isField) {
+        const visits = log.visits || [];
+        if (!visits.length && !(log.trips || []).length) {
+          $("#trips").innerHTML =
+            '<div class="trip"><div class="trip-route"><strong>방문 기록 없음</strong><span>방문처를 입력한 뒤 다시 생성해 주세요.</span></div></div>';
+        } else if (visits.length) {
+          $("#trips").innerHTML = visits
+            .map((v) => {
+              const detail = [v.result && `결과: ${v.result}`, v.next_action && `후속: ${v.next_action}`, v.memo]
+                .filter(Boolean)
+                .join(" · ");
+              return `<div class="trip">
+          <div class="trip-time">${escapeHtml(v.time || "—")}</div>
+          <div class="trip-route">
+            <strong>${escapeHtml(v.place || "—")}</strong>
+            <span>${escapeHtml(v.purpose || "업무 방문")}</span>
+            ${detail ? `<span style="display:block;margin-top:0.25rem;color:#94a3b8">${escapeHtml(detail)}</span>` : ""}
+          </div>
+          <div class="trip-meta"><b>외근</b></div>
+        </div>`;
+            })
+            .join("");
+        } else {
+          $("#trips").innerHTML = (log.trips || [])
+            .map((t) => {
+              return `<div class="trip">
+          <div class="trip-time">${escapeHtml(t.depart_time || "—")}</div>
+          <div class="trip-route">
+            <strong>${escapeHtml(t.to || "—")}</strong>
+            <span>${escapeHtml(t.purpose || "업무 방문")}</span>
+            ${t.memo ? `<span style="display:block;margin-top:0.25rem;color:#94a3b8">${escapeHtml(t.memo)}</span>` : ""}
+          </div>
+          <div class="trip-meta"><b>외근</b></div>
+        </div>`;
+            })
+            .join("");
+        }
       } else {
-        $("#trips").innerHTML = trips
-          .map((t) => {
-            return `<div class="trip">
+        const trips = log.trips || [];
+        if (!trips.length) {
+          $("#trips").innerHTML =
+            '<div class="trip"><div class="trip-route"><strong>기록된 구간 없음</strong><span>오전 또는 오후 방문지를 추가한 뒤 다시 생성해 주세요.</span></div></div>';
+        } else {
+          $("#trips").innerHTML = trips
+            .map((t) => {
+              return `<div class="trip">
           <div class="trip-time">${escapeHtml(t.depart_time || "—")}<small>→ ${escapeHtml(
-              t.arrive_time || "—"
-            )}</small></div>
+                t.arrive_time || "—"
+              )}</small></div>
           <div class="trip-route">
             <strong>${escapeHtml(t.from || "—")} → ${escapeHtml(t.to || "—")}</strong>
             <span>${escapeHtml(t.purpose || "업무 운행")}</span>
           </div>
           <div class="trip-meta"><b>${escapeHtml(String(t.distance_km ?? "—"))} km</b>${escapeHtml(
-              t.duration_display || ""
-            )}</div>
+                t.duration_display || ""
+              )}</div>
         </div>`;
-          })
-          .join("");
+            })
+            .join("");
+        }
       }
     }
   }
@@ -4220,9 +4439,11 @@
     await initLocales(state.lang || localStorage.getItem(LANG_KEY) || "ko");
 
     bindNav();
+    bindReportModeTabs();
     bindHistoryNav();
     bindAuth();
     bindGenerate();
+    setReportMode(state.reportMode || "driving");
     bindCareModal();
     bindQuickStamp();
     bindSettings();

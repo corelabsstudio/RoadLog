@@ -4289,6 +4289,63 @@ input[type="date"]:focus {
 }
 
 /* ═══════════════════════════════════════════════════
+   작성 유형 탭 (운행 / 외근)
+   ═══════════════════════════════════════════════════ */
+.report-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin: 0 0 1.15rem;
+  padding: 0.4rem;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.55);
+}
+.report-mode-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.report-mode-tab:hover {
+  color: #e2e8f0;
+  background: rgba(34, 211, 238, 0.06);
+}
+.report-mode-tab.is-active {
+  color: #ecfeff;
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.28), rgba(34, 211, 238, 0.12));
+  border-color: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.12) inset;
+}
+.report-mode-label {
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+.report-mode-hint {
+  font-size: 0.82rem;
+  opacity: 0.78;
+  line-height: 1.35;
+}
+.report-mode-tab.is-active .report-mode-hint {
+  color: #a5f3fc;
+  opacity: 0.95;
+}
+@media (max-width: 560px) {
+  .report-mode-tabs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
    가독성 보정 — 작은 글씨 하한 (노안·모바일)
    ═══════════════════════════════════════════════════ */
 .nav-links a,

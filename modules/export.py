@@ -58,8 +58,129 @@ def _meta(log: dict) -> dict[str, str]:
 
 def _filename_base(log: dict) -> str:
     d = str(log.get("date") or datetime.now().strftime("%Y-%m-%d")).replace("-", "")
+    if str(log.get("report_type") or "").lower() in ("field", "field_visit", "outing"):
+        who = str(log.get("author_name") or log.get("driver_name") or "field").replace(" ", "")
+        return f"외근일지_{d}_{who or 'field'}"
     v = str(log.get("vehicle") or "vehicle").replace(" ", "")
     return f"운행일지_{d}_{v}"
+
+
+def _is_field_log(log: dict) -> bool:
+    return str(log.get("report_type") or "").lower() in ("field", "field_visit", "outing")
+
+
+def _field_visits(log: dict) -> list[dict]:
+    visits = log.get("visits")
+    if isinstance(visits, list) and visits:
+        return [v for v in visits if isinstance(v, dict)]
+    # trips 호환
+    out = []
+    for t in log.get("trips") or []:
+        if not isinstance(t, dict):
+            continue
+        out.append(
+            {
+                "time": t.get("depart_time") or t.get("time") or "",
+                "place": t.get("to") or t.get("place") or "",
+                "purpose": t.get("purpose") or "",
+                "result": t.get("result") or "",
+                "next_action": t.get("next_action") or "",
+                "memo": t.get("memo") or "",
+            }
+        )
+    return out
+
+
+def _export_field_excel(log: dict) -> tuple[bytes, str]:
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "외근일지"
+    navy, teal = "0B1F3A", "0D9488"
+    thin = Border(
+        left=Side(style="thin", color="CBD5E1"),
+        right=Side(style="thin", color="CBD5E1"),
+        top=Side(style="thin", color="CBD5E1"),
+        bottom=Side(style="thin", color="CBD5E1"),
+    )
+    header_fill = PatternFill("solid", fgColor=navy)
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=11)
+    title_font = Font(bold=True, color=navy, name="맑은 고딕", size=16)
+    label_font = Font(bold=True, name="맑은 고딕", size=10)
+    cell_font = Font(name="맑은 고딕", size=10)
+    accent_fill = PatternFill("solid", fgColor="F0FDFA")
+
+    ws.merge_cells("A1:G1")
+    ws["A1"] = "외근·출장 일지"
+    ws["A1"].font = title_font
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 32
+
+    meta_items = [
+        ("작성일", str(log.get("date") or "")),
+        ("작성자", str(log.get("author_name") or log.get("driver_name") or "")),
+        ("부서", str(log.get("department") or "")),
+        ("회사명", str(log.get("company_name") or "")),
+    ]
+    row, col = 3, 1
+    for label, val in meta_items:
+        cell_l = ws.cell(row=row, column=col, value=label)
+        cell_v = ws.cell(row=row, column=col + 1, value=val)
+        cell_l.font = label_font
+        cell_v.font = cell_font
+        cell_l.fill = accent_fill
+        for c in (cell_l, cell_v):
+            c.border = thin
+            c.alignment = Alignment(vertical="center")
+        col += 2
+        if col > 4:
+            col = 1
+            row += 1
+
+    row = 6
+    ws.cell(row=row, column=1, value="업무 요약").font = label_font
+    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+    ws.cell(row=row, column=2, value=str(log.get("summary") or "")).font = cell_font
+
+    headers = ["순번", "시각", "방문처", "목적", "결과", "후속 조치", "비고"]
+    header_row = 8
+    for i, h in enumerate(headers, start=1):
+        cell = ws.cell(row=header_row, column=i, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = thin
+
+    visits = _field_visits(log)
+    for r_idx, v in enumerate(visits, start=1):
+        vals = [
+            r_idx,
+            v.get("time") or "",
+            v.get("place") or "",
+            v.get("purpose") or "",
+            v.get("result") or "",
+            v.get("next_action") or "",
+            v.get("memo") or "",
+        ]
+        for c_idx, val in enumerate(vals, start=1):
+            cell = ws.cell(row=header_row + r_idx, column=c_idx, value=val)
+            cell.font = cell_font
+            cell.border = thin
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+
+    sig_row = header_row + len(visits) + 3
+    ws.cell(row=sig_row, column=5, value="작성자: _______________").font = cell_font
+    ws.cell(row=sig_row + 1, column=5, value="확인자: _______________").font = cell_font
+    widths = [6, 10, 18, 16, 22, 18, 14]
+    for i, w in enumerate(widths, start=1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue(), f"{_filename_base(log)}.xlsx"
 
 
 # ────────────────────────────────────────────────────────
@@ -69,6 +190,9 @@ def _filename_base(log: dict) -> str:
 
 def export_excel(log: dict) -> tuple[bytes, str]:
     """openpyxl 기반 .xlsx — 회사 제출용 서식."""
+    if _is_field_log(log):
+        return _export_field_excel(log)
+
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -192,8 +316,102 @@ def export_excel(log: dict) -> tuple[bytes, str]:
 # ────────────────────────────────────────────────────────
 
 
+def _export_field_pdf(log: dict) -> tuple[bytes, str]:
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    font_name = _register_korean_font()
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title="외근·출장 일지",
+        author=str(log.get("author_name") or log.get("driver_name") or ""),
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "FieldTitle",
+        parent=styles["Title"],
+        fontName=font_name,
+        fontSize=18,
+        textColor=colors.HexColor("#0B1F3A"),
+        alignment=TA_CENTER,
+        spaceAfter=12,
+    )
+    body = ParagraphStyle(
+        "FieldBody",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=10,
+        leading=14,
+        textColor=colors.HexColor("#0F172A"),
+    )
+    story: list[Any] = [Paragraph("외근·출장 일지", title_style), Spacer(1, 4 * mm)]
+    author = str(log.get("author_name") or log.get("driver_name") or "")
+    story.append(
+        Paragraph(
+            f"<b>작성일</b> {log.get('date') or ''} &nbsp;&nbsp; "
+            f"<b>작성자</b> {author} &nbsp;&nbsp; "
+            f"<b>부서</b> {log.get('department') or ''} &nbsp;&nbsp; "
+            f"<b>회사</b> {log.get('company_name') or ''}",
+            body,
+        )
+    )
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(f"<b>업무 요약</b>  {log.get('summary') or ''}", body))
+    story.append(Spacer(1, 5 * mm))
+
+    headers = ["순번", "시각", "방문처", "목적", "결과", "후속"]
+    data = [headers]
+    for i, v in enumerate(_field_visits(log), start=1):
+        data.append(
+            [
+                str(i),
+                str(v.get("time") or ""),
+                str(v.get("place") or ""),
+                str(v.get("purpose") or ""),
+                str(v.get("result") or ""),
+                str(v.get("next_action") or ""),
+            ]
+        )
+    if len(data) == 1:
+        data.append(["—", "—", "—", "—", "—", "—"])
+
+    table = Table(data, colWidths=[12 * mm, 18 * mm, 32 * mm, 28 * mm, 40 * mm, 32 * mm])
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F3A")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(table)
+    doc.build(story)
+    return buf.getvalue(), f"{_filename_base(log)}.pdf"
+
+
 def export_pdf(log: dict) -> tuple[bytes, str]:
     """reportlab PDF. 한글은 시스템 폰트 또는 내장 대체."""
+    if _is_field_log(log):
+        return _export_field_pdf(log)
+
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
     from reportlab.lib.pagesizes import A4
@@ -371,12 +589,91 @@ def _register_korean_font() -> str:
 # ────────────────────────────────────────────────────────
 
 
+def _export_field_docx(log: dict) -> tuple[bytes, str]:
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.shared import Cm, Pt, RGBColor
+
+    doc = Document()
+    for section in doc.sections:
+        section.top_margin = Cm(1.8)
+        section.bottom_margin = Cm(1.8)
+        section.left_margin = Cm(1.8)
+        section.right_margin = Cm(1.8)
+
+    def set_run_font(run, size=10, bold=False, color=None, font="맑은 고딕"):
+        run.bold = bold
+        run.font.size = Pt(size)
+        run.font.name = font
+        r = run._element
+        r.rPr.rFonts.set(qn("w:eastAsia"), font)
+        if color:
+            run.font.color.rgb = RGBColor(*color)
+
+    title = doc.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    tr = title.add_run("외근·출장 일지")
+    set_run_font(tr, size=18, bold=True, color=(11, 31, 58))
+
+    author = str(log.get("author_name") or log.get("driver_name") or "")
+    info = doc.add_paragraph()
+    ir = info.add_run(
+        f"작성일: {log.get('date') or ''}    작성자: {author}    "
+        f"부서: {log.get('department') or ''}    회사명: {log.get('company_name') or ''}"
+    )
+    set_run_font(ir, size=10)
+
+    sum_p = doc.add_paragraph()
+    sr = sum_p.add_run(f"업무 요약: {log.get('summary') or ''}")
+    set_run_font(sr, size=10, bold=True)
+
+    headers = ["순번", "시각", "방문처", "목적", "결과", "후속 조치", "비고"]
+    visits = _field_visits(log)
+    table = doc.add_table(rows=1 + max(len(visits), 1), cols=len(headers))
+    table.style = "Table Grid"
+    for i, h in enumerate(headers):
+        cell = table.rows[0].cells[i]
+        cell.text = ""
+        p = cell.paragraphs[0]
+        run = p.add_run(h)
+        set_run_font(run, size=9, bold=True, color=(11, 31, 58))
+
+    rows = visits or [{"time": "", "place": "", "purpose": "", "result": "", "next_action": "", "memo": ""}]
+    for r_idx, v in enumerate(rows):
+        vals = [
+            str(r_idx + 1),
+            str(v.get("time") or ""),
+            str(v.get("place") or ""),
+            str(v.get("purpose") or ""),
+            str(v.get("result") or ""),
+            str(v.get("next_action") or ""),
+            str(v.get("memo") or ""),
+        ]
+        for c_idx, val in enumerate(vals):
+            cell = table.rows[r_idx + 1].cells[c_idx]
+            cell.text = ""
+            p = cell.paragraphs[0]
+            run = p.add_run(val)
+            set_run_font(run, size=9)
+
+    sig = doc.add_paragraph()
+    set_run_font(sig.add_run("\n작성자: _______________    확인자: _______________"), size=10)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue(), f"{_filename_base(log)}.docx"
+
+
 def export_docx(log: dict) -> tuple[bytes, str]:
     """
     python-docx 기반 .docx
     한글과 컴퓨터(한컴) 오피스에서 정상 개방되는 표준 OOXML.
     워터마크/머리글 광고 없음.
     """
+    if _is_field_log(log):
+        return _export_field_docx(log)
+
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml.ns import qn

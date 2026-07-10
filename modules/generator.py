@@ -540,12 +540,23 @@ def generate_driving_log(
     settings: dict | None = None,
     form: dict | None = None,
     user_email: str | None = None,
+    report_type: str = "driving",
 ) -> dict[str, Any]:
     """
     메인 엔트리.
+    report_type: driving(운행일지) | field(외근·출장 일지)
     form: odometer_start, odometer_end, lunch_restaurant, morning_places, afternoon_places
+          또는 field: visits_text, work_summary, next_actions, department
     user_email: 있으면 해당 사용자 서식·말투 프로필을 적용
     """
+    if str(report_type or "driving").lower().strip() in ("field", "field_visit", "outing", "외근"):
+        return generate_field_visit_log(
+            raw_text=raw_text,
+            settings=settings,
+            form=form,
+            user_email=user_email,
+        )
+
     settings = settings or {}
     f = normalize_form(form)
 
@@ -705,3 +716,429 @@ def _apply_style_to_fallback(log: dict, user_email: str | None) -> dict:
     except Exception:
         pass
     return log
+
+
+# ── 외근·출장 일지 ───────────────────────────────────────
+
+FIELD_SYSTEM_PROMPT = """당신은 대한민국 기업의 공식 업무용 '외근·출장 일지(방문 보고서)'를 작성하는 전문 비서입니다.
+사용자가 남긴 방문 메모를 회사 제출용 격식 문서로 정리합니다.
+
+규칙:
+1. 반드시 JSON만 출력합니다. 설명·마크다운·코드펜스 금지.
+2. 문체: 업무용 격식체. [이 사용자 전용 서식·말투 프로필]이 있으면 최우선.
+3. 시간은 24시간제 HH:MM. 없으면 합리적으로 배분(오전 09:30~, 오후 14:00~ 등).
+4. 과장·허위 성과 금지. 입력에 없는 계약 체결·매출 수치를 지어내지 마세요.
+5. 방문이 여러 곳이면 visits 배열에 시간순으로 넣습니다.
+6. purpose(목적)·result(결과)·next_action(후속)을 짧게 명확히 씁니다.
+
+JSON 스키마:
+{
+  "report_type": "field",
+  "date": "YYYY-MM-DD",
+  "author_name": "작성자",
+  "department": "부서",
+  "company_name": "회사명",
+  "driver_name": "작성자(호환)",
+  "vehicle": "",
+  "visits": [
+    {
+      "time": "HH:MM",
+      "place": "방문처",
+      "purpose": "방문 목적",
+      "result": "진행 결과·논의 요지",
+      "next_action": "후속 조치",
+      "memo": "비고"
+    }
+  ],
+  "summary": "금일 외근 요약 (한두 문장)",
+  "trips": []
+}
+trips는 비워 두거나, 호환용으로 방문 구간을 넣어도 됩니다. 서버가 보정합니다.
+"""
+
+
+def normalize_field_form(form: dict | None) -> dict[str, Any]:
+    """외근 일지 입력 정규화."""
+    form = form or {}
+    visits_raw = form.get("visits_text") or form.get("visits") or form.get("places") or ""
+    if isinstance(visits_raw, list):
+        # [{place, purpose, ...}] 또는 문자열 리스트
+        lines = []
+        for v in visits_raw:
+            if isinstance(v, dict):
+                place = str(v.get("place") or v.get("to") or "").strip()
+                purpose = str(v.get("purpose") or "").strip()
+                result = str(v.get("result") or "").strip()
+                if place:
+                    bit = place
+                    if purpose:
+                        bit += f" — {purpose}"
+                    if result:
+                        bit += f" / {result}"
+                    lines.append(bit)
+            else:
+                s = str(v).strip()
+                if s:
+                    lines.append(s)
+        visits_text = "\n".join(lines)
+    else:
+        visits_text = str(visits_raw or "").strip()
+
+    return {
+        "visits_text": visits_text,
+        "work_summary": str(form.get("work_summary") or form.get("summary_note") or "").strip(),
+        "next_actions": str(form.get("next_actions") or form.get("follow_up") or "").strip(),
+        "department": str(form.get("department") or "").strip(),
+        "extra_note": str(form.get("extra_note") or form.get("note") or form.get("raw_text") or "").strip(),
+        "author_name": str(form.get("author_name") or form.get("driver_name") or "").strip(),
+    }
+
+
+def field_form_to_raw_text(form: dict) -> str:
+    f = normalize_field_form(form)
+    lines = [
+        "[구조화 외근·출장 입력]",
+        f"- 방문·업무 메모:\n{f['visits_text'] or '(없음)'}",
+    ]
+    if f["work_summary"]:
+        lines.append(f"- 오늘 업무 한줄 요약: {f['work_summary']}")
+    if f["next_actions"]:
+        lines.append(f"- 후속 조치: {f['next_actions']}")
+    if f["department"]:
+        lines.append(f"- 부서: {f['department']}")
+    if f["extra_note"]:
+        lines.append(f"- 추가 메모: {f['extra_note']}")
+    lines.append("")
+    lines.append(
+        "위 정보를 바탕으로 회사 제출용 외근·출장 일지 JSON을 작성하세요. "
+        "방문처·목적·결과·후속을 빠짐없이 visits에 정리하세요."
+    )
+    return "\n".join(lines)
+
+
+def _visits_to_trips(visits: list[dict], origin: str = "본사") -> list[dict]:
+    """내보내기·기존 UI 호환용 trips 변환 (거리는 0)."""
+    trips: list[dict] = []
+    prev = origin
+    for i, v in enumerate(visits):
+        place = str(v.get("place") or "방문처").strip() or "방문처"
+        t0 = str(v.get("time") or "").strip() or _add_minutes("09:30", i * 90)
+        t1 = _add_minutes(t0, 50)
+        memo_parts = []
+        if v.get("result"):
+            memo_parts.append(f"결과: {v['result']}")
+        if v.get("next_action"):
+            memo_parts.append(f"후속: {v['next_action']}")
+        if v.get("memo"):
+            memo_parts.append(str(v["memo"]))
+        trips.append(
+            {
+                "depart_time": t0,
+                "arrive_time": t1,
+                "from": prev,
+                "to": place,
+                "purpose": str(v.get("purpose") or "업무 방문").strip(),
+                "distance_km": 0,
+                "memo": " / ".join(memo_parts),
+                "result": v.get("result") or "",
+                "next_action": v.get("next_action") or "",
+            }
+        )
+        prev = place
+    return trips
+
+
+def _normalize_field_log(raw: dict, settings: dict, f: dict) -> dict[str, Any]:
+    """AI/폴백 출력을 통일 스키마로 정리."""
+    log = dict(raw or {})
+    log["report_type"] = "field"
+    if not log.get("date"):
+        log["date"] = date.today().isoformat()
+
+    author = (
+        f.get("author_name")
+        or log.get("author_name")
+        or log.get("driver_name")
+        or settings.get("driver_name")
+        or ""
+    )
+    log["author_name"] = author
+    log["driver_name"] = author
+    log["department"] = f.get("department") or log.get("department") or ""
+    log["company_name"] = log.get("company_name") or settings.get("company_name") or ""
+    log["vehicle"] = log.get("vehicle") or ""
+    log["odometer_start"] = None
+    log["odometer_end"] = None
+    log["lunch_place"] = log.get("lunch_place") or ""
+    log["total_distance_km"] = log.get("total_distance_km") if log.get("total_distance_km") not in (None, "") else 0
+
+    visits = log.get("visits")
+    if not isinstance(visits, list):
+        visits = []
+    cleaned: list[dict] = []
+    for v in visits:
+        if not isinstance(v, dict):
+            continue
+        place = str(v.get("place") or v.get("to") or "").strip()
+        if not place:
+            continue
+        cleaned.append(
+            {
+                "time": str(v.get("time") or v.get("depart_time") or "").strip(),
+                "place": place,
+                "purpose": str(v.get("purpose") or "업무 방문").strip(),
+                "result": str(v.get("result") or "").strip(),
+                "next_action": str(v.get("next_action") or "").strip(),
+                "memo": str(v.get("memo") or "").strip(),
+            }
+        )
+
+    # visits 없고 trips만 있으면 역변환
+    if not cleaned and log.get("trips"):
+        for t in log.get("trips") or []:
+            if not isinstance(t, dict):
+                continue
+            place = str(t.get("to") or t.get("place") or "").strip()
+            if not place:
+                continue
+            cleaned.append(
+                {
+                    "time": str(t.get("depart_time") or t.get("time") or "").strip(),
+                    "place": place,
+                    "purpose": str(t.get("purpose") or "업무 방문").strip(),
+                    "result": str(t.get("result") or "").strip(),
+                    "next_action": str(t.get("next_action") or "").strip(),
+                    "memo": str(t.get("memo") or "").strip(),
+                }
+            )
+
+    origin = "본사"
+    places = settings.get("frequent_places") or []
+    if places and places[0].get("name"):
+        origin = places[0]["name"]
+
+    log["visits"] = cleaned
+    log["trips"] = _visits_to_trips(cleaned, origin=origin) if cleaned else []
+    if not log.get("summary") and cleaned:
+        places_s = "·".join(v["place"] for v in cleaned[:4])
+        log["summary"] = f"{places_s} 등 외근 업무 수행"
+    return log
+
+
+def generate_field_fallback(settings: dict, form: dict | None = None) -> dict[str, Any]:
+    """API 키 없을 때 규칙 기반 외근 일지."""
+    f = normalize_field_form(form)
+    settings = settings or {}
+    lines = [ln.strip() for ln in re.split(r"[\n;；]", f["visits_text"]) if ln.strip()]
+    if not lines and f["work_summary"]:
+        lines = [f["work_summary"]]
+    if not lines:
+        lines = ["거래처 방문"]
+
+    visits: list[dict] = []
+    t0 = "09:30"
+    for i, line in enumerate(lines):
+        # "장소 — 목적 / 결과" 또는 "장소, 목적"
+        place, purpose, result = line, "업무 방문", ""
+        if "—" in line or " - " in line:
+            parts = re.split(r"\s*[—\-]\s*", line, maxsplit=1)
+            place = parts[0].strip()
+            rest = parts[1].strip() if len(parts) > 1 else ""
+            if "/" in rest:
+                purpose, result = [x.strip() for x in rest.split("/", 1)]
+            else:
+                purpose = rest or purpose
+        elif "," in line or "，" in line:
+            parts = re.split(r"[,，]", line, maxsplit=1)
+            place = parts[0].strip()
+            purpose = parts[1].strip() if len(parts) > 1 else purpose
+        next_act = ""
+        if i == len(lines) - 1 and f["next_actions"]:
+            next_act = f["next_actions"]
+        visits.append(
+            {
+                "time": _add_minutes(t0, i * 100),
+                "place": place[:80],
+                "purpose": purpose[:80] or "업무 방문",
+                "result": result[:200] or (f["work_summary"] if i == 0 and f["work_summary"] else "협의 진행"),
+                "next_action": next_act[:120],
+                "memo": "규칙 기반 초안" if i == 0 else "",
+            }
+        )
+
+    summary = f["work_summary"] or (
+        "·".join(v["place"] for v in visits[:3]) + " 외근 업무 수행"
+    )
+    raw = {
+        "report_type": "field",
+        "date": date.today().isoformat(),
+        "author_name": f.get("author_name") or settings.get("driver_name") or "",
+        "department": f.get("department") or "",
+        "company_name": settings.get("company_name") or "",
+        "visits": visits,
+        "summary": summary,
+        "_engine": "fallback",
+    }
+    return _normalize_field_log(raw, settings, f)
+
+
+def _build_field_user_prompt(
+    raw_text: str,
+    settings: dict,
+    form: dict | None = None,
+    style_block: str = "",
+) -> str:
+    places = settings.get("frequent_places") or []
+    places_str = ", ".join(
+        f"{p.get('name')}" + (f"({p.get('address')})" if p.get("address") else "")
+        for p in places
+        if p.get("name")
+    ) or "(없음)"
+    form_block = field_form_to_raw_text(form or {}) if form else ""
+    return f"""{style_block}
+
+[사용자 설정]
+- 오늘 날짜: {date.today().isoformat()}
+- 작성자: {settings.get('driver_name') or '(미설정)'}
+- 회사: {settings.get('company_name') or '(미설정)'}
+- 기본 목적: {settings.get('default_purpose', '업무 출장')}
+- 자주 가는 곳: {places_str}
+
+{form_block}
+
+[추가 자유 입력]
+{raw_text or '(없음)'}
+
+위 내용을 공식 외근·출장 일지 JSON으로 변환하세요.
+"""
+
+
+def generate_field_with_openai(
+    raw_text: str,
+    settings: dict,
+    form: dict | None = None,
+    style_block: str = "",
+) -> dict[str, Any]:
+    from openai import OpenAI
+
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    temp = 0.25 if style_block.strip() else 0.3
+    resp = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        temperature=temp,
+        messages=[
+            {"role": "system", "content": FIELD_SYSTEM_PROMPT},
+            {
+                "role": "user",
+                "content": _build_field_user_prompt(raw_text, settings, form, style_block),
+            },
+        ],
+        response_format={"type": "json_object"},
+    )
+    content = resp.choices[0].message.content or "{}"
+    return _extract_json(content)
+
+
+def generate_field_visit_log(
+    raw_text: str = "",
+    settings: dict | None = None,
+    form: dict | None = None,
+    user_email: str | None = None,
+) -> dict[str, Any]:
+    """외근·출장 일지 생성 엔트리."""
+    settings = settings or {}
+    f = normalize_field_form(form)
+    if raw_text and not f["extra_note"]:
+        f["extra_note"] = raw_text.strip()
+
+    has_input = bool(
+        f["visits_text"] or f["work_summary"] or f["next_actions"] or f["extra_note"] or (raw_text or "").strip()
+    )
+    if not has_input:
+        return {
+            "success": False,
+            "log": None,
+            "errors": ["방문처·업무 내용 중 하나 이상 입력해 주세요."],
+            "warnings": [],
+            "engine": None,
+            "message": "입력 없음",
+        }
+
+    style_block = ""
+    style_applied = False
+    if user_email:
+        try:
+            from modules.style_learn import build_style_prompt_block, load_profile
+
+            style_block = build_style_prompt_block(user_email)
+            prof = load_profile(user_email)
+            style_applied = bool(prof.get("learned") and prof.get("samples"))
+        except Exception:
+            style_block = ""
+            style_applied = False
+
+    prompt_text = field_form_to_raw_text(f)
+    if raw_text:
+        prompt_text += "\n" + raw_text
+
+    engine = "openai"
+    engine_info: dict[str, str] | None = None
+    openai_exc: BaseException | None = None
+    has_key = bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"))
+
+    try:
+        if has_key:
+            raw_log = generate_field_with_openai(prompt_text, settings, f, style_block)
+        else:
+            engine = "fallback"
+            engine_info = classify_openai_failure(no_key=True)
+            raw_log = generate_field_fallback(settings, f)
+    except Exception as e:
+        engine = "fallback"
+        openai_exc = e
+        engine_info = classify_openai_failure(e)
+        raw_log = generate_field_fallback(settings, f)
+
+    if isinstance(raw_log, dict):
+        raw_log.pop("_openai_error", None)
+
+    log = _normalize_field_log(raw_log, settings, f)
+
+    # 외근은 거리 검증 없이 방문 유무만 확인
+    from modules.validator import validate_field_log
+
+    validated = validate_field_log(log, settings)
+
+    warnings = list(validated["warnings"] or [])
+    if engine == "fallback" and engine_info:
+        warnings.insert(0, engine_info["user_message"])
+    if style_applied:
+        warnings.insert(0 if engine != "fallback" else 1, "내 서식·말투 학습이 적용되었습니다.")
+
+    if engine == "openai":
+        message = (
+            "AI로 외근일지를 생성했습니다. 방문·결과를 한 번 확인해 주세요."
+            if validated["ok"]
+            else "검증 오류가 있습니다. 내용을 확인해 주세요."
+        )
+        engine_reason = "ok"
+        engine_title = "AI 생성"
+    else:
+        info = engine_info or classify_openai_failure(openai_exc)
+        engine_reason = info["code"]
+        engine_title = info["title"]
+        message = info["user_message"] if validated["ok"] else f"{info['user_message']} 내용을 확인해 주세요."
+
+    return {
+        "success": validated["ok"],
+        "log": validated["enriched_log"],
+        "errors": validated["errors"],
+        "warnings": warnings,
+        "engine": engine,
+        "engine_reason": engine_reason,
+        "engine_title": engine_title,
+        "engine_detail": (engine_info or {}).get("detail", "") if engine == "fallback" else "",
+        "style_applied": style_applied,
+        "message": message,
+        "report_type": "field",
+    }

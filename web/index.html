@@ -212,21 +212,32 @@
           </header>
 
           <div class="app-home-primary">
-            <button type="button" class="btn btn-primary btn-lg" data-nav="create">AI로 일지 작성</button>
+            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-report-mode="driving">운행일지</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-report-mode="field">외근·출장</button>
             <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">퀵 스탬프</button>
             <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
           </div>
 
           <div class="app-home-grid">
-            <button type="button" class="app-tile" data-nav="create">
+            <button type="button" class="app-tile" data-nav="create" data-report-mode="driving">
               <span class="app-tile-watermark" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.5"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </span>
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.75"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
               </span>
-              <strong>일지 작성</strong>
+              <strong>운행일지</strong>
               <span class="app-tile-desc">차량·거리·방문지 입력 후 AI 작성</span>
+            </button>
+            <button type="button" class="app-tile" data-nav="create" data-report-mode="field">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.75"/></svg>
+              </span>
+              <strong>외근·출장</strong>
+              <span class="app-tile-desc">방문·결과·후속을 제출용 보고서로</span>
             </button>
             <button type="button" class="app-tile" data-nav="style">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -293,14 +304,26 @@
     <!-- CREATE -->
     <section class="view" id="view-create">
       <div class="container" id="app-panel">
-        <div class="section-head" style="text-align:left;margin-bottom:1.25rem">
+        <div class="section-head" style="text-align:left;margin-bottom:1rem">
           <div class="eyebrow" data-i18n="create.eyebrow">Create</div>
-          <h2 data-i18n="create.title">운행일지 작성</h2>
-          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="create.sub">퀵 스탬프로 위치·시간을 찍고, 주행거리만 보완하면 AI가 일지를 완성합니다.</p>
+          <h2 id="createTitle" data-i18n="create.title">운행일지 작성</h2>
+          <p id="createSub" style="margin:0.4rem 0 0;max-width:none" data-i18n="create.sub">퀵 스탬프로 위치·시간을 찍고, 주행거리만 보완하면 AI가 일지를 완성합니다.</p>
         </div>
 
-        <!-- 퀵 스탬프 -->
-        <div class="panel quick-stamp-panel" id="quickStampPanel">
+        <!-- 작성 유형: 운행 / 외근 -->
+        <div class="report-mode-tabs" id="reportModeTabs" role="tablist" aria-label="일지 유형">
+          <button type="button" class="report-mode-tab is-active" role="tab" aria-selected="true" data-report-mode="driving" id="tabModeDriving">
+            <span class="report-mode-label" data-i18n="create.mode_driving">운행일지</span>
+            <span class="report-mode-hint" data-i18n="create.mode_driving_hint">차량 · 거리 · 방문지</span>
+          </button>
+          <button type="button" class="report-mode-tab" role="tab" aria-selected="false" data-report-mode="field" id="tabModeField">
+            <span class="report-mode-label" data-i18n="create.mode_field">외근·출장</span>
+            <span class="report-mode-hint" data-i18n="create.mode_field_hint">방문 · 결과 · 후속</span>
+          </button>
+        </div>
+
+        <!-- 퀵 스탬프 (운행 모드) -->
+        <div class="panel quick-stamp-panel" id="quickStampPanel" data-mode-panel="driving">
           <div class="panel-head">
             <h2 data-i18n="create.stamp_title">퀵 스탬프</h2>
             <span class="pill">GPS · 시간</span>
@@ -328,7 +351,7 @@
 
         <div class="panel" id="reportFormPanel">
           <div class="panel-head">
-            <h2 data-i18n="create.form_title">오늘 운행 정보</h2>
+            <h2 id="reportFormTitle" data-i18n="create.form_title">오늘 운행 정보</h2>
             <div class="usage-bar-wrap" id="usageWrap">
               <div class="usage-meta">
                 <span id="usageLabel">로그인 후 사용량 표시</span>
@@ -338,6 +361,8 @@
             </div>
           </div>
 
+          <!-- 운행 입력 -->
+          <div id="drivingFormFields" data-mode-panel="driving">
           <div class="settings-grid" style="margin-bottom:1rem">
             <div class="full">
               <label class="field-label" for="vehicleNumber" data-i18n="create.vehicle">차량번호</label>
@@ -368,8 +393,37 @@
               <textarea id="rawText" style="min-height:72px" placeholder="특별히 남길 내용이 있으면 적어 주세요. (시간·목적 등은 AI가 채웁니다)"></textarea>
             </div>
           </div>
-
           <p id="distHint" style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">금일 주행거리: — km</p>
+          </div>
+
+          <!-- 외근·출장 입력 -->
+          <div id="fieldFormFields" class="hidden" data-mode-panel="field">
+          <div class="settings-grid" style="margin-bottom:1rem">
+            <div>
+              <label class="field-label" for="fieldDepartment" data-i18n="field.department">부서 (선택)</label>
+              <input type="text" id="fieldDepartment" placeholder="예: 영업1팀" autocomplete="organization" />
+            </div>
+            <div>
+              <label class="field-label" for="fieldSummary" data-i18n="field.summary">오늘 업무 한 줄 (선택)</label>
+              <input type="text" id="fieldSummary" placeholder="예: 강남·판교 고객 방문 및 견적 협의" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="fieldVisits" data-i18n="field.visits">오늘 방문·업무 내용</label>
+              <textarea id="fieldVisits" style="min-height:120px" placeholder="한 줄에 한 곳, 또는 자유 서술&#10;예:&#10;강남 A사 — 계약 조건 협의 / 견적 재요청&#10;판교 B사 — 데모 시연 / 다음 주 본사 방문 조율"></textarea>
+            </div>
+            <div class="full">
+              <label class="field-label" for="fieldNext" data-i18n="field.next">후속 조치 (선택)</label>
+              <input type="text" id="fieldNext" placeholder="예: 목요일까지 견적서 송부, 금요일 팔로업 콜" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="fieldMemo" data-i18n="field.memo">추가 메모 (선택)</label>
+              <textarea id="fieldMemo" style="min-height:72px" placeholder="특별히 남길 내용이 있으면 적어 주세요."></textarea>
+            </div>
+          </div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem" data-i18n="field.hint">
+            방문처·목적만 적어도 AI가 제출용 외근일지 문장으로 정리합니다.
+          </p>
+          </div>
 
           <div class="form-actions form-actions-desktop">
             <button class="btn btn-primary btn-lg" id="btnGenerate" type="button" data-i18n="create.generate">✨ AI로 일지 작성</button>
