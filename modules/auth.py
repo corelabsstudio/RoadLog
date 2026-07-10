@@ -210,18 +210,10 @@ def show_login_page() -> None:
     admin_user, _, admin_email = get_admin_credentials()
     sec = admin_secrets_status()
 
-    if sec["is_default"]:
-        st.warning(
-            "⚠️ 관리자 Secrets가 아직 적용되지 않았습니다. "
-            "Manage app → Settings → Secrets 에 ADMIN_USERNAME / ADMIN_PASSWORD 를 넣고 "
-            "**Save 후 Reboot** 하세요. (지금은 기본값 admin / admin123 만 통합니다)"
-        )
-    else:
-        st.info(
-            f"관리자 로그인: ID **`{admin_user}`** "
-            f"(설정 출처: `{sec['source']}`, 비번 길이 {sec['password_len']}자) · "
-            f"또는 이메일 `{admin_email}`"
-        )
+    st.info(
+        f"관리자 로그인 → ID: **`{admin_user}`**  ·  "
+        f"설정 출처: `{sec['source']}`  ·  비번 길이 {sec['password_len']}자"
+    )
 
     st.caption(
         "일반 회원은 이 사이트에서 가입한 계정만 사용됩니다. "

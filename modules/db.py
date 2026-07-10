@@ -240,11 +240,27 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
         return False, None, "이메일(또는 관리자 ID)과 비밀번호를 입력해 주세요."
 
     # 관리자 자격으로 먼저 시도 (회원가입 불필요)
+    admin_user, admin_password, admin_email = get_admin_credentials()
+    lid = email  # already lowercased
+    is_admin_id = lid in {
+        (admin_user or "").strip().lower(),
+        (admin_email or "").strip().lower(),
+    }
+
     ok_a, user_a, msg_a = authenticate_admin_credentials(email, password)
     if ok_a and user_a:
         from modules.admin_ops import enrich_user_flags
 
         return True, enrich_user_flags(user_a), msg_a
+
+    # 관리자 ID인데 비밀번호만 틀린 경우 — 일반 회원 메시지로 넘어가지 않음
+    if is_admin_id:
+        return (
+            False,
+            None,
+            f"관리자 비밀번호가 올바르지 않습니다. (ID: {admin_user}) "
+            "Secrets의 ADMIN_PASSWORD 와 같은지 확인하세요.",
+        )
 
     if _sb.enabled:
         try:

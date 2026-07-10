@@ -132,14 +132,25 @@ def _get_secret(key: str, default: str = "") -> str:
     return default
 
 
+# 로컬·Streamlit 공통 기본 관리자 (Secrets/.env 가 있으면 그쪽이 우선)
+# Secrets 미설정 시에도 동일 계정으로 로그인 가능하도록 맞춤.
+_DEFAULT_ADMIN_USER = "hhs126"
+_DEFAULT_ADMIN_PASS = "hh921544hh@1013"
+_DEFAULT_ADMIN_EMAIL = "hhs126@roadlog.local"
+
+
 def get_admin_credentials() -> tuple[str, str, str]:
     """
     관리자 (username, password, email) — 항상 최신 secrets/env 를 읽음.
-    Streamlit Cloud 에서 import 시점 기본값에 고정되는 문제를 막습니다.
+    우선순위: 환경변수 → Streamlit Secrets → 기본 관리자 계정.
     """
-    username = _get_secret("ADMIN_USERNAME", "admin") or "admin"
-    password = _get_secret("ADMIN_PASSWORD", "admin123") or "admin123"
-    email = _get_secret("ADMIN_EMAIL", "") or f"{username}@roadlog.local"
+    username = (
+        _get_secret("ADMIN_USERNAME", "") or _DEFAULT_ADMIN_USER
+    ).strip() or _DEFAULT_ADMIN_USER
+    password = _get_secret("ADMIN_PASSWORD", "") or _DEFAULT_ADMIN_PASS
+    email = (
+        _get_secret("ADMIN_EMAIL", "") or _DEFAULT_ADMIN_EMAIL or f"{username}@roadlog.local"
+    )
     return username.strip(), password, email.strip().lower()
 
 
@@ -152,13 +163,16 @@ def admin_secrets_status() -> dict:
         k.upper() in {str(x).upper() for x in smap.keys()}
         for k in ("ADMIN_USERNAME", "ADMIN_PASSWORD")
     )
+    using_builtin = u == _DEFAULT_ADMIN_USER and p == _DEFAULT_ADMIN_PASS and not from_env and not from_secrets
     return {
         "username": u,
         "email": e,
         "password_set": bool(p),
         "password_len": len(p),
-        "source": "env" if from_env else ("streamlit_secrets" if from_secrets else "default"),
-        "is_default": u == "admin" and p == "admin123",
+        "source": "env"
+        if from_env
+        else ("streamlit_secrets" if from_secrets else "builtin_default"),
+        "is_default": using_builtin,
     }
 
 
@@ -224,10 +238,10 @@ APP_ENV = (_get_secret("APP_ENV", "development") or "development").strip().lower
 ALLOWED_ORIGINS = _get_secret("ALLOWED_ORIGINS", "*")
 
 # ── 인증 / 관리자 ──────────────────────────────────────
-# 기본값은 로컬 전용 플레이스홀더입니다. 운영에서는 반드시 .env 로 덮어쓰세요.
-ADMIN_USERNAME = _get_secret("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = _get_secret("ADMIN_PASSWORD", "admin123")
-ADMIN_EMAIL = _get_secret("ADMIN_EMAIL", "admin@roadlog.local")
+# 모듈 import 시점 값 (로그인 시에는 get_admin_credentials() 사용 권장)
+ADMIN_USERNAME = _get_secret("ADMIN_USERNAME", _DEFAULT_ADMIN_USER) or _DEFAULT_ADMIN_USER
+ADMIN_PASSWORD = _get_secret("ADMIN_PASSWORD", _DEFAULT_ADMIN_PASS) or _DEFAULT_ADMIN_PASS
+ADMIN_EMAIL = _get_secret("ADMIN_EMAIL", _DEFAULT_ADMIN_EMAIL) or _DEFAULT_ADMIN_EMAIL
 APP_SECRET = _get_secret("APP_SECRET", "roadlog-dev-secret-change-me")
 
 # 알려진 약한/플레이스홀더 값 (프로덕션 차단·경고용)
