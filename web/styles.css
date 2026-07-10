@@ -4287,3 +4287,78 @@ input[type="date"]:focus {
     transform: rotate(360deg);
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   가독성 보정 — 작은 글씨 하한 (노안·모바일)
+   ═══════════════════════════════════════════════════ */
+.nav-links a,
+.footer,
+.footer a,
+.footer p,
+.footer span,
+.toast,
+.metric .label,
+.trip-meta,
+.price-desc,
+.price-from,
+.price-seat,
+.trial-hint,
+.pricing-note,
+.admin-quick-hint,
+.admin-view-as-desc,
+.panel > p,
+.step p,
+.feature p,
+.usage-meta,
+.usage-meta span,
+.pill,
+.badge,
+.uil-badge,
+#distHint,
+.stamp-meta,
+.stamp-note,
+.style-sample span,
+.style-sample .meta,
+.landing-trust,
+.app-tile-desc,
+.app-home-kicker {
+  font-size: max(0.88rem, 15px) !important;
+  line-height: 1.5 !important;
+}
+
+.metric .value {
+  font-size: max(1.15rem, 18px) !important;
+}
+
+.nav-links a {
+  font-size: max(0.95rem, 15px) !important;
+}
+
+.btn {
+  min-height: 2.75rem;
+}
+
+textarea,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="time"],
+input[type="date"],
+input[type="number"],
+select {
+  /* 16px 이상: iOS 자동 줌 방지 + 가독성 */
+  font-size: max(1.05rem, 16px) !important;
+}
+
+label.field-label {
+  font-size: max(0.95rem, 15px) !important;
+}
+
+.admin-table th,
+.admin-table td {
+  font-size: max(0.9rem, 14.5px) !important;
+}
+
+.admin-bar-row {
+  font-size: max(0.88rem, 14px) !important;
+}
