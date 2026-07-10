@@ -207,14 +207,25 @@ class StyleTextBody(BaseModel):
 # ── API ───────────────────────────────────────────────
 
 
+@app.get("/healthz")
+@app.get("/health")
+def healthz():
+    """Railway / 로드밸런서용 초경량 헬스체크 (의존성 없음)."""
+    return Response(content="ok", media_type="text/plain")
+
+
 @app.get("/api/health")
 def health():
+    try:
+        storage = db.supabase_status()
+    except Exception:
+        storage = "unknown"
     return {
         "ok": True,
         "app": APP_TITLE,
         "env": APP_ENV,
         "production": is_production(),
-        "storage": db.supabase_status(),
+        "storage": storage,
         "openai": bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx")),
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
     }
@@ -801,7 +812,9 @@ def index():
 
 @app.get("/{path:path}")
 def spa_fallback(path: str):
-    # API는 위에서 처리. 나머지 정적 파일 or index
+    # API·헬스 경로가 정적 폴백에 먹히지 않게
+    if path.startswith("api/") or path in {"health", "healthz"}:
+        raise HTTPException(404, "Not Found")
     candidate = WEB / path
     if candidate.is_file():
         return FileResponse(candidate)

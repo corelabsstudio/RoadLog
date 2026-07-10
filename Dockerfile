@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libjpeg62-turbo-dev \
     zlib1g-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.prod.txt .
@@ -21,12 +22,17 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 COPY modules ./modules
 COPY web ./web
 COPY server.py ./
+COPY start.sh ./
 COPY supabase_schema.sql ./
 
-# Ensure data dir exists (writable)
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data \
+    && chmod +x /app/start.sh \
+    && python -c "import server; print('import_ok', server.app.title)"
 
 EXPOSE 8000
 
-# Railway injects $PORT (often 8080)
-CMD ["sh", "-c", "echo Starting RoadLog on PORT=${PORT:-8000} && exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]
+# Healthcheck inside container (optional; Railway UI healthcheck can be disabled)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD curl -fsS "http://127.0.0.1:${PORT:-8000}/healthz" || exit 1
+
+CMD ["/app/start.sh"]

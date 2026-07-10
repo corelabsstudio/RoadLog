@@ -1,11 +1,10 @@
-# Railway — Dockerfile 빌드
-# https://docs.railway.app
+# Railway — Dockerfile only. Do NOT set healthcheck here.
+# If dashboard still shows Healthcheck failure:
+#   Service → Settings → Deploy → Healthcheck Path → clear/empty → Save → Redeploy
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-# 헬스체크 제거: "Deployment failed during the network process" 회피
-# (앱이 뜬 뒤 /api/health 로 직접 확인)
 restartPolicyType = "ON_FAILURE"

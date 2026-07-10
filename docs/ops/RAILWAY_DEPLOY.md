@@ -106,10 +106,22 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 ## 6. 자주 나는 문제
 
+### Healthcheck failure / “failed during the network process”
+
+1. Railway 대시보드 → 서비스 → **Settings**  
+2. **Deploy** / **Healthcheck** 섹션  
+3. **Healthcheck Path** 를 **비우기** (또는 삭제)  
+4. Save → **Redeploy**  
+
+레포의 `railway.toml` 에는 헬스체크를 넣지 않았습니다.  
+대시보드에 예전에 `/api/health` 가 남아 있으면 계속 실패합니다.
+
+수동 확인: `https://당신주소/healthz` → `ok`
+
 | 증상 | 해결 |
 |------|------|
-| 빌드 후 바로 죽음 | Variables에 `APP_SECRET` 약한 값 / `APP_ENV=production` 가드 → 로그 확인 |
-| 502 | Start command·PORT 확인, 로그에 uvicorn 기동 여부 |
+| 빌드 후 바로 죽음 | Deploy Logs 에서 `Starting RoadLog` / traceback 확인 |
+| 502 | PORT 바인딩·Variables 확인 |
 | 화면 빈 페이지 | `web/` 가 GitHub에 있는지, `/` 응답 확인 |
 | CORS | `ALLOWED_ORIGINS` 에 실제 프론트 도메인 |
 
