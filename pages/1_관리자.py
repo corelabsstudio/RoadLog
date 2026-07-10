@@ -11,11 +11,15 @@ from modules.auth import init_session
 from modules.styles import inject_global_css
 from modules.admin import render_admin_dashboard
 
-st.set_page_config(
-    page_title="관리자 · 로드로그",
-    page_icon="🛣️",
-    layout="wide",
-)
+try:
+    st.set_page_config(
+        page_title="관리자 · 로드로그",
+        page_icon="🛣️",
+        layout="wide",
+    )
+except Exception:
+    # 이미 설정된 경우( multipage 전환) 무시
+    pass
 
 init_session()
 inject_global_css()
