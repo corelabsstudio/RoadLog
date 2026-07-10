@@ -8,7 +8,14 @@ from __future__ import annotations
 import html
 import streamlit as st
 
-from modules.config import APP_SHORT, APP_TAGLINE, APP_TITLE, COLORS, FREE_MONTHLY_LIMIT
+from modules.config import (
+    APP_SHORT,
+    APP_TAGLINE,
+    APP_TITLE,
+    COLORS,
+    FREE_MONTHLY_LIMIT,
+    PRO_PRICE_KRW,
+)
 
 
 # ── 로고 SVG (웹 /icons/logo.svg 와 동일 디자인) ──────
@@ -1372,8 +1379,8 @@ def render_pro_cta(payment_url: str) -> None:
         f"""
 <div class="uil-cta">
   <h3>Pro로 업그레이드</h3>
-  <p>월 10회 제한 해제 · 광고 제거 · 무제한 생성</p>
-  <a href="{url}" target="_blank" rel="noopener">월 9,900원으로 시작</a>
+  <p>월 한도 해제 · 광고 제거 · 무제한 생성</p>
+  <a href="{url}" target="_blank" rel="noopener">월 {PRO_PRICE_KRW:,}원으로 시작</a>
 </div>
         """,
         unsafe_allow_html=True,
@@ -1397,7 +1404,7 @@ def render_pricing_cards(payment_url: str, free_limit: int = FREE_MONTHLY_LIMIT)
   </div>
   <div class="rl-price is-pro">
     <span class="uil-badge uil-badge-pro">Pro</span>
-    <h3>₩9,900 <small>/ 월</small></h3>
+    <h3>₩{PRO_PRICE_KRW:,} <small>/ 월</small></h3>
     <ul>
       <li>무제한 생성</li>
       <li>문서 무제한 다운로드</li>

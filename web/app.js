@@ -3634,8 +3634,8 @@
       }
 
       const b = data.billing || {};
-      if ($("#adminProPrice")) $("#adminProPrice").value = b.pro_price_krw ?? 9900;
-      if ($("#adminEntPrice")) $("#adminEntPrice").value = b.enterprise_price_krw ?? 99000;
+      if ($("#adminProPrice")) $("#adminProPrice").value = b.pro_price_krw ?? 2900;
+      if ($("#adminEntPrice")) $("#adminEntPrice").value = b.enterprise_price_krw ?? 19900;
       renderVipList(data.vip_members || []);
     } catch (err) {
       toast(err.message);

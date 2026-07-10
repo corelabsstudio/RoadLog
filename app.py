@@ -356,7 +356,7 @@ def render_pricing() -> None:
             f"""
 <div class="rl-card" style="border:1px solid #0D9488;">
   <span class="uil-badge uil-badge-pro">Pro</span>
-  <h3 style="margin:0.6rem 0;">₩9,900 / 월</h3>
+  <h3 style="margin:0.6rem 0;">₩{PRO_PRICE_KRW:,} / 월</h3>
   <ul style="color:#6B7280;line-height:1.75;font-size:0.92rem;">
     <li>무제한 생성</li>
     <li>문서 무제한 다운로드</li>

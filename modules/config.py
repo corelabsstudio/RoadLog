@@ -210,12 +210,12 @@ COLORS = {
     "warning": "#D97706",
 }
 
-# ── 요금제 ──────────────────────────────────────────────
-FREE_MONTHLY_LIMIT = 10
-PRO_PRICE_KRW = 9900
-ENTERPRISE_PRICE_KRW = 89000
+# ── 요금제 (초기 런칭가 — 사용자 확보 후 단계적 인상) ──
+FREE_MONTHLY_LIMIT = 15
+PRO_PRICE_KRW = 2900
+ENTERPRISE_PRICE_KRW = 19900
 ENTERPRISE_BASE_SEATS = 5
-ENTERPRISE_SEAT_PRICE_KRW = 5000
+ENTERPRISE_SEAT_PRICE_KRW = 2000
 PRO_PAYMENT_URL = _get_secret("PRO_PAYMENT_URL", "https://your-payment-link.example.com")
 ENTERPRISE_PAYMENT_URL = _get_secret(
     "ENTERPRISE_PAYMENT_URL",
