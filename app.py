@@ -407,5 +407,11 @@ def main() -> None:
         render_home()
 
 
-if __name__ == "__main__":
+# Streamlit Cloud / streamlit run — always invoke main()
+try:
     main()
+except Exception as exc:  # noqa: BLE001
+    st.error(
+        "로드로그 실행 중 오류가 발생했습니다. Manage app → Logs 확인 또는 Reboot 해 주세요."
+    )
+    st.exception(exc)
