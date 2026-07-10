@@ -1,18 +1,20 @@
-streamlit>=1.40.0
-openai>=1.55.0
-supabase>=2.10.0
-python-dotenv>=1.0.1
-pandas>=2.2.0
-openpyxl>=3.1.5
-xlsxwriter>=3.2.0
-reportlab>=4.2.5
-python-docx>=1.1.2
-plotly>=5.24.0
-pillow>=11.0.0
+# Streamlit Cloud + local. Prefer Python 3.11–3.12 on Community Cloud.
+streamlit>=1.32.0,<1.50.0
+openai>=1.40.0,<2
+supabase>=2.4.0,<3
+python-dotenv>=1.0.0
+pandas>=2.0.0,<3
+openpyxl>=3.1.0
+xlsxwriter>=3.1.0
+reportlab>=4.0.0
+python-docx>=1.1.0
+plotly>=5.18.0,<6
+pillow>=10.0.0
 httpx>=0.27.0
-bcrypt>=4.2.0
+bcrypt>=4.1.0
 python-dateutil>=2.9.0
-fastapi>=0.115.0
-uvicorn[standard]>=0.32.0
-python-multipart>=0.0.12
-pypdf>=5.0.0
+# FastAPI SPA (optional on Streamlit-only deploys; kept for monorepo)
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.9
+pypdf>=4.0.0
