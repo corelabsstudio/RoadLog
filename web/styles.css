@@ -59,6 +59,14 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --touch-min: 48px;
   --sticky-cta-h: 0px;
+  /* 가독성 (노안·작은 화면) — 본문·라벨 최소 크기 */
+  --fs-base: 17px;
+  --fs-body: 1.05rem;
+  --fs-label: 0.95rem;
+  --fs-muted: 0.92rem;
+  --fs-small: 0.88rem;
+  --fs-btn: 1rem;
+  --fs-input: 1.05rem;
 }
 
 *,
@@ -71,15 +79,18 @@
 
 html {
   scroll-behavior: smooth;
+  /* 기본 16px → 17px: rem 단위 전체 소폭 확대 */
+  font-size: var(--fs-base);
 }
 
 body {
   font-family: var(--font);
   font-weight: 400;
+  font-size: var(--fs-body);
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
-  line-height: 1.65;
+  line-height: 1.7;
   letter-spacing: -0.01em;
   word-break: keep-all;
   overflow-wrap: break-word;
@@ -171,7 +182,7 @@ img {
 }
 .app-home-kicker {
   margin: 0 0 0.35rem;
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   font-weight: 700;
   letter-spacing: 0.06em;
   color: var(--cyan);
@@ -180,7 +191,7 @@ img {
 .app-home-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1.6rem, 3.5vw, 2.1rem);
+  font-size: clamp(1.7rem, 3.5vw, 2.15rem);
   font-weight: 800;
   letter-spacing: -0.03em;
   color: #f8fafc;
@@ -189,7 +200,7 @@ img {
 .app-home-sub {
   margin: 0.45rem 0 0;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: var(--fs-body);
   max-width: 36ch;
 }
 .app-home-usage {
@@ -200,7 +211,7 @@ img {
   border-radius: 14px;
   border: 1px solid var(--line);
   background: var(--panel);
-  font-size: 0.88rem;
+  font-size: var(--fs-muted);
   color: #cbd5e1;
   white-space: nowrap;
 }
@@ -552,10 +563,10 @@ img {
   gap: 0.45rem;
   border: 1px solid transparent;
   border-radius: 999px;
-  padding: 0.7rem 1.25rem;
+  padding: 0.75rem 1.3rem;
   font-family: var(--font);
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: var(--fs-btn);
   letter-spacing: -0.01em;
   cursor: pointer;
   transition: 0.18s ease;
@@ -602,8 +613,8 @@ img {
 }
 
 .btn-lg {
-  padding: 0.95rem 1.6rem;
-  font-size: 1rem;
+  padding: 1rem 1.65rem;
+  font-size: 1.08rem;
   border-radius: 14px;
 }
 
@@ -660,9 +671,9 @@ img {
 }
 .landing-trust {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--fs-muted);
   color: var(--muted-2);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 .btn-install-cta {
   display: inline-flex !important;
@@ -1236,9 +1247,9 @@ section {
 .section-head .eyebrow {
   display: inline-block;
   color: var(--cyan);
-  font-size: 0.8rem;
+  font-size: var(--fs-small);
   font-weight: 800;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-bottom: 0.6rem;
 }
@@ -1415,10 +1426,11 @@ section {
 
 label.field-label {
   display: block;
-  font-size: 0.82rem;
+  font-size: var(--fs-label);
   font-weight: 700;
-  color: #cbd5e1;
-  margin-bottom: 0.45rem;
+  color: #e2e8f0;
+  margin-bottom: 0.5rem;
+  line-height: 1.45;
 }
 
 textarea,
@@ -1426,21 +1438,26 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="time"],
+input[type="date"],
+input[type="number"],
 select {
   width: 100%;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(2, 6, 23, 0.65);
-  padding: 0.85rem 1rem;
+  padding: 0.9rem 1.05rem;
   color: var(--text);
+  font-size: var(--fs-input);
+  line-height: 1.5;
   outline: none;
   transition: 0.15s ease;
 }
 
 textarea {
-  min-height: 150px;
+  min-height: 160px;
   resize: vertical;
-  line-height: 1.6;
+  line-height: 1.65;
+  font-size: var(--fs-input);
 }
 
 textarea:focus,
