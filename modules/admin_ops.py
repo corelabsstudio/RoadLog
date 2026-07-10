@@ -65,7 +65,22 @@ def load_billing_config() -> dict[str, Any]:
     if not data:
         _write_json(BILLING_CONFIG_PATH, base)
         return base
-    return {**base, **data}
+    merged = {**base, **data}
+    # 초기 시드 가격(9,900 / 89,000 등)이고 관리자가 직접 저장한 적 없으면
+    # 현재 config 런칭가로 한 번 맞춘다. (배포 서버 data 볼륨 대응)
+    pro = int(merged.get("pro_price_krw") or 0)
+    ent = int(merged.get("enterprise_price_krw") or 0)
+    seed_prices = {8900, 9900, 89000, 99000}
+    if not merged.get("updated_by") and (pro in seed_prices or ent in seed_prices):
+        merged = {
+            **merged,
+            "pro_price_krw": PRO_PRICE_KRW,
+            "enterprise_price_krw": ENTERPRISE_PRICE_KRW,
+            "updated_at": _now_iso(),
+            "updated_by": "launch_price_migration",
+        }
+        _write_json(BILLING_CONFIG_PATH, merged)
+    return merged
 
 
 def save_billing_config(
