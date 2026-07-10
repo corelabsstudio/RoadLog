@@ -205,10 +205,16 @@ def render_home() -> None:
     st.markdown("### 생성 결과")
 
     if result.get("engine") == "fallback":
-        st.warning(
-            "OpenAI API 키가 없거나 오류가 있어 **규칙 기반 초안**으로 생성되었습니다. "
-            "`.env`에 `OPENAI_API_KEY`를 설정하면 품질이 크게 향상됩니다."
+        title = result.get("engine_title") or "규칙 기반 초안"
+        msg = result.get("message") or (
+            "AI를 쓰지 못해 규칙 기반 초안으로 생성되었습니다. 구간·시간을 확인해 주세요."
         )
+        st.warning(f"**{title}** — {msg}")
+        if result.get("engine_detail"):
+            st.caption(f"기술 정보: {result.get('engine_detail')}")
+    elif result.get("engine") == "openai":
+        st.success(result.get("message") or "AI로 일지를 생성했습니다. 시간·구간을 확인해 주세요.")
+
     if result.get("warnings"):
         for w in result["warnings"]:
             st.warning(w)

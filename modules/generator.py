@@ -237,6 +237,112 @@ def generate_with_openai(
     return _extract_json(content)
 
 
+def classify_openai_failure(exc: BaseException | None = None, *, no_key: bool = False) -> dict[str, str]:
+    """
+    OpenAI 미사용/실패 사유를 사용자용 안내로 변환.
+    returns: { code, title, detail, user_message }
+    """
+    if no_key:
+        return {
+            "code": "no_api_key",
+            "title": "AI 미연결",
+            "detail": "서버에 OpenAI API 키가 설정되지 않았습니다.",
+            "user_message": (
+                "AI 키가 연결되지 않아 **규칙 기반 초안**으로 작성했습니다. "
+                "내용은 사용할 수 있지만, 문체·시간 배분은 직접 한 번 확인해 주세요. "
+                "관리자에게 OpenAI API 키 설정을 요청하면 AI 생성으로 전환됩니다."
+            ),
+        }
+
+    text = f"{type(exc).__name__ if exc else ''}: {exc or ''}".lower()
+    raw = str(exc or "")
+
+    # 1) 할당량/결제 (429 + insufficient_quota 포함)
+    if any(
+        k in text
+        for k in (
+            "insufficient_quota",
+            "exceeded your current quota",
+            "billing hard limit",
+            "quota_exceeded",
+        )
+    ) or ("quota" in text and "rate_limit_error" not in text and "rate limit" not in text):
+        return {
+            "code": "quota_exceeded",
+            "title": "AI 사용량 한도 초과",
+            "detail": "OpenAI 계정 크레딧·결제 한도가 소진되었습니다.",
+            "user_message": (
+                "AI 사용량(할당량)이 초과되어 **규칙 기반 초안**으로 작성했습니다. "
+                "일지는 다운로드·제출용으로 쓸 수 있으니 구간·시간을 확인해 주세요. "
+                "고품질 AI 생성을 쓰려면 OpenAI 결제/크레딧을 충전해야 합니다."
+            ),
+        }
+
+    # 2) 속도 제한
+    if any(k in text for k in ("rate_limit", "rate limit", "too many requests")) or (
+        "429" in text and "quota" not in text
+    ):
+        return {
+            "code": "rate_limit",
+            "title": "AI 일시 혼잡",
+            "detail": "요청이 많아 잠시 제한되었습니다.",
+            "user_message": (
+                "AI 서버가 잠시 바빠 **규칙 기반 초안**으로 작성했습니다. "
+                "잠시 후 다시 생성하면 AI 품질로 받을 수 있습니다. "
+                "지금 초안도 수정·다운로드 가능합니다."
+            ),
+        }
+
+    # 3) 인증
+    if any(
+        k in text
+        for k in (
+            "invalid_api_key",
+            "authentication",
+            "unauthorized",
+            "incorrect api key",
+            "permission denied",
+            "401",
+        )
+    ):
+        return {
+            "code": "auth_error",
+            "title": "AI 키 오류",
+            "detail": "API 키가 유효하지 않거나 권한이 없습니다.",
+            "user_message": (
+                "AI 키 인증에 실패해 **규칙 기반 초안**으로 작성했습니다. "
+                "관리자에게 `.env`의 OPENAI_API_KEY 확인을 요청해 주세요. "
+                "초안은 그대로 사용·수정할 수 있습니다."
+            ),
+        }
+
+    # 4) 네트워크
+    if any(k in text for k in ("timeout", "timed out", "connection", "network", "connecterror")):
+        return {
+            "code": "network_error",
+            "title": "AI 연결 실패",
+            "detail": "네트워크 또는 타임아웃 오류",
+            "user_message": (
+                "AI 서버에 연결하지 못해 **규칙 기반 초안**으로 작성했습니다. "
+                "네트워크 상태를 확인한 뒤 다시 생성해 보세요. "
+                "초안은 지금 바로 수정·다운로드할 수 있습니다."
+            ),
+        }
+
+    # 5) 기타
+    short = re.sub(r"sk-[a-zA-Z0-9\-_]+", "sk-***", raw)[:160]
+    return {
+        "code": "api_error",
+        "title": "AI 일시 오류",
+        "detail": short or "OpenAI API 오류",
+        "user_message": (
+            "AI 생성 중 오류가 나 **규칙 기반 초안**으로 작성했습니다. "
+            "구간·시간·목적을 확인한 뒤 제출해 주세요. "
+            "문제가 계속되면 잠시 후 다시 시도해 주세요."
+        ),
+    }
+
+
 def generate_fallback(raw_text: str, settings: dict, form: dict | None = None) -> dict[str, Any]:
     """
     API 키 없을 때 규칙 기반 생성.
@@ -490,18 +596,28 @@ def generate_driving_log(
         prompt_text = form_to_raw_text(f) + ("\n" + raw_text if raw_text else "")
 
     engine = "openai"
+    engine_info: dict[str, str] | None = None
+    openai_exc: BaseException | None = None
+    has_key = bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"))
+
     try:
-        if OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"):
+        if has_key:
             raw_log = generate_with_openai(prompt_text, settings, f, style_block)
         else:
             engine = "fallback"
+            engine_info = classify_openai_failure(no_key=True)
             raw_log = generate_fallback(prompt_text, settings, f)
             raw_log = _apply_style_to_fallback(raw_log, user_email)
     except Exception as e:
         engine = "fallback"
+        openai_exc = e
+        engine_info = classify_openai_failure(e)
         raw_log = generate_fallback(prompt_text, settings, f)
         raw_log = _apply_style_to_fallback(raw_log, user_email)
-        raw_log["_openai_error"] = str(e)
+
+    # 내부 디버그 필드는 응답 log 에 남기지 않음
+    if isinstance(raw_log, dict):
+        raw_log.pop("_openai_error", None)
 
     # 설정·주행거리 보강 (폼 차량번호는 _apply_odometer 에서 우선)
     if f.get("vehicle_number"):
@@ -522,14 +638,35 @@ def generate_driving_log(
             validated["enriched_log"]["lunch_place"] = f["lunch_restaurant"]
         if f.get("vehicle_number"):
             validated["enriched_log"]["vehicle"] = f["vehicle_number"]
+        # 혹시 validate 경로로 남은 내부 키 제거
+        validated["enriched_log"].pop("_openai_error", None)
 
     warnings = list(validated["warnings"] or [])
+    if engine == "fallback" and engine_info:
+        warnings.insert(0, engine_info["user_message"])
     if style_applied:
-        warnings.insert(0, "내 서식·말투 학습이 적용되었습니다.")
+        warnings.insert(0 if engine != "fallback" else 1, "내 서식·말투 학습이 적용되었습니다.")
     elif user_email and not style_applied:
-        warnings.insert(
-            0,
-            "서식 학습 전이거나 샘플이 부족합니다. [내 서식 학습]에서 기존 일지 3~5장을 올려 주세요.",
+        warnings.append(
+            "서식 학습 전이거나 샘플이 부족합니다. [내 서식 학습]에서 기존 일지 3~5장을 올려 주세요."
+        )
+
+    if engine == "openai":
+        message = (
+            "AI로 일지를 생성했습니다. 시간·구간을 한 번 확인해 주세요."
+            if validated["ok"]
+            else "검증 오류가 있습니다. 내용을 확인해 주세요."
+        )
+        engine_reason = "ok"
+        engine_title = "AI 생성"
+    else:
+        info = engine_info or classify_openai_failure(openai_exc)
+        engine_reason = info["code"]
+        engine_title = info["title"]
+        message = (
+            info["user_message"]
+            if validated["ok"]
+            else f"{info['user_message']} 또한 검증 오류가 있으니 내용을 확인해 주세요."
         )
 
     return {
@@ -538,8 +675,11 @@ def generate_driving_log(
         "errors": validated["errors"],
         "warnings": warnings,
         "engine": engine,
+        "engine_reason": engine_reason,
+        "engine_title": engine_title,
+        "engine_detail": (engine_info or {}).get("detail", "") if engine == "fallback" else "",
         "style_applied": style_applied,
-        "message": "생성 완료" if validated["ok"] else "검증 오류가 있습니다. 내용을 확인해 주세요.",
+        "message": message,
     }
 
 

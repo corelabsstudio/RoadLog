@@ -1858,14 +1858,19 @@
         persistLastLog(data.log);
         renderResult(data);
         if (state.user) renderAppHome();
+        const genMsg = formatGenerateUserMessage(data);
         alertBox(
           $("#genAlert"),
           data.engine === "openai" ? "ok" : "warn",
-          data.engine === "openai"
-            ? "일지가 생성되었습니다. 시간·구간은 AI가 채웠으니 확인해 주세요."
-            : "OpenAI 키 없음 · 규칙 기반 초안으로 생성되었습니다."
+          genMsg
         );
-        toast("일지 생성 완료");
+        toast(
+          data.engine === "openai"
+            ? "AI 일지 생성 완료"
+            : data.engine_title
+              ? `${data.engine_title} · 규칙 초안 완료`
+              : "규칙 초안으로 생성 완료"
+        );
         document.getElementById("resultBox")?.scrollIntoView({ behavior: "smooth", block: "start" });
         showCareModal(data.log, form);
       } catch (err) {
@@ -1935,14 +1940,115 @@
     return lines.join("\n");
   }
 
+  /** 서버 generate 응답 → 사용자용 한 줄/단락 안내 */
+  function formatGenerateUserMessage(data) {
+    if (!data) return "일지가 생성되었습니다.";
+    if (data.message && String(data.message).trim()) {
+      // 마크다운 ** ** 제거 (alert 박스 텍스트용)
+      return String(data.message).replace(/\*\*/g, "").trim();
+    }
+    if (data.engine === "openai") {
+      return "일지가 생성되었습니다. 시간·구간은 AI가 채웠으니 확인해 주세요.";
+    }
+    const reason = data.engine_reason || "";
+    const map = {
+      no_api_key:
+        "AI 키가 연결되지 않아 규칙 기반 초안으로 작성했습니다. 구간·시간을 확인해 주세요.",
+      quota_exceeded:
+        "AI 사용량(할당량)이 초과되어 규칙 기반 초안으로 작성했습니다. OpenAI 결제/크레딧 충전 후 다시 시도해 주세요.",
+      rate_limit:
+        "AI 서버가 잠시 바빠 규칙 기반 초안으로 작성했습니다. 잠시 후 다시 생성해 보세요.",
+      auth_error:
+        "AI 키 인증에 실패해 규칙 기반 초안으로 작성했습니다. 관리자에게 API 키 확인을 요청해 주세요.",
+      network_error:
+        "AI 서버에 연결하지 못해 규칙 기반 초안으로 작성했습니다. 네트워크 확인 후 다시 시도해 주세요.",
+      api_error:
+        "AI 생성 중 오류가 나 규칙 기반 초안으로 작성했습니다. 구간·시간을 확인해 주세요.",
+    };
+    return map[reason] || "규칙 기반 초안으로 작성되었습니다. 내용을 확인해 주세요.";
+  }
+
   function renderResult(data) {
     const log = data.log;
     const box = $("#resultBox");
     if (!box || !log) return;
     box.classList.add("show");
 
-    if ($("#engineBadge")) {
-      $("#engineBadge").textContent = data.engine === "openai" ? "AI 생성" : "규칙 초안";
+    const badge = $("#engineBadge");
+    if (badge) {
+      if (data.engine === "openai") {
+        badge.textContent = "AI 생성";
+        badge.classList.remove("pill-warn");
+        badge.title = "OpenAI로 작성된 일지입니다";
+      } else {
+        const title = data.engine_title || "규칙 초안";
+        badge.textContent = title === "규칙 초안" ? "규칙 초안" : `규칙 초안 · ${title}`;
+        badge.classList.add("pill-warn");
+        badge.title = formatGenerateUserMessage(data);
+      }
+    }
+
+    // 결과 패널 상단 엔진 안내 (폴백 시 항상 노출)
+    let notice = $("#engineNotice");
+    if (!notice && box) {
+      notice = document.createElement("div");
+      notice.id = "engineNotice";
+      notice.className = "engine-notice";
+      const head = box.querySelector(".panel-head");
+      if (head && head.nextSibling) {
+        head.parentNode.insertBefore(notice, head.nextSibling);
+      } else {
+        box.insertBefore(notice, box.firstChild);
+      }
+    }
+    if (notice) {
+      if (data.engine && data.engine !== "openai" && data.engine !== "restored") {
+        notice.hidden = false;
+        notice.className = "engine-notice is-warn";
+        const detail = data.engine_detail
+          ? `<span class="engine-notice-detail">${escapeHtml(String(data.engine_detail))}</span>`
+          : "";
+        notice.innerHTML = `<strong>${escapeHtml(
+          data.engine_title || "규칙 기반 초안"
+        )}</strong><span>${escapeHtml(formatGenerateUserMessage(data))}</span>${detail}`;
+      } else if (data.engine === "openai") {
+        notice.hidden = false;
+        notice.className = "engine-notice is-ok";
+        notice.innerHTML =
+          "<strong>AI 생성</strong><span>시간·구간을 한 번 확인한 뒤 제출해 주세요.</span>";
+      } else {
+        notice.hidden = true;
+        notice.innerHTML = "";
+      }
+    }
+
+    // 서버 warnings (폴백 안내 등)
+    let warnBox = $("#resultWarnings");
+    if (!warnBox && box) {
+      warnBox = document.createElement("div");
+      warnBox.id = "resultWarnings";
+      warnBox.className = "result-warnings";
+      const metrics = box.querySelector("#metrics");
+      if (metrics) {
+        metrics.parentNode.insertBefore(warnBox, metrics);
+      } else {
+        box.appendChild(warnBox);
+      }
+    }
+    if (warnBox) {
+      const warns = Array.isArray(data.warnings) ? data.warnings : [];
+      // 폴백 user_message 와 중복되는 첫 줄은 engineNotice 에 이미 있음 → 나머지/서식 안내만
+      const extra =
+        data.engine === "fallback" && warns.length > 1 ? warns.slice(1) : data.engine === "openai" ? warns : warns.slice(1);
+      if (extra.length) {
+        warnBox.hidden = false;
+        warnBox.innerHTML = extra
+          .map((w) => `<div class="result-warn-item">${escapeHtml(String(w).replace(/\*\*/g, ""))}</div>`)
+          .join("");
+      } else {
+        warnBox.hidden = true;
+        warnBox.innerHTML = "";
+      }
     }
 
     const mins = log.total_net_minutes || 0;
