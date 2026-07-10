@@ -23,6 +23,7 @@ from modules.config import (
     FREE_MONTHLY_LIMIT,
     OPENAI_API_KEY,
     PRO_PAYMENT_URL,
+    PRO_PRICE_KRW,
 )
 from modules import db
 from modules.auth import (
