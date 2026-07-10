@@ -1066,12 +1066,18 @@ img {
     order: -1;
     min-height: 0;
   }
-  .landing-phone-frame {
-    width: min(100%, 220px);
+  .landing-phone-frame,
+  .landing-doc-frame {
+    width: min(100%, 240px);
   }
-  .landing-phone-screen {
-    min-height: 200px;
+  .landing-phone-screen,
+  .landing-doc-screen {
+    min-height: 220px;
     padding: 0.95rem 0.85rem 1rem;
+  }
+  .landing-proof {
+    grid-template-columns: 1fr;
+    max-width: none;
   }
   .landing-value-grid {
     grid-template-columns: 1fr;
