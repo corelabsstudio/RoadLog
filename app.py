@@ -5,6 +5,10 @@
 실행:
   streamlit run app.py
 """
+import sys
+import os
+# 경로 문제를 해결하기 위해 현재 디렉토리를 파이썬 모듈 검색 경로에 강제로 추가합니다.
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from __future__ import annotations
 
