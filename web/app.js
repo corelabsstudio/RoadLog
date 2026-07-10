@@ -2868,6 +2868,98 @@
       .join("");
   }
 
+  function renderAdminUsage(usage) {
+    const metricsEl = $("#adminUsageMetrics");
+    const tableEl = $("#adminUsageTable");
+    const labelEl = $("#adminUsageTableLabel");
+    const limitEl = $("#adminUsageFreeLimit");
+    if (!metricsEl || !tableEl) return;
+
+    if (!usage || !usage.summary) {
+      metricsEl.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">사용량 데이터를 불러오지 못했습니다.</p>`;
+      tableEl.innerHTML = "";
+      return;
+    }
+
+    const s = usage.summary;
+    const month = usage.month || "";
+    const freeLimit = usage.free_limit ?? 10;
+    if (limitEl) limitEl.textContent = String(freeLimit);
+    if (labelEl) {
+      labelEl.textContent = `회원별 사용 횟수 (${month}) · 총 생성 ${s.total_generations ?? 0}회`;
+    }
+
+    metricsEl.innerHTML = [
+      ["무료 회원 수", `${s.free_users ?? 0}명`],
+      ["유료 회원 수", `${s.paid_users ?? 0}명`],
+      ["무료 생성 합계", `${s.free_generations ?? 0}회`],
+      ["유료 생성 합계", `${s.paid_generations ?? 0}회`],
+      ["관리자 생성", `${s.admin_generations ?? 0}회`],
+      ["이번 달 전체 생성", `${s.total_generations ?? 0}회`],
+    ]
+      .map(
+        ([k, v]) =>
+          `<div class="metric"><div class="label">${escapeHtml(k)}</div><div class="value">${escapeHtml(
+            String(v)
+          )}</div></div>`
+      )
+      .join("");
+
+    const users = usage.users || [];
+    if (!users.length) {
+      tableEl.innerHTML = `<p style="color:var(--muted);padding:0.75rem;font-size:0.9rem">등록된 회원·사용 기록이 없습니다.</p>`;
+      return;
+    }
+
+    const tierLabel = (t) => {
+      if (t === "paid") return "유료";
+      if (t === "admin") return "관리자";
+      return "무료";
+    };
+    const tierClass = (t) => {
+      if (t === "paid") return "uil-badge uil-badge-pro";
+      if (t === "admin") return "uil-badge uil-badge-ent";
+      return "uil-badge uil-badge-free";
+    };
+
+    const rowsHtml = users
+      .map((u) => {
+        const lim =
+          u.limit == null ? "무제한" : `${u.usage ?? 0} / ${u.limit}`;
+        const remain =
+          u.remaining == null ? "—" : String(u.remaining);
+        const badges = [
+          `<span class="${tierClass(u.tier)}">${tierLabel(u.tier)}</span>`,
+        ];
+        if (u.is_vip) badges.push(`<span class="uil-badge uil-badge-pro">VIP</span>`);
+        return `<tr>
+          <td>${escapeHtml(u.email || "")}</td>
+          <td>${escapeHtml(u.name || "—")}</td>
+          <td>${badges.join(" ")}</td>
+          <td style="text-align:right;font-variant-numeric:tabular-nums"><strong>${Number(
+            u.usage || 0
+          )}</strong></td>
+          <td style="text-align:right;color:var(--muted)">${escapeHtml(lim)}</td>
+          <td style="text-align:right;color:var(--muted)">${escapeHtml(remain)}</td>
+        </tr>`;
+      })
+      .join("");
+
+    tableEl.innerHTML = `<table class="admin-table">
+      <thead>
+        <tr>
+          <th>이메일</th>
+          <th>이름</th>
+          <th>구분</th>
+          <th style="text-align:right">이번 달 생성</th>
+          <th style="text-align:right">한도</th>
+          <th style="text-align:right">잔여</th>
+        </tr>
+      </thead>
+      <tbody>${rowsHtml}</tbody>
+    </table>`;
+  }
+
   function renderVipList(members) {
     const list = $("#vipList");
     if (!list) return;
@@ -2984,6 +3076,8 @@
             )}</div></div>`
         )
         .join("");
+
+      renderAdminUsage(data.usage || null);
 
       const rangeLabel = $("#adminRangeLabel");
       if (rangeLabel) {

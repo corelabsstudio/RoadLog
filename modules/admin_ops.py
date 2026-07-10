@@ -15,6 +15,7 @@ from typing import Any
 from modules.config import (
     DATA_DIR,
     ENTERPRISE_PRICE_KRW,
+    FREE_MONTHLY_LIMIT,
     PRO_PRICE_KRW,
 )
 from modules import db
@@ -322,6 +323,8 @@ def revenue_dashboard(
         reverse=True,
     )
 
+    usage_stats = usage_dashboard(month=month_key)
+
     return {
         "today": today,
         "month": month_key,
@@ -344,4 +347,114 @@ def revenue_dashboard(
         "vip_count": len(vip_list),
         "billing": load_billing_config(),
         "vip_members": vip_list,
+        "usage": usage_stats,
+    }
+
+
+def usage_dashboard(month: str | None = None) -> dict[str, Any]:
+    """
+    이번 달(또는 지정 월) 무료/유료 회원 생성 횟수 집계.
+
+    - free: plan=free 이고 VIP 아님 (관리자 제외)
+    - paid: plan=pro 또는 VIP (관리자는 paid_unlimited 로 분리)
+    """
+    month_key = month or datetime.now().strftime("%Y-%m")
+    users = db.list_users()
+    usage_map = db.get_all_usage_map(month_key)
+    vip_list = load_vip_members()
+
+    def _is_vip_email(email: str) -> bool:
+        em = (email or "").strip().lower()
+        if not em:
+            return False
+        uid = em.split("@")[0]
+        return is_vip(em) or is_vip(uid)
+
+    # email -> user row
+    by_email: dict[str, dict] = {}
+    for u in users:
+        em = (u.get("email") or "").strip().lower()
+        if em:
+            by_email[em] = u
+
+    # usage only emails not in users
+    for em in usage_map:
+        if em not in by_email:
+            by_email[em] = {
+                "email": em,
+                "name": "",
+                "plan": "free",
+                "is_admin": False,
+            }
+
+    free_gens = 0
+    paid_gens = 0
+    admin_gens = 0
+    free_users_with_use = 0
+    paid_users_with_use = 0
+    free_user_count = 0
+    paid_user_count = 0
+    admin_user_count = 0
+    rows: list[dict[str, Any]] = []
+
+    for em, u in by_email.items():
+        plan = (u.get("plan") or "free").lower()
+        is_admin = bool(u.get("is_admin"))
+        vip = _is_vip_email(em) or bool(u.get("is_vip"))
+        used = int(usage_map.get(em, 0) or 0)
+
+        if is_admin:
+            tier = "admin"
+            unlimited = True
+            admin_user_count += 1
+            admin_gens += used
+        elif vip or plan == "pro":
+            tier = "paid"
+            unlimited = True
+            paid_user_count += 1
+            paid_gens += used
+            if used > 0:
+                paid_users_with_use += 1
+        else:
+            tier = "free"
+            unlimited = False
+            free_user_count += 1
+            free_gens += used
+            if used > 0:
+                free_users_with_use += 1
+
+        rows.append(
+            {
+                "email": em,
+                "name": u.get("name") or "",
+                "plan": "pro" if (vip and plan != "pro") else plan,
+                "tier": tier,
+                "is_admin": is_admin,
+                "is_vip": vip,
+                "usage": used,
+                "limit": None if unlimited else FREE_MONTHLY_LIMIT,
+                "remaining": None
+                if unlimited
+                else max(0, FREE_MONTHLY_LIMIT - used),
+            }
+        )
+
+    # 사용 많은 순
+    rows.sort(key=lambda r: (-int(r.get("usage") or 0), r.get("email") or ""))
+
+    return {
+        "month": month_key,
+        "free_limit": FREE_MONTHLY_LIMIT,
+        "summary": {
+            "free_users": free_user_count,
+            "paid_users": paid_user_count,
+            "admin_users": admin_user_count,
+            "free_generations": free_gens,
+            "paid_generations": paid_gens,
+            "admin_generations": admin_gens,
+            "total_generations": free_gens + paid_gens + admin_gens,
+            "free_users_with_usage": free_users_with_use,
+            "paid_users_with_usage": paid_users_with_use,
+        },
+        "users": rows,
     }

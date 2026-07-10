@@ -777,6 +777,19 @@
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
+          <div class="panel-head"><h2>사용 횟수 (무료 / 유료)</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            이번 달 일지 <strong style="color:#e2e8f0">생성 횟수</strong>를 무료·유료(Pro/VIP)로 나눠 봅니다.
+            Free 한도: 월 <span id="adminUsageFreeLimit">10</span>회 · 유료·VIP·관리자는 무제한(횟수만 집계).
+          </p>
+          <div class="metrics" id="adminUsageMetrics"></div>
+          <div style="margin-top:1rem">
+            <label class="field-label" id="adminUsageTableLabel">회원별 이번 달 사용 횟수</label>
+            <div id="adminUsageTable" class="admin-table-wrap"></div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:1rem">
           <div class="panel-head"><h2>구독 결제 금액 변경</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
             변경한 금액이 요금제·결제 업그레이드에 즉시 반영됩니다.

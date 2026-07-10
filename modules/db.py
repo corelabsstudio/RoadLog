@@ -454,6 +454,39 @@ def get_usage(email: str, month: str | None = None) -> int:
     return int(usage.get(email, {}).get(month, 0))
 
 
+def get_all_usage_map(month: str | None = None) -> dict[str, int]:
+    """email -> 해당 월 생성 횟수 맵."""
+    month = month or _month_key()
+    out: dict[str, int] = {}
+
+    if _sb.enabled:
+        try:
+            res = (
+                _sb.client.table("usage")
+                .select("email,count,month")
+                .eq("month", month)
+                .execute()
+            )
+            for row in res.data or []:
+                em = (row.get("email") or "").strip().lower()
+                if em:
+                    out[em] = int(row.get("count") or 0)
+            return out
+        except Exception:
+            pass
+
+    usage = _read_json(USAGE_JSON, {})
+    if not isinstance(usage, dict):
+        return {}
+    for email, months in usage.items():
+        if not isinstance(months, dict):
+            continue
+        em = str(email).strip().lower()
+        if em:
+            out[em] = int(months.get(month, 0) or 0)
+    return out
+
+
 def increment_usage(email: str, amount: int = 1) -> int:
     """사용량 +1 후 현재 값 반환. 월 키 기준으로 분리 → 매월 1일 자연 리셋."""
     email = email.strip().lower()

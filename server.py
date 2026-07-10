@@ -755,6 +755,16 @@ def admin_dashboard(
     return admin_ops.revenue_dashboard(date_from=date_from, date_to=date_to)
 
 
+@app.get("/api/admin/usage")
+def admin_usage(
+    authorization: str | None = Header(default=None),
+    month: str | None = None,
+):
+    """무료/유료 회원 이번 달 생성 횟수 집계."""
+    _require_admin(authorization)
+    return admin_ops.usage_dashboard(month=month)
+
+
 @app.put("/api/admin/billing")
 def admin_billing(body: BillingBody, authorization: str | None = Header(default=None)):
     admin = _require_admin(authorization)
