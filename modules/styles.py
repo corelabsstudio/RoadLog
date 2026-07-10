@@ -50,10 +50,29 @@ LOGO_SVG_LG = """
 """
 
 
+def _render_html(fragment: str) -> None:
+    """
+    HTML 조각을 안전하게 렌더.
+    최신 Streamlit 은 markdown 의 unsafe_allow_html 이 태그 원문을
+    그대로 보여 주는 경우가 있어 st.html 을 우선 사용합니다.
+    """
+    fragment = (fragment or "").strip()
+    if not fragment:
+        return
+    # Streamlit 1.33+ 
+    html_fn = getattr(st, "html", None)
+    if callable(html_fn):
+        try:
+            html_fn(fragment)
+            return
+        except Exception:
+            pass
+    st.markdown(fragment, unsafe_allow_html=True)
+
+
 def inject_global_css() -> None:
     c = COLORS
-    st.markdown(
-        f"""
+    css = f"""
 <style>
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
@@ -1189,23 +1208,21 @@ hr {{
   }}
 }}
 </style>
-        """,
-        unsafe_allow_html=True,
-    )
+"""
+    _render_html(css)
 
 
 def render_sidebar_brand() -> None:
-    st.sidebar.markdown(
+    _render_html(
         f"""
 <div class="rl-brand">
   {LOGO_SVG}
   <div class="rl-brand-text">
-    <span class="rl-brand-name">{APP_TITLE}</span>
-    <span class="rl-brand-en">{APP_SHORT}</span>
+    <span class="rl-brand-name">{html.escape(APP_TITLE)}</span>
+    <span class="rl-brand-en">{html.escape(APP_SHORT)}</span>
   </div>
 </div>
-        """,
-        unsafe_allow_html=True,
+"""
     )
 
 
@@ -1213,44 +1230,39 @@ def render_page_header(title: str | None = None, subtitle: str | None = None) ->
     """내부 페이지용 헤더 (홈 외)."""
     t = html.escape(title or APP_TITLE)
     sub = html.escape(subtitle or APP_TAGLINE)
-    st.markdown(
+    _render_html(
         f"""
 <div class="rl-page-head">
   <div class="rl-logo-wrap">{LOGO_SVG_LG}</div>
   <div>
     <h1 class="rl-title">{t}</h1>
     <p class="rl-sub">{sub}</p>
-    <div class="rl-en">{APP_SHORT}</div>
+    <div class="rl-en">{html.escape(APP_SHORT)}</div>
   </div>
 </div>
-        """,
-        unsafe_allow_html=True,
+"""
     )
 
 
 def render_landing_hero() -> None:
-    """홈 상단 다크 프리미엄 히어로."""
-    st.markdown(
-        f"""
-<div class="rl-hero">
-  <div class="rl-hero-inner">
-    <div class="rl-hero-top">
-      {LOGO_SVG_LG}
-      <span class="rl-hero-badge">✦ 회사 제출용 · 워터마크 0</span>
-    </div>
-    <h1>{APP_TITLE}<br/>한 줄 입력으로 끝.</h1>
-    <p class="rl-hero-sub">{html.escape(APP_TAGLINE)} — 자연어로 쓰고, AI가 격식 있는 운행일지로 정리합니다.</p>
-    <div class="rl-hero-pills">
-      <div class="rl-pill"><span>✓</span> Excel · PDF · DOCX</div>
-      <div class="rl-pill"><span>✓</span> 점심시간 자동 제외</div>
-      <div class="rl-pill"><span>✓</span> Free 월 {FREE_MONTHLY_LIMIT}회</div>
-      <div class="rl-pill"><span>✓</span> 업무용 격식 문체</div>
-    </div>
-  </div>
-</div>
-        """,
-        unsafe_allow_html=True,
-    )
+    """
+    로그인/홈 상단 히어로.
+    Streamlit Cloud 에서 custom HTML 이 태그 원문으로 보이는 문제를 피하기 위해
+    네이티브 컴포넌트 + 최소 HTML 배지를 사용합니다.
+    """
+    # 네이티브 UI — 태그 원문 노출 없음, 모든 Streamlit 버전에서 안정
+    with st.container(border=True):
+        st.caption("✦ 회사 제출용 · 워터마크 없음")
+        st.markdown(f"## {APP_TITLE}")
+        st.markdown("### 한 줄 입력으로 끝.")
+        st.write(
+            f"{APP_TAGLINE} — 자연어로 쓰고, AI가 격식 있는 운행일지로 정리합니다."
+        )
+        p1, p2, p3, p4 = st.columns(4)
+        p1.markdown("✓ **Excel · PDF · DOCX**")
+        p2.markdown("✓ **점심시간 자동 제외**")
+        p3.markdown(f"✓ **Free 월 {FREE_MONTHLY_LIMIT}회**")
+        p4.markdown("✓ **업무용 격식 문체**")
 
 
 def render_steps() -> None:
