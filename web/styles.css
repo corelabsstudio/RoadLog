@@ -4336,6 +4336,40 @@ input[type="date"]:focus {
   }
 }
 
+.result-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+.pill-ok {
+  background: rgba(52, 211, 153, 0.16) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+.result-edit {
+  margin: 0.85rem 0 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  background: rgba(8, 47, 73, 0.25);
+}
+.auth-help-line {
+  margin: 0.85rem 0 0;
+  font-size: 0.86rem;
+  color: #94a3b8;
+  text-align: center;
+}
+.auth-help-line a {
+  color: #67e8f9;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.btn-sm {
+  padding: 0.35rem 0.65rem !important;
+  min-height: 2.1rem !important;
+  font-size: 0.82rem !important;
+}
+
 /* 저장된 일지 이력 */
 .log-history-list {
   display: flex;

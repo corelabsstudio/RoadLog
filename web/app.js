@@ -563,8 +563,60 @@
     loadLogHistory();
   }
 
+  async function renderHomeLogPreview() {
+    const body = $("#appHomeLogsBody");
+    if (!body) return;
+    let items = [];
+    if (state.token) {
+      try {
+        const data = await api("/api/logs?limit=3");
+        items = data.items || [];
+      } catch {
+        items = [];
+      }
+    } else {
+      try {
+        const raw = localStorage.getItem(LOG_HISTORY_KEY);
+        const list = raw ? JSON.parse(raw) : [];
+        items = Array.isArray(list) ? list.slice(0, 3) : [];
+      } catch {
+        items = [];
+      }
+    }
+    if (!items.length) {
+      body.innerHTML =
+        '<p class="log-history-empty">아직 저장된 일지가 없습니다. 일지를 작성해 보세요.</p>';
+      return;
+    }
+    body.innerHTML = items
+      .map((it) => {
+        const kind = it.report_type === "field" ? "외근" : "운행";
+        return `<div class="log-history-item">
+          <div>
+            <strong>${escapeHtml(it.title || kind)}</strong>
+            <div class="lh-meta">${escapeHtml(kind)} · ${escapeHtml(it.date || "—")} · ${escapeHtml(
+          it.summary || ""
+        )}</div>
+          </div>
+          <div class="lh-actions">
+            <button type="button" class="btn btn-ghost btn-sm" data-log-open="${escapeHtml(
+              it.id || ""
+            )}">열기</button>
+          </div>
+        </div>`;
+      })
+      .join("");
+  }
+
   function bindLogHistory() {
     $("#btnRefreshLogs")?.addEventListener("click", () => loadLogHistory());
+    $("#appHomeLogsBody")?.addEventListener("click", (e) => {
+      const openId = e.target.closest("[data-log-open]")?.getAttribute("data-log-open");
+      if (openId) {
+        showView("create");
+        openSavedLog(openId);
+      }
+    });
     $("#btnSaveLog")?.addEventListener("click", async () => {
       if (!state.lastLog) {
         toast("먼저 일지를 생성해 주세요");
@@ -1813,7 +1865,7 @@
         const log = state.lastLog;
         lastBody.innerHTML = `
           <div><strong>${escapeHtml(String(log.date || "—"))}</strong> · ${escapeHtml(
-            String(log.vehicle || "차량 미기재")
+            String(log.vehicle || log.author_name || "—")
           )} · ${escapeHtml(String(log.total_distance_km ?? "—"))} km</div>
           <div style="margin-top:0.35rem;color:#94a3b8">${escapeHtml(
             String(log.summary || "요약 없음")
@@ -1823,6 +1875,9 @@
         lastBody.innerHTML = "";
       }
     }
+
+    // 홈: 최근 저장 일지 3건
+    renderHomeLogPreview();
   }
 
   function renderUsage() {
@@ -2568,6 +2623,40 @@
         toast("일지 텍스트를 복사했습니다");
       }
     });
+
+    // 제출 전 수정 → 저장
+    $("#btnApplyEdit")?.addEventListener("click", async () => {
+      if (!state.lastLog) {
+        toast("먼저 일지를 생성해 주세요");
+        return;
+      }
+      const summary = ($("#editSummary")?.value || "").trim();
+      const vehicle = ($("#editVehicle")?.value || "").trim();
+      const driver = ($("#editDriver")?.value || "").trim();
+      const log = { ...state.lastLog };
+      if (summary) log.summary = summary;
+      else log.summary = "";
+      log.vehicle = vehicle;
+      log.driver_name = driver;
+      if (String(log.report_type || "").toLowerCase() === "field") {
+        log.author_name = driver || log.author_name || "";
+      }
+      try {
+        await saveLogToServer(log, {
+          id: log._saved_id || null,
+          reportType:
+            String(log.report_type || "").toLowerCase() === "field"
+              ? "field"
+              : "driving",
+        });
+        renderResult({ log: state.lastLog, engine: "restored", saved: { id: state.lastLog._saved_id } });
+        loadLogHistory();
+        if (state.user) renderAppHome();
+        toast("수정 내용을 저장했습니다. 다운로드·인쇄에 반영됩니다.");
+      } catch (err) {
+        toast(err.message || "수정 저장 실패");
+      }
+    });
   }
 
   function logToPlainText(log) {
@@ -2657,12 +2746,34 @@
         badge.textContent = "AI 생성";
         badge.classList.remove("pill-warn");
         badge.title = "OpenAI로 작성된 일지입니다";
+      } else if (data.engine === "restored") {
+        badge.textContent = "불러옴";
+        badge.classList.remove("pill-warn");
+        badge.title = "저장된 일지";
       } else {
         const title = data.engine_title || "규칙 초안";
         badge.textContent = title === "규칙 초안" ? "규칙 초안" : `규칙 초안 · ${title}`;
         badge.classList.add("pill-warn");
         badge.title = formatGenerateUserMessage(data);
       }
+    }
+
+    // 저장됨 배지
+    const savedBadge = $("#savedBadge");
+    if (savedBadge) {
+      const saved = !!(log._saved_id || data.saved?.id);
+      savedBadge.hidden = !saved;
+      if (saved) savedBadge.textContent = "저장됨";
+    }
+
+    // 제출 전 수정 폼
+    const editPanel = $("#resultEditPanel");
+    if (editPanel) {
+      editPanel.hidden = false;
+      if ($("#editSummary")) $("#editSummary").value = log.summary || "";
+      if ($("#editVehicle")) $("#editVehicle").value = log.vehicle || "";
+      if ($("#editDriver"))
+        $("#editDriver").value = log.driver_name || log.author_name || "";
     }
 
     // 결과 패널 상단 엔진 안내 (폴백 시 항상 노출)
@@ -4824,6 +4935,8 @@
     const proHint = $("#proTrialHint");
     const entHint = $("#entTrialHint");
     const note = $("#pricingNote");
+    const proUrl = paymentUrlForPlan("pro");
+    const entUrl = paymentUrlForPlan("enterprise");
     if (demo) {
       if (proBtn) proBtn.textContent = "7일 무료 체험 시작하기 (데모)";
       if (entBtn) entBtn.textContent = "7일 무료 체험 시작하기 (데모)";
@@ -4833,11 +4946,37 @@
         note.textContent =
           "데모 업그레이드가 켜져 있습니다. 운영 배포 전 ALLOW_DEMO_BILLING_UPGRADE=false 로 끄세요.";
       }
-    } else {
+    } else if (!isPlaceholderPayUrl(proUrl) || !isPlaceholderPayUrl(entUrl)) {
       if (proBtn) proBtn.textContent = "Pro 결제하기";
       if (entBtn) entBtn.textContent = "Enterprise 결제하기";
       if (proHint) proHint.textContent = "결제 완료 후 Pro 요금제가 적용됩니다";
       if (entHint) entHint.textContent = "법인 결제 · 세금계산서 지원";
+    } else {
+      // 결제 미연결: 문의 기반 수동 등록 (부끄럽지 않은 명시)
+      if (proBtn) proBtn.textContent = "Pro 등록 문의하기";
+      if (entBtn) entBtn.textContent = "Enterprise 도입 문의";
+      if (proHint) proHint.textContent = "초기 런칭가 · 문의 후 관리자가 플랜 반영";
+      if (entHint) entHint.textContent = "세금계산서 · 도입 상담 환영";
+      if (note) {
+        note.innerHTML =
+          '현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다. ' +
+          '온라인 결제 연동 전이면 <strong style="color:#e2e8f0">문의</strong>로 Pro/Enterprise 등록을 요청해 주세요. ' +
+          "관리자가 VIP·플랜을 수동 반영합니다.";
+      }
+      const proLink = $("#proLink");
+      const entLink = $("#entLink");
+      if (proLink) {
+        proLink.href = "#contact";
+        proLink.removeAttribute("target");
+        proLink.dataset.nav = "contact";
+        proLink.textContent = "도입 문의 · Pro 등록 요청";
+      }
+      if (entLink) {
+        entLink.href = "#contact";
+        entLink.removeAttribute("target");
+        entLink.dataset.nav = "contact";
+        entLink.textContent = "도입 문의 · 세금계산서";
+      }
     }
   }
 
@@ -4849,7 +4988,7 @@
       if (!demoBillingUpgradeEnabled()) {
         if (!state.token) {
           openAuth();
-          toast("결제·업그레이드는 로그인 후 진행할 수 있습니다");
+          toast("업그레이드는 로그인 후 진행할 수 있습니다");
           return;
         }
         const url = paymentUrlForPlan(plan);
@@ -4860,11 +4999,20 @@
           );
           return;
         }
+        // 결제 미연결: 문의 화면 + mailto 초안
         const contact =
           (state.meta && state.meta.contact_email) || "corelabs.studio@gmail.com";
-        toast(
-          `${planLabel} 결제 링크가 아직 연결되지 않았습니다. ${contact} 로 문의해 주세요.`
+        const subject = encodeURIComponent(`RoadLog ${planLabel} 등록 요청`);
+        const body = encodeURIComponent(
+          `안녕하세요,\n\nRoadLog ${planLabel} 등록을 요청드립니다.\n\n` +
+            `계정 이메일: ${state.user?.email || ""}\n` +
+            `희망 플랜: ${planLabel}\n\n감사합니다.`
         );
+        showView("contact");
+        toast(`${planLabel}은 문의 후 등록됩니다. 메일 초안을 열 수 있습니다.`);
+        setTimeout(() => {
+          window.location.href = `mailto:${contact}?subject=${subject}&body=${body}`;
+        }, 400);
         return;
       }
 
