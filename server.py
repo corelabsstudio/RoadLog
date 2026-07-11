@@ -1186,12 +1186,45 @@ def index():
     return _file_response(WEB / "index.html")
 
 
+def _safe_web_file(rel_path: str) -> Path | None:
+    """
+    web/ 하위 파일만 허용. .. 경로 탈출로 서버 소스·/etc 노출 방지.
+    """
+    if not rel_path or rel_path.startswith(("/", "\\")):
+        return None
+    # URL 디코딩 전·후 모두 차단
+    if ".." in rel_path.replace("\\", "/").split("/"):
+        return None
+    if "\x00" in rel_path:
+        return None
+    try:
+        root = WEB.resolve()
+        candidate = (WEB / rel_path).resolve()
+        # Python 3.9+: is_relative_to
+        if hasattr(candidate, "is_relative_to"):
+            if not candidate.is_relative_to(root):
+                return None
+        else:
+            root_s = str(root)
+            cand_s = str(candidate)
+            if not (cand_s == root_s or cand_s.startswith(root_s + "/") or cand_s.startswith(root_s + "\\")):
+                return None
+        if candidate.is_file():
+            return candidate
+    except Exception:
+        return None
+    return None
+
+
 @app.get("/{path:path}")
 def spa_fallback(path: str):
     # API·헬스 경로가 정적 폴백에 먹히지 않게
     if path.startswith("api/") or path in {"health", "healthz"}:
         raise HTTPException(404, "Not Found")
-    candidate = WEB / path
-    if candidate.is_file():
-        return _file_response(candidate)
+    safe = _safe_web_file(path)
+    if safe is not None:
+        return _file_response(safe)
+    # 존재하지 않는 SPA 라우트만 index 폴백 (경로 탈출 시도는 404)
+    if ".." in path.replace("\\", "/").split("/"):
+        raise HTTPException(404, "Not Found")
     return _file_response(WEB / "index.html")
