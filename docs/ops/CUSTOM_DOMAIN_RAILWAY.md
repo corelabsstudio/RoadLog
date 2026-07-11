@@ -101,8 +101,8 @@ ALLOWED_ORIGINS=https://app.roadlog.com,https://roadlog.com
 ```env
 APP_ENV=production
 APP_SECRET=긴-난수
-ADMIN_USERNAME=hhs126
-ADMIN_PASSWORD=...
+ADMIN_USERNAME=관리자_ID
+ADMIN_PASSWORD=강한_비밀번호
 ALLOW_DEMO_BILLING_UPGRADE=false
 ```
 

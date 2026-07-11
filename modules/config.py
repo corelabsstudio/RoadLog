@@ -17,9 +17,17 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 def _resolve_data_dir() -> Path:
     """
     쓰기 가능한 data 디렉터리.
-    Streamlit Cloud 에서 저장소 경로가 읽기 전용이면 home/tmp 로 폴백.
+    우선순위:
+      1) DATA_DIR 환경변수 (Railway Volume 마운트 경로 권장: /data)
+      2) RAILWAY_VOLUME_MOUNT_PATH
+      3) 프로젝트 ./data → ~/.roadlog/data → /tmp
     """
-    candidates = [
+    env_paths: list[Path] = []
+    for key in ("DATA_DIR", "RAILWAY_VOLUME_MOUNT_PATH"):
+        raw = (os.getenv(key) or "").strip()
+        if raw:
+            env_paths.append(Path(raw))
+    candidates = env_paths + [
         ROOT_DIR / "data",
         Path.home() / ".roadlog" / "data",
         Path("/tmp") / "roadlog" / "data",
@@ -38,9 +46,10 @@ def _resolve_data_dir() -> Path:
     return d
 
 
-DATA_DIR = _resolve_data_dir()
-
+# .env 를 먼저 로드한 뒤 DATA_DIR 을 결정 (로컬·배포 공통)
 load_dotenv(ROOT_DIR / ".env")
+
+DATA_DIR = _resolve_data_dir()
 
 
 def _clean_secret_value(val: object) -> str:
@@ -132,26 +141,22 @@ def _get_secret(key: str, default: str = "") -> str:
     return default
 
 
-# 로컬·Streamlit 공통 기본 관리자 (Secrets/.env 가 있으면 그쪽이 우선)
-# Secrets 미설정 시에도 동일 계정으로 로그인 가능하도록 맞춤.
-_DEFAULT_ADMIN_USER = "hhs126"
-_DEFAULT_ADMIN_PASS = "hh921544hh@1013"
-_DEFAULT_ADMIN_EMAIL = "hhs126@roadlog.local"
+# 관리자 계정은 반드시 환경변수 / Streamlit Secrets 로만 주입합니다.
+# (소스에 실계정·실비밀번호를 두지 않음 — 정식 런칭 보안 정책)
 
 
 def get_admin_credentials() -> tuple[str, str, str]:
     """
     관리자 (username, password, email) — 항상 최신 secrets/env 를 읽음.
-    우선순위: 환경변수 → Streamlit Secrets → 기본 관리자 계정.
+    우선순위: 환경변수 → Streamlit Secrets.
+    미설정 시 빈 비밀번호 → 관리자 로그인 불가.
     """
-    username = (
-        _get_secret("ADMIN_USERNAME", "") or _DEFAULT_ADMIN_USER
-    ).strip() or _DEFAULT_ADMIN_USER
-    password = _get_secret("ADMIN_PASSWORD", "") or _DEFAULT_ADMIN_PASS
-    email = (
-        _get_secret("ADMIN_EMAIL", "") or _DEFAULT_ADMIN_EMAIL or f"{username}@roadlog.local"
-    )
-    return username.strip(), password, email.strip().lower()
+    username = (_get_secret("ADMIN_USERNAME", "") or "").strip()
+    password = _get_secret("ADMIN_PASSWORD", "")
+    email = (_get_secret("ADMIN_EMAIL", "") or "").strip().lower()
+    if not email and username:
+        email = f"{username}@roadlog.local"
+    return username, password, email
 
 
 def admin_secrets_status() -> dict:
@@ -163,16 +168,19 @@ def admin_secrets_status() -> dict:
         k.upper() in {str(x).upper() for x in smap.keys()}
         for k in ("ADMIN_USERNAME", "ADMIN_PASSWORD")
     )
-    using_builtin = u == _DEFAULT_ADMIN_USER and p == _DEFAULT_ADMIN_PASS and not from_env and not from_secrets
+    source = (
+        "env"
+        if from_env
+        else ("streamlit_secrets" if from_secrets else "unset")
+    )
     return {
-        "username": u,
+        "username": u or "(unset)",
         "email": e,
         "password_set": bool(p),
-        "password_len": len(p),
-        "source": "env"
-        if from_env
-        else ("streamlit_secrets" if from_secrets else "builtin_default"),
-        "is_default": using_builtin,
+        "password_len": len(p) if p else 0,
+        "source": source,
+        "is_default": False,
+        "configured": bool(u and p),
     }
 
 
@@ -188,6 +196,12 @@ CONTACT_FORM_URL = _get_secret(
     "CONTACT_FORM_URL",
     "https://docs.google.com/forms/d/e/1FAIpQLScl9ZJD_crv1d6JPDzdNaYTDzUQXKkLNx_X6pmyEwsg_1DnGg/viewform?usp=sf_link",
 )
+# 푸터·사업자 고지 (비우면 UI에서 해당 줄 숨김)
+BUSINESS_NAME = _get_secret("BUSINESS_NAME", STUDIO_NAME)
+BUSINESS_OWNER = _get_secret("BUSINESS_OWNER", "")
+BUSINESS_REG_NO = _get_secret("BUSINESS_REG_NO", "")
+BUSINESS_ADDRESS = _get_secret("BUSINESS_ADDRESS", "")
+MAIL_ORDER_REG_NO = _get_secret("MAIL_ORDER_REG_NO", "")
 
 # 색상 팔레트
 COLORS = {
@@ -239,10 +253,13 @@ ALLOWED_ORIGINS = _get_secret("ALLOWED_ORIGINS", "*")
 
 # ── 인증 / 관리자 ──────────────────────────────────────
 # 모듈 import 시점 값 (로그인 시에는 get_admin_credentials() 사용 권장)
-ADMIN_USERNAME = _get_secret("ADMIN_USERNAME", _DEFAULT_ADMIN_USER) or _DEFAULT_ADMIN_USER
-ADMIN_PASSWORD = _get_secret("ADMIN_PASSWORD", _DEFAULT_ADMIN_PASS) or _DEFAULT_ADMIN_PASS
-ADMIN_EMAIL = _get_secret("ADMIN_EMAIL", _DEFAULT_ADMIN_EMAIL) or _DEFAULT_ADMIN_EMAIL
+_admin_u, _admin_p, _admin_e = get_admin_credentials()
+ADMIN_USERNAME = _admin_u
+ADMIN_PASSWORD = _admin_p
+ADMIN_EMAIL = _admin_e
 APP_SECRET = _get_secret("APP_SECRET", "roadlog-dev-secret-change-me")
+# 회원가입 최소 비밀번호 길이 (정식 런칭)
+MIN_PASSWORD_LENGTH = 8
 
 # 알려진 약한/플레이스홀더 값 (프로덕션 차단·경고용)
 _WEAK_APP_SECRETS = {
@@ -293,17 +310,30 @@ def security_issues() -> list[dict[str, str]]:
             }
         )
 
-    weak_admin = ADMIN_PASSWORD in _WEAK_ADMIN_PASSWORDS or len(ADMIN_PASSWORD) < 8
-    if weak_admin:
+    if not ADMIN_USERNAME or not ADMIN_PASSWORD:
         issues.append(
             {
                 "level": "critical" if is_production() else "warn",
-                "code": "weak_admin_password",
-                "message": "ADMIN_PASSWORD 가 약합니다. .env 에 강한 비밀번호를 설정하세요.",
+                "code": "admin_unset",
+                "message": "ADMIN_USERNAME / ADMIN_PASSWORD 미설정. 환경변수로 관리자 계정을 설정하세요.",
             }
         )
+    else:
+        weak_admin = ADMIN_PASSWORD in _WEAK_ADMIN_PASSWORDS or len(ADMIN_PASSWORD) < 8
+        if weak_admin:
+            issues.append(
+                {
+                    "level": "critical" if is_production() else "warn",
+                    "code": "weak_admin_password",
+                    "message": "ADMIN_PASSWORD 가 약합니다. .env 에 강한 비밀번호를 설정하세요.",
+                }
+            )
 
-    if ADMIN_USERNAME.lower() in {"admin", "administrator", "root"} and is_production():
+    if ADMIN_USERNAME and ADMIN_USERNAME.lower() in {
+        "admin",
+        "administrator",
+        "root",
+    } and is_production():
         issues.append(
             {
                 "level": "warn",
@@ -331,24 +361,48 @@ def security_issues() -> list[dict[str, str]]:
             }
         )
 
-    if not OPENAI_API_KEY or OPENAI_API_KEY.startswith("sk-xxxx"):
+    if not llm_configured():
         issues.append(
             {
-                "level": "info",
+                "level": "critical" if is_production() else "info",
                 "code": "no_openai_key",
-                "message": "OPENAI_API_KEY 미설정 — AI 생성은 규칙 초안으로 동작합니다.",
+                "message": "LLM API 키 미설정 (OPENAI_API_KEY 또는 XAI_API_KEY). AI 생성은 규칙 초안만 동작합니다.",
             }
         )
 
+    if is_production() and not data_dir_is_external():
+        # Supabase 연결 시 local 디스크 의존이 줄어듦
+        sb_ok = bool(
+            SUPABASE_URL
+            and SUPABASE_KEY
+            and "xxxx" not in (SUPABASE_URL or "")
+            and len(SUPABASE_KEY or "") > 40
+        )
+        if not sb_ok:
+            issues.append(
+                {
+                    "level": "warn",
+                    "code": "ephemeral_storage",
+                    "message": "DATA_DIR(볼륨) 미설정 + Supabase 미연결 — 재배포 시 회원/일지 유실 위험. Railway Volume을 /data 에 마운트하세요.",
+                }
+            )
+
     pay = (PRO_PAYMENT_URL or "").lower()
-    if is_production() and (
-        not pay or "example.com" in pay or "your-payment" in pay
-    ):
+    if not pay or "example.com" in pay or "your-payment" in pay:
+        issues.append(
+            {
+                "level": "warn" if is_production() else "info",
+                "code": "placeholder_payment_url",
+                "message": "PRO_PAYMENT_URL 이 플레이스홀더입니다. 결제 연동 전이면 문의 플로우로 안내하세요.",
+            }
+        )
+
+    if is_production() and (not SUPABASE_URL or "xxxx" in (SUPABASE_URL or "")):
         issues.append(
             {
                 "level": "warn",
-                "code": "placeholder_payment_url",
-                "message": "PRO_PAYMENT_URL 이 플레이스홀더입니다. 유료 전환 링크를 연결하세요.",
+                "code": "local_json_storage",
+                "message": "SUPABASE 미연결 — local_json 저장. Railway 재배포 시 데이터 유실 위험이 있습니다.",
             }
         )
 
@@ -393,13 +447,58 @@ def assert_secure_for_production() -> None:
     print(f"[RoadLog security:critical-soft] {msg}", flush=True)
 
 
-# ── OpenAI ──────────────────────────────────────────────
+# ── LLM (OpenAI 호환: OpenAI / xAI 등) ─────────────────
 OPENAI_API_KEY = _get_secret("OPENAI_API_KEY", "")
+# xAI 등 OpenAI 호환 키 (OPENAI 가 없거나 한도 초과 시 폴백)
+XAI_API_KEY = _get_secret("XAI_API_KEY", "")
 OPENAI_MODEL = _get_secret("OPENAI_MODEL", "gpt-4o-mini")
+# 비우면 OpenAI 공식. xAI: https://api.x.ai/v1
+OPENAI_BASE_URL = _get_secret("OPENAI_BASE_URL", "").rstrip("/")
+XAI_BASE_URL = (_get_secret("XAI_BASE_URL", "https://api.x.ai/v1") or "https://api.x.ai/v1").rstrip("/")
+XAI_MODEL = _get_secret("XAI_MODEL", "grok-2-latest")
+
+
+def resolve_llm_config() -> dict[str, str]:
+    """
+    실제 호출에 쓸 LLM 설정.
+    1) OPENAI_API_KEY (+ optional OPENAI_BASE_URL)
+    2) XAI_API_KEY → xAI Grok (OpenAI SDK 호환)
+    """
+    if OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"):
+        return {
+            "provider": "openai" if not OPENAI_BASE_URL else "openai_compatible",
+            "api_key": OPENAI_API_KEY,
+            "base_url": OPENAI_BASE_URL or "",
+            "model": OPENAI_MODEL or "gpt-4o-mini",
+        }
+    if XAI_API_KEY and not XAI_API_KEY.startswith("xai-xxxx"):
+        return {
+            "provider": "xai",
+            "api_key": XAI_API_KEY,
+            "base_url": XAI_BASE_URL,
+            "model": XAI_MODEL or "grok-2-latest",
+        }
+    return {"provider": "", "api_key": "", "base_url": "", "model": ""}
+
+
+def llm_configured() -> bool:
+    return bool(resolve_llm_config().get("api_key"))
+
 
 # ── Supabase ────────────────────────────────────────────
 SUPABASE_URL = _get_secret("SUPABASE_URL", "")
 SUPABASE_KEY = _get_secret("SUPABASE_KEY", "")
+
+
+def data_dir_is_external() -> bool:
+    """Railway Volume 등 컨테이너 외부 영속 경로 사용 여부."""
+    raw = (os.getenv("DATA_DIR") or os.getenv("RAILWAY_VOLUME_MOUNT_PATH") or "").strip()
+    if not raw:
+        return False
+    try:
+        return Path(raw).resolve() == Path(DATA_DIR).resolve()
+    except Exception:
+        return False
 
 # ── AdSense (Free 결과 하단 전용) ───────────────────────
 ADSENSE_CLIENT = _get_secret("ADSENSE_CLIENT", "ca-pub-xxxxxxxxxxxxxxxx")

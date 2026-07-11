@@ -17,7 +17,7 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import FastAPI, File, Header, HTTPException, Query, Response, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +33,10 @@ from modules.config import (
     APP_FULL,
     APP_TAGLINE,
     APP_TITLE,
+    BUSINESS_ADDRESS,
+    BUSINESS_NAME,
+    BUSINESS_OWNER,
+    BUSINESS_REG_NO,
     CONTACT_EMAIL,
     CONTACT_FORM_URL,
     DATA_DIR,
@@ -40,6 +44,7 @@ from modules.config import (
     ENTERPRISE_PAYMENT_URL,
     ENTERPRISE_PRICE_KRW,
     FREE_MONTHLY_LIMIT,
+    MAIL_ORDER_REG_NO,
     OPENAI_API_KEY,
     PRO_PAYMENT_URL,
     PRO_PRICE_KRW,
@@ -47,14 +52,26 @@ from modules.config import (
     STUDIO_NAME_EN,
     assert_secure_for_production,
     cors_allow_origins,
+    data_dir_is_external,
     is_production,
+    llm_configured,
+    resolve_llm_config,
     security_issues,
 )
 from modules.export import export_docx, export_excel, export_pdf
-from modules.generator import generate_driving_log
+from modules.generator import generate_driving_log, scrub_submission_log
 from modules import style_learn
 from modules import admin_ops
 from modules import reviews as reviews_ops
+from modules.rate_limit import (
+    AUTH_LIMIT,
+    AUTH_WINDOW,
+    GENERATE_LIMIT,
+    GENERATE_WINDOW,
+    REGISTER_LIMIT,
+    REGISTER_WINDOW,
+    limiter,
+)
 from modules.validator import validate_log
 
 ROOT = Path(__file__).resolve().parent
@@ -76,7 +93,7 @@ _cors_origins = cors_allow_origins()
 # credentials + "*" 조합은 브라우저에서 거부되므로 와일드카드일 때 credentials 비활성
 _cors_credentials = _cors_origins != ["*"]
 
-app = FastAPI(title=APP_FULL, version="3.0")
+app = FastAPI(title=APP_FULL, version="3.1")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -84,6 +101,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    """기본 보안 헤더 + 응답 charset."""
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault(
+        "Permissions-Policy", "geolocation=(self), microphone=(), camera=()"
+    )
+    if is_production():
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    # JSON 한글 깨짐 방지 (일부 프록시/클라이언트)
+    ct = response.headers.get("content-type", "")
+    if ct.startswith("application/json") and "charset" not in ct.lower():
+        response.headers["content-type"] = "application/json; charset=utf-8"
+    return response
+
+
+def _client_ip(request) -> str:
+    forwarded = request.headers.get("x-forwarded-for") or ""
+    if forwarded:
+        return forwarded.split(",")[0].strip() or "unknown"
+    if request.client and request.client.host:
+        return request.client.host
+    return "unknown"
+
+
+def _rate_limit_or_429(key: str, *, limit: int, window_sec: int, what: str) -> None:
+    if not limiter.allow(key, limit=limit, window_sec=window_sec):
+        raise HTTPException(
+            429,
+            f"요청이 너무 많습니다. 잠시 후 다시 시도해 주세요. ({what})",
+        )
 
 # 토큰 세션 — 메모리 + 디스크 영속화 (재접속 시 자동 로그인 유지)
 _sessions: dict[str, dict] = {}
@@ -236,14 +291,25 @@ def health():
         storage = db.supabase_status()
     except Exception:
         storage = "unknown"
+    llm = resolve_llm_config()
+    persistent = storage == "connected" or data_dir_is_external()
     return {
         "ok": True,
         "app": APP_TITLE,
         "env": APP_ENV,
         "production": is_production(),
         "storage": storage,
-        "openai": bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx")),
+        "data_dir": str(DATA_DIR),
+        "storage_persistent": persistent,
+        "openai": llm_configured(),
+        "llm_provider": llm.get("provider") or "",
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
+        "launch_ready": bool(
+            is_production()
+            and llm_configured()
+            and persistent
+            and not ALLOW_DEMO_BILLING_UPGRADE
+        ),
     }
 
 
@@ -266,8 +332,21 @@ def meta():
         "pro_url": PRO_PAYMENT_URL,
         "enterprise_url": ENTERPRISE_PAYMENT_URL,
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
+        "payment_ready": not (
+            (not PRO_PAYMENT_URL)
+            or "example.com" in (PRO_PAYMENT_URL or "").lower()
+            or "your-payment" in (PRO_PAYMENT_URL or "").lower()
+        ),
         "default_settings": DEFAULT_USER_SETTINGS,
         "default_templates_url": "/assets/templates/manifest.json",
+        "business": {
+            "name": BUSINESS_NAME or STUDIO_NAME,
+            "owner": BUSINESS_OWNER or "",
+            "reg_no": BUSINESS_REG_NO or "",
+            "address": BUSINESS_ADDRESS or "",
+            "mail_order_no": MAIL_ORDER_REG_NO or "",
+            "contact_email": CONTACT_EMAIL,
+        },
     }
 
 
@@ -335,7 +414,20 @@ def default_templates():
 
 
 @app.post("/api/auth/register")
-def register(body: AuthBody):
+def register(body: AuthBody, request: Request):
+    ip = _client_ip(request)
+    _rate_limit_or_429(
+        f"register:{ip}",
+        limit=REGISTER_LIMIT,
+        window_sec=REGISTER_WINDOW,
+        what="회원가입",
+    )
+    _rate_limit_or_429(
+        f"auth:{ip}",
+        limit=AUTH_LIMIT,
+        window_sec=AUTH_WINDOW,
+        what="인증",
+    )
     ok, msg = db.register_user(body.email, body.password, body.name)
     if not ok:
         raise HTTPException(400, msg)
@@ -543,8 +635,15 @@ def geo_reverse(
 
 
 @app.post("/api/auth/login")
-def login(body: AuthBody):
+def login(body: AuthBody, request: Request):
     """일반 로그인. 관리자 ID/PW면 자동으로 관리자(Pro) 세션."""
+    ip = _client_ip(request)
+    _rate_limit_or_429(
+        f"auth:{ip}",
+        limit=AUTH_LIMIT,
+        window_sec=AUTH_WINDOW,
+        what="로그인",
+    )
     ok, user, msg = db.authenticate(body.email, body.password)
     if not ok or not user:
         raise HTTPException(401, msg)
@@ -589,8 +688,26 @@ def put_settings(body: SettingsBody, authorization: str | None = Header(default=
 
 
 @app.post("/api/generate")
-def generate(body: GenerateBody, authorization: str | None = Header(default=None)):
+def generate(
+    body: GenerateBody,
+    request: Request,
+    authorization: str | None = Header(default=None),
+):
     user = _token_user(authorization)
+    ip = _client_ip(request)
+    email_key = (user.get("email") or "anon").lower()
+    _rate_limit_or_429(
+        f"generate:{email_key}",
+        limit=GENERATE_LIMIT,
+        window_sec=GENERATE_WINDOW,
+        what="일지 생성",
+    )
+    _rate_limit_or_429(
+        f"generate-ip:{ip}",
+        limit=GENERATE_LIMIT * 2,
+        window_sec=GENERATE_WINDOW,
+        what="일지 생성",
+    )
     plan = user.get("plan") or "free"
     used = db.get_usage(user["email"])
     unlimited = plan == "pro" or user.get("is_admin") or user.get("is_vip")
@@ -642,10 +759,11 @@ def generate(body: GenerateBody, authorization: str | None = Header(default=None
         report_type=report_type,
     )
 
-    log = result.get("log") or {}
+    log = scrub_submission_log(result.get("log") or {})
+    result = {**result, "log": log}
     has_content = bool(log.get("trips") or log.get("visits"))
     saved = None
-    if result.get("log") and has_content:
+    if log and has_content:
         used = db.increment_usage(user["email"], 1)
         # 생성 성공 시 서버에 자동 저장 (이력)
         try:
@@ -654,7 +772,7 @@ def generate(body: GenerateBody, authorization: str | None = Header(default=None
                 log,
                 report_type=report_type,
             )
-            # 클라이언트 동기화용 id
+            # 클라이언트 동기화용 id (제출 본문 필드와 분리)
             if isinstance(result.get("log"), dict) and saved.get("id"):
                 result = {**result, "log": {**result["log"], "_saved_id": saved["id"]}}
         except Exception as e:
@@ -732,15 +850,16 @@ def validate(body: ExportBody, authorization: str | None = Header(default=None))
 def export(body: ExportBody, authorization: str | None = Header(default=None)):
     _token_user(authorization)
     fmt = (body.format or "").lower().strip()
+    clean_log = scrub_submission_log(body.log or {})
     try:
         if fmt == "excel":
-            data, name = export_excel(body.log)
+            data, name = export_excel(clean_log)
             media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         elif fmt == "pdf":
-            data, name = export_pdf(body.log)
+            data, name = export_pdf(clean_log)
             media = "application/pdf"
         elif fmt == "docx":
-            data, name = export_docx(body.log)
+            data, name = export_docx(clean_log)
             media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else:
             raise HTTPException(400, "format은 excel | pdf | docx 중 하나여야 합니다.")

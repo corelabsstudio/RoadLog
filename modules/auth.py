@@ -243,7 +243,7 @@ def show_login_page() -> None:
                 st.error(msg)
                 # 관리자 ID를 쳤는데 실패하면 Secrets 안내
                 typed = (email or "").strip().lower()
-                if typed in {admin_user.lower(), admin_email.lower()} or typed == "hhs126":
+                if typed in {admin_user.lower(), admin_email.lower()}:
                     st.caption(
                         "관리자 ID는 맞는데 실패한 경우: Secrets의 ADMIN_PASSWORD 가 "
                         "입력한 비번과 같은지, Save 후 Reboot 했는지 확인하세요. "
@@ -261,8 +261,8 @@ def show_login_page() -> None:
                 st.error("비밀번호가 일치하지 않습니다.")
             elif not email or "@" not in email:
                 st.error("올바른 이메일을 입력해 주세요.")
-            elif len(pw or "") < 4:
-                st.error("비밀번호는 4자 이상 입력해 주세요.")
+            elif len(pw or "") < 8:
+                st.error("비밀번호는 8자 이상 입력해 주세요.")
             else:
                 ok, msg = db.register_user(email, pw, name)
                 if ok:

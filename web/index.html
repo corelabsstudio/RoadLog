@@ -2,16 +2,16 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260711-v14" />
+  <meta name="rl-build" content="20260712-launch-v15" />
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
   <meta name="theme-color" content="#030712" />
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260711-v14";
+      var BUILD = "20260712-launch-v15";
       try {
         var prev = localStorage.getItem("rl_build");
         if (prev === BUILD) return;
@@ -68,11 +68,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="RoadLog" />
   <meta name="format-detection" content="telephone=no" />
-  <title>RoadLog — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX</title>
+  <title>로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX</title>
 
   <meta
     name="description"
-    content="RoadLog(로드로그) — AI 운행일지·외근일지. 한 줄 입력으로 회사 제출용 문서를 작성합니다. Free 월 15회 · Pro 월 2,900원. Excel · PDF · DOCX."
+    content="로드로그(RoadLog) — AI 운행·외근 일지. 메모를 회사 제출용 Excel·PDF·DOCX로 정리합니다. Free 월 15회 · Pro 월 2,900원(초기 런칭가, 문의 등록)."
   />
   <meta
     name="keywords"
@@ -85,24 +85,24 @@
   <!-- Open Graph (카카오·링크 미리보기) -->
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ko_KR" />
-  <meta property="og:site_name" content="RoadLog" />
+  <meta property="og:site_name" content="로드로그" />
   <meta property="og:url" content="https://roadlog.co.kr/" />
-  <meta property="og:title" content="RoadLog — AI 운행·외근 일지" />
+  <meta property="og:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     property="og:description"
-    content="한 줄 입력으로 회사 제출용 운행·외근 일지. Free 월 15회 · Pro 월 2,900원. Excel · PDF · DOCX."
+    content="메모를 회사 제출용 운행·외근 일지로. Free 월 15회 · Pro 월 2,900원(초기 런칭가). Excel · PDF · DOCX."
   />
   <meta property="og:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="RoadLog — AI Trip Log" />
+  <meta property="og:image:alt" content="로드로그 — AI 운행·외근 일지" />
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="RoadLog — AI 운행·외근 일지" />
+  <meta name="twitter:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     name="twitter:description"
-    content="한 줄 입력으로 회사 제출용 운행·외근 일지. Free 체험 · Pro 월 2,900원."
+    content="메모를 회사 제출용 일지로. Free 체험 · Pro 초기 런칭가 월 2,900원."
   />
   <meta name="twitter:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
 
@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-pwa-update-v14" />
+  <link rel="stylesheet" href="/styles.css?v=20260712-launch-v15" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -125,7 +125,7 @@
       <div class="brand" data-nav="home">
         <img class="brand-logo" src="/icons/logo.svg" width="36" height="36" alt="RoadLog" />
         <div class="brand-text">
-          <span class="brand-name">RoadLog</span>
+          <span class="brand-name">로드로그</span>
           <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
         </div>
       </div>
@@ -284,14 +284,14 @@
           <div class="container">
             <div class="section-head landing-section-head">
               <div class="eyebrow" data-i18n="landing.reviews_eyebrow">Reviews</div>
-              <h2 data-i18n="landing.reviews_title">먼저 써 본 분들이 남긴 이야기</h2>
-              <p data-i18n="landing.reviews_sub">퇴근 전 일지 정리, 제출용 톤, 저장·이어쓰기에 대한 초기 사용자 피드백입니다.</p>
+              <h2 data-i18n="landing.reviews_title">베타 피드백</h2>
+              <p data-i18n="landing.reviews_sub">초기 베타·지인 테스트에서 받은 의견입니다. 실제 후기가 쌓이면 이 영역에 공개됩니다.</p>
             </div>
             <div class="landing-review-grid" id="landingReviewGrid" aria-live="polite">
               <!-- 공개 후기는 /api/reviews 로 채웁니다 -->
             </div>
             <p class="landing-reviews-note" id="landingReviewsNote" data-i18n="landing.reviews_note">
-              관리자가 등록·공개한 후기가 이 영역에 표시됩니다.
+              베타 의견 · 관리자가 공개한 후기만 표시됩니다.
             </p>
           </div>
         </section>
@@ -729,7 +729,7 @@
               <li>우선 지원</li>
             </ul>
             <p class="trial-hint" id="proTrialHint">초기 런칭가 · 결제 연동 전엔 문의로 등록</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro 시작하기</button>
+            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro 등록 문의하기</button>
             <a class="price-link" id="proLink" href="#contact" data-nav="contact">도입 문의 · Pro 등록 요청</a>
           </div>
           <div class="price-card featured">
@@ -750,15 +750,15 @@
               <li>기업용 대시보드 · 관리자 콘솔</li>
               <li>무제한 생성 · 좌석 확장</li>
             </ul>
-            <p class="trial-hint" id="entTrialHint">법인 결제 · 세금계산서 · 초기 런칭가</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise 문의하기</button>
+            <p class="trial-hint" id="entTrialHint">법인 문의 · 세금계산서 · 초기 런칭가</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise 도입 문의</button>
             <a class="price-link" id="entLink" href="#contact" data-nav="contact">도입 문의 · 세금계산서</a>
           </div>
         </div>
         <p class="pricing-note" id="pricingNote">
-          현재 가격은 <strong style="color:#e2e8f0">초기 사용자 확보용 런칭가</strong>입니다.
-          온라인 결제 연동 전이면 <strong style="color:#e2e8f0">문의</strong>로 Pro/Enterprise 등록을 요청해 주세요.
-          (관리자가 VIP·플랜을 수동 반영합니다.) Enterprise 기본 5인 · 추가 좌석 월 ₩2,000입니다.
+          현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다.
+          온라인 자동 결제는 준비 중이며, <strong style="color:#e2e8f0">문의 후 관리자가 Pro/Enterprise를 등록</strong>합니다.
+          Enterprise 기본 5인 · 추가 좌석 월 ₩2,000 · 세금계산서 지원.
         </p>
       </div>
     </section>
@@ -1432,19 +1432,27 @@
     <div class="container footer-inner">
       <div class="footer-brand-block">
         <div class="brand footer-brand">
-          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="RoadLog" />
+          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="로드로그" />
           <div class="brand-text">
-            <span class="brand-name">RoadLog</span>
+            <span class="brand-name">로드로그</span>
             <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
           </div>
         </div>
         <p class="footer-copy">© 2026 CoreLabs. All rights reserved.</p>
-        <a class="footer-contact" href="mailto:corelabs.studio@gmail.com">
+        <div class="footer-biz" id="footerBiz" aria-label="사업자 정보">
+          <p class="footer-biz-line"><span>상호</span> <strong id="bizName">코어랩스</strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizOwnerRow"><span>대표</span> <strong id="bizOwner"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizRegRow"><span>사업자등록번호</span> <strong id="bizRegNo"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizMailOrderRow"><span>통신판매업</span> <strong id="bizMailOrder"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizAddrRow"><span>주소</span> <strong id="bizAddress"></strong></p>
+          <p class="footer-biz-hint" id="bizHint">유료 결제·세금계산서는 문의 후 안내드립니다.</p>
+        </div>
+        <a class="footer-contact" id="footerContactMail" href="mailto:corelabs.studio@gmail.com">
           <svg class="footer-mail-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
             <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span>문의: corelabs.studio@gmail.com</span>
+          <span id="footerContactLabel">문의: corelabs.studio@gmail.com</span>
         </a>
         <p class="footer-powered">Powered by <span class="corelabs-mark">CoreLabs</span></p>
       </div>
@@ -1504,7 +1512,7 @@
           </div>
           <div class="field">
             <label class="field-label" for="regPw">비밀번호</label>
-            <input type="password" id="regPw" name="new-password" placeholder="4자 이상" autocomplete="new-password" />
+            <input type="password" id="regPw" name="new-password" placeholder="8자 이상" minlength="8" autocomplete="new-password" />
           </div>
           <div class="field">
             <label class="field-label" for="regPw2">비밀번호 확인</label>
@@ -1545,7 +1553,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-pwa-update-v14"></script>
+  <script src="/app.js?v=20260712-launch-v15"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

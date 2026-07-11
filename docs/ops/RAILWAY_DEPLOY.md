@@ -39,13 +39,21 @@ Streamlit 주소와 **별개**입니다.
 ```env
 APP_ENV=production
 APP_SECRET=여기_긴_난수_넣기
-ADMIN_USERNAME=hhs126
-ADMIN_PASSWORD=hh921544hh@1013
-ADMIN_EMAIL=hhs126@roadlog.local
+ADMIN_USERNAME=관리자_ID
+ADMIN_PASSWORD=강한_비밀번호_8자_이상
+ADMIN_EMAIL=you@company.com
 ALLOW_DEMO_BILLING_UPGRADE=false
-ALLOWED_ORIGINS=*
-OPENAI_API_KEY=
+ALLOWED_ORIGINS=https://roadlog.co.kr
+OPENAI_API_KEY=sk-...
+PRO_PAYMENT_URL=
+ENTERPRISE_PAYMENT_URL=
 CONTACT_EMAIL=corelabs.studio@gmail.com
+BUSINESS_NAME=코어랩스
+BUSINESS_OWNER=
+BUSINESS_REG_NO=
+MAIL_ORDER_REG_NO=
+SUPABASE_URL=
+SUPABASE_KEY=
 ```
 
 ### APP_SECRET 만들기 (로컬 PowerShell)
@@ -98,8 +106,10 @@ python -c "import secrets; print(secrets.token_urlsafe(48))"
 
 - [ ] `/api/health` ok  
 - [ ] 회원가입 / 로그인  
-- [ ] 관리자 `hhs126` 로그인  
-- [ ] 일지 생성 · 다운로드  
+- [ ] 관리자 계정 로그인 (`ADMIN_USERNAME`)  
+- [ ] 일지 생성 · 다운로드 (AI: health `openai:true`)  
+- [ ] 제출 PDF에 “규칙 기반 초안” 등 내부 문구 없음  
+- [ ] Supabase 또는 영속 볼륨 연결 (`storage` 확인)  
 - [ ] Streamlit 주소와 **회원 DB가 다름** (각자 저장소)  
 
 ---

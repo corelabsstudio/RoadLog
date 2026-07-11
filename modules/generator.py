@@ -11,7 +11,13 @@ import re
 from datetime import date
 from typing import Any
 
-from modules.config import FEW_SHOT_EXAMPLES, OPENAI_API_KEY, OPENAI_MODEL
+from modules.config import (
+    FEW_SHOT_EXAMPLES,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
+    llm_configured,
+    resolve_llm_config,
+)
 from modules.validator import validate_log
 
 
@@ -382,30 +388,52 @@ def _extract_json(text: str) -> dict:
         raise
 
 
+def _make_llm_client(cfg: dict[str, str] | None = None):
+    """OpenAI SDK 클라이언트 (공식 OpenAI 또는 xAI 등 호환 엔드포인트)."""
+    from openai import OpenAI
+
+    cfg = cfg or resolve_llm_config()
+    key = cfg.get("api_key") or ""
+    if not key:
+        raise RuntimeError("LLM API key not configured")
+    kwargs: dict[str, Any] = {"api_key": key}
+    base = (cfg.get("base_url") or "").strip()
+    if base:
+        kwargs["base_url"] = base
+    return OpenAI(**kwargs), cfg
+
+
 def generate_with_openai(
     raw_text: str,
     settings: dict,
     form: dict | None = None,
     style_block: str = "",
 ) -> dict[str, Any]:
-    """OpenAI Chat Completions 호출."""
-    from openai import OpenAI
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    """LLM Chat Completions 호출 (OpenAI / xAI 호환)."""
+    client, cfg = _make_llm_client()
+    model = cfg.get("model") or OPENAI_MODEL or "gpt-4o-mini"
     # 스타일 학습 시 창의성 약간 낮춤 (일관성)
     temp = 0.25 if style_block.strip() else 0.3
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        temperature=temp,
-        messages=[
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "temperature": temp,
+        "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": _build_user_prompt(raw_text, settings, form, style_block),
             },
         ],
-        response_format={"type": "json_object"},
-    )
+    }
+    # xAI 등 일부 엔드포인트는 response_format 미지원일 수 있음
+    if (cfg.get("provider") or "") in ("openai", "openai_compatible", ""):
+        kwargs["response_format"] = {"type": "json_object"}
+    try:
+        resp = client.chat.completions.create(**kwargs)
+    except Exception:
+        # response_format 미지원 시 재시도
+        kwargs.pop("response_format", None)
+        resp = client.chat.completions.create(**kwargs)
     content = resp.choices[0].message.content or "{}"
     return _extract_json(content)
 
@@ -530,7 +558,7 @@ def generate_fallback(raw_text: str, settings: dict, form: dict | None = None) -
         # 회사명이 있으면 기점 표기에 병기하지 않고 본사 유지, 설정 회사는 메타에만
         pass
 
-    vehicle = settings.get("vehicle_number") or ""
+    vehicle = f.get("vehicle_number") or settings.get("vehicle_number") or ""
     purpose = settings.get("default_purpose", "업무 출장")
     lunch_start = settings.get("lunch_start", "12:00") or "12:00"
     lunch_end = settings.get("lunch_end", "13:00") or "13:00"
@@ -572,10 +600,18 @@ def generate_fallback(raw_text: str, settings: dict, form: dict | None = None) -
                 "to": dest,
                 "purpose": purpose,
                 "distance_km": total_dist or 15.0,
-                "memo": "규칙 기반 초안",
+                "memo": "",
             }
         ]
-        return _pack_log(settings, vehicle, trips, total_dist or 15.0, odo_s, odo_e, f["lunch_restaurant"])
+        return _pack_log(
+            settings,
+            f.get("vehicle_number") or vehicle,
+            trips,
+            total_dist or 15.0,
+            odo_s,
+            odo_e,
+            f["lunch_restaurant"],
+        )
 
     # 오전 / 점심 / 오후 구간 구성
     morning = f["morning_places"] or []
@@ -619,7 +655,8 @@ def generate_fallback(raw_text: str, settings: dict, form: dict | None = None) -
                 "to": path[i + 1],
                 "purpose": purposes[i] if i < len(purposes) else purpose,
                 "distance_km": max(0.1, legs_dist[i]),
-                "memo": "규칙 기반 초안 (OpenAI 키 설정 시 고품질 생성)" if i == 0 else "",
+                # 제출용 문서에는 내부 엔진 안내 문구를 넣지 않음 (UI 경고만 사용)
+                "memo": "",
             }
         )
 
@@ -671,7 +708,7 @@ def _pack_log(
         summary = f"{trips[0].get('from')} 기점 업무 운행"
     return {
         "date": date.today().isoformat(),
-        "vehicle": vehicle,
+        "vehicle": vehicle or settings.get("vehicle_number") or "",
         "driver_name": settings.get("driver_name", ""),
         "company_name": settings.get("company_name", ""),
         "odometer_start": odo_s if odo_s else None,
@@ -680,8 +717,73 @@ def _pack_log(
         "trips": trips,
         "total_distance_km": round(total_dist, 1),
         "summary": summary,
+        # 내부 전용 — scrub_submission_log 에서 제거
         "_engine": "fallback",
     }
+
+
+# 제출 문서에 절대 남기면 안 되는 내부 안내(전체 문장·부분 구절)
+_INTERNAL_MEMO_FULL_RE = re.compile(
+    r"규칙\s*기반\s*초안|"
+    r"OpenAI\s*키|"
+    r"고품질\s*생성|"
+    r"API\s*키\s*설정|"
+    r"user_style_fallback|"
+    r"fallback\s*draft",
+    re.IGNORECASE,
+)
+_INTERNAL_LOG_KEYS = (
+    "_engine",
+    "_openai_error",
+    "_saved_id",
+    "memo_style_note",
+)
+
+
+def scrub_submission_log(log: dict | None) -> dict:
+    """
+    회사 제출용 문서·저장본에서 내부 디버그/엔진 안내를 제거.
+    사용자에게 보이는 warnings 는 API 응답 메타에만 남깁니다.
+    """
+    if not isinstance(log, dict):
+        return {}
+    out = dict(log)
+    for k in _INTERNAL_LOG_KEYS:
+        out.pop(k, None)
+
+    def _clean_text(val: object) -> str:
+        s = str(val or "").strip()
+        if not s:
+            return ""
+        # 내부 엔진/키 관련 안내가 포함되면 제출 본문에서 통째로 제거
+        if _INTERNAL_MEMO_FULL_RE.search(s):
+            return ""
+        return s
+
+    trips = out.get("trips")
+    if isinstance(trips, list):
+        cleaned_trips = []
+        for t in trips:
+            if not isinstance(t, dict):
+                continue
+            tt = dict(t)
+            tt["memo"] = _clean_text(tt.get("memo"))
+            cleaned_trips.append(tt)
+        out["trips"] = cleaned_trips
+
+    visits = out.get("visits")
+    if isinstance(visits, list):
+        cleaned_visits = []
+        for v in visits:
+            if not isinstance(v, dict):
+                continue
+            vv = dict(v)
+            vv["memo"] = _clean_text(vv.get("memo"))
+            cleaned_visits.append(vv)
+        out["visits"] = cleaned_visits
+
+    out["summary"] = _clean_text(out.get("summary")) if out.get("summary") else out.get("summary", "")
+    return out
 
 
 def _add_minutes(hhmm: str, add: int) -> str:
@@ -811,11 +913,18 @@ def generate_driving_log(
     engine = "openai"
     engine_info: dict[str, str] | None = None
     openai_exc: BaseException | None = None
-    has_key = bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"))
+    has_key = llm_configured()
 
     try:
         if has_key:
             raw_log = generate_with_openai(prompt_text, settings, f, style_block)
+            engine = "openai"
+            try:
+                eng = resolve_llm_config().get("provider") or "openai"
+                if eng == "xai":
+                    engine = "xai"
+            except Exception:
+                pass
         else:
             engine = "fallback"
             engine_info = classify_openai_failure(no_key=True)
@@ -837,8 +946,14 @@ def generate_driving_log(
         raw_log["vehicle"] = f["vehicle_number"]
     elif settings.get("vehicle_number") and not raw_log.get("vehicle"):
         raw_log["vehicle"] = settings["vehicle_number"]
-    raw_log.setdefault("driver_name", settings.get("driver_name", ""))
-    raw_log.setdefault("company_name", settings.get("company_name", ""))
+    if settings.get("driver_name") and not raw_log.get("driver_name"):
+        raw_log["driver_name"] = settings["driver_name"]
+    else:
+        raw_log.setdefault("driver_name", settings.get("driver_name", ""))
+    if settings.get("company_name") and not raw_log.get("company_name"):
+        raw_log["company_name"] = settings["company_name"]
+    else:
+        raw_log.setdefault("company_name", settings.get("company_name", ""))
     if not raw_log.get("date"):
         raw_log["date"] = date.today().isoformat()
     raw_log = _apply_odometer(raw_log, f)
@@ -847,6 +962,7 @@ def generate_driving_log(
     raw_log = scrub_lunch_place_privacy(raw_log, settings)
     if not allow_fuel:
         raw_log = scrub_fuel_if_disallowed(raw_log, allow_fuel=False)
+    raw_log = scrub_submission_log(raw_log)
 
     validated = validate_log(raw_log, settings)
     # odometer·차량번호 필드 유지
@@ -854,6 +970,12 @@ def generate_driving_log(
         validated["enriched_log"] = _apply_odometer(validated["enriched_log"], f)
         if f.get("vehicle_number"):
             validated["enriched_log"]["vehicle"] = f["vehicle_number"]
+        if settings.get("driver_name") and not validated["enriched_log"].get("driver_name"):
+            validated["enriched_log"]["driver_name"] = settings["driver_name"]
+        if settings.get("company_name") and not validated["enriched_log"].get(
+            "company_name"
+        ):
+            validated["enriched_log"]["company_name"] = settings["company_name"]
         validated["enriched_log"] = scrub_lunch_place_privacy(
             validated["enriched_log"], settings
         )
@@ -861,8 +983,8 @@ def generate_driving_log(
             validated["enriched_log"] = scrub_fuel_if_disallowed(
                 validated["enriched_log"], allow_fuel=False
             )
-        # 혹시 validate 경로로 남은 내부 키 제거
-        validated["enriched_log"].pop("_openai_error", None)
+        # 제출용 본문에서 내부 키·엔진 안내 제거
+        validated["enriched_log"] = scrub_submission_log(validated["enriched_log"])
 
     warnings = list(validated["warnings"] or [])
     if engine == "fallback" and engine_info:
@@ -1174,7 +1296,7 @@ def generate_field_fallback(settings: dict, form: dict | None = None) -> dict[st
                 "purpose": purpose[:80] or "업무 방문",
                 "result": result[:200] or (f["work_summary"] if i == 0 and f["work_summary"] else "협의 진행"),
                 "next_action": next_act[:120],
-                "memo": "규칙 기반 초안" if i == 0 else "",
+                "memo": "",
             }
         )
 
@@ -1231,22 +1353,27 @@ def generate_field_with_openai(
     form: dict | None = None,
     style_block: str = "",
 ) -> dict[str, Any]:
-    from openai import OpenAI
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    client, cfg = _make_llm_client()
+    model = cfg.get("model") or OPENAI_MODEL or "gpt-4o-mini"
     temp = 0.25 if style_block.strip() else 0.3
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        temperature=temp,
-        messages=[
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "temperature": temp,
+        "messages": [
             {"role": "system", "content": FIELD_SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": _build_field_user_prompt(raw_text, settings, form, style_block),
             },
         ],
-        response_format={"type": "json_object"},
-    )
+    }
+    if (cfg.get("provider") or "") in ("openai", "openai_compatible", ""):
+        kwargs["response_format"] = {"type": "json_object"}
+    try:
+        resp = client.chat.completions.create(**kwargs)
+    except Exception:
+        kwargs.pop("response_format", None)
+        resp = client.chat.completions.create(**kwargs)
     content = resp.choices[0].message.content or "{}"
     return _extract_json(content)
 
@@ -1296,7 +1423,7 @@ def generate_field_visit_log(
     engine = "openai"
     engine_info: dict[str, str] | None = None
     openai_exc: BaseException | None = None
-    has_key = bool(OPENAI_API_KEY and not OPENAI_API_KEY.startswith("sk-xxxx"))
+    has_key = llm_configured()
 
     try:
         if has_key:

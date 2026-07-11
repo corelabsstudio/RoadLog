@@ -67,9 +67,9 @@ uvicorn server:app   ← FastAPI + web/ 정적 파일
 ```env
 APP_ENV=production
 APP_SECRET=긴-난수-32자이상
-ADMIN_USERNAME=hhs126
+ADMIN_USERNAME=관리자_ID
 ADMIN_PASSWORD=강한비밀번호
-ADMIN_EMAIL=hhs126@roadlog.local
+ADMIN_EMAIL=you@company.com
 ALLOW_DEMO_BILLING_UPGRADE=false
 ALLOWED_ORIGINS=https://roadlog.내도메인.com
 OPENAI_API_KEY=sk-...

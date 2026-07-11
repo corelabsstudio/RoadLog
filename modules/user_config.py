@@ -48,12 +48,12 @@ def load_user_config(email_or_username: str) -> dict[str, Any]:
         from modules.config import ADMIN_USERNAME, ADMIN_EMAIL
 
         low = (email_or_username or "").strip().lower()
-        if low in {
+        admin_ids = {
             (ADMIN_USERNAME or "").lower(),
             (ADMIN_EMAIL or "").lower(),
-            "hhs126",
-            "admin",
-        }:
+        }
+        admin_ids.discard("")
+        if low in admin_ids:
             cfg["plan_type"] = "enterprise"
             cfg["role"] = "admin"
             cfg["display_name"] = "관리자"

@@ -2184,6 +2184,12 @@
       const email = ($("#regEmail")?.value || "").trim();
       const password = $("#regPw")?.value || "";
       const pw2 = $("#regPw2")?.value || "";
+      if (password.length < 8) {
+        openAuth();
+        alertBox($("#authAlert"), "error", "비밀번호는 8자 이상이어야 합니다.");
+        $("#regPw")?.focus();
+        return;
+      }
       if (password !== pw2) {
         openAuth();
         alertBox($("#authAlert"), "error", "비밀번호가 일치하지 않습니다.");
@@ -4634,6 +4640,48 @@
     );
     applyPricingCtaLabels();
     applyContactFromMeta(meta);
+    applyBusinessFromMeta(meta);
+  }
+
+  function applyBusinessFromMeta(meta) {
+    const biz = (meta && meta.business) || {};
+    const name = (biz.name || meta?.studio || "코어랩스").trim();
+    const email = (biz.contact_email || meta?.contact_email || "").trim();
+    const setText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val || "";
+    };
+    const showRow = (rowId, val) => {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      if (val && String(val).trim()) {
+        row.classList.remove("hidden");
+      } else {
+        row.classList.add("hidden");
+      }
+    };
+    setText("bizName", name);
+    setText("bizOwner", biz.owner || "");
+    setText("bizRegNo", biz.reg_no || "");
+    setText("bizMailOrder", biz.mail_order_no || "");
+    setText("bizAddress", biz.address || "");
+    showRow("bizOwnerRow", biz.owner);
+    showRow("bizRegRow", biz.reg_no);
+    showRow("bizMailOrderRow", biz.mail_order_no);
+    showRow("bizAddrRow", biz.address);
+    const hint = document.getElementById("bizHint");
+    if (hint) {
+      const ready = Boolean(meta?.payment_ready);
+      hint.textContent = ready
+        ? "유료 결제 및 세금계산서 문의는 위 연락처로 안내드립니다."
+        : "유료 플랜은 문의 후 등록됩니다. 세금계산서 발행 가능.";
+    }
+    if (email) {
+      const mail = document.getElementById("footerContactMail");
+      const label = document.getElementById("footerContactLabel");
+      if (mail) mail.href = `mailto:${email}`;
+      if (label) label.textContent = `문의: ${email}`;
+    }
   }
 
   const DEFAULT_CONTACT_FORM_URL =

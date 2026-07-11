@@ -6,8 +6,11 @@ __pycache__/
 .streamlit/secrets.toml
 .DS_Store
 .env
+.launch/
 .idea/
 .vscode/
+*.local
+LAUNCH_SECRETS.txt
 
 # runtime / local data
 data/users.json

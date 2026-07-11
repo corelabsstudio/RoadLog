@@ -2444,6 +2444,35 @@ body.modal-open {
   margin: 0;
 }
 
+.footer-biz {
+  margin: 0.35rem 0 0.15rem;
+  display: grid;
+  gap: 0.18rem;
+  font-size: 0.78rem;
+  color: var(--muted-2, #94a3b8);
+  line-height: 1.45;
+}
+.footer-biz-line {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.55rem;
+}
+.footer-biz-line span {
+  opacity: 0.75;
+  min-width: 4.5rem;
+}
+.footer-biz-line strong {
+  font-weight: 600;
+  color: #cbd5e1;
+}
+.footer-biz-hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.88;
+  max-width: 38ch;
+}
+
 .footer-copy {
   margin: 0;
   color: var(--muted-2);

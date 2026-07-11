@@ -102,8 +102,11 @@ def register_user(email: str, password: str, name: str = "") -> tuple[bool, str]
     email = email.strip().lower()
     if not email or "@" not in email:
         return False, "올바른 이메일을 입력해 주세요."
-    if len(password) < 4:
-        return False, "비밀번호는 4자 이상이어야 합니다."
+    from modules.config import MIN_PASSWORD_LENGTH
+
+    min_len = int(MIN_PASSWORD_LENGTH or 8)
+    if len(password) < min_len:
+        return False, f"비밀번호는 {min_len}자 이상이어야 합니다."
 
     if _sb.enabled:
         try:
@@ -155,6 +158,11 @@ def ensure_admin_owner() -> dict:
     plan=pro, is_admin=True
     """
     admin_user, admin_password, admin_email = get_admin_credentials()
+    if not admin_user or not admin_password:
+        raise ValueError(
+            "ADMIN_USERNAME / ADMIN_PASSWORD 가 설정되지 않았습니다. "
+            "환경변수 또는 .env 를 확인하세요."
+        )
     email = (admin_email or f"{admin_user}@roadlog.local").strip().lower()
     users = _read_json(USERS_JSON, {})
 
@@ -196,9 +204,11 @@ def authenticate_admin_credentials(login_id: str, password: str) -> tuple[bool, 
     secrets/env 는 호출 시점마다 다시 읽음 (Streamlit Cloud 대응).
     """
     admin_user, admin_password, admin_email = get_admin_credentials()
+    if not admin_user or not admin_password:
+        return False, None, "관리자 계정이 서버에 설정되지 않았습니다."
     lid = (login_id or "").strip().lower()
     admin_email = (admin_email or f"{admin_user}@roadlog.local").strip().lower()
-    admin_user = (admin_user or "admin").strip().lower()
+    admin_user = admin_user.strip().lower()
 
     # 대소문자 무시 비교 (ID)
     id_ok = lid in {admin_user, admin_email}
