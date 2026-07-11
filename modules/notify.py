@@ -115,8 +115,17 @@ def _send_ntfy(title: str, message: str, *, priority: int = 4) -> tuple[bool, st
     if not topic:
         return False, "no topic"
     url = f"{NTFY_SERVER}/{parse.quote(topic)}"
+    # HTTP 헤더는 latin-1 제한 → 제목 한글은 RFC2047, 본문은 UTF-8 body
+    try:
+        from email.header import Header
+
+        title_hdr = Header(title[:80], "utf-8").encode()
+    except Exception:
+        title_hdr = "RoadLog"
+    # 본문에 제목 포함 (폰 알림 가독성)
+    body_text = f"{title}\n\n{message}"
     headers = {
-        "Title": title[:120],
+        "Title": title_hdr,
         "Priority": str(max(1, min(5, priority))),
         "Tags": "moneybag,roadlog",
         "Content-Type": "text/plain; charset=utf-8",
@@ -126,7 +135,7 @@ def _send_ntfy(title: str, message: str, *, priority: int = 4) -> tuple[bool, st
     try:
         req = request.Request(
             url,
-            data=message.encode("utf-8"),
+            data=body_text.encode("utf-8"),
             headers=headers,
             method="POST",
         )
