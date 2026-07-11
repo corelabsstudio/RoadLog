@@ -1032,6 +1032,7 @@ def _file_response(path: Path) -> FileResponse:
         "app.js",
         "styles.css",
         "manifest.webmanifest",
+        "update.html",
     }
     headers: dict[str, str] = {}
     if name in no_store_names or path.suffix.lower() in {".json"} and "locales" in str(path).replace("\\", "/"):

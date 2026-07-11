@@ -2,11 +2,67 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
+  <meta name="rl-build" content="20260711-v14" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"
   />
   <meta name="theme-color" content="#030712" />
+  <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
+  <script>
+    (function () {
+      var BUILD = "20260711-v14";
+      try {
+        var prev = localStorage.getItem("rl_build");
+        if (prev === BUILD) return;
+        var params = new URLSearchParams(location.search || "");
+        var forced = params.has("fresh") || params.has("update");
+        if (!prev && !forced && !navigator.serviceWorker) {
+          localStorage.setItem("rl_build", BUILD);
+          return;
+        }
+        var finish = function () {
+          try {
+            localStorage.setItem("rl_build", BUILD);
+          } catch (e) {}
+          if (sessionStorage.getItem("rl_build_reloaded") === BUILD) return;
+          sessionStorage.setItem("rl_build_reloaded", BUILD);
+          var url = location.pathname + location.search;
+          if (url.indexOf("fresh=") === -1) {
+            location.replace(
+              "/?fresh=" + encodeURIComponent(BUILD) + "&t=" + Date.now()
+            );
+          } else {
+            location.reload();
+          }
+        };
+        var chain = Promise.resolve();
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          chain = chain.then(function () {
+            return navigator.serviceWorker.getRegistrations().then(function (regs) {
+              return Promise.all(
+                regs.map(function (r) {
+                  return r.unregister();
+                })
+              );
+            });
+          });
+        }
+        if (window.caches && caches.keys) {
+          chain = chain.then(function () {
+            return caches.keys().then(function (keys) {
+              return Promise.all(
+                keys.map(function (k) {
+                  return caches.delete(k);
+                })
+              );
+            });
+          });
+        }
+        chain.then(finish).catch(finish);
+      } catch (e) {}
+    })();
+  </script>
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -60,7 +116,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-pwa-update-v13" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-pwa-update-v14" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -1489,7 +1545,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-pwa-update-v13"></script>
+  <script src="/app.js?v=20260711-pwa-update-v14"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

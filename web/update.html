@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>RoadLog 최신 버전으로 업데이트</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
+      background: #030712; color: #e2e8f0;
+    }
+    .card {
+      width: min(92vw, 420px); padding: 1.75rem 1.5rem;
+      border-radius: 18px; border: 1px solid rgba(34, 211, 238, 0.22);
+      background: rgba(12, 20, 40, 0.95); box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      text-align: center;
+    }
+    h1 { margin: 0 0 .75rem; font-size: 1.25rem; letter-spacing: -0.02em; }
+    p { margin: 0 0 1rem; color: #94a3b8; line-height: 1.55; font-size: .95rem; }
+    .status { min-height: 1.4em; color: #67e8f9; font-size: .9rem; font-weight: 650; }
+    .btn {
+      display: inline-block; margin-top: .5rem; padding: .7rem 1.1rem;
+      border-radius: 999px; border: none; cursor: pointer;
+      background: linear-gradient(135deg, #22d3ee, #0891b2); color: #041016;
+      font-weight: 750; font-size: .95rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>RoadLog 최신 버전 적용</h1>
+    <p>예전에 받아 둔 화면 캐시를 지우고, 홈 화면 앱·브라우저를 최신으로 맞춥니다.</p>
+    <p class="status" id="status">준비 중…</p>
+    <button class="btn" type="button" id="btn" hidden>로드로그 열기</button>
+  </div>
+  <script>
+    (async function () {
+      const status = document.getElementById("status");
+      const btn = document.getElementById("btn");
+      const BUILD = "20260711-v14";
+      function set(t) { status.textContent = t; }
+
+      try {
+        set("이전 앱 캐시 지우는 중…");
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        try {
+          localStorage.setItem("rl_build", BUILD);
+          sessionStorage.removeItem("rl_sw_reloading");
+          sessionStorage.removeItem("rl_build_reloaded");
+        } catch (e) { /* ignore */ }
+
+        set("완료! 최신 화면으로 이동합니다…");
+        setTimeout(function () {
+          location.replace("/?fresh=" + encodeURIComponent(BUILD));
+        }, 600);
+      } catch (err) {
+        set("자동 정리에 실패했습니다. 아래 버튼으로 이동해 주세요.");
+        btn.hidden = false;
+        btn.onclick = function () { location.href = "/?fresh=" + BUILD; };
+      }
+    })();
+  </script>
+</body>
+</html>

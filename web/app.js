@@ -54,6 +54,7 @@
   /** JSON 로드 실패·지연 시에도 키가 화면에 안 나오게 하는 기본 문구 */
   const I18N_FALLBACK = {
     ko: {
+      "brand.tagline": "AI 운행·외근 일지",
       "nav.home": "홈",
       "nav.features": "기능",
       "nav.create": "일지 작성",
@@ -85,6 +86,7 @@
       "create.example": "예시 불러오기",
     },
     en: {
+      "brand.tagline": "AI driving & field logs",
       "nav.home": "Home",
       "nav.features": "Features",
       "nav.create": "Write log",
@@ -5366,7 +5368,7 @@
     };
 
     navigator.serviceWorker
-      .register("/sw.js", { updateViaCache: "none", scope: "/" })
+      .register("/sw.js?v=20260711-v14", { updateViaCache: "none", scope: "/" })
       .then((reg) => {
         // 이미 대기 중인 워커가 있으면 즉시 적용
         activateWaiting(reg);
