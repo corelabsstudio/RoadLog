@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260712-hybrid-v17" />
+  <meta name="rl-build" content="20260712-audit-v18" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
   <meta name="theme-color" content="#030712" />
-  <!-- ??Service Worker 罹먯떆??臾띠씤 寃쎌슦: 鍮뚮뱶 踰덊샇??諛붾뚮㈃ 罹먯떆쨌SW ?뺣━ ??1???덈줈怨좎묠 -->
+  <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260712-hybrid-v17";
+      var BUILD = "20260712-audit-v18";
       try {
         var prev = localStorage.getItem("rl_build");
         if (prev === BUILD) return;
@@ -68,41 +68,41 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="RoadLog" />
   <meta name="format-detection" content="telephone=no" />
-  <title>濡쒕뱶濡쒓렇 ??AI ?댄뻾쨌?멸렐 ?쇱? | ?뚯궗 ?쒖텧??Excel쨌PDF쨌DOCX</title>
+  <title>로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX</title>
 
   <meta
     name="description"
-    content="濡쒕뱶濡쒓렇(RoadLog) ??AI ?댄뻾쨌?멸렐 ?쇱?. 硫붾え瑜??뚯궗 ?쒖텧??Excel쨌PDF쨌DOCX濡??뺣━?⑸땲?? Free ??15??쨌 Pro ??2,900??珥덇린 ?곗묶媛, 臾몄쓽 ?깅줉)."
+    content="로드로그(RoadLog) — AI 운행·외근 일지. 메모를 회사 제출용 Excel·PDF·DOCX로 정리합니다. Free 월 15회 · Pro 월 2,900원(초기 런칭가, 문의 등록)."
   />
   <meta
     name="keywords"
-    content="?댄뻾?쇱?, ?멸렐?쇱?, AI ?댄뻾?쇱?, ?낅Т?쇱?, 踰뺤씤李? ?댄뻾湲곕줉, RoadLog, 濡쒕뱶濡쒓렇, ?묒? ?댄뻾?쇱?, ?뚯궗 ?쒖텧???쇱?"
+    content="운행일지, 외근일지, AI 운행일지, 업무일지, 법인차, 운행기록, RoadLog, 로드로그, 엑셀 운행일지, 회사 제출용 일지"
   />
   <meta name="author" content="CoreLabs" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
 
-  <!-- Open Graph (移댁뭅?ㅒ룸쭅??誘몃━蹂닿린) -->
+  <!-- Open Graph (카카오·링크 미리보기) -->
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="ko_KR" />
-  <meta property="og:site_name" content="濡쒕뱶濡쒓렇" />
+  <meta property="og:site_name" content="로드로그" />
   <meta property="og:url" content="https://roadlog.co.kr/" />
-  <meta property="og:title" content="濡쒕뱶濡쒓렇 ??AI ?댄뻾쨌?멸렐 ?쇱?" />
+  <meta property="og:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     property="og:description"
-    content="硫붾え瑜??뚯궗 ?쒖텧???댄뻾쨌?멸렐 ?쇱?濡? Free ??15??쨌 Pro ??2,900??珥덇린 ?곗묶媛). Excel 쨌 PDF 쨌 DOCX."
+    content="메모를 회사 제출용 운행·외근 일지로. Free 월 15회 · Pro 월 2,900원(초기 런칭가). Excel · PDF · DOCX."
   />
   <meta property="og:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="濡쒕뱶濡쒓렇 ??AI ?댄뻾쨌?멸렐 ?쇱?" />
+  <meta property="og:image:alt" content="로드로그 — AI 운행·외근 일지" />
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="濡쒕뱶濡쒓렇 ??AI ?댄뻾쨌?멸렐 ?쇱?" />
+  <meta name="twitter:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     name="twitter:description"
-    content="硫붾え瑜??뚯궗 ?쒖텧???쇱?濡? Free 泥댄뿕 쨌 Pro 珥덇린 ?곗묶媛 ??2,900??"
+    content="메모를 회사 제출용 일지로. Free 체험 · Pro 초기 런칭가 월 2,900원."
   />
   <meta name="twitter:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
 
@@ -112,11 +112,11 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-  <!-- 蹂몃Ц: SUIT (?⑥젙???쒓? UI ?고듃) -->
+  <!-- 본문: SUIT (단정한 한글 UI 폰트) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
-  <!-- ?곷Ц ?ъ씤??-->
+  <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260712-hybrid-v17" />
+  <link rel="stylesheet" href="/styles.css?v=20260712-audit-v18" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -125,72 +125,72 @@
       <div class="brand" data-nav="home">
         <img class="brand-logo" src="/icons/logo.svg" width="36" height="36" alt="RoadLog" />
         <div class="brand-text">
-          <span class="brand-name">濡쒕뱶濡쒓렇</span>
-          <span class="brand-en" data-i18n="brand.tagline">AI ?댄뻾쨌?멸렐 ?쇱?</span>
+          <span class="brand-name">로드로그</span>
+          <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
         </div>
       </div>
 
       <nav class="nav-links" id="navLinks">
-        <a href="#home" data-nav="home" class="active" data-i18n="nav.home">??/a>
-        <a href="#create" data-nav="create" id="navCreate" data-i18n="nav.create">?쇱? ?묒꽦</a>
-        <a href="#pricing" data-nav="pricing" data-i18n="nav.pricing">?붽툑??/a>
-        <a href="#contact" data-nav="contact" data-i18n="nav.contact">臾몄쓽</a>
-        <a href="#style" data-nav="style" id="navStyle" class="hidden" data-i18n="nav.style">?뚯궗 ?쒖떇</a>
-        <a href="#settings" data-nav="settings" id="navSettings" data-i18n="nav.settings">?ㅼ젙</a>
-        <a href="#admin" data-nav="admin" id="navAdmin" class="hidden" data-i18n="nav.admin">愿由ъ옄</a>
+        <a href="#home" data-nav="home" class="active" data-i18n="nav.home">홈</a>
+        <a href="#create" data-nav="create" id="navCreate" data-i18n="nav.create">일지 작성</a>
+        <a href="#pricing" data-nav="pricing" data-i18n="nav.pricing">요금제</a>
+        <a href="#contact" data-nav="contact" data-i18n="nav.contact">문의</a>
+        <a href="#style" data-nav="style" id="navStyle" class="hidden" data-i18n="nav.style">회사 서식</a>
+        <a href="#settings" data-nav="settings" id="navSettings" data-i18n="nav.settings">설정</a>
+        <a href="#admin" data-nav="admin" id="navAdmin" class="hidden" data-i18n="nav.admin">관리자</a>
       </nav>
 
       <div class="nav-actions">
         <label class="nav-lang" title="Language">
-          <span class="nav-lang-icon" aria-hidden="true">?놞</span>
-          <select id="navLang" aria-label="Language / ?몄뼱">
+          <span class="nav-lang-icon" aria-hidden="true">文A</span>
+          <select id="navLang" aria-label="Language / 언어">
             <option value="ko">KO</option>
             <option value="en">EN</option>
           </select>
         </label>
-        <button class="btn btn-ghost btn-settings" type="button" data-nav="settings" data-i18n="nav.settings" data-i18n-title="nav.settings" title="?ㅼ젙">
-          ?ㅼ젙
+        <button class="btn btn-ghost btn-settings" type="button" data-nav="settings" data-i18n="nav.settings" data-i18n-title="nav.settings" title="설정">
+          설정
         </button>
-        <button class="btn btn-ghost btn-install install-action" id="btnInstallApp" type="button" hidden data-install-app data-i18n-title="nav.install" title="???붾㈃??RoadLog ?ㅼ튂">
+        <button class="btn btn-ghost btn-install install-action" id="btnInstallApp" type="button" hidden data-install-app data-i18n-title="nav.install" title="홈 화면에 RoadLog 설치">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M12 4v10m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
-          <span data-i18n="nav.install">???ㅼ슫濡쒕뱶</span>
+          <span data-i18n="nav.install">앱 다운로드</span>
         </button>
-        <button class="btn btn-ghost" id="btnAuth" type="button" data-i18n="nav.login">濡쒓렇??/button>
-        <button class="btn btn-primary" id="btnStart" type="button" data-nav="create" data-i18n="nav.start">?쒖옉?섍린</button>
-        <button class="menu-toggle" id="menuToggle" type="button" data-i18n-aria="nav.menu" aria-label="硫붾돱">??/button>
+        <button class="btn btn-ghost" id="btnAuth" type="button" data-i18n="nav.login">로그인</button>
+        <button class="btn btn-primary" id="btnStart" type="button" data-nav="create" data-i18n="nav.start">시작하기</button>
+        <button class="menu-toggle" id="menuToggle" type="button" data-i18n-aria="nav.menu" aria-label="메뉴">☰</button>
       </div>
     </div>
   </header>
 
-  <!-- HOME: 鍮꾨줈洹몄씤 ?쒕뵫 / 濡쒓렇????쒕낫??-->
+  <!-- HOME: 비로그인 랜딩 / 로그인 대시보드 -->
   <main>
     <section class="view active" id="view-home">
       <div id="guestHome" class="landing landing-pro">
         <!-- 1. Hero -->
-        <section class="landing-hero" aria-label="?뚭컻">
+        <section class="landing-hero" aria-label="소개">
           <div class="container landing-hero-inner">
             <div class="landing-hero-copy">
-              <div class="hero-badge" data-i18n="landing.badge">CoreLabs 쨌 ?쒖텧??AI ?쇱?</div>
+              <div class="hero-badge" data-i18n="landing.badge">CoreLabs · 제출용 AI 일지</div>
               <h1>
-                <span data-i18n="landing.headline_1">?ㅻ뒛 ?꾩옣 湲곕줉,</span><br />
-                <span data-i18n="landing.headline_2">?쒖텧源뚯? ??踰덉뿉.</span><br />
+                <span data-i18n="landing.headline_1">오늘 현장 기록,</span><br />
+                <span data-i18n="landing.headline_2">제출까지 한 번에.</span><br />
                 <span class="grad" data-i18n="landing.headline_3">RoadLog</span>
               </h1>
               <p class="hero-sub landing-sub">
-                <span data-i18n="landing.sub">?댄뻾쨌?멸렐 硫붾え瑜??뚯궗 ?쒖텧??臾몄꽌濡??뺣━?⑸땲?? Excel 쨌 PDF 쨌 DOCX濡?諛쏄퀬, ?꾩슂?????ㅼ떆 ?댁뼱 ?섏젙?????덉뒿?덈떎.</span>
-                <strong data-i18n="landing.sub_strong">?쇨낵 留덈Т由щ? 議곌툑 ??媛蹂띻쾶.</strong>
+                <span data-i18n="landing.sub">운행·외근 메모를 회사 제출용 문서로 정리합니다. Excel · PDF · DOCX로 받고, 필요할 때 다시 열어 수정할 수 있습니다.</span>
+                <strong data-i18n="landing.sub_strong">일과 마무리를 조금 더 가볍게.</strong>
               </p>
-              <ul class="landing-proof" aria-label="?듭떖 吏??>
-                <li><strong>Free</strong><span data-i18n="landing.proof_1">??15??泥댄뿕</span></li>
-                <li><strong>Pro</strong><span data-i18n="landing.proof_2">??2,900??/span></li>
-                <li><strong>Export</strong><span data-i18n="landing.proof_3">Excel 쨌 PDF 쨌 DOCX</span></li>
+              <ul class="landing-proof" aria-label="핵심 지표">
+                <li><strong>Free</strong><span data-i18n="landing.proof_1">월 15회 체험</span></li>
+                <li><strong>Pro</strong><span data-i18n="landing.proof_2">월 2,900원</span></li>
+                <li><strong>Export</strong><span data-i18n="landing.proof_3">Excel · PDF · DOCX</span></li>
               </ul>
               <div class="hero-cta landing-cta">
-                <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">臾대즺濡??쒖옉?섍린</button>
-                <button type="button" class="btn btn-ghost btn-lg" data-nav="pricing" data-i18n="landing.cta_pricing">?붽툑??蹂닿린</button>
+                <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">무료로 시작하기</button>
+                <button type="button" class="btn btn-ghost btn-lg" data-nav="pricing" data-i18n="landing.cta_pricing">요금제 보기</button>
                 <button type="button" class="btn btn-ghost btn-lg btn-install-cta install-action" data-install-app data-install-primary data-i18n-keep-html>
                   <span class="install-cta-icon" aria-hidden="true">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -198,24 +198,24 @@
                       <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                   </span>
-                  <span data-i18n-text data-i18n="landing.install">?깆쑝濡??ㅼ튂</span>
+                  <span data-i18n-text data-i18n="landing.install">앱으로 설치</span>
                 </button>
               </div>
-              <p class="landing-trust" data-i18n="landing.trust">濡쒓렇???좎? 쨌 怨꾩젙蹂????쨌 洹쇰Т?쒓컙 留욎땄 吏꾩엯 쨌 吏묒뿉???댁뼱?곌린</p>
+              <p class="landing-trust" data-i18n="landing.trust">로그인 유지 · 계정별 저장 · 근무시간 맞춤 진입 · 집에서 이어쓰기</p>
             </div>
 
             <div class="landing-phone" aria-hidden="true">
               <div class="landing-phone-frame landing-doc-frame">
                 <div class="landing-phone-screen landing-doc-screen">
-                  <div class="lp-kicker">?ㅻ뒛 ?쇱? 誘몃━蹂닿린</div>
-                  <div class="lp-doc-title">李⑤웾 ?댄뻾?쇱?</div>
-                  <div class="lp-doc-row"><span>?쇱옄</span><b>2026-07-11</b></div>
-                  <div class="lp-doc-row"><span>李⑤웾</span><b>12媛 3456</b></div>
-                  <div class="lp-doc-row"><span>援ш컙</span><b>蹂몄궗 ??媛뺣궓 怨좉컼??/b></div>
-                  <div class="lp-doc-row"><span>?뺤떇</span><b>Excel 쨌 PDF 쨌 DOCX</b></div>
-                  <div class="lp-chip">?뺣━ ?꾨즺 쨌 ??λ맖</div>
+                  <div class="lp-kicker">오늘 일지 미리보기</div>
+                  <div class="lp-doc-title">차량 운행일지</div>
+                  <div class="lp-doc-row"><span>일자</span><b>2026-07-11</b></div>
+                  <div class="lp-doc-row"><span>차량</span><b>12가 3456</b></div>
+                  <div class="lp-doc-row"><span>구간</span><b>본사 → 강남 고객사</b></div>
+                  <div class="lp-doc-row"><span>형식</span><b>Excel · PDF · DOCX</b></div>
+                  <div class="lp-chip">정리 완료 · 저장됨</div>
                   <div class="lp-care lp-doc-note">
-                    ?쒖텧? ?⑥젙?섍쾶 쨌 ?낅젰? ?명븯寃?br />?붿빟쨌李⑤웾踰덊샇???쒖텧 ?꾩뿉 怨좎튌 ???덉뼱??
+                    제출은 단정하게 · 입력은 편하게<br />요약·차량번호는 제출 전에 고칠 수 있어요
                   </div>
                 </div>
               </div>
@@ -225,88 +225,88 @@
         </section>
 
         <!-- 2. Capabilities -->
-        <section class="landing-values" id="features" aria-label="?듭떖 湲곕뒫">
+        <section class="landing-values" id="features" aria-label="핵심 기능">
           <div class="container">
             <div class="section-head landing-section-head">
               <div class="eyebrow" data-i18n="landing.values_eyebrow">What you get</div>
-              <h2 data-i18n="landing.values_title">?꾩옣?먯꽌 ?④린怨? ?닿렐 ?꾩뿉 ?앸깄?덈떎</h2>
-              <p data-i18n="landing.values_sub">蹂듭옟???쇱? ?꾧뎄 ??? 留ㅼ씪 ?곕뒗 ?щ엺?먭쾶 留욎떠 ?ㅺ퀎?덉뒿?덈떎.</p>
+              <h2 data-i18n="landing.values_title">현장에서 남기고, 퇴근 전에 끝냅니다</h2>
+              <p data-i18n="landing.values_sub">복잡한 일지 도구 대신, 매일 쓰는 사람에게 맞춰 설계했습니다.</p>
             </div>
             <div class="landing-value-grid">
               <article class="landing-value-card">
                 <div class="lv-icon lv-icon-svg" aria-hidden="true">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
                 </div>
-                <h3 data-i18n="landing.v1_title">?꾩옣 ?꾩튂 ?ㅽ꺃??/h3>
-                <p data-i18n="landing.v1_body">?꾩갑쨌異쒕컻 ??踰꾪듉 ??踰덉쑝濡??쒓컖怨??꾩튂瑜??④퉩?덈떎. 諛⑸Ц吏 ?낅젰???⑥뵮 ?섏썡?댁쭛?덈떎.</p>
+                <h3 data-i18n="landing.v1_title">현장 위치 스탬프</h3>
+                <p data-i18n="landing.v1_body">도착·출발 때 버튼 한 번으로 시각과 위치를 남깁니다. 방문지 입력이 훨씬 수월해집니다.</p>
               </article>
               <article class="landing-value-card is-accent">
                 <div class="lv-icon lv-icon-svg" aria-hidden="true">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
-                <h3 data-i18n="landing.v2_title">AI ?쒖텧???뺣━</h3>
-                <p data-i18n="landing.v2_body">硫붾え瑜??뚯궗 ?ㅼ쓽 ?댄뻾쨌?멸렐 ?쇱?濡??뺣━?⑸땲?? Excel 쨌 PDF 쨌 DOCX濡?諛붾줈 ?쒖텧?????덉뒿?덈떎.</p>
+                <h3 data-i18n="landing.v2_title">AI 제출용 정리</h3>
+                <p data-i18n="landing.v2_body">메모를 회사 톤의 운행·외근 일지로 정리합니다. Excel · PDF · DOCX로 바로 제출할 수 있습니다.</p>
               </article>
               <article class="landing-value-card">
                 <div class="lv-icon lv-icon-svg" aria-hidden="true">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
                 </div>
-                <h3 data-i18n="landing.v3_title">??ν븯怨??ㅼ떆 ?닿린</h3>
-                <p data-i18n="landing.v3_body">?묒꽦???쇱?瑜?怨꾩젙??蹂닿??⑸땲?? ?섏쨷???댁뼱 ?붿빟쨌李⑤웾??怨좎튂怨??ㅼ떆 諛쏆쓣 ???덉뒿?덈떎.</p>
+                <h3 data-i18n="landing.v3_title">저장하고 다시 열기</h3>
+                <p data-i18n="landing.v3_body">작성한 일지를 계정에 보관합니다. 나중에 열어 요약·차량을 고치고 다시 받을 수 있습니다.</p>
               </article>
             </div>
           </div>
         </section>
 
         <!-- 3. Use cases / trust -->
-        <section class="landing-emotion landing-usecase" id="demo" aria-label="?꾩엯 ???>
+        <section class="landing-emotion landing-usecase" id="demo" aria-label="도입 대상">
           <div class="container landing-emotion-inner">
             <div class="eyebrow" data-i18n="landing.use_eyebrow">For whom</div>
             <p class="landing-emotion-quote" data-i18n="landing.quote">
-              ?곸뾽 쨌 ?멸렐 쨌 踰뺤씤李? 留ㅼ씪 湲곕줉?섎뒗 遺꾨뱾???꾪빐
+              영업 · 외근 · 법인차, 매일 기록하는 분들을 위해
             </p>
             <p class="landing-emotion-body">
-              <span data-i18n="landing.emotion_body">RoadLog???깅뵳???묒떇留?媛뺤슂?섏? ?딆뒿?덈떎.</span>
-              <strong data-i18n="landing.emotion_strong">?쒖텧? ?⑥젙?섍쾶, ?낅젰? ?명븯寃?/strong>
-              <span data-i18n="landing.emotion_body2">??洹?洹좏삎??留욎땅?덈떎. Free濡?遺???놁씠 ?쒖옉?????덉뒿?덈떎.</span>
+              <span data-i18n="landing.emotion_body">RoadLog는 딱딱한 양식만 강요하지 않습니다.</span>
+              <strong data-i18n="landing.emotion_strong">제출은 단정하게, 입력은 편하게</strong>
+              <span data-i18n="landing.emotion_body2">— 그 균형을 맞춥니다. Free로 부담 없이 시작할 수 있습니다.</span>
             </p>
             <div class="landing-emotion-tags">
-              <span data-i18n="landing.tag_stamp">???ㅽ꺃??/span>
-              <span data-i18n="landing.tag_route">?댄뻾 쨌 ?멸렐</span>
-              <span data-i18n="landing.tag_care">?뚯궗 ?쒖떇 ?숈뒿</span>
-              <span data-i18n="landing.tag_pwa">???쨌 ?댁뼱?곌린</span>
+              <span data-i18n="landing.tag_stamp">퀵 스탬프</span>
+              <span data-i18n="landing.tag_route">운행 · 외근</span>
+              <span data-i18n="landing.tag_care">회사 서식 학습</span>
+              <span data-i18n="landing.tag_pwa">저장 · 이어쓰기</span>
             </div>
           </div>
         </section>
 
         <!-- 4. Social proof / reviews -->
-        <section class="landing-reviews" id="reviews" aria-label="?ъ슜???꾧린">
+        <section class="landing-reviews" id="reviews" aria-label="사용자 후기">
           <div class="container">
             <div class="section-head landing-section-head">
               <div class="eyebrow" data-i18n="landing.reviews_eyebrow">Reviews</div>
-              <h2 data-i18n="landing.reviews_title">踰좏? ?쇰뱶諛?/h2>
-              <p data-i18n="landing.reviews_sub">珥덇린 踰좏?쨌吏???뚯뒪?몄뿉??諛쏆? ?섍껄?낅땲?? ?ㅼ젣 ?꾧린媛 ?볦씠硫????곸뿭??怨듦컻?⑸땲??</p>
+              <h2 data-i18n="landing.reviews_title">베타 피드백</h2>
+              <p data-i18n="landing.reviews_sub">초기 베타·지인 테스트에서 받은 의견입니다. 실제 후기가 쌓이면 이 영역에 공개됩니다.</p>
             </div>
             <div class="landing-review-grid" id="landingReviewGrid" aria-live="polite">
-              <!-- 怨듦컻 ?꾧린??/api/reviews 濡?梨꾩썎?덈떎 -->
+              <!-- 공개 후기는 /api/reviews 로 채웁니다 -->
             </div>
             <p class="landing-reviews-note" id="landingReviewsNote" data-i18n="landing.reviews_note">
-              踰좏? ?섍껄 쨌 愿由ъ옄媛 怨듦컻???꾧린留??쒖떆?⑸땲??
+              베타 의견 · 관리자가 공개한 후기만 표시됩니다.
             </p>
           </div>
         </section>
 
         <!-- 5. Final CTA -->
-        <section class="landing-final" aria-label="留덈Т由?>
+        <section class="landing-final" aria-label="마무리">
           <div class="container landing-final-inner">
-            <h2 data-i18n="landing.final_title">?쇱? ?뚮Ц???섎（媛 湲몄뼱吏吏 ?딄쾶.</h2>
-            <p data-i18n="landing.final_sub">Free濡?諛붾줈 ??蹂닿퀬, ?꾩슂????Pro쨌Enterprise濡??ㅼ슦硫??⑸땲??</p>
-            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">臾대즺濡??쒖옉?섍린</button>
-            <button type="button" class="btn btn-ghost landing-login-link" id="btnLandingLogin" data-i18n="landing.login_link">?대? 怨꾩젙???덈떎硫?濡쒓렇??/button>
+            <h2 data-i18n="landing.final_title">일지 때문에 하루가 길어지지 않게.</h2>
+            <p data-i18n="landing.final_sub">Free로 바로 써 보고, 필요할 때 Pro·Enterprise로 키우면 됩니다.</p>
+            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">무료로 시작하기</button>
+            <button type="button" class="btn btn-ghost landing-login-link" id="btnLandingLogin" data-i18n="landing.login_link">이미 계정이 있다면 로그인</button>
           </div>
         </section>
 
-        <!-- ?④? ?곕え ?몃뱶: 湲곗〈 JS ?명솚 (?먮윭 諛⑹?) -->
+        <!-- 숨김 데모 노드: 기존 JS 호환 (에러 방지) -->
         <div class="hidden" aria-hidden="true">
           <div id="demoStage"></div>
           <div id="demoVideoWrap" class="hidden"><video id="demoVideo"></video></div>
@@ -317,26 +317,26 @@
         </div>
       </div><!-- /guestHome -->
 
-      <!-- 濡쒓렇???? ?묒뾽 ??(??쒕낫?? -->
+      <!-- 로그인 후: 작업 홈 (대시보드) -->
       <div id="appHome" class="hidden">
         <div class="container app-home">
           <header class="app-home-head">
             <div>
-              <p class="app-home-kicker" id="appHomeDate">??/p>
-              <h1 class="app-home-title" id="appHomeGreeting">?덈뀞?섏꽭??/h1>
-              <p class="app-home-sub" id="appHomeSub">?ㅻ뒛 ?댄뻾?쇱?瑜??묒꽦?섍굅???쒖떇??愿由ы븯?몄슂.</p>
+              <p class="app-home-kicker" id="appHomeDate">—</p>
+              <h1 class="app-home-title" id="appHomeGreeting">안녕하세요</h1>
+              <p class="app-home-sub" id="appHomeSub">오늘 운행일지를 작성하거나 서식을 관리하세요.</p>
             </div>
             <div class="app-home-usage" id="appHomeUsage">
               <span class="uil-badge uil-badge-free">Free</span>
-              <span id="appHomeUsageText">??/span>
+              <span id="appHomeUsageText">—</span>
             </div>
           </header>
 
           <div class="app-home-primary">
-            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-report-mode="driving">?댄뻾?쇱?</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-report-mode="field">?멸렐쨌異쒖옣</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">???ㅽ꺃??/button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="style">?뚯궗 ?쒖떇</button>
+            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-report-mode="driving">운행일지</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-report-mode="field">외근·출장</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">퀵 스탬프</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
           </div>
 
           <div class="app-home-grid">
@@ -347,8 +347,8 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.75"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
               </span>
-              <strong>?댄뻾?쇱?</strong>
-              <span class="app-tile-desc">李⑤웾쨌嫄곕━쨌諛⑸Ц吏 ?낅젰 ??AI ?묒꽦</span>
+              <strong>운행일지</strong>
+              <span class="app-tile-desc">차량·거리·방문지 입력 후 AI 작성</span>
             </button>
             <button type="button" class="app-tile" data-nav="create" data-report-mode="field">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -357,8 +357,8 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.75"/></svg>
               </span>
-              <strong>?멸렐쨌異쒖옣</strong>
-              <span class="app-tile-desc">諛⑸Ц쨌寃곌낵쨌?꾩냽???쒖텧??蹂닿퀬?쒕줈</span>
+              <strong>외근·출장</strong>
+              <span class="app-tile-desc">방문·결과·후속을 제출용 보고서로</span>
             </button>
             <button type="button" class="app-tile" data-nav="style">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -367,8 +367,8 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.75"/><circle cx="9" cy="11" r="2.2" stroke="currentColor" stroke-width="1.75"/><path d="M4.5 17.5 9 14l3 2.5 4.5-4 3 3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </span>
-              <strong>?뚯궗 ?쒖떇</strong>
-              <span class="app-tile-desc">?묒떇 ?ъ쭊쨌臾몄꽌 ?깅줉 諛??숈뒿</span>
+              <strong>회사 서식</strong>
+              <span class="app-tile-desc">양식 사진·문서 등록 및 학습</span>
             </button>
             <button type="button" class="app-tile" data-nav="settings">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -377,8 +377,8 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.75"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M6.1 17.9l1.6-1.6M16.3 7.7l1.6-1.6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
               </span>
-              <strong>???ㅼ젙</strong>
-              <span class="app-tile-desc">湲곕낯 李⑤웾踰덊샇쨌?먯떖?쒓컙쨌嫄곗젏</span>
+              <strong>내 설정</strong>
+              <span class="app-tile-desc">기본 차량번호·점심시간·거점</span>
             </button>
             <button type="button" class="app-tile" data-nav="pricing">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -387,8 +387,8 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2.5" stroke="currentColor" stroke-width="1.75"/><path d="M3 10h18M7 15h3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
               </span>
-              <strong>?붽툑??/strong>
-              <span class="app-tile-desc">Free 쨌 Pro 쨌 Enterprise</span>
+              <strong>요금제</strong>
+              <span class="app-tile-desc">Free · Pro · Enterprise</span>
             </button>
             <button type="button" class="app-tile hidden" id="appTileAdmin" data-nav="admin">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -397,35 +397,35 @@
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4.5 6.5v4.2c0 5 3.3 8.7 7.5 10.3 4.2-1.6 7.5-5.3 7.5-10.3V6.5L12 3z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
               </span>
-              <strong>愿由ъ옄</strong>
-              <span class="app-tile-desc">留ㅼ텧 쨌 ?붽툑 쨌 VIP 愿由?/span>
+              <strong>관리자</strong>
+              <span class="app-tile-desc">매출 · 요금 · VIP 관리</span>
             </button>
           </div>
 
           <div class="app-home-panel panel">
             <div class="panel-head">
-              <h2>?묒뾽 泥댄겕</h2>
+              <h2>작업 체크</h2>
             </div>
             <ul class="app-checklist" id="appChecklist">
-              <li>遺덈윭?ㅻ뒗 以묅?/li>
+              <li>불러오는 중…</li>
             </ul>
           </div>
 
           <div class="app-home-panel panel" id="appLastResult" style="display:none">
             <div class="panel-head">
-              <h2>理쒓렐 ?앹꽦 寃곌낵</h2>
-              <button type="button" class="btn btn-ghost" data-nav="create">?댁뼱??蹂닿린</button>
+              <h2>최근 생성 결과</h2>
+              <button type="button" class="btn btn-ghost" data-nav="create">이어서 보기</button>
             </div>
             <div id="appLastResultBody" class="app-last-body"></div>
           </div>
 
           <div class="app-home-panel panel" id="appHomeLogs">
             <div class="panel-head">
-              <h2>理쒓렐 ????쇱?</h2>
-              <button type="button" class="btn btn-ghost" data-nav="create" data-scroll="logHistoryPanel">?꾩껜 蹂닿린</button>
+              <h2>최근 저장 일지</h2>
+              <button type="button" class="btn btn-ghost" data-nav="create" data-scroll="logHistoryPanel">전체 보기</button>
             </div>
             <div id="appHomeLogsBody" class="log-history-list">
-              <p class="log-history-empty">??λ맂 ?쇱?媛 ?놁뒿?덈떎.</p>
+              <p class="log-history-empty">저장된 일지가 없습니다.</p>
             </div>
           </div>
         </div>
@@ -437,30 +437,30 @@
       <div class="container" id="app-panel">
         <div class="section-head" style="text-align:left;margin-bottom:1rem">
           <div class="eyebrow" data-i18n="create.eyebrow">Create</div>
-          <h2 id="createTitle" data-i18n="create.title">?댄뻾?쇱? ?묒꽦</h2>
-          <p id="createSub" style="margin:0.4rem 0 0;max-width:none" data-i18n="create.sub">???ㅽ꺃?꾨줈 ?꾩튂쨌?쒓컙??李띻퀬, 二쇳뻾嫄곕━留?蹂댁셿?섎㈃ AI媛 ?쇱?瑜??꾩꽦?⑸땲??</p>
+          <h2 id="createTitle" data-i18n="create.title">운행일지 작성</h2>
+          <p id="createSub" style="margin:0.4rem 0 0;max-width:none" data-i18n="create.sub">퀵 스탬프로 위치·시간을 찍고, 주행거리만 보완하면 AI가 일지를 완성합니다.</p>
         </div>
 
-        <!-- ?묒꽦 ?좏삎: ?댄뻾 / ?멸렐 -->
-        <div class="report-mode-tabs" id="reportModeTabs" role="tablist" aria-label="?쇱? ?좏삎">
+        <!-- 작성 유형: 운행 / 외근 -->
+        <div class="report-mode-tabs" id="reportModeTabs" role="tablist" aria-label="일지 유형">
           <button type="button" class="report-mode-tab is-active" role="tab" aria-selected="true" data-report-mode="driving" id="tabModeDriving">
-            <span class="report-mode-label" data-i18n="create.mode_driving">?댄뻾?쇱?</span>
-            <span class="report-mode-hint" data-i18n="create.mode_driving_hint">李⑤웾 쨌 嫄곕━ 쨌 諛⑸Ц吏</span>
+            <span class="report-mode-label" data-i18n="create.mode_driving">운행일지</span>
+            <span class="report-mode-hint" data-i18n="create.mode_driving_hint">차량 · 거리 · 방문지</span>
           </button>
           <button type="button" class="report-mode-tab" role="tab" aria-selected="false" data-report-mode="field" id="tabModeField">
-            <span class="report-mode-label" data-i18n="create.mode_field">?멸렐쨌異쒖옣</span>
-            <span class="report-mode-hint" data-i18n="create.mode_field_hint">諛⑸Ц 쨌 寃곌낵 쨌 ?꾩냽</span>
+            <span class="report-mode-label" data-i18n="create.mode_field">외근·출장</span>
+            <span class="report-mode-hint" data-i18n="create.mode_field_hint">방문 · 결과 · 후속</span>
           </button>
         </div>
 
-        <!-- ???ㅽ꺃??(?댄뻾 紐⑤뱶) -->
+        <!-- 퀵 스탬프 (운행 모드) -->
         <div class="panel quick-stamp-panel" id="quickStampPanel" data-mode-panel="driving">
           <div class="panel-head">
-            <h2 data-i18n="create.stamp_title">???ㅽ꺃??/h2>
-            <span class="pill">GPS 쨌 ?쒓컙</span>
+            <h2 data-i18n="create.stamp_title">퀵 스탬프</h2>
+            <span class="pill">GPS · 시간</span>
           </div>
           <p class="quick-stamp-desc" data-i18n="create.stamp_desc">
-            踰꾪듉 ??踰덉쑝濡??꾩옱 ?쒓컖怨?GPS 二쇱냼瑜?湲곕줉?⑸땲?? ?꾩옣 ?꾩갑쨌異쒕컻 ??諛붾줈 李띿뼱 ?먮㈃ 諛⑸Ц吏 ?낅젰???앸궔?덈떎.
+            버튼 한 번으로 현재 시각과 GPS 주소를 기록합니다. 현장 도착·출발 시 바로 찍어 두면 방문지 입력이 끝납니다.
           </p>
           <div class="quick-stamp-actions">
             <button class="btn btn-primary" id="btnQuickStamp" type="button" data-i18n-keep-html>
@@ -468,222 +468,222 @@
                 <circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.8"/>
                 <path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
               </svg>
-              <span data-i18n-text data-i18n="create.stamp_btn">吏湲??꾩튂 ?ㅽ꺃??/span>
+              <span data-i18n-text data-i18n="create.stamp_btn">지금 위치 스탬프</span>
             </button>
-            <button class="btn btn-ghost" id="btnStampsToMorning" type="button" data-i18n="create.stamp_to_am">?ㅼ쟾 諛⑸Ц吏??諛섏쁺</button>
-            <button class="btn btn-ghost" id="btnStampsToAfternoon" type="button" data-i18n="create.stamp_to_pm">?ㅽ썑 諛⑸Ц吏??諛섏쁺</button>
-            <button class="btn btn-ghost" id="btnClearStamps" type="button" data-i18n="create.stamp_clear">?ㅻ뒛 ?ㅽ꺃??鍮꾩슦湲?/button>
+            <button class="btn btn-ghost" id="btnStampsToMorning" type="button" data-i18n="create.stamp_to_am">오전 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnStampsToAfternoon" type="button" data-i18n="create.stamp_to_pm">오후 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnClearStamps" type="button" data-i18n="create.stamp_clear">오늘 스탬프 비우기</button>
           </div>
           <ul class="quick-stamp-list" id="quickStampList" aria-live="polite">
-            <li class="quick-stamp-empty" data-i18n="create.stamp_empty">?꾩쭅 ?ㅽ꺃?꾧? ?놁뒿?덈떎. ?꾩옣?먯꽌 ?뚯?湲??꾩튂 ?ㅽ꺃?꾠띾? ?뚮윭 二쇱꽭??</li>
+            <li class="quick-stamp-empty" data-i18n="create.stamp_empty">아직 스탬프가 없습니다. 현장에서 「지금 위치 스탬프」를 눌러 주세요.</li>
           </ul>
           <div id="stampAlert"></div>
         </div>
 
         <div class="panel" id="reportFormPanel">
           <div class="panel-head">
-            <h2 id="reportFormTitle" data-i18n="create.form_title">?ㅻ뒛 ?댄뻾 ?뺣낫</h2>
+            <h2 id="reportFormTitle" data-i18n="create.form_title">오늘 운행 정보</h2>
             <div class="usage-bar-wrap" id="usageWrap">
               <div class="usage-meta">
-                <span id="usageLabel">濡쒓렇?????ъ슜???쒖떆</span>
+                <span id="usageLabel">로그인 후 사용량 표시</span>
                 <span id="usageRemain"></span>
               </div>
               <div class="usage-track"><div class="usage-fill" id="usageFill" style="width:0%"></div></div>
             </div>
           </div>
 
-          <!-- ?댄뻾 ?낅젰 -->
+          <!-- 운행 입력 -->
           <div id="drivingFormFields" data-mode-panel="driving">
           <div class="settings-grid" style="margin-bottom:1rem">
             <div class="full">
-              <label class="field-label" for="vehicleNumber" data-i18n="create.vehicle">李⑤웾踰덊샇</label>
-              <input type="text" id="vehicleNumber" placeholder="?? 12媛3456" autocomplete="off" />
+              <label class="field-label" for="vehicleNumber" data-i18n="create.vehicle">차량번호</label>
+              <input type="text" id="vehicleNumber" placeholder="예: 12가3456" autocomplete="off" />
             </div>
             <div>
-              <label class="field-label" for="odoStart" data-i18n="create.odo_start">理쒖큹 ?꾩쟻 二쇳뻾嫄곕━ (km)</label>
-              <input type="number" id="odoStart" inputmode="decimal" step="0.1" min="0" placeholder="?? 45230.5" />
+              <label class="field-label" for="odoStart" data-i18n="create.odo_start">최초 누적 주행거리 (km)</label>
+              <input type="number" id="odoStart" inputmode="decimal" step="0.1" min="0" placeholder="예: 45230.5" />
             </div>
             <div>
-              <label class="field-label" for="odoEnd" data-i18n="create.odo_end">?댄뻾 醫낅즺 二쇳뻾嫄곕━ (km)</label>
-              <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="?? 45267.5" />
+              <label class="field-label" for="odoEnd" data-i18n="create.odo_end">운행 종료 주행거리 (km)</label>
+              <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="예: 45267.5" />
             </div>
             <div class="full" id="fuelSection" hidden>
               <div class="settings-grid" style="margin:0">
                 <div>
-                  <label class="field-label" for="fuelRefueled" data-i18n="create.fuel_refueled">?ㅻ뒛 二쇱쑀?덈굹??</label>
+                  <label class="field-label" for="fuelRefueled" data-i18n="create.fuel_refueled">오늘 주유했나요?</label>
                   <select id="fuelRefueled">
-                    <option value="no" data-i18n="create.fuel_no" selected>?꾨땲??/option>
-                    <option value="yes" data-i18n="create.fuel_yes">?? 二쇱쑀?덉뼱??/option>
+                    <option value="no" data-i18n="create.fuel_no" selected>아니요</option>
+                    <option value="yes" data-i18n="create.fuel_yes">네, 주유했어요</option>
                   </select>
                 </div>
                 <div id="fuelAmountWrap" hidden>
-                  <label class="field-label" for="fuelAmount" data-i18n="create.fuel_amount">二쇱쑀 湲덉븸 (??</label>
-                  <input type="number" id="fuelAmount" inputmode="numeric" step="100" min="0" placeholder="?? 50000" />
+                  <label class="field-label" for="fuelAmount" data-i18n="create.fuel_amount">주유 금액 (원)</label>
+                  <input type="number" id="fuelAmount" inputmode="numeric" step="100" min="0" placeholder="예: 50000" />
                 </div>
                 <div id="fuelLitersWrap" hidden>
-                  <label class="field-label" for="fuelLiters" data-i18n="create.fuel_liters">二쇱쑀??(L, ?좏깮)</label>
-                  <input type="number" id="fuelLiters" inputmode="decimal" step="0.1" min="0" placeholder="?? 40.5" />
+                  <label class="field-label" for="fuelLiters" data-i18n="create.fuel_liters">주유량 (L, 선택)</label>
+                  <input type="number" id="fuelLiters" inputmode="decimal" step="0.1" min="0" placeholder="예: 40.5" />
                 </div>
               </div>
               <p style="margin:0.45rem 0 0;font-size:0.8rem;color:var(--muted);line-height:1.45" data-i18n="create.fuel_style_hint">
-                ?щ젮 ?먯떊 ?뚯궗 ?쒖떇??二쇱쑀 移몄씠 ?덉쓣 ?뚮쭔 蹂댁뿬?? ?쒖떇???놁쑝硫??쇱????ｌ? ?딆븘??
+                올려 두신 회사 서식에 주유 칸이 있을 때만 보여요. 서식에 없으면 일지에 넣지 않아요.
               </p>
             </div>
             <div class="full" id="lunchPlaceWrap" hidden>
-              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">?먯떖 ?μ냼 (?좏깮)</label>
-              <input type="text" id="lunchPlace" placeholder="?? 媛뺣궓??洹쇱쿂 (瑗??꾩슂???뚮쭔)" autocomplete="off" />
+              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 장소 (선택)</label>
+              <input type="text" id="lunchPlace" placeholder="예: 강남역 근처 (꼭 필요할 때만)" autocomplete="off" />
               <p class="field-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--muted)" data-i18n="create.lunch_privacy_hint">
-                ?뚯궗 ?쒖텧???쇱??먮뒗 蹂댄넻 ?먯떖 ?μ냼瑜??ｌ? ?딆븘?? 瑗??꾩슂???뚮쭔 ?곸뼱 二쇱꽭??
+                회사 제출용 일지에는 보통 점심 장소를 넣지 않아요. 꼭 필요할 때만 적어 주세요.
               </p>
             </div>
             <div class="full" id="lunchPrivacyNote">
               <p style="margin:0;padding:0.65rem 0.85rem;border-radius:10px;border:1px solid rgba(34,211,238,0.18);background:rgba(34,211,238,0.06);font-size:0.85rem;color:#cbd5e1;line-height:1.5" data-i18n="create.lunch_privacy_banner">
-                ?먯떖 ?쒓컙(?? 12~1??? ?댄뻾 ?쒓컙?먯꽌 鍮??쒕━怨? <strong style="color:#a5f3fc">?대뵒 媛???쒖뀲?붿????쇱????곸? ?딆븘??</strong>
+                점심 시간(예: 12~1시)은 운행 시간에서 빼 드리고, <strong style="color:#a5f3fc">어디 가서 드셨는지는 일지에 적지 않아요.</strong>
               </p>
             </div>
             <div class="full">
-              <label class="field-label" for="morningPlaces" data-i18n="create.morning">?ㅻ뒛 ?ㅼ쟾??媛?怨?/label>
-              <textarea id="morningPlaces" style="min-height:88px" placeholder="?щ윭 怨녹씠硫??쇳몴 ?먮뒗 以꾨컮轅덉쑝濡?援щ텇&#10;?? 媛뺣궓 怨좉컼?? ??궪 ?묐젰??></textarea>
+              <label class="field-label" for="morningPlaces" data-i18n="create.morning">오늘 오전에 간 곳</label>
+              <textarea id="morningPlaces" style="min-height:88px" placeholder="여러 곳이면 쉼표 또는 줄바꿈으로 구분&#10;예: 강남 고객사, 역삼 협력사"></textarea>
             </div>
             <div class="full">
-              <label class="field-label" for="afternoonPlaces" data-i18n="create.afternoon">?ㅻ뒛 ?ㅽ썑??媛?怨?/label>
-              <textarea id="afternoonPlaces" style="min-height:88px" placeholder="?щ윭 怨녹씠硫??쇳몴 ?먮뒗 以꾨컮轅덉쑝濡?援щ텇&#10;?? ?먭탳 誘명똿"></textarea>
+              <label class="field-label" for="afternoonPlaces" data-i18n="create.afternoon">오늘 오후에 간 곳</label>
+              <textarea id="afternoonPlaces" style="min-height:88px" placeholder="여러 곳이면 쉼표 또는 줄바꿈으로 구분&#10;예: 판교 미팅"></textarea>
             </div>
             <div class="full">
-              <label class="field-label" for="rawText" data-i18n="create.memo">異붽? 硫붾え (?좏깮)</label>
-              <textarea id="rawText" style="min-height:72px" placeholder="?밸퀎???④만 ?댁슜???덉쑝硫??곸뼱 二쇱꽭?? (?쒓컙쨌紐⑹쟻 ?깆? AI媛 梨꾩썎?덈떎)"></textarea>
+              <label class="field-label" for="rawText" data-i18n="create.memo">추가 메모 (선택)</label>
+              <textarea id="rawText" style="min-height:72px" placeholder="특별히 남길 내용이 있으면 적어 주세요. (시간·목적 등은 AI가 채웁니다)"></textarea>
             </div>
           </div>
-          <p id="distHint" style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">湲덉씪 二쇳뻾嫄곕━: ??km</p>
+          <p id="distHint" style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">금일 주행거리: — km</p>
           </div>
 
-          <!-- ?멸렐쨌異쒖옣 ?낅젰 -->
+          <!-- 외근·출장 입력 -->
           <div id="fieldFormFields" class="hidden" data-mode-panel="field">
           <div class="settings-grid" style="margin-bottom:1rem">
             <div>
-              <label class="field-label" for="fieldDepartment" data-i18n="field.department">遺??(?좏깮)</label>
-              <input type="text" id="fieldDepartment" placeholder="?? ?곸뾽1?" autocomplete="organization" />
+              <label class="field-label" for="fieldDepartment" data-i18n="field.department">부서 (선택)</label>
+              <input type="text" id="fieldDepartment" placeholder="예: 영업1팀" autocomplete="organization" />
             </div>
             <div>
-              <label class="field-label" for="fieldSummary" data-i18n="field.summary">?ㅻ뒛 ?낅Т ??以?(?좏깮)</label>
-              <input type="text" id="fieldSummary" placeholder="?? 媛뺣궓쨌?먭탳 怨좉컼 諛⑸Ц 諛?寃ъ쟻 ?묒쓽" />
+              <label class="field-label" for="fieldSummary" data-i18n="field.summary">오늘 업무 한 줄 (선택)</label>
+              <input type="text" id="fieldSummary" placeholder="예: 강남·판교 고객 방문 및 견적 협의" />
             </div>
             <div class="full">
-              <label class="field-label" for="fieldVisits" data-i18n="field.visits">?ㅻ뒛 諛⑸Ц쨌?낅Т ?댁슜</label>
-              <textarea id="fieldVisits" style="min-height:120px" placeholder="??以꾩뿉 ??怨? ?먮뒗 ?먯쑀 ?쒖닠&#10;??&#10;媛뺣궓 A????怨꾩빟 議곌굔 ?묒쓽 / 寃ъ쟻 ?ъ슂泥?#10;?먭탳 B?????곕え ?쒖뿰 / ?ㅼ쓬 二?蹂몄궗 諛⑸Ц 議곗쑉"></textarea>
+              <label class="field-label" for="fieldVisits" data-i18n="field.visits">오늘 방문·업무 내용</label>
+              <textarea id="fieldVisits" style="min-height:120px" placeholder="한 줄에 한 곳, 또는 자유 서술&#10;예:&#10;강남 A사 — 계약 조건 협의 / 견적 재요청&#10;판교 B사 — 데모 시연 / 다음 주 본사 방문 조율"></textarea>
             </div>
             <div class="full">
-              <label class="field-label" for="fieldNext" data-i18n="field.next">?꾩냽 議곗튂 (?좏깮)</label>
-              <input type="text" id="fieldNext" placeholder="?? 紐⑹슂?쇨퉴吏 寃ъ쟻???〓?, 湲덉슂???붾줈??肄? />
+              <label class="field-label" for="fieldNext" data-i18n="field.next">후속 조치 (선택)</label>
+              <input type="text" id="fieldNext" placeholder="예: 목요일까지 견적서 송부, 금요일 팔로업 콜" />
             </div>
             <div class="full">
-              <label class="field-label" for="fieldMemo" data-i18n="field.memo">異붽? 硫붾え (?좏깮)</label>
-              <textarea id="fieldMemo" style="min-height:72px" placeholder="?밸퀎???④만 ?댁슜???덉쑝硫??곸뼱 二쇱꽭??"></textarea>
+              <label class="field-label" for="fieldMemo" data-i18n="field.memo">추가 메모 (선택)</label>
+              <textarea id="fieldMemo" style="min-height:72px" placeholder="특별히 남길 내용이 있으면 적어 주세요."></textarea>
             </div>
           </div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem" data-i18n="field.hint">
-            諛⑸Ц泥샕룸ぉ?곷쭔 ?곸뼱??AI媛 ?쒖텧???멸렐?쇱? 臾몄옣?쇰줈 ?뺣━?⑸땲??
+            방문처·목적만 적어도 AI가 제출용 외근일지 문장으로 정리합니다.
           </p>
           </div>
 
           <div class="form-actions form-actions-desktop">
-            <button class="btn btn-primary btn-lg" id="btnGenerate" type="button" data-i18n="create.generate">??AI濡??쇱? ?묒꽦</button>
-            <button class="btn btn-ghost" id="btnExample" type="button" data-i18n="create.example">?덉떆 遺덈윭?ㅺ린</button>
-            <button class="btn btn-ghost" id="btnSaveLog" type="button">?뮶 ???/button>
+            <button class="btn btn-primary btn-lg" id="btnGenerate" type="button" data-i18n="create.generate">✨ AI로 일지 작성</button>
+            <button class="btn btn-ghost" id="btnExample" type="button" data-i18n="create.example">예시 불러오기</button>
+            <button class="btn btn-ghost" id="btnSaveLog" type="button">💾 저장</button>
           </div>
 
           <div id="genAlert"></div>
 
           <div class="result" id="resultBox">
             <div class="panel-head" style="margin-top:0.5rem">
-              <h2 data-i18n="create.result">?앹꽦 寃곌낵</h2>
+              <h2 data-i18n="create.result">생성 결과</h2>
               <div class="result-pills">
                 <span class="pill" id="engineBadge">AI</span>
-                <span class="pill pill-ok" id="savedBadge" hidden>??λ맖</span>
+                <span class="pill pill-ok" id="savedBadge" hidden>저장됨</span>
               </div>
             </div>
             <div class="metrics" id="metrics"></div>
             <div class="summary-box" id="summaryBox"></div>
 
-            <!-- ?쒖텧 ???섏젙 (?쒗뭹 ?꾩꽦?? -->
+            <!-- 제출 전 수정 (제품 완성도) -->
             <div class="result-edit panel" id="resultEditPanel" hidden>
               <div class="panel-head" style="margin:0 0 0.65rem">
-                <h2 style="font-size:1rem;margin:0">?쒖텧 ???섏젙</h2>
+                <h2 style="font-size:1rem;margin:0">제출 전 수정</h2>
               </div>
               <p style="color:var(--muted);font-size:0.86rem;margin:0 0 0.75rem">
-                AI 珥덉븞??怨좎튇 ????Β룸떎?대줈?쒗븯?몄슂. ?섏젙 ?댁슜? ?대젰??諛섏쁺?⑸땲??
+                AI 초안을 고친 뒤 저장·다운로드하세요. 수정 내용은 이력에 반영됩니다.
               </p>
               <div class="settings-grid">
                 <div class="full">
-                  <label class="field-label" for="editSummary">?붿빟</label>
-                  <textarea id="editSummary" style="min-height:72px" placeholder="湲덉씪 ?댄뻾/?멸렐 ?붿빟"></textarea>
+                  <label class="field-label" for="editSummary">요약</label>
+                  <textarea id="editSummary" style="min-height:72px" placeholder="금일 운행/외근 요약"></textarea>
                 </div>
                 <div>
-                  <label class="field-label" for="editVehicle">李⑤웾踰덊샇</label>
-                  <input type="text" id="editVehicle" placeholder="?? 12媛3456" />
+                  <label class="field-label" for="editVehicle">차량번호</label>
+                  <input type="text" id="editVehicle" placeholder="예: 12가3456" />
                 </div>
                 <div>
-                  <label class="field-label" for="editDriver">?묒꽦???댁쟾??/label>
-                  <input type="text" id="editDriver" placeholder="?대쫫" />
+                  <label class="field-label" for="editDriver">작성자/운전자</label>
+                  <input type="text" id="editDriver" placeholder="이름" />
                 </div>
               </div>
               <div class="form-actions" style="margin-top:0.75rem">
-                <button type="button" class="btn btn-primary" id="btnApplyEdit">?섏젙 ?댁슜 ???/button>
+                <button type="button" class="btn btn-primary" id="btnApplyEdit">수정 내용 저장</button>
               </div>
             </div>
 
             <div class="trips" id="trips"></div>
             <div class="download-row">
-              <button class="btn btn-ghost" id="btnCopyLog" type="button" data-i18n="create.copy">?뱥 ?띿뒪??蹂듭궗</button>
-              <button class="btn btn-dark" data-export="excel" type="button">?뱤 Excel</button>
-              <button class="btn btn-dark" data-export="pdf" type="button">?뱯 PDF</button>
-              <button class="btn btn-dark" data-export="docx" type="button">?뱷 DOCX</button>
+              <button class="btn btn-ghost" id="btnCopyLog" type="button" data-i18n="create.copy">📋 텍스트 복사</button>
+              <button class="btn btn-dark" data-export="excel" type="button">📊 Excel</button>
+              <button class="btn btn-dark" data-export="pdf" type="button">📕 PDF</button>
+              <button class="btn btn-dark" data-export="docx" type="button">📝 DOCX</button>
             </div>
 
             <div class="print-panel">
               <div class="panel-head" style="margin:1.25rem 0 0.75rem">
-                <h2>?몄뇙</h2>
+                <h2>인쇄</h2>
               </div>
               <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-                ?곌껐???꾨┛???뚯궗 怨듭슜쨌媛쒖씤)濡?諛붾줈 ?몄뇙?⑸땲?? 湲곕낯 ?⑹???<strong style="color:#e2e8f0">A4</strong>?낅땲??
+                연결된 프린터(회사 공용·개인)로 바로 인쇄합니다. 기본 용지는 <strong style="color:#e2e8f0">A4</strong>입니다.
               </p>
               <div class="settings-grid" style="margin-bottom:0.85rem">
                 <div>
-                  <label class="field-label" for="paperSize">?⑹? ?ш린</label>
+                  <label class="field-label" for="paperSize">용지 크기</label>
                   <select id="paperSize">
-                    <option value="A4" selected>A4 (湲곕낯 쨌 210횞297mm)</option>
-                    <option value="A5">A5 (148횞210mm)</option>
-                    <option value="B5">B5 (176횞250mm)</option>
-                    <option value="Letter">Letter (8.5횞11in)</option>
-                    <option value="Legal">Legal (8.5횞14in)</option>
+                    <option value="A4" selected>A4 (기본 · 210×297mm)</option>
+                    <option value="A5">A5 (148×210mm)</option>
+                    <option value="B5">B5 (176×250mm)</option>
+                    <option value="Letter">Letter (8.5×11in)</option>
+                    <option value="Legal">Legal (8.5×14in)</option>
                   </select>
                 </div>
                 <div>
-                  <label class="field-label" for="printOrient">諛⑺뼢</label>
+                  <label class="field-label" for="printOrient">방향</label>
                   <select id="printOrient">
-                    <option value="portrait" selected>?몃줈</option>
-                    <option value="landscape">媛濡?/option>
+                    <option value="portrait" selected>세로</option>
+                    <option value="landscape">가로</option>
                   </select>
                 </div>
               </div>
               <div class="form-actions">
-                <button class="btn btn-primary" id="btnPrint" type="button">?뼥 ?꾨┛?곕줈 ?몄뇙</button>
-                <button class="btn btn-ghost" id="btnPrintPreview" type="button">誘몃━蹂닿린</button>
+                <button class="btn btn-primary" id="btnPrint" type="button">🖨 프린터로 인쇄</button>
+                <button class="btn btn-ghost" id="btnPrintPreview" type="button">미리보기</button>
               </div>
             </div>
           </div>
 
-          <!-- ??λ맂 ?쇱? ?대젰 (寃곌낵 ?꾨옒) -->
+          <!-- 저장된 일지 이력 (결과 아래) -->
           <div class="panel log-history-panel" id="logHistoryPanel" style="margin-top:1.25rem">
             <div class="panel-head">
-              <h2>??λ맂 ?쇱?</h2>
-              <button type="button" class="btn btn-ghost" id="btnRefreshLogs">?덈줈怨좎묠</button>
+              <h2>저장된 일지</h2>
+              <button type="button" class="btn btn-ghost" id="btnRefreshLogs">새로고침</button>
             </div>
             <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">
-              ?앹꽦???쇱????먮룞?쇰줈 怨꾩젙????λ맗?덈떎. ?ㅼ떆 ?댁뼱 ?ㅼ슫濡쒕뱶쨌?몄뇙?????덉뒿?덈떎.
+              생성한 일지는 자동으로 계정에 저장됩니다. 다시 열어 다운로드·인쇄할 수 있습니다.
             </p>
             <div id="logHistoryList" class="log-history-list">
-              <p class="log-history-empty">?꾩쭅 ??λ맂 ?쇱?媛 ?놁뒿?덈떎. ?쇱?瑜??앹꽦?섎㈃ ?ш린???볦엯?덈떎.</p>
+              <p class="log-history-empty">아직 저장된 일지가 없습니다. 일지를 생성하면 여기에 쌓입니다.</p>
             </div>
           </div>
         </div>
@@ -694,71 +694,71 @@
     <section class="view" id="view-pricing">
       <div class="container">
         <div class="section-head">
-          <div class="eyebrow">Pricing 쨌 Early</div>
-          <h2>媛쒖씤? Pro, ?? Enterprise</h2>
+          <div class="eyebrow">Pricing · Early</div>
+          <h2>개인은 Pro, 팀은 Enterprise</h2>
           <p>
-            吏湲덉? <strong style="color:#e2e8f0">珥덇린 ?곗묶媛</strong>?낅땲?? Free濡?異⑸텇????蹂닿퀬,
-            ?꾩슂???뚮쭔 ??댄븯寃??щ━硫??⑸땲?? 湲곗뾽? ?멸툑怨꾩궛?쑣룹쥖???뺤옣?쇰줈 留욎떠 ?쒕┰?덈떎.
+            지금은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다. Free로 충분히 써 보고,
+            필요할 때만 저렴하게 올리면 됩니다. 기업은 세금계산서·좌석 확장으로 맞춰 드립니다.
           </p>
         </div>
         <div class="pricing pricing-3">
           <div class="price-card">
             <span class="badge">Free</span>
             <div class="price-amount">
-              <h3>?? <small>/ ??/small></h3>
+              <h3>₩0 <small>/ 월</small></h3>
             </div>
-            <p class="price-desc">遺???놁씠 ?쒖옉 쨌 泥댄뿕</p>
+            <p class="price-desc">부담 없이 시작 · 체험</p>
             <ul>
-              <li>??<span id="priceFreeLimit">15</span>???앹꽦</li>
-              <li>?댄뻾쨌?멸렐 ?쇱? ?묒꽦</li>
-              <li>Excel 쨌 PDF 쨌 DOCX</li>
-              <li>?뚯궗 ?쒖떇 ?숈뒿</li>
+              <li>월 <span id="priceFreeLimit">15</span>회 생성</li>
+              <li>운행·외근 일지 작성</li>
+              <li>Excel · PDF · DOCX</li>
+              <li>회사 서식 학습</li>
             </ul>
-            <button class="btn btn-ghost btn-block" data-nav="create" type="button">臾대즺濡??쒖옉</button>
+            <button class="btn btn-ghost btn-block" data-nav="create" type="button">무료로 시작</button>
           </div>
           <div class="price-card">
-            <span class="badge">Pro 쨌 ?곗묶媛</span>
+            <span class="badge">Pro · 런칭가</span>
             <div class="price-amount">
-              <h3>??span id="pricePro">2,900</span> <small>/ ??/small></h3>
+              <h3>₩<span id="pricePro">2,900</span> <small>/ 월</small></h3>
             </div>
-            <p class="price-desc">媛쒖씤쨌?꾨━?쒖꽌 臾댁젣??쨌 而ㅽ뵾 ????媛寃?/p>
+            <p class="price-desc">개인·프리랜서 무제한 · 커피 한 잔 가격</p>
             <ul>
-              <li>臾댁젣???앹꽦 쨌 愿묎퀬 ?쒓굅</li>
-              <li>媛쒖씤??紐⑤뱶 ?좎?</li>
-              <li>留먰닾쨌?쒖떇 ?숈뒿</li>
-              <li>?곗꽑 吏??/li>
+              <li>무제한 생성 · 광고 제거</li>
+              <li>개인용 모드 유지</li>
+              <li>말투·서식 학습</li>
+              <li>우선 지원</li>
             </ul>
-            <p class="trial-hint" id="proTrialHint">珥덇린 ?곗묶媛 쨌 寃곗젣 ?곕룞 ?꾩뿏 臾몄쓽濡??깅줉</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro ?깅줉 臾몄쓽?섍린</button>
-            <a class="price-link" id="proLink" href="#contact" data-nav="contact">?꾩엯 臾몄쓽 쨌 Pro ?깅줉 ?붿껌</a>
+            <p class="trial-hint" id="proTrialHint">초기 런칭가 · 결제 연동 전엔 문의로 등록</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro 등록 문의하기</button>
+            <a class="price-link" id="proLink" href="#contact" data-nav="contact">도입 문의 · Pro 등록 요청</a>
           </div>
           <div class="price-card featured">
-            <span class="badge">Enterprise 쨌 ?곗묶媛</span>
+            <span class="badge">Enterprise · 런칭가</span>
             <div class="price-amount">
-              <span class="price-from">?쒖옉 媛寃?쨌 湲곕낯 5??湲곗?</span>
-              <h3>??span id="priceEnt">19,900</span> <small>/ ??/small></h3>
-              <p class="price-seat">異붽? ?몄썝??<strong>??,000</strong></p>
+              <span class="price-from">시작 가격 · 기본 5인 기준</span>
+              <h3>₩<span id="priceEnt">19,900</span> <small>/ 월</small></h3>
+              <p class="price-seat">추가 인원당 <strong>₩2,000</strong></p>
             </div>
-            <p class="price-desc">?쨌踰뺤씤 쨌 醫뚯꽍 湲곕컲 ?뺤옣</p>
-            <div class="trust-signals" aria-label="湲곗뾽 ?좊ː ?덈궡">
-              <span class="trust-badge">?멸툑怨꾩궛??諛쒗뻾 媛??/span>
-              <span class="trust-badge">湲곗뾽??愿由ъ옄 ?섏씠吏 ?쒓났</span>
+            <p class="price-desc">팀·법인 · 좌석 기반 확장</p>
+            <div class="trust-signals" aria-label="기업 신뢰 안내">
+              <span class="trust-badge">세금계산서 발행 가능</span>
+              <span class="trust-badge">기업용 관리자 페이지 제공</span>
             </div>
             <ul>
-              <li>? ?듦퀎 쨌 ?쇱? ?뱀씤/諛섎젮</li>
-              <li>怨듯넻 嫄곗젏쨌?뺤콉 ?ㅼ젙</li>
-              <li>湲곗뾽????쒕낫??쨌 愿由ъ옄 肄섏넄</li>
-              <li>臾댁젣???앹꽦 쨌 醫뚯꽍 ?뺤옣</li>
+              <li>팀 통계 · 일지 승인/반려</li>
+              <li>공통 거점·정책 설정</li>
+              <li>기업용 대시보드 · 관리자 콘솔</li>
+              <li>무제한 생성 · 좌석 확장</li>
             </ul>
-            <p class="trial-hint" id="entTrialHint">踰뺤씤 臾몄쓽 쨌 ?멸툑怨꾩궛??쨌 珥덇린 ?곗묶媛</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise ?꾩엯 臾몄쓽</button>
-            <a class="price-link" id="entLink" href="#contact" data-nav="contact">?꾩엯 臾몄쓽 쨌 ?멸툑怨꾩궛??/a>
+            <p class="trial-hint" id="entTrialHint">법인 문의 · 세금계산서 · 초기 런칭가</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise 도입 문의</button>
+            <a class="price-link" id="entLink" href="#contact" data-nav="contact">도입 문의 · 세금계산서</a>
           </div>
         </div>
         <p class="pricing-note" id="pricingNote">
-          ?꾩옱 媛寃⑹? <strong style="color:#e2e8f0">珥덇린 ?곗묶媛</strong>?낅땲??
-          ?⑤씪???먮룞 寃곗젣??以鍮?以묒씠硫? <strong style="color:#e2e8f0">臾몄쓽 ??愿由ъ옄媛 Pro/Enterprise瑜??깅줉</strong>?⑸땲??
-          Enterprise 湲곕낯 5??쨌 異붽? 醫뚯꽍 ????,000 쨌 ?멸툑怨꾩궛??吏??
+          현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다.
+          온라인 자동 결제는 준비 중이며, <strong style="color:#e2e8f0">문의 후 관리자가 Pro/Enterprise를 등록</strong>합니다.
+          Enterprise 기본 5인 · 추가 좌석 월 ₩2,000 · 세금계산서 지원.
         </p>
       </div>
     </section>
@@ -768,18 +768,18 @@
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow">Company Form</div>
-          <h2>?뚯궗 ?댄뻾?쇱? ?쒖떇</h2>
+          <h2>회사 운행일지 서식</h2>
           <p style="margin:0.4rem 0 0;max-width:54ch">
-            ?뚯궗留덈떎 ?쒖떇???ㅻ쫭?덈떎. ?곕━ ?뚯궗 ?댄뻾?쇱? ?묒떇???щ━硫?
-            <strong style="color:#e2e8f0">??Β룹궘?쑣룻븰??/strong>?섍퀬,
-            洹??쒖떇??留욎떠 AI媛 ?묒꽦?⑸땲??
+            회사마다 서식이 다릅니다. 우리 회사 운행일지 양식을 올리면
+            <strong style="color:#e2e8f0">저장·삭제·학습</strong>하고,
+            그 서식에 맞춰 AI가 작성합니다.
           </p>
         </div>
 
         <div class="panel style-status-panel" style="margin-bottom:1rem">
           <div class="panel-head">
-            <h2>?쒖떇 ?숈뒿 ?곹깭</h2>
-            <span class="learn-status-badge" id="styleStatusPill" data-state="empty">誘몃벑濡?/span>
+            <h2>서식 학습 상태</h2>
+            <span class="learn-status-badge" id="styleStatusPill" data-state="empty">미등록</span>
           </div>
 
           <div class="learn-status-layout">
@@ -791,56 +791,56 @@
                 </svg>
                 <div class="learn-ring-center">
                   <strong id="styleRingPct">0%</strong>
-                  <span id="styleRingLabel">以鍮꾨룄</span>
+                  <span id="styleRingLabel">준비도</span>
                 </div>
               </div>
-              <p class="learn-ring-cap" id="styleProgressLabel">?깅줉 0 / 5??/p>
+              <p class="learn-ring-cap" id="styleProgressLabel">등록 0 / 5장</p>
             </div>
 
             <div class="learn-status-main">
-              <p class="learn-status-msg" id="styleStatusMsg">濡쒓렇?????숈뒿 ?곹깭瑜??뺤씤?????덉뒿?덈떎.</p>
+              <p class="learn-status-msg" id="styleStatusMsg">로그인 후 학습 상태를 확인할 수 있습니다.</p>
 
               <div class="learn-steps" id="styleLearnSteps">
                 <div class="learn-step" data-step="1">
                   <span class="learn-step-num">1</span>
                   <div>
-                    <strong>?쒖떇 ?깅줉</strong>
-                    <span id="step1Cap">?ъ쭊쨌臾몄꽌 ?낅줈??/span>
+                    <strong>서식 등록</strong>
+                    <span id="step1Cap">사진·문서 업로드</span>
                   </div>
                 </div>
                 <div class="learn-step-line" aria-hidden="true"></div>
                 <div class="learn-step" data-step="2">
                   <span class="learn-step-num">2</span>
                   <div>
-                    <strong>AI ?숈뒿</strong>
-                    <span id="step2Cap">援ъ“쨌留먰닾 遺꾩꽍</span>
+                    <strong>AI 학습</strong>
+                    <span id="step2Cap">구조·말투 분석</span>
                   </div>
                 </div>
                 <div class="learn-step-line" aria-hidden="true"></div>
                 <div class="learn-step" data-step="3">
                   <span class="learn-step-num">3</span>
                   <div>
-                    <strong>?묒꽦 諛섏쁺</strong>
-                    <span id="step3Cap">?쇱? ?앹꽦 ???곸슜</span>
+                    <strong>작성 반영</strong>
+                    <span id="step3Cap">일지 생성 시 적용</span>
                   </div>
                 </div>
               </div>
 
               <div class="learn-stat-row" id="styleStatRow">
                 <div class="learn-stat">
-                  <span class="learn-stat-k">?깅줉 ?쒖떇</span>
+                  <span class="learn-stat-k">등록 서식</span>
                   <strong id="statSamples">0</strong>
                 </div>
                 <div class="learn-stat">
-                  <span class="learn-stat-k">?ъ쭊</span>
+                  <span class="learn-stat-k">사진</span>
                   <strong id="statPhotos">0</strong>
                 </div>
                 <div class="learn-stat">
-                  <span class="learn-stat-k">臾몄꽌</span>
+                  <span class="learn-stat-k">문서</span>
                   <strong id="statDocs">0</strong>
                 </div>
                 <div class="learn-stat">
-                  <span class="learn-stat-k">?몄떇 而щ읆</span>
+                  <span class="learn-stat-k">인식 컬럼</span>
                   <strong id="statCols">0</strong>
                 </div>
               </div>
@@ -850,7 +850,7 @@
           <div id="styleSummaryBox" class="learn-insight" style="display:none">
             <div class="learn-insight-head">
               <span class="learn-insight-dot"></span>
-              <span>AI媛 ?뚯븙???쒖떇 ?붿빟</span>
+              <span>AI가 파악한 서식 요약</span>
             </div>
             <div id="styleSummaryText" class="learn-insight-body"></div>
             <div id="styleFormMeta" class="form-meta-chips" style="display:none"></div>
@@ -858,21 +858,21 @@
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>湲곕낯 ?쒓났 ?쒖떇 (泥섏쓬 ?곕뒗 ?뚯궗)</h2></div>
+          <div class="panel-head"><h2>기본 제공 서식 (처음 쓰는 회사)</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            ?뚯궗 ?묒떇???꾩쭅 ?녿떎硫? ?꾨옒 湲곕낯 ?쒖떇??諛쏆? ??洹몃?濡??곌굅???섏젙???곗꽭??
-            ?ㅼ슫濡쒕뱶???뚯씪???꾨옒?먯꽌 ?ㅼ떆 ?щ젮 AI ?숈뒿?????섎룄 ?덉뒿?덈떎.
+            회사 양식이 아직 없다면, 아래 기본 서식을 받은 뒤 그대로 쓰거나 수정해 쓰세요.
+            다운로드한 파일을 아래에서 다시 올려 AI 학습에 쓸 수도 있습니다.
           </p>
           <div id="defaultTemplateList" class="template-pack-grid">
-            <p style="color:var(--muted);font-size:0.9rem">湲곕낯 ?쒖떇??遺덈윭?ㅻ뒗 以묅?/p>
+            <p style="color:var(--muted);font-size:0.9rem">기본 서식을 불러오는 중…</p>
           </div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>?뚯궗 ?쒖떇 ?낅줈??쨌 ???/h2></div>
+          <div class="panel-head"><h2>회사 서식 업로드 · 저장</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 1rem">
-            <strong style="color:#e2e8f0">?ъ쭊 珥ъ쁺 沅뚯옣</strong> ???묒떇??李띿뼱 ?щ━硫?AI媛 ?쒖떇???쎌뒿?덈떎.
-            臾몄꽌(PDF/Excel/Word)??媛??쨌 理쒕? 5??쨌 12MB
+            <strong style="color:#e2e8f0">사진 촬영 권장</strong> — 양식을 찍어 올리면 AI가 서식을 읽습니다.
+            문서(PDF/Excel/Word)도 가능 · 최대 5장 · 12MB
           </p>
           <div class="style-drop" id="styleDrop">
             <input
@@ -883,43 +883,43 @@
               multiple
               hidden
             />
-            <p style="margin:0 0 0.5rem;font-weight:700;color:#e2e8f0">?벜 ?묒떇 ?ъ쭊 李띻린 쨌 ?⑤쾾?먯꽌 ?좏깮 쨌 臾몄꽌 ?щ━湲?/p>
-            <p style="margin:0;color:var(--muted);font-size:0.85rem">?대??곗쑝濡??뚯궗 ?댄뻾?쇱?瑜?李띿뼱 諛붾줈 ?깅줉?????덉뒿?덈떎</p>
+            <p style="margin:0 0 0.5rem;font-weight:700;color:#e2e8f0">📷 양식 사진 찍기 · 앨범에서 선택 · 문서 올리기</p>
+            <p style="margin:0;color:var(--muted);font-size:0.85rem">휴대폰으로 회사 운행일지를 찍어 바로 등록할 수 있습니다</p>
           </div>
           <div class="form-actions" style="margin-top:1rem">
-            <button class="btn btn-primary" id="btnPickStyleFile" type="button">?쒖떇 ?뚯씪 ?좏깮</button>
-            <button class="btn btn-ghost" id="btnStyleLearn" type="button">?쒖떇 ?ㅼ떆 ?숈뒿</button>
+            <button class="btn btn-primary" id="btnPickStyleFile" type="button">서식 파일 선택</button>
+            <button class="btn btn-ghost" id="btnStyleLearn" type="button">서식 다시 학습</button>
           </div>
           <div id="styleUploadAlert"></div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>?띿뒪?몃줈 遺숈뿬?ｊ린</h2></div>
+          <div class="panel-head"><h2>텍스트로 붙여넣기</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem">
-            ?ㅼ틪蹂??깆쑝濡??띿뒪??異붿텧?????섎㈃, ?묒떇쨌?묒꽦 ?댁슜??蹂듭궗??遺숈뿬?ｌ쑝?몄슂.
+            스캔본 등으로 텍스트 추출이 안 되면, 양식·작성 내용을 복사해 붙여넣으세요.
           </p>
           <div class="settings-grid">
             <div class="full">
-              <label class="field-label" for="stylePasteTitle">?쒖떇 ?대쫫 (?좏깮)</label>
-              <input type="text" id="stylePasteTitle" placeholder="?? OO?뚯궗 ?댄뻾?쇱? ?묒떇" />
+              <label class="field-label" for="stylePasteTitle">서식 이름 (선택)</label>
+              <input type="text" id="stylePasteTitle" placeholder="예: OO회사 운행일지 양식" />
             </div>
             <div class="full">
-              <label class="field-label" for="stylePasteText">?쒖떇 / ?쇱? 蹂몃Ц</label>
-              <textarea id="stylePasteText" style="min-height:140px" placeholder="?뚯궗 ?댄뻾?쇱? ?쒖떇 ?먮뒗 ?묒꽦蹂몄쓣 遺숈뿬?ｌ쑝?몄슂."></textarea>
+              <label class="field-label" for="stylePasteText">서식 / 일지 본문</label>
+              <textarea id="stylePasteText" style="min-height:140px" placeholder="회사 운행일지 서식 또는 작성본을 붙여넣으세요."></textarea>
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" id="btnStylePaste" type="button">?쒖떇?쇰줈 ???/button>
+            <button class="btn btn-primary" id="btnStylePaste" type="button">서식으로 저장</button>
           </div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h2>??λ맂 ?뚯궗 ?쒖떇</h2></div>
+          <div class="panel-head"><h2>저장된 회사 서식</h2></div>
           <p style="color:var(--muted);font-size:0.85rem;margin:0 0 0.85rem">
-            二??ъ슜 ?쒖떇??吏?뺥븯嫄곕굹, ?꾩슂 ?녿뒗 ?쒖떇? ??젣?????덉뒿?덈떎.
+            주 사용 서식을 지정하거나, 필요 없는 서식은 삭제할 수 있습니다.
           </p>
           <div id="styleSampleList" class="style-samples">
-            <p style="color:var(--muted);font-size:0.9rem">?꾩쭅 ??λ맂 ?뚯궗 ?쒖떇???놁뒿?덈떎.</p>
+            <p style="color:var(--muted);font-size:0.9rem">아직 저장된 회사 서식이 없습니다.</p>
           </div>
         </div>
       </div>
@@ -932,8 +932,8 @@
           <div class="admin-head-row">
             <div>
               <div class="eyebrow">Admin</div>
-              <h2>愿由ъ옄 ?섏씠吏</h2>
-              <p style="margin:0.4rem 0 0;max-width:none">?셋룹썡 留ㅼ텧 쨌 ?붽툑 쨌 VIP 쨌 硫붿씤 ?꾧린 愿由?쨌 怨좉컼 臾몄쓽 硫붿씪</p>
+              <h2>관리자 페이지</h2>
+              <p style="margin:0.4rem 0 0;max-width:none">일·월 매출 · 요금 · VIP · 메인 후기 관리 · 고객 문의 메일</p>
             </div>
             <a
               class="btn btn-ghost admin-mail-btn"
@@ -941,18 +941,18 @@
               href="https://mail.google.com/mail/u/0/#inbox"
               target="_blank"
               rel="noopener noreferrer"
-              title="Gmail ?섏떊???닿린 (corelabs.studio@gmail.com)"
+              title="Gmail 수신함 열기 (corelabs.studio@gmail.com)"
             >
               <svg class="admin-mail-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
                 <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
-              <span>硫붿씪 ?뺤씤</span>
+              <span>메일 확인</span>
             </a>
           </div>
         </div>
 
-        <div class="admin-quick-bar" aria-label="愿由ъ옄 諛붾줈媛湲?>
+        <div class="admin-quick-bar" aria-label="관리자 바로가기">
           <a
             class="admin-quick-link"
             href="https://mail.google.com/mail/u/0/#inbox"
@@ -963,195 +963,195 @@
               <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
               <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Gmail ?섏떊??
+            Gmail 수신함
           </a>
-          <span class="admin-quick-sep" aria-hidden="true">쨌</span>
+          <span class="admin-quick-sep" aria-hidden="true">·</span>
           <a
             class="admin-quick-link"
             href="https://mail.google.com/mail/u/0/?view=cm&fs=1&to=corelabs.studio@gmail.com&tf=1"
             target="_blank"
             rel="noopener noreferrer"
           >
-            鍮좊Ⅸ ?뚯떊 ?묒꽦
+            빠른 회신 작성
           </a>
-          <span class="admin-quick-hint">臾몄쓽: corelabs.studio@gmail.com</span>
+          <span class="admin-quick-hint">문의: corelabs.studio@gmail.com</span>
         </div>
 
-        <!-- 愿由ъ옄 ?꾩슜: ?붽툑??UX 誘몃━蹂닿린 ?꾪솚 -->
+        <!-- 관리자 전용: 요금제 UX 미리보기 전환 -->
         <div class="panel admin-view-as-panel" id="adminViewAsPanel" hidden>
           <div class="panel-head" style="margin-bottom:0.65rem">
-            <h2 style="font-size:1.05rem;margin:0">??븷 誘몃━蹂닿린 (湲곕뒫 ?뚯뒪??</h2>
+            <h2 style="font-size:1.05rem;margin:0">역할 미리보기 (기능 테스트)</h2>
           </div>
           <p class="admin-view-as-desc">
-            愿由ъ옄 怨꾩젙? 洹몃?濡??먭퀬, ?붾㈃留?Pro / Enterprise / Free ?ъ슜?먯쿂??蹂댁뿬 以띾땲??
-            濡쒓렇?꾩썐 ?놁씠 ?꾪솚?????덉뒿?덈떎. (?쒕쾭 沅뚰븳쨌?앹꽦 ?쒕룄??愿由ъ옄 湲곗? ?좎?)
+            관리자 계정은 그대로 두고, 화면만 Pro / Enterprise / Free 사용자처럼 보여 줍니다.
+            로그아웃 없이 전환할 수 있습니다. (서버 권한·생성 한도는 관리자 기준 유지)
           </p>
-          <div class="admin-view-as-btns" role="group" aria-label="??븷 誘몃━蹂닿린">
+          <div class="admin-view-as-btns" role="group" aria-label="역할 미리보기">
             <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="admin" aria-pressed="true">
-              愿由ъ옄濡?蹂닿린
+              관리자로 보기
             </button>
             <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="pro" aria-pressed="false">
-              Pro ?ъ슜?먮줈 蹂닿린
+              Pro 사용자로 보기
             </button>
             <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="enterprise" aria-pressed="false">
-              Enterprise濡?蹂닿린
+              Enterprise로 보기
             </button>
             <button type="button" class="btn btn-ghost admin-view-as-btn" data-view-as="free" aria-pressed="false">
-              Free濡?蹂닿린
+              Free로 보기
             </button>
           </div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>留ㅼ텧 ?꾪솴</h2></div>
+          <div class="panel-head"><h2>매출 현황</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            湲곌컙??吏?뺥븯硫?<strong style="color:#e2e8f0">?좎쭨蹂??⑷퀎</strong>? 寃곗젣 ?댁뿭??怨꾩궛?⑸땲??
+            기간을 지정하면 <strong style="color:#e2e8f0">날짜별 합계</strong>와 결제 내역을 계산합니다.
           </p>
           <div class="settings-grid" style="margin-bottom:0.85rem">
             <div>
-              <label class="field-label" for="revDateFrom">?쒖옉??/label>
+              <label class="field-label" for="revDateFrom">시작일</label>
               <input type="date" id="revDateFrom" />
             </div>
             <div>
-              <label class="field-label" for="revDateTo">醫낅즺??/label>
+              <label class="field-label" for="revDateTo">종료일</label>
               <input type="date" id="revDateTo" />
             </div>
           </div>
           <div class="form-actions" style="margin-bottom:1rem">
-            <button class="btn btn-primary" id="btnRevApply" type="button">湲곌컙 留ㅼ텧 議고쉶</button>
-            <button class="btn btn-ghost" id="btnRevThisMonth" type="button">?대쾲 ??/button>
-            <button class="btn btn-ghost" id="btnRevToday" type="button">?ㅻ뒛</button>
-            <button class="btn btn-ghost" id="btnRev7" type="button">理쒓렐 7??/button>
-            <button class="btn btn-ghost" id="btnRev30" type="button">理쒓렐 30??/button>
+            <button class="btn btn-primary" id="btnRevApply" type="button">기간 매출 조회</button>
+            <button class="btn btn-ghost" id="btnRevThisMonth" type="button">이번 달</button>
+            <button class="btn btn-ghost" id="btnRevToday" type="button">오늘</button>
+            <button class="btn btn-ghost" id="btnRev7" type="button">최근 7일</button>
+            <button class="btn btn-ghost" id="btnRev30" type="button">최근 30일</button>
           </div>
           <div class="metrics" id="adminMetrics"></div>
           <div class="settings-grid" style="margin-top:1rem">
             <div class="full">
-              <label class="field-label" id="adminRangeLabel">?좏깮 湲곌컙 쨌 ?좎쭨蹂?留ㅼ텧</label>
+              <label class="field-label" id="adminRangeLabel">선택 기간 · 날짜별 매출</label>
               <div id="adminDailyBars" class="admin-bars"></div>
             </div>
             <div class="full">
-              <label class="field-label">理쒓렐 6媛쒖썡 ?붾ℓ異?/label>
+              <label class="field-label">최근 6개월 월매출</label>
               <div id="adminMonthlyBars" class="admin-bars"></div>
             </div>
           </div>
           <div style="margin-top:1rem">
-            <label class="field-label" id="adminPayTableLabel">?좏깮 湲곌컙 寃곗젣 ?댁뿭</label>
+            <label class="field-label" id="adminPayTableLabel">선택 기간 결제 내역</label>
             <div id="adminPayTable" class="admin-table-wrap"></div>
           </div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>?ъ슜 ?잛닔 (臾대즺 / ?좊즺)</h2></div>
+          <div class="panel-head"><h2>사용 횟수 (무료 / 유료)</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            ?대쾲 ???쇱? <strong style="color:#e2e8f0">?앹꽦 ?잛닔</strong>瑜?臾대즺쨌?좊즺(Pro/VIP)濡??섎닠 遊낅땲??
-            Free ?쒕룄: ??<span id="adminUsageFreeLimit">10</span>??쨌 ?좊즺쨌VIP쨌愿由ъ옄??臾댁젣???잛닔留?吏묎퀎).
+            이번 달 일지 <strong style="color:#e2e8f0">생성 횟수</strong>를 무료·유료(Pro/VIP)로 나눠 봅니다.
+            Free 한도: 월 <span id="adminUsageFreeLimit">10</span>회 · 유료·VIP·관리자는 무제한(횟수만 집계).
           </p>
           <div class="metrics" id="adminUsageMetrics"></div>
           <div style="margin-top:1rem">
-            <label class="field-label" id="adminUsageTableLabel">?뚯썝蹂??대쾲 ???ъ슜 ?잛닔</label>
+            <label class="field-label" id="adminUsageTableLabel">회원별 이번 달 사용 횟수</label>
             <div id="adminUsageTable" class="admin-table-wrap"></div>
           </div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>援щ룆 寃곗젣 湲덉븸 蹂寃?/h2></div>
+          <div class="panel-head"><h2>구독 결제 금액 변경</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            蹂寃쏀븳 湲덉븸???붽툑?쑣룰껐???낃렇?덉씠?쒖뿉 利됱떆 諛섏쁺?⑸땲??
+            변경한 금액이 요금제·결제 업그레이드에 즉시 반영됩니다.
           </p>
           <div class="settings-grid">
             <div>
-              <label class="field-label" for="adminProPrice">Pro ???붽툑 (??</label>
+              <label class="field-label" for="adminProPrice">Pro 월 요금 (원)</label>
               <input type="number" id="adminProPrice" min="0" step="100" />
             </div>
             <div>
-              <label class="field-label" for="adminEntPrice">Enterprise ???붽툑 (??</label>
+              <label class="field-label" for="adminEntPrice">Enterprise 월 요금 (원)</label>
               <input type="number" id="adminEntPrice" min="0" step="100" />
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" id="btnSaveBilling" type="button">?붽툑 ???/button>
+            <button class="btn btn-primary" id="btnSaveBilling" type="button">요금 저장</button>
           </div>
           <div id="adminBillingAlert"></div>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
-          <div class="panel-head"><h2>VIP ?뚯썝 (?됱깮 臾대즺)</h2></div>
+          <div class="panel-head"><h2>VIP 회원 (평생 무료)</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            VIP濡??깅줉???꾩씠???대찓?쇱? 援щ룆 寃곗젣 ?놁씠 臾댁젣???댁슜?⑸땲??
+            VIP로 등록된 아이디/이메일은 구독 결제 없이 무제한 이용합니다.
           </p>
           <div class="settings-grid">
             <div>
-              <label class="field-label" for="vipId">VIP ?꾩씠???먮뒗 ?대찓??/label>
-              <input type="text" id="vipId" placeholder="?? vip_user ?먮뒗 vip@company.com" />
+              <label class="field-label" for="vipId">VIP 아이디 또는 이메일</label>
+              <input type="text" id="vipId" placeholder="예: vip_user 또는 vip@company.com" />
             </div>
             <div>
-              <label class="field-label" for="vipNote">硫붾え (?좏깮)</label>
-              <input type="text" id="vipNote" placeholder="?? ?뚰듃??/ ?대? ?뚯뒪?? />
+              <label class="field-label" for="vipNote">메모 (선택)</label>
+              <input type="text" id="vipNote" placeholder="예: 파트너 / 내부 테스트" />
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" id="btnAddVip" type="button">VIP ?깅줉</button>
+            <button class="btn btn-primary" id="btnAddVip" type="button">VIP 등록</button>
           </div>
           <div id="adminVipAlert"></div>
           <div id="vipList" class="style-samples" style="margin-top:1rem"></div>
         </div>
 
         <div class="panel" id="adminReviewsPanel">
-          <div class="panel-head"><h2>硫붿씤 ?꾧린 愿由?/h2></div>
+          <div class="panel-head"><h2>메인 후기 관리</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
-            鍮꾨줈洹몄씤 硫붿씤(?쒕뵫)??蹂댁씠???꾧린瑜??깅줉쨌?섏젙쨌?④? 泥섎━?⑸땲??
-            <strong style="color:#e2e8f0">怨듦컻</strong> ?곹깭留?諛⑸Ц?먯뿉寃??쒖떆?⑸땲??
+            비로그인 메인(랜딩)에 보이는 후기를 등록·수정·숨김 처리합니다.
+            <strong style="color:#e2e8f0">공개</strong> 상태만 방문자에게 표시됩니다.
           </p>
           <input type="hidden" id="reviewEditId" value="" />
           <div class="settings-grid">
             <div>
-              <label class="field-label" for="reviewName">?대쫫</label>
-              <input type="text" id="reviewName" placeholder="?? 源吏?? maxlength="40" />
+              <label class="field-label" for="reviewName">이름</label>
+              <input type="text" id="reviewName" placeholder="예: 김지훈" maxlength="40" />
             </div>
             <div>
-              <label class="field-label" for="reviewRole">吏곴뎔 쨌 ?낆쥌</label>
-              <input type="text" id="reviewRole" placeholder="?? ?곸뾽 쨌 ?쒖“?? maxlength="60" />
+              <label class="field-label" for="reviewRole">직군 · 업종</label>
+              <input type="text" id="reviewRole" placeholder="예: 영업 · 제조업" maxlength="60" />
             </div>
             <div>
-              <label class="field-label" for="reviewInitial">?대땲??(?꾨컮?)</label>
-              <input type="text" id="reviewInitial" placeholder="鍮꾩슦硫??대쫫 泥?湲?? maxlength="2" />
+              <label class="field-label" for="reviewInitial">이니셜 (아바타)</label>
+              <input type="text" id="reviewInitial" placeholder="비우면 이름 첫 글자" maxlength="2" />
             </div>
             <div>
-              <label class="field-label" for="reviewStars">蹂꾩젏 (1~5)</label>
+              <label class="field-label" for="reviewStars">별점 (1~5)</label>
               <input type="number" id="reviewStars" min="1" max="5" step="1" value="5" />
             </div>
             <div class="full">
-              <label class="field-label" for="reviewText">?꾧린 ?댁슜 (?쒓뎅??</label>
-              <textarea id="reviewText" rows="3" placeholder="?곗샂???놁씠 蹂몃Ц留??낅젰?대룄 ?⑸땲??"></textarea>
+              <label class="field-label" for="reviewText">후기 내용 (한국어)</label>
+              <textarea id="reviewText" rows="3" placeholder="따옴표 없이 본문만 입력해도 됩니다."></textarea>
             </div>
             <div class="full">
-              <label class="field-label" for="reviewTextEn">?꾧린 ?댁슜 (English, ?좏깮)</label>
+              <label class="field-label" for="reviewTextEn">후기 내용 (English, 선택)</label>
               <textarea id="reviewTextEn" rows="2" placeholder="Optional English quote"></textarea>
             </div>
             <div>
-              <label class="field-label" for="reviewNameEn">Name (EN, ?좏깮)</label>
+              <label class="field-label" for="reviewNameEn">Name (EN, 선택)</label>
               <input type="text" id="reviewNameEn" placeholder="Jihun K." maxlength="40" />
             </div>
             <div>
-              <label class="field-label" for="reviewRoleEn">Role (EN, ?좏깮)</label>
-              <input type="text" id="reviewRoleEn" placeholder="Sales 쨌 Manufacturing" maxlength="60" />
+              <label class="field-label" for="reviewRoleEn">Role (EN, 선택)</label>
+              <input type="text" id="reviewRoleEn" placeholder="Sales · Manufacturing" maxlength="60" />
             </div>
             <div>
-              <label class="field-label" for="reviewSort">?뺣젹 ?쒖꽌 (?묒쓣?섎줉 ??</label>
-              <input type="number" id="reviewSort" step="1" placeholder="鍮꾩슦硫??먮룞" />
+              <label class="field-label" for="reviewSort">정렬 순서 (작을수록 앞)</label>
+              <input type="number" id="reviewSort" step="1" placeholder="비우면 자동" />
             </div>
             <div>
-              <label class="field-label" for="reviewPublished">怨듦컻 ?щ?</label>
+              <label class="field-label" for="reviewPublished">공개 여부</label>
               <select id="reviewPublished">
-                <option value="1" selected>怨듦컻 (硫붿씤 ?쒖떆)</option>
-                <option value="0">?④?</option>
+                <option value="1" selected>공개 (메인 표시)</option>
+                <option value="0">숨김</option>
               </select>
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" id="btnSaveReview" type="button">?꾧린 ???/button>
-            <button class="btn btn-ghost" id="btnResetReviewForm" type="button">?낅젰 珥덇린??/button>
+            <button class="btn btn-primary" id="btnSaveReview" type="button">후기 저장</button>
+            <button class="btn btn-ghost" id="btnResetReviewForm" type="button">입력 초기화</button>
           </div>
           <div id="adminReviewAlert"></div>
           <div id="adminReviewList" class="admin-review-list" style="margin-top:1rem"></div>
@@ -1164,121 +1164,121 @@
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow" data-i18n="settings.eyebrow">Settings</div>
-          <h2 data-i18n="settings.title">???ㅼ젙</h2>
-          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="settings.sub">洹쇰Т ?쒓컙???곕씪 ?깆씠 ?ㅽ꺃???쇱? ?붾㈃???먮룞?쇰줈 ?쎈땲?? ?몄뼱? 李⑤웾 ?ㅼ젙??愿由ы븯?몄슂.</p>
+          <h2 data-i18n="settings.title">내 설정</h2>
+          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="settings.sub">근무 시간에 따라 앱이 스탬프/일지 화면을 자동으로 엽니다. 언어와 차량 설정을 관리하세요.</p>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
           <div class="panel-head">
-            <h2 data-i18n="settings.lang_title">?몄뼱 쨌 Language</h2>
+            <h2 data-i18n="settings.lang_title">언어 · Language</h2>
             <span class="pill">i18n</span>
           </div>
           <div class="settings-grid">
             <div class="full">
-              <label class="field-label" for="s_lang" data-i18n="settings.lang_label">?쒖떆 ?몄뼱</label>
+              <label class="field-label" for="s_lang" data-i18n="settings.lang_label">표시 언어</label>
               <select id="s_lang">
-                <option value="ko">?쒓뎅??/option>
+                <option value="ko">한국어</option>
                 <option value="en">English</option>
               </select>
             </div>
           </div>
-          <p style="margin:0.75rem 0 0;font-size:0.82rem;color:var(--muted)" data-i18n="settings.lang_hint">?좏깮 利됱떆 ?붾㈃??諛섏쁺?섎ŉ, ??湲곌린????λ맗?덈떎.</p>
+          <p style="margin:0.75rem 0 0;font-size:0.82rem;color:var(--muted)" data-i18n="settings.lang_hint">선택 즉시 화면에 반영되며, 이 기기에 저장됩니다.</p>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
           <div class="panel-head">
-            <h2 data-i18n="settings.work_title">洹쇰Т ?쒓컙 쨌 ?ㅻ쭏???쇱슦??/h2>
+            <h2 data-i18n="settings.work_title">근무 시간 · 스마트 라우팅</h2>
             <span class="pill">Local</span>
           </div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem;line-height:1.5" data-i18n="settings.work_desc">
-            洹쇰Т 以묒뿉?????ㅽ꺃?? 洹????쒓컙?먮뒗 ?쇱? ?묒꽦 ?붾㈃?쇰줈 諛붾줈 ?대룞?⑸땲??
+            근무 중에는 퀵 스탬프, 그 외 시간에는 일지 작성 화면으로 바로 이동합니다.
           </p>
           <div class="settings-grid">
             <div>
-              <label class="field-label" for="s_work_start" data-i18n="settings.work_start">?낅Т ?쒖옉 ?쒓컙</label>
+              <label class="field-label" for="s_work_start" data-i18n="settings.work_start">업무 시작 시간</label>
               <input type="time" id="s_work_start" value="09:00" />
             </div>
             <div>
-              <label class="field-label" for="s_work_end" data-i18n="settings.work_end">?낅Т 醫낅즺 ?쒓컙</label>
+              <label class="field-label" for="s_work_end" data-i18n="settings.work_end">업무 종료 시간</label>
               <input type="time" id="s_work_end" value="18:00" />
             </div>
           </div>
           <p id="workHoursHint" class="work-hours-hint" style="margin:0.75rem 0 0;font-size:0.82rem;color:var(--muted)"></p>
           <div class="form-actions" style="margin-top:0.9rem">
-            <button class="btn btn-primary" id="btnSaveWorkHours" type="button" data-i18n="settings.work_save">洹쇰Т ?쒓컙 ???/button>
-            <button class="btn btn-ghost" id="btnResetWorkHours" type="button" data-i18n="settings.work_reset">湲곕낯媛?(09:00~18:00)</button>
+            <button class="btn btn-primary" id="btnSaveWorkHours" type="button" data-i18n="settings.work_save">근무 시간 저장</button>
+            <button class="btn btn-ghost" id="btnResetWorkHours" type="button" data-i18n="settings.work_reset">기본값 (09:00~18:00)</button>
           </div>
           <div id="workHoursAlert"></div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h2 data-i18n="settings.vehicle_title">??李⑤웾 쨌 ?쇱? 湲곕낯 ?뺣낫</h2></div>
+          <div class="panel-head"><h2 data-i18n="settings.vehicle_title">내 차량 · 일지 기본 정보</h2></div>
           <div class="settings-grid">
             <div>
-              <label class="field-label">李⑤웾踰덊샇</label>
-              <input type="text" id="s_vehicle" placeholder="12媛3456" />
+              <label class="field-label">차량번호</label>
+              <input type="text" id="s_vehicle" placeholder="12가3456" />
             </div>
             <div>
-              <label class="field-label">?댁쟾?먮챸</label>
-              <input type="text" id="s_driver" placeholder="?띻만?? />
+              <label class="field-label">운전자명</label>
+              <input type="text" id="s_driver" placeholder="홍길동" />
             </div>
             <div>
-              <label class="field-label">?뚯궗紐?/label>
-              <input type="text" id="s_company" placeholder="(二??덉떆" />
+              <label class="field-label">회사명</label>
+              <input type="text" id="s_company" placeholder="(주)예시" />
             </div>
             <div>
-              <label class="field-label">?좎쥌</label>
+              <label class="field-label">유종</label>
               <select id="s_fuel">
-                <option>?섎컻??/option><option>寃쎌쑀</option><option>LPG</option>
-                <option>?꾧린</option><option>?섏씠釉뚮━??/option><option>湲고?</option>
+                <option>휘발유</option><option>경유</option><option>LPG</option>
+                <option>전기</option><option>하이브리드</option><option>기타</option>
               </select>
             </div>
             <div>
-              <label class="field-label">?먯떖 ?쒖옉</label>
+              <label class="field-label">점심 시작</label>
               <input type="text" id="s_lunch_start" placeholder="12:00" />
             </div>
             <div>
-              <label class="field-label">?먯떖 醫낅즺</label>
+              <label class="field-label">점심 종료</label>
               <input type="text" id="s_lunch_end" placeholder="13:00" />
             </div>
             <div class="full checkbox-row">
               <input type="checkbox" id="s_exclude_lunch" checked />
-              <label for="s_exclude_lunch" data-i18n="settings.exclude_lunch">?먯떖 ?쒓컙? ?댄뻾 ?쒓컙?먯꽌 鍮쇨린</label>
+              <label for="s_exclude_lunch" data-i18n="settings.exclude_lunch">점심 시간은 운행 시간에서 빼기</label>
             </div>
             <div class="full checkbox-row">
               <input type="checkbox" id="s_omit_lunch_place" checked />
-              <label for="s_omit_lunch_place" data-i18n="settings.omit_lunch_place">?먯떖 ?μ냼???쇱????④린吏 ?딄린</label>
+              <label for="s_omit_lunch_place" data-i18n="settings.omit_lunch_place">점심 장소는 일지에 남기지 않기</label>
             </div>
             <p style="margin:-0.35rem 0 0.75rem;font-size:0.8rem;color:var(--muted);line-height:1.45" data-i18n="settings.lunch_privacy_help">
-              耳??먮㈃ ?앸떦 ?대쫫쨌?먯떖 ?꾩튂媛 ?쇱?? ?ㅼ슫濡쒕뱶 ?뚯씪???ㅼ뼱媛吏 ?딆븘?? ?꾨㈃ ?묒꽦 ?붾㈃?먯꽌 ?먯떖 ?μ냼瑜?吏곸젒 ?낅젰?????덉뼱??
+              켜 두면 식당 이름·점심 위치가 일지와 다운로드 파일에 들어가지 않아요. 끄면 작성 화면에서 점심 장소를 직접 입력할 수 있어요.
             </p>
             <div class="full">
-              <label class="field-label">湲곕낯 ?댄뻾 紐⑹쟻</label>
-              <input type="text" id="s_purpose" placeholder="?낅Т 異쒖옣" />
+              <label class="field-label">기본 운행 목적</label>
+              <input type="text" id="s_purpose" placeholder="업무 출장" />
             </div>
             <div class="full">
-              <label class="field-label">?먯＜ 媛??怨?(??以꾩뿉 ?섎굹 쨌 ?μ냼紐?| 二쇱냼)</label>
-              <textarea id="s_places" style="min-height:100px" placeholder="蹂몄궗 | ?쒖슱??..&#10;媛뺣궓 怨좉컼??|"></textarea>
+              <label class="field-label">자주 가는 곳 (한 줄에 하나 · 장소명 | 주소)</label>
+              <textarea id="s_places" style="min-height:100px" placeholder="본사 | 서울시...&#10;강남 고객사 |"></textarea>
             </div>
           </div>
           <div class="form-actions">
-            <button class="btn btn-primary" id="btnSaveSettings" type="button" data-i18n="settings.save">?ㅼ젙 ???/button>
+            <button class="btn btn-primary" id="btnSaveSettings" type="button" data-i18n="settings.save">설정 저장</button>
           </div>
           <div id="settingsAlert"></div>
         </div>
       </div>
     </section>
 
-    <!-- LEGAL: ?댁슜?쎄? -->
+    <!-- LEGAL: 이용약관 -->
     <section class="view" id="view-terms">
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow">Legal</div>
-          <h2>?댁슜?쎄?</h2>
-          <p>濡쒕뱶濡쒓렇(RoadLog) ?쒕퉬???댁슜??愿???쎄??낅땲??</p>
+          <h2>이용약관</h2>
+          <p>로드로그(RoadLog) 서비스 이용에 관한 약관입니다.</p>
         </div>
         <article class="legal-doc" id="termsBody" aria-live="polite">
-          <p class="legal-loading">?쎄???遺덈윭?ㅻ뒗 以묅?/p>
+          <p class="legal-loading">약관을 불러오는 중…</p>
         </article>
       </div>
     </section>
@@ -1287,11 +1287,11 @@
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow">Legal</div>
-          <h2>媛쒖씤?뺣낫泥섎━諛⑹묠</h2>
-          <p>濡쒕뱶濡쒓렇(RoadLog) 媛쒖씤?뺣낫 ?섏쭛쨌?댁슜쨌蹂댄샇??愿???덈궡?낅땲??</p>
+          <h2>개인정보처리방침</h2>
+          <p>로드로그(RoadLog) 개인정보 수집·이용·보호에 관한 안내입니다.</p>
         </div>
         <article class="legal-doc" id="privacyBody" aria-live="polite">
-          <p class="legal-loading">媛쒖씤?뺣낫泥섎━諛⑹묠??遺덈윭?ㅻ뒗 以묅?/p>
+          <p class="legal-loading">개인정보처리방침을 불러오는 중…</p>
         </article>
       </div>
     </section>
@@ -1301,53 +1301,53 @@
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow">About</div>
-          <h2>?쒗뭹? 濡쒕뱶濡쒓렇, ?댁쁺? 肄붿뼱?⑹뒪</h2>
+          <h2>제품은 로드로그, 운영은 코어랩스</h2>
           <p>RoadLog is a product. CoreLabs is the studio behind it.</p>
         </div>
 
         <div class="about-hero">
           <div class="about-badge">Technology Studio</div>
           <h3 class="about-title">
-            <span class="about-product">濡쒕뱶濡쒓렇</span>
+            <span class="about-product">로드로그</span>
             <span class="about-en">RoadLog</span>
           </h3>
           <p class="about-lead">
-            濡쒕뱶濡쒓렇(RoadLog)???곗씠?곗쓽 蹂몄쭏???곌뎄?섍퀬 媛移섎? 李쎌텧?섎뒗 湲곗닠 ?ㅽ뒠?붿삤,
-            <strong>肄붿뼱?⑹뒪(CoreLabs)</strong>???섑빐 ?댁쁺?⑸땲??
+            로드로그(RoadLog)는 데이터의 본질을 연구하고 가치를 창출하는 기술 스튜디오,
+            <strong>코어랩스(CoreLabs)</strong>에 의해 운영됩니다.
           </p>
         </div>
 
         <div class="about-grid">
           <article class="about-card">
             <span class="about-card-label">Product</span>
-            <h4>濡쒕뱶濡쒓렇 쨌 RoadLog</h4>
+            <h4>로드로그 · RoadLog</h4>
             <p>
-              AI 湲곕컲 ?댄뻾?쇱? ?먮룞 ?앹꽦, 臾몄꽌 蹂?? ? ?뱀씤源뚯? ??
-              ?꾩옣 ?낅Т??諛붾줈 ?곗씠??SaaS ?쒗뭹?낅땲??
+              AI 기반 운행일지 자동 생성, 문서 변환, 팀 승인까지 —
+              현장 업무에 바로 쓰이는 SaaS 제품입니다.
             </p>
           </article>
           <article class="about-card about-card-accent">
             <span class="about-card-label">Studio</span>
-            <h4>肄붿뼱?⑹뒪 쨌 CoreLabs</h4>
+            <h4>코어랩스 · CoreLabs</h4>
             <p>
-              ?곗씠?곗? ?낅Т ?먮쫫???ㅺ퀎?섎뒗 湲곗닠 ?ㅽ뒠?붿삤?낅땲??
-              濡쒕뱶濡쒓렇瑜??ы븿???꾨Ц ?붾（?섏쓣 ?곌뎄쨌媛쒕컻쨌?댁쁺?⑸땲??
+              데이터와 업무 흐름을 설계하는 기술 스튜디오입니다.
+              로드로그를 포함한 전문 솔루션을 연구·개발·운영합니다.
             </p>
           </article>
           <article class="about-card">
             <span class="about-card-label">Trust</span>
-            <h4>寃利앸맂 ?댁쁺 泥닿퀎</h4>
+            <h4>검증된 운영 체계</h4>
             <p>
-              ?붽툑?쑣룸낫?댟룹빟愿쨌媛쒖씤?뺣낫 蹂댄샇源뚯? ?ㅽ뒠?붿삤 ?⑥쐞濡?愿由ы븯??
-              湲곗뾽 怨좉컼???덉떖?섍퀬 ?꾩엯?????덈뒗 ?꾨Ц ?붾（?섏쓣 吏?ν빀?덈떎.
+              요금제·보안·약관·개인정보 보호까지 스튜디오 단위로 관리하여
+              기업 고객이 안심하고 도입할 수 있는 전문 솔루션을 지향합니다.
             </p>
           </article>
         </div>
 
         <p class="about-foot">
           Powered by <span class="corelabs-mark">CoreLabs</span>
-          쨌
-          <a href="#contact" data-nav="contact">臾몄쓽?섍린</a>
+          ·
+          <a href="#contact" data-nav="contact">문의하기</a>
         </p>
       </div>
     </section>
@@ -1357,19 +1357,19 @@
       <div class="container">
         <div class="section-head" style="text-align:left">
           <div class="eyebrow">Contact &amp; Feedback</div>
-          <h2>?쒕퉬???쇰뱶諛?諛?臾몄쓽?섍린</h2>
+          <h2>서비스 피드백 및 문의하기</h2>
           <p>
-            肄붿뼱?⑹뒪???ъ슜?먯쓽 ?쇰뱶諛깆쓣 湲곗닠???먯궛?쇰줈 ?ш퉩?덈떎. ?대뼡 ?섍껄?대뱺 ?섏쁺?⑸땲??
+            코어랩스는 사용자의 피드백을 기술적 자산으로 여깁니다. 어떤 의견이든 환영합니다.
           </p>
         </div>
 
         <div class="feedback-hero" id="contact">
           <div class="feedback-hero-top">
             <div class="about-badge">CoreLabs Support</div>
-            <h3 class="feedback-title">濡쒕뱶濡쒓렇瑜???醫뗪쾶 留뚮뱶???섍껄???덉쑝?좉???</h3>
+            <h3 class="feedback-title">로드로그를 더 좋게 만드는 의견이 있으신가요?</h3>
             <p class="feedback-lead">
-              踰꾧렇 ?쒕낫, 湲곕뒫 ?붿껌, ?꾩엯 ?곷떞, 湲곗닠 ?묒뾽 ?쒖븞源뚯? ??
-              ?묒닔???댁슜? 肄붿뼱?⑹뒪 ?댁쁺 泥닿퀎?먯꽌 遺꾨쪟쨌寃?????듬??쒕┰?덈떎.
+              버그 제보, 기능 요청, 도입 상담, 기술 협업 제안까지 —
+              접수된 내용은 코어랩스 운영 체계에서 분류·검토 후 답변드립니다.
             </p>
           </div>
 
@@ -1381,29 +1381,29 @@
               target="_blank"
               rel="noopener noreferrer"
             >
-              ?쒕퉬???쇰뱶諛?諛?臾몄쓽?섍린
+              서비스 피드백 및 문의하기
             </a>
             <a
               class="btn btn-ghost"
               id="btnFeedbackMail"
               href="mailto:corelabs.studio@gmail.com"
             >
-              ?대찓?쇰줈 諛붾줈 蹂대궡湲?
+              이메일로 바로 보내기
             </a>
           </div>
 
-          <div class="feedback-types" aria-label="臾몄쓽 ?좏삎 ?덈궡">
+          <div class="feedback-types" aria-label="문의 유형 안내">
             <div class="feedback-type">
-              <span class="feedback-type-tag">踰꾧렇</span>
-              <p>?ㅻ쪟쨌?μ븷쨌?덉긽怨??ㅻⅨ ?숈옉</p>
+              <span class="feedback-type-tag">버그</span>
+              <p>오류·장애·예상과 다른 동작</p>
             </div>
             <div class="feedback-type">
-              <span class="feedback-type-tag">湲곕뒫 ?붿껌</span>
-              <p>媛쒖꽑 ?꾩씠?붿뼱쨌?좉퇋 湲곕뒫 ?쒖븞</p>
+              <span class="feedback-type-tag">기능 요청</span>
+              <p>개선 아이디어·신규 기능 제안</p>
             </div>
             <div class="feedback-type">
-              <span class="feedback-type-tag">?⑥닚 臾몄쓽</span>
-              <p>?붽툑쨌?꾩엯쨌怨꾩젙쨌?쇰컲 ?곷떞</p>
+              <span class="feedback-type-tag">단순 문의</span>
+              <p>요금·도입·계정·일반 상담</p>
             </div>
           </div>
         </div>
@@ -1416,13 +1416,13 @@
             </svg>
           </div>
           <div class="contact-panel-body">
-            <span class="contact-panel-label">怨듭떇 臾몄쓽 梨꾨꼸</span>
+            <span class="contact-panel-label">공식 문의 채널</span>
             <p class="contact-panel-text">
-              ?쒕퉬??愿??臾몄쓽??湲곗닠 ?묒뾽 ?쒖븞? ?몄젣???섏쁺?⑸땲??
+              서비스 관련 문의나 기술 협업 제안은 언제든 환영합니다.
               <a class="contact-mail" id="contactMailLink" href="mailto:corelabs.studio@gmail.com">corelabs.studio@gmail.com</a>
             </p>
           </div>
-          <a class="btn btn-ghost contact-cta" id="contactMailBtn" href="mailto:corelabs.studio@gmail.com">硫붿씪 蹂대궡湲?/a>
+          <a class="btn btn-ghost contact-cta" id="contactMailBtn" href="mailto:corelabs.studio@gmail.com">메일 보내기</a>
         </div>
       </div>
     </section>
@@ -1432,38 +1432,38 @@
     <div class="container footer-inner">
       <div class="footer-brand-block">
         <div class="brand footer-brand">
-          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="濡쒕뱶濡쒓렇" />
+          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="로드로그" />
           <div class="brand-text">
-            <span class="brand-name">濡쒕뱶濡쒓렇</span>
-            <span class="brand-en" data-i18n="brand.tagline">AI ?댄뻾쨌?멸렐 ?쇱?</span>
+            <span class="brand-name">로드로그</span>
+            <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
           </div>
         </div>
-        <p class="footer-copy">짤 2026 CoreLabs. All rights reserved.</p>
-        <div class="footer-biz" id="footerBiz" aria-label="?ъ뾽???뺣낫">
-          <p class="footer-biz-line"><span>?곹샇</span> <strong id="bizName">肄붿뼱?⑹뒪</strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizOwnerRow"><span>???/span> <strong id="bizOwner"></strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizRegRow"><span>?ъ뾽?먮벑濡앸쾲??/span> <strong id="bizRegNo"></strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizMailOrderRow"><span>?듭떊?먮ℓ??/span> <strong id="bizMailOrder"></strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizAddrRow"><span>二쇱냼</span> <strong id="bizAddress"></strong></p>
-          <p class="footer-biz-hint" id="bizHint">?좊즺 寃곗젣쨌?멸툑怨꾩궛?쒕뒗 臾몄쓽 ???덈궡?쒕┰?덈떎.</p>
+        <p class="footer-copy">© 2026 CoreLabs. All rights reserved.</p>
+        <div class="footer-biz" id="footerBiz" aria-label="사업자 정보">
+          <p class="footer-biz-line"><span>상호</span> <strong id="bizName">코어랩스</strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizOwnerRow"><span>대표</span> <strong id="bizOwner"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizRegRow"><span>사업자등록번호</span> <strong id="bizRegNo"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizMailOrderRow"><span>통신판매업</span> <strong id="bizMailOrder"></strong></p>
+          <p class="footer-biz-line footer-biz-optional hidden" id="bizAddrRow"><span>주소</span> <strong id="bizAddress"></strong></p>
+          <p class="footer-biz-hint" id="bizHint">유료 결제·세금계산서는 문의 후 안내드립니다.</p>
         </div>
         <a class="footer-contact" id="footerContactMail" href="mailto:corelabs.studio@gmail.com">
           <svg class="footer-mail-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.8"/>
             <path d="M4 7.5 12 13l8-5.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <span id="footerContactLabel">臾몄쓽: corelabs.studio@gmail.com</span>
+          <span id="footerContactLabel">문의: corelabs.studio@gmail.com</span>
         </a>
         <p class="footer-powered">Powered by <span class="corelabs-mark">CoreLabs</span></p>
       </div>
-      <nav class="footer-links" aria-label="踰뺤쟻 怨좎? 諛?硫붾돱">
+      <nav class="footer-links" aria-label="법적 고지 및 메뉴">
         <a href="#about" data-nav="about" data-i18n="footer.about">About</a>
-        <a href="#contact" data-nav="contact" data-i18n="footer.contact">臾몄쓽</a>
-        <a href="#terms" data-nav="terms" data-i18n="footer.terms">?댁슜?쎄?</a>
-        <a href="#privacy" data-nav="privacy" data-i18n="footer.privacy">媛쒖씤?뺣낫泥섎━諛⑹묠</a>
-        <span class="footer-dot" aria-hidden="true">쨌</span>
-        <a href="#pricing" data-nav="pricing" data-i18n="footer.pricing">?붽툑??/a>
-        <a href="#create" data-nav="create" data-i18n="footer.create">?쇱? ?묒꽦</a>
+        <a href="#contact" data-nav="contact" data-i18n="footer.contact">문의</a>
+        <a href="#terms" data-nav="terms" data-i18n="footer.terms">이용약관</a>
+        <a href="#privacy" data-nav="privacy" data-i18n="footer.privacy">개인정보처리방침</a>
+        <span class="footer-dot" aria-hidden="true">·</span>
+        <a href="#pricing" data-nav="pricing" data-i18n="footer.pricing">요금제</a>
+        <a href="#create" data-nav="create" data-i18n="footer.create">일지 작성</a>
       </nav>
     </div>
   </footer>
@@ -1471,54 +1471,54 @@
   <!-- AUTH MODAL -->
   <div class="modal-backdrop" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="modal" role="document">
-      <button class="modal-close" id="authClose" type="button" aria-label="?リ린">횞</button>
-      <h3 id="authTitle" data-i18n="auth.title">怨꾩젙</h3>
-      <p class="sub" data-i18n="auth.sub">濡쒓렇?명븯硫??앹꽦쨌?ㅼ슫濡쒕뱶쨌?ㅼ젙????λ맗?덈떎.</p>
+      <button class="modal-close" id="authClose" type="button" aria-label="닫기">×</button>
+      <h3 id="authTitle" data-i18n="auth.title">계정</h3>
+      <p class="sub" data-i18n="auth.sub">로그인하면 생성·다운로드·설정이 저장됩니다.</p>
       <div class="tabs">
-        <button type="button" class="active" data-auth-tab="login" data-i18n="auth.login_tab">濡쒓렇??/button>
-        <button type="button" data-auth-tab="register" data-i18n="auth.register_tab">?뚯썝媛??/button>
+        <button type="button" class="active" data-auth-tab="login" data-i18n="auth.login_tab">로그인</button>
+        <button type="button" data-auth-tab="register" data-i18n="auth.register_tab">회원가입</button>
       </div>
       <form id="authLoginForm" autocomplete="on" novalidate>
         <div id="authLogin">
           <div class="field">
-            <label class="field-label" for="loginEmail">?대찓???먮뒗 ID</label>
+            <label class="field-label" for="loginEmail">이메일 또는 ID</label>
             <input type="text" id="loginEmail" name="username" placeholder="you@company.com" autocomplete="username" />
           </div>
           <div class="field">
-            <label class="field-label" for="loginPw">鍮꾨?踰덊샇</label>
-            <input type="password" id="loginPw" name="password" placeholder="?™™™™™™™? autocomplete="current-password" />
+            <label class="field-label" for="loginPw">비밀번호</label>
+            <input type="password" id="loginPw" name="password" placeholder="••••••••" autocomplete="current-password" />
           </div>
           <label class="auth-remember" for="loginRemember">
             <input type="checkbox" id="loginRemember" name="remember" />
-            <span data-i18n="auth.remember">濡쒓렇???뺣낫 ???/span>
+            <span data-i18n="auth.remember">로그인 정보 저장</span>
           </label>
-          <p class="auth-remember-hint" data-i18n="auth.remember_hint">??湲곌린?먯꽌 ?ㅼ쓬 濡쒓렇?????대찓?셋룸퉬諛踰덊샇瑜??먮룞 ?낅젰?⑸땲??</p>
-          <button class="btn btn-primary btn-block" id="btnLogin" type="submit">濡쒓렇??/button>
+          <p class="auth-remember-hint" data-i18n="auth.remember_hint">이 기기에서 다음 로그인 때 이메일·비밀번호를 자동 입력합니다.</p>
+          <button class="btn btn-primary btn-block" id="btnLogin" type="submit">로그인</button>
           <p class="auth-help-line">
-            鍮꾨?踰덊샇瑜??딆쑝?⑤굹??
-            <a href="mailto:corelabs.studio@gmail.com?subject=RoadLog%20鍮꾨?踰덊샇%20臾몄쓽">?대찓?쇰줈 臾몄쓽</a>
+            비밀번호를 잊으셨나요?
+            <a href="mailto:corelabs.studio@gmail.com?subject=RoadLog%20비밀번호%20문의">이메일로 문의</a>
           </p>
         </div>
       </form>
       <form id="authRegisterForm" class="hidden" autocomplete="on" novalidate>
         <div id="authRegister">
           <div class="field">
-            <label class="field-label" for="regName">?대쫫 (?좏깮)</label>
-            <input type="text" id="regName" name="name" placeholder="?띻만?? autocomplete="name" />
+            <label class="field-label" for="regName">이름 (선택)</label>
+            <input type="text" id="regName" name="name" placeholder="홍길동" autocomplete="name" />
           </div>
           <div class="field">
-            <label class="field-label" for="regEmail">?대찓??/label>
+            <label class="field-label" for="regEmail">이메일</label>
             <input type="email" id="regEmail" name="email" placeholder="you@company.com" autocomplete="email" />
           </div>
           <div class="field">
-            <label class="field-label" for="regPw">鍮꾨?踰덊샇</label>
-            <input type="password" id="regPw" name="new-password" placeholder="8???댁긽" minlength="8" autocomplete="new-password" />
+            <label class="field-label" for="regPw">비밀번호</label>
+            <input type="password" id="regPw" name="new-password" placeholder="8자 이상" minlength="8" autocomplete="new-password" />
           </div>
           <div class="field">
-            <label class="field-label" for="regPw2">鍮꾨?踰덊샇 ?뺤씤</label>
-            <input type="password" id="regPw2" name="new-password-confirm" placeholder="?ㅼ떆 ?낅젰" autocomplete="new-password" />
+            <label class="field-label" for="regPw2">비밀번호 확인</label>
+            <input type="password" id="regPw2" name="new-password-confirm" placeholder="다시 입력" autocomplete="new-password" />
           </div>
-          <button class="btn btn-primary btn-block" id="btnRegister" type="submit">媛?낇븯湲?/button>
+          <button class="btn btn-primary btn-block" id="btnRegister" type="submit">가입하기</button>
         </div>
       </form>
       <div id="authAlert" style="margin-top:0.85rem"></div>
@@ -1527,33 +1527,33 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- 愿由ъ옄 ??븷 誘몃━蹂닿린 以??곷떒 諛?-->
+  <!-- 관리자 역할 미리보기 중 상단 바 -->
   <div class="admin-view-as-bar" id="adminViewAsBar" hidden role="status" aria-live="polite">
     <span class="admin-view-as-bar-dot" aria-hidden="true"></span>
-    <span id="adminViewAsLabel">??븷 誘몃━蹂닿린 以?/span>
-    <button type="button" class="btn btn-primary btn-sm" data-view-as="admin">愿由ъ옄濡??뚯븘媛湲?/button>
+    <span id="adminViewAsLabel">역할 미리보기 중</span>
+    <button type="button" class="btn btn-primary btn-sm" data-view-as="admin">관리자로 돌아가기</button>
   </div>
 
-  <!-- ?닿렐 ?꾨줈 紐⑤떖 -->
+  <!-- 퇴근 위로 모달 -->
   <div class="modal-backdrop care-modal-backdrop" id="careModal" role="dialog" aria-modal="true" aria-labelledby="careModalTitle" hidden>
     <div class="modal care-modal" role="document">
       <div class="care-modal-glow" aria-hidden="true"></div>
-      <p class="care-modal-kicker" data-i18n="care.kicker">RoadLog 쨌 ?ㅻ뒛 ?섎（ 留덈Т由?/p>
-      <h3 id="careModalTitle" class="care-modal-title" data-i18n="care.title">?섍퀬?섏뀲?듬땲??/h3>
+      <p class="care-modal-kicker" data-i18n="care.kicker">RoadLog · 오늘 하루 마무리</p>
+      <h3 id="careModalTitle" class="care-modal-title" data-i18n="care.title">수고하셨습니다</h3>
       <p class="care-modal-msg" id="careModalMsg"></p>
       <p class="care-modal-visit" id="careModalVisit"></p>
-      <button class="btn btn-primary btn-block" id="careModalOk" type="button" data-i18n="care.ok">?뺤씤</button>
+      <button class="btn btn-primary btn-block" id="careModalOk" type="button" data-i18n="care.ok">확인</button>
     </div>
   </div>
 
-  <!-- 紐⑤컮???섎떒 怨좎젙: ?쇱? ?묒꽦 CTA -->
+  <!-- 모바일 하단 고정: 일지 작성 CTA -->
   <div class="mobile-sticky-cta" id="mobileStickyCta" hidden>
     <button type="button" class="btn btn-primary btn-lg btn-block" id="btnGenerateSticky">
-      ??AI濡??쇱? ?묒꽦
+      ✨ AI로 일지 작성
     </button>
   </div>
 
-  <script src="/app.js?v=20260712-hybrid-v17"></script>
+  <script src="/app.js?v=20260712-audit-v18"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -1562,7 +1562,7 @@
     "applicationCategory": "BusinessApplication",
     "operatingSystem": "Web",
     "url": "https://roadlog.co.kr/",
-    "description": "AI ?댄뻾?쇱?쨌?멸렐?쇱?. ?뚯궗 ?쒖텧??Excel쨌PDF쨌DOCX ?앹꽦.",
+    "description": "AI 운행일지·외근일지. 회사 제출용 Excel·PDF·DOCX 생성.",
     "offers": {
       "@type": "AggregateOffer",
       "lowPrice": "0",
