@@ -4645,17 +4645,13 @@
   }
 
   function applyFreeModeUI(meta) {
-    const free = Boolean(meta?.free_mode || meta?.cost_mode === "free");
+    const mode = meta?.cost_mode || (meta?.free_mode ? "free" : "hybrid");
+    const free = mode === "free";
+    const hybrid = mode === "hybrid" || (!free && mode !== "paid");
     document.body.classList.toggle("cost-free", free);
-    const genBtn = $("#btnGenerate");
-    if (genBtn && free) {
-      // data-i18n 덮어쓰기 방지: 라벨만 보강
-      if (!genBtn.dataset.freeLabelApplied) {
-        genBtn.dataset.freeLabelApplied = "1";
-      }
-    }
+    document.body.classList.toggle("cost-hybrid", hybrid);
     let banner = $("#freeModeBanner");
-    if (free) {
+    if (free || hybrid) {
       if (!banner) {
         banner = document.createElement("div");
         banner.id = "freeModeBanner";
@@ -4667,8 +4663,9 @@
         if (host) host.appendChild(banner);
       }
       banner.hidden = false;
-      banner.textContent =
-        "무료 운영 모드 · 외부 AI API 비용 없이 스마트 초안을 만듭니다. 제출 전 내용만 확인해 주세요.";
+      banner.textContent = free
+        ? "완전 무료 모드 · AI API를 호출하지 않고 스마트 초안만 사용합니다."
+        : "AI 생성은 사용량만큼 OpenAI에 과금됩니다. 키·결제 미연결 또는 한도 초과 시 스마트 초안으로 대체됩니다.";
     } else if (banner) {
       banner.hidden = true;
     }

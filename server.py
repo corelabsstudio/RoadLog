@@ -296,8 +296,8 @@ def health():
     llm = resolve_llm_config()
     persistent = storage == "connected" or data_dir_is_external()
     free = is_free_cost_mode()
-    # 무료 모드: LLM·유료 볼륨 없이 서비스 가능하면 ready
-    if free:
+    # hybrid/free: 볼륨·LLM 없이도 서비스 가능. paid: 키+영속 권장.
+    if COST_MODE in {"free", "hybrid"}:
         launch_ready = not ALLOW_DEMO_BILLING_UPGRADE
     else:
         launch_ready = bool(
@@ -306,6 +306,7 @@ def health():
             and persistent
             and not ALLOW_DEMO_BILLING_UPGRADE
         )
+    llm_on = (not free) and llm_configured()
     return {
         "ok": True,
         "app": APP_TITLE,
@@ -316,8 +317,8 @@ def health():
         "storage": storage,
         "data_dir": str(DATA_DIR),
         "storage_persistent": persistent,
-        "openai": (not free) and llm_configured(),
-        "llm_provider": "" if free else (llm.get("provider") or ""),
+        "openai": llm_on,
+        "llm_provider": (llm.get("provider") or "") if llm_on else "",
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
         "launch_ready": launch_ready,
     }
