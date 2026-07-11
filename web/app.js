@@ -5311,12 +5311,97 @@
 
     $("#btnLandingLogin")?.addEventListener("click", () => openAuth());
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js").catch((err) => {
+    setupPwaAutoUpdate();
+    updateInstallButtonVisibility();
+  }
+
+  /**
+   * 설치 앱(PWA)이 배포 후 항상 최신 화면을 받도록 SW 갱신·적용.
+   * - updateViaCache: 'none' → 브라우저가 sw.js 자체를 캐시에 묶지 않음
+   * - 포커스/주기적 update() 검사
+   * - 새 SW 설치 시 즉시 skipWaiting → controllerchange 후 1회 새로고침
+   */
+  function setupPwaAutoUpdate() {
+    if (!("serviceWorker" in navigator)) return;
+
+    // 이전 새로고침 플래그 정리
+    try {
+      sessionStorage.removeItem("rl_sw_reloading");
+    } catch {
+      /* ignore */
+    }
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      try {
+        if (sessionStorage.getItem("rl_sw_reloading") === "1") return;
+        sessionStorage.setItem("rl_sw_reloading", "1");
+      } catch {
+        /* ignore */
+      }
+      refreshing = true;
+      // 짧은 안내 후 최신 셸로 교체
+      try {
+        toast("새 버전을 적용하는 중…");
+      } catch {
+        /* ignore */
+      }
+      setTimeout(() => {
+        window.location.reload();
+      }, 400);
+    });
+
+    navigator.serviceWorker.addEventListener("message", (event) => {
+      const data = event.data || {};
+      if (data.type === "SW_ACTIVATED" && data.version) {
+        console.info("[RoadLog] service worker", data.version);
+      }
+    });
+
+    const activateWaiting = (reg) => {
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      }
+    };
+
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none", scope: "/" })
+      .then((reg) => {
+        // 이미 대기 중인 워커가 있으면 즉시 적용
+        activateWaiting(reg);
+
+        reg.addEventListener("updatefound", () => {
+          const nw = reg.installing;
+          if (!nw) return;
+          nw.addEventListener("statechange", () => {
+            if (nw.state === "installed") {
+              // 기존 컨트롤러가 있으면 = 업데이트. 즉시 활성화
+              if (navigator.serviceWorker.controller) {
+                nw.postMessage({ type: "SKIP_WAITING" });
+              }
+            }
+          });
+        });
+
+        const checkUpdate = () => {
+          reg.update().catch(() => {});
+          activateWaiting(reg);
+        };
+
+        // 시작 직후 · 탭 복귀 · 포커스 · 1분마다
+        checkUpdate();
+        setInterval(checkUpdate, 60 * 1000);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") checkUpdate();
+        });
+        window.addEventListener("focus", checkUpdate);
+        // 온라인 복귀 시
+        window.addEventListener("online", checkUpdate);
+      })
+      .catch((err) => {
         console.warn("SW register failed", err);
       });
-    }
-    updateInstallButtonVisibility();
   }
 
   function isPlaceholderPayUrl(url) {

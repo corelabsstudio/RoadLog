@@ -1022,11 +1022,26 @@ _TEXT_MEDIA = {
 
 
 def _file_response(path: Path) -> FileResponse:
-    """UTF-8 charset을 붙여 한글 UI 깨짐을 방지."""
+    """UTF-8 charset을 붙여 한글 UI 깨짐을 방지. SW·앱 셸은 캐시 재검증 강제."""
     media = _TEXT_MEDIA.get(path.suffix.lower())
+    name = path.name.lower()
+    # 설치 앱(PWA)이 옛 sw.js/HTML/JS에 묶이지 않도록
+    no_store_names = {
+        "sw.js",
+        "index.html",
+        "app.js",
+        "styles.css",
+        "manifest.webmanifest",
+    }
+    headers: dict[str, str] = {}
+    if name in no_store_names or path.suffix.lower() in {".json"} and "locales" in str(path).replace("\\", "/"):
+        headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        headers["Pragma"] = "no-cache"
+    elif path.suffix.lower() in {".js", ".css", ".html", ".webmanifest"}:
+        headers["Cache-Control"] = "no-cache, must-revalidate"
     if media:
-        return FileResponse(path, media_type=media)
-    return FileResponse(path)
+        return FileResponse(path, media_type=media, headers=headers or None)
+    return FileResponse(path, headers=headers or None)
 
 
 if WEB.exists():
