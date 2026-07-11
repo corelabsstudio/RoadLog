@@ -45,8 +45,8 @@ def default_reviews() -> list[dict[str, Any]]:
     return [
         {
             "id": "seed-r1",
-            "text": "방문지만 찍고 메모 몇 줄 남기면 제출용 문서로 정리돼서, 차 안에서 엑셀 붙잡고 있을 일이 줄었어요.",
-            "text_en": "I stamp visits, leave a few notes, and get a submission-ready log. Less time wrestling Excel in the car.",
+            "text": "현장에서는 방문 스탬프와 짧은 메모만 남기고, 저녁에 제출용으로 한 번에 정리하니 마감 전 엑셀 작업이 훨씬 줄었습니다.",
+            "text_en": "In the field I just stamp visits and leave short notes, then finish a submission-ready log in the evening — far less last-minute Excel work.",
             "name": "김지훈",
             "name_en": "Jihun K.",
             "role": "영업 · 제조업",
@@ -97,6 +97,23 @@ def load_all_reviews() -> list[dict[str, Any]]:
         seeded = default_reviews()
         _write_json(REVIEWS_PATH, seeded)
         return seeded
+    # 시드 문구 교정 (이미 저장된 옛 카피 교체)
+    if isinstance(data, list):
+        defaults = {r["id"]: r for r in default_reviews()}
+        changed = False
+        for r in data:
+            rid = r.get("id")
+            if rid in defaults and (
+                "차 안에서 엑셀" in str(r.get("text") or "")
+                or "wrestling Excel in the car" in str(r.get("text_en") or "")
+            ):
+                src = defaults[rid]
+                r["text"] = src["text"]
+                r["text_en"] = src["text_en"]
+                r["updated_at"] = _now_iso()
+                changed = True
+        if changed:
+            _write_json(REVIEWS_PATH, data)
     if not isinstance(data, list):
         return []
     return data
