@@ -19,6 +19,11 @@ data/admin/
 data/styles/
 data/user_configs/
 data/team_logs.csv
+data/logs/
+data/landing_*.png
+
+# local tooling / cloud sync noise
+.tmp.driveupload/
 
 # generated user exports (keep default templates tracked)
 *.xlsx
