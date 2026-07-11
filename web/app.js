@@ -4645,34 +4645,9 @@
     applyPricingCtaLabels();
     applyContactFromMeta(meta);
     applyBusinessFromMeta(meta);
-    applyFreeModeUI(meta);
-  }
-
-  function applyFreeModeUI(meta) {
-    const mode = meta?.cost_mode || (meta?.free_mode ? "free" : "hybrid");
-    const free = mode === "free";
-    const hybrid = mode === "hybrid" || (!free && mode !== "paid");
-    document.body.classList.toggle("cost-free", free);
-    document.body.classList.toggle("cost-hybrid", hybrid);
-    let banner = $("#freeModeBanner");
-    if (free || hybrid) {
-      if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "freeModeBanner";
-        banner.className = "free-mode-banner";
-        banner.setAttribute("role", "status");
-        const host =
-          document.querySelector("#view-create .section-head") ||
-          document.querySelector(".nav-inner");
-        if (host) host.appendChild(banner);
-      }
-      banner.hidden = false;
-      banner.textContent = free
-        ? "완전 무료 모드 · AI API를 호출하지 않고 스마트 초안만 사용합니다."
-        : "AI 생성은 사용량만큼 OpenAI에 과금됩니다. 키·결제 미연결 또는 한도 초과 시 스마트 초안으로 대체됩니다.";
-    } else if (banner) {
-      banner.hidden = true;
-    }
+    // 비용/OpenAI 운영 안내는 사용자 UI에 노출하지 않음 (관리자·서버 설정용)
+    const stale = $("#freeModeBanner");
+    if (stale) stale.remove();
   }
 
   function applyBusinessFromMeta(meta) {
