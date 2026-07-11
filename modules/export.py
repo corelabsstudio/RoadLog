@@ -39,7 +39,27 @@ def _trips_dataframe(log: dict) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _privacy_log(log: dict) -> dict:
+    """내보내기 전 점심 장소(사생활) 스크럽. 설정 기본=비노출."""
+    try:
+        from modules.generator import scrub_lunch_place_privacy
+
+        # 문서 제출물에는 기본 비노출. 명시적으로 lunch_place 가 있어도
+        # omit 기본값으로 제거 (사용자 설정이 로그에 실린 경우 예외 처리 가능)
+        settings = log.get("_settings") if isinstance(log.get("_settings"), dict) else {}
+        if log.get("include_lunch_place") is True or settings.get("include_lunch_place") is True:
+            settings = {**settings, "omit_lunch_place": False}
+        else:
+            settings = {**settings, "omit_lunch_place": settings.get("omit_lunch_place", True)}
+        return scrub_lunch_place_privacy(log, settings)
+    except Exception:
+        out = dict(log or {})
+        out["lunch_place"] = ""
+        return out
+
+
 def _meta(log: dict) -> dict[str, str]:
+    log = _privacy_log(log)
     meta = {
         "작성일": str(log.get("date") or datetime.now().strftime("%Y-%m-%d")),
         "차량번호": str(log.get("vehicle") or ""),
@@ -50,9 +70,15 @@ def _meta(log: dict) -> dict[str, str]:
         "총 거리(km)": str(log.get("total_distance_km") or ""),
         "총 운행시간": format_minutes_kr(int(log.get("total_net_minutes") or 0)),
         "점심 제외시간": format_minutes_kr(int(log.get("total_lunch_excluded_minutes") or 0)),
-        "점심 장소": str(log.get("lunch_place") or ""),
         "요약": str(log.get("summary") or ""),
     }
+    # 점심 장소는 사생활 — 비어 있지 않고 명시 허용된 경우만 포함
+    lunch = str(log.get("lunch_place") or "").strip()
+    if lunch and (
+        log.get("include_lunch_place") is True
+        or (isinstance(log.get("_settings"), dict) and log["_settings"].get("include_lunch_place") is True)
+    ):
+        meta["점심 장소"] = lunch
     return meta
 
 
@@ -190,6 +216,7 @@ def _export_field_excel(log: dict) -> tuple[bytes, str]:
 
 def export_excel(log: dict) -> tuple[bytes, str]:
     """openpyxl 기반 .xlsx — 회사 제출용 서식."""
+    log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_excel(log)
 
@@ -409,6 +436,7 @@ def _export_field_pdf(log: dict) -> tuple[bytes, str]:
 
 def export_pdf(log: dict) -> tuple[bytes, str]:
     """reportlab PDF. 한글은 시스템 폰트 또는 내장 대체."""
+    log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_pdf(log)
 
@@ -671,6 +699,7 @@ def export_docx(log: dict) -> tuple[bytes, str]:
     한글과 컴퓨터(한컴) 오피스에서 정상 개방되는 표준 OOXML.
     워터마크/머리글 광고 없음.
     """
+    log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_docx(log)
 

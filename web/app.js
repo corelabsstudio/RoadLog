@@ -2331,12 +2331,30 @@
   }
 
   // ── Generate ──
+  function isOmitLunchPlace() {
+    // 기본 보호: 설정이 없거나 omit_lunch_place !== false
+    const s = state.settings || {};
+    if (s.omit_lunch_place === false || s.include_lunch_place === true) return false;
+    return true;
+  }
+
+  function syncLunchPrivacyUI() {
+    const omit = isOmitLunchPlace();
+    const wrap = $("#lunchPlaceWrap");
+    const note = $("#lunchPrivacyNote");
+    if (wrap) wrap.hidden = omit;
+    if (note) note.hidden = !omit;
+    if (omit && $("#lunchPlace")) $("#lunchPlace").value = "";
+  }
+
   function readForm() {
+    const omit = isOmitLunchPlace();
     return {
       vehicle_number: $("#vehicleNumber")?.value?.trim() ?? "",
       odometer_start: $("#odoStart")?.value ?? "",
       odometer_end: $("#odoEnd")?.value ?? "",
-      lunch_restaurant: $("#lunchPlace")?.value?.trim() ?? "",
+      // 사생활 보호 시 서버로도 보내지 않음
+      lunch_restaurant: omit ? "" : ($("#lunchPlace")?.value?.trim() ?? ""),
       morning_places: $("#morningPlaces")?.value?.trim() ?? "",
       afternoon_places: $("#afternoonPlaces")?.value?.trim() ?? "",
       raw_text: $("#rawText")?.value?.trim() ?? "",
@@ -2389,7 +2407,9 @@
       if ($("#vehicleNumber")) $("#vehicleNumber").value = EXAMPLE_FORM.vehicleNumber;
       $("#odoStart").value = EXAMPLE_FORM.odoStart;
       $("#odoEnd").value = EXAMPLE_FORM.odoEnd;
-      $("#lunchPlace").value = EXAMPLE_FORM.lunchPlace;
+      if (!isOmitLunchPlace() && $("#lunchPlace")) {
+        $("#lunchPlace").value = EXAMPLE_FORM.lunchPlace;
+      }
       $("#morningPlaces").value = EXAMPLE_FORM.morningPlaces;
       $("#afternoonPlaces").value = EXAMPLE_FORM.afternoonPlaces;
       $("#rawText").value = EXAMPLE_FORM.rawText;
@@ -2701,9 +2721,11 @@
       `차량: ${log.vehicle || "—"}`,
       `누적: ${log.odometer_start ?? "—"} → ${log.odometer_end ?? "—"} km`,
       `총 거리: ${log.total_distance_km ?? 0} km`,
-      `점심: ${log.lunch_place || "—"}`,
       "",
     ];
+    if (log.lunch_place && !isOmitLunchPlace()) {
+      lines.splice(4, 0, `점심: ${log.lunch_place}`);
+    }
     (log.trips || []).forEach((t, i) => {
       lines.push(
         `${i + 1}. ${t.depart_time || "—"}~${t.arrive_time || "—"} ${t.from || "—"} → ${t.to || "—"} (${t.distance_km ?? "—"}km) ${t.purpose || ""}`
@@ -2871,8 +2893,11 @@
             ["종료 누적", odoE === "—" ? "—" : `${odoE} km`],
             ["총 거리", `${log.total_distance_km ?? 0} km`],
             ["순수 운행", dur],
-            ["점심", log.lunch_place || "—"],
           ];
+      // 점심 장소는 사생활 — 기본 비노출
+      if (!isField && log.lunch_place && !isOmitLunchPlace()) {
+        metrics.push(["점심", log.lunch_place]);
+      }
       $("#metrics").innerHTML = metrics
         .map(
           ([k, v]) =>
@@ -3026,8 +3051,13 @@
     $("#s_lunch_start").value = s.lunch_start || "12:00";
     $("#s_lunch_end").value = s.lunch_end || "13:00";
     $("#s_exclude_lunch").checked = s.exclude_lunch !== false;
+    // 기본 켜짐(사생활 보호). 명시적으로 false 일 때만 해제
+    if ($("#s_omit_lunch_place")) {
+      $("#s_omit_lunch_place").checked = s.omit_lunch_place !== false && s.include_lunch_place !== true;
+    }
     $("#s_purpose").value = s.default_purpose || "업무 출장";
     $("#s_places").value = placesToText(s.frequent_places || []);
+    syncLunchPrivacyUI();
   }
 
   async function loadSettingsForm(_opts = {}) {
@@ -3116,6 +3146,9 @@
         lunch_start: $("#s_lunch_start").value.trim() || "12:00",
         lunch_end: $("#s_lunch_end").value.trim() || "13:00",
         exclude_lunch: $("#s_exclude_lunch").checked,
+        omit_lunch_place: $("#s_omit_lunch_place")
+          ? $("#s_omit_lunch_place").checked
+          : true,
         default_purpose: $("#s_purpose").value.trim() || "업무 출장",
         frequent_places: textToPlaces($("#s_places").value),
       };
@@ -3125,12 +3158,23 @@
           body: JSON.stringify({ settings }),
         });
         state.settings = data.settings;
+        fillSettings(data.settings);
         fillWorkHoursForm();
         alertBox($("#settingsAlert"), "ok", t("toast.settings_saved"));
         toast(t("toast.settings_saved"));
       } catch (err) {
         alertBox($("#settingsAlert"), "error", err.message);
       }
+    });
+
+    $("#s_omit_lunch_place")?.addEventListener("change", () => {
+      if (state.settings) {
+        state.settings = {
+          ...state.settings,
+          omit_lunch_place: !!$("#s_omit_lunch_place")?.checked,
+        };
+      }
+      syncLunchPrivacyUI();
     });
   }
 
@@ -3619,7 +3663,7 @@
     </tr>
     <tr>
       <th>총 거리(km)</th><td>${escapeHtml(String(log.total_distance_km ?? ""))}</td>
-      <th>점심 장소</th><td>${escapeHtml(String(log.lunch_place || ""))}</td>
+      <th>순수 운행</th><td>${escapeHtml(String(log.total_net_display || log.total_net_minutes || ""))}</td>
     </tr>
   </table>
   <table class="trips">
@@ -5329,6 +5373,7 @@
     bindPwaInstall();
 
     applyI18n(); // data-i18n 노드에 t() 결과 반영
+    syncLunchPrivacyUI();
     loadPublicReviews();
 
     try {

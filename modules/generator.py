@@ -27,12 +27,15 @@ SYSTEM_PROMPT = """당신은 대한민국 기업의 공식 업무용 '차량 운
    - odometer_start, odometer_end 를 그대로 반영
    - total_distance_km = 종료 - 최초 (반올림 1자리)
    - 각 trip distance_km 합이 total_distance_km 과 맞도록 배분
-6. 오전 방문지 → 점심 식당 → 오후 방문지 순으로 운행 구간(trips)을 구성합니다.
+6. 오전 방문지 → (선택) 중식 구간 → 오후 방문지 순으로 운행 구간(trips)을 구성합니다.
 7. 보통 출발/복귀 기점은 본사(또는 설정 회사/자주 가는 곳 첫 항목)입니다.
-8. 점심 식당 방문 구간 purpose는 사용자 습관에 맞는 표현(예: 중식, 중식 식사 등)으로 표기합니다.
+8. 점심 시간대 제외는 설정으로 처리합니다. 식당명·점심 위치는 사생활이므로,
+   [점심 장소 비노출] 지시가 있거나 사용자가 점심 식당을 주지 않으면
+   lunch_place는 빈 문자열로 두고, 식당 방문 구간(중식 목적 trip)을 만들지 마세요.
 9. 사용자가 명시하지 않은 시각·세부 목적은 업무용으로 자연스럽게 추론하되 과장하지 않습니다.
 10. 회사 제출용으로 신뢰 가능한 수준을 유지합니다.
 11. purpose, memo, summary 표현은 프로필의 어휘·호흡을 모방하세요. 일반적인 AI 문장투를 피하세요.
+12. summary에 식당명·점심 위치를 적지 마세요 (중식 시간 제외 언급만 가능).
 
 JSON 스키마:
 {
@@ -55,9 +58,85 @@ JSON 스키마:
   ],
   "total_distance_km": 0.0,
   "summary": "금일 운행 요약 (한 문장)",
-  "lunch_place": "점심 식당명"
+  "lunch_place": ""
 }
 """
+
+_LUNCH_PURPOSE_RE = re.compile(r"중식|점심|식사|런치|lunch", re.IGNORECASE)
+_LUNCH_SUMMARY_RE = re.compile(
+    r"(?:중식|점심|식사)\s*[\(（][^)）]{0,40}[\)）]|"
+    r"(?:중식|점심)\s*[:：]?\s*[가-힣A-Za-z0-9\s]{1,20}",
+    re.IGNORECASE,
+)
+
+
+def omit_lunch_place_enabled(settings: dict | None) -> bool:
+    """기본 True — 점심 장소를 일지/제출물에 넣지 않음."""
+    if not settings:
+        return True
+    if "omit_lunch_place" in settings:
+        return bool(settings.get("omit_lunch_place"))
+    # 구 설정 호환: include_lunch_place 가 명시 True 일 때만 기록
+    if settings.get("include_lunch_place") is True:
+        return False
+    return True
+
+
+def scrub_lunch_place_privacy(log: dict | None, settings: dict | None = None) -> dict:
+    """
+    제출용 일지에서 점심 장소(식당·위치)와 중식 전용 구간을 제거.
+    점심 '시간' 제외(검증)와 별개 — 사생활 위치만 숨김.
+    """
+    if not isinstance(log, dict):
+        return {}
+    out = dict(log)
+    if not omit_lunch_place_enabled(settings):
+        return out
+
+    out["lunch_place"] = ""
+    trips_in = out.get("trips") or []
+    trips_out: list[dict] = []
+    removed_dist = 0.0
+    for t in trips_in:
+        if not isinstance(t, dict):
+            continue
+        purpose = str(t.get("purpose") or "")
+        memo = str(t.get("memo") or "")
+        if _LUNCH_PURPOSE_RE.search(purpose) or _LUNCH_PURPOSE_RE.search(memo):
+            try:
+                removed_dist += float(t.get("distance_km") or 0)
+            except (TypeError, ValueError):
+                pass
+            continue
+        trips_out.append(dict(t))
+    out["trips"] = trips_out
+
+    # summary 에서 중식(○○) 등 위치 힌트 제거
+    summary = str(out.get("summary") or "")
+    if summary:
+        cleaned = _LUNCH_SUMMARY_RE.sub("", summary)
+        cleaned = re.sub(r"\s*및\s*(?=후\b)", " ", cleaned)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" ·,;/")
+        out["summary"] = cleaned
+
+    # 거리 재합산 (누적 입력이 없을 때만)
+    if trips_out and not (
+        out.get("odometer_start") not in (None, "")
+        and out.get("odometer_end") not in (None, "")
+    ):
+        try:
+            total = round(sum(float(t.get("distance_km") or 0) for t in trips_out), 1)
+            out["total_distance_km"] = total
+        except (TypeError, ValueError):
+            pass
+    elif removed_dist and out.get("total_distance_km") is not None:
+        try:
+            out["total_distance_km"] = round(
+                max(0.0, float(out.get("total_distance_km") or 0) - removed_dist), 1
+            )
+        except (TypeError, ValueError):
+            pass
+    return out
 
 
 def _parse_places(text: str) -> list[str]:
@@ -115,11 +194,12 @@ def normalize_form(form: dict | None) -> dict[str, Any]:
     }
 
 
-def form_to_raw_text(form: dict) -> str:
+def form_to_raw_text(form: dict, settings: dict | None = None) -> str:
     """구조화 입력 → 프롬프트용 자연어 블록."""
     f = normalize_form(form)
     morning = ", ".join(f["morning_places"]) or "(없음)"
     afternoon = ", ".join(f["afternoon_places"]) or "(없음)"
+    hide_lunch = omit_lunch_place_enabled(settings)
     lunch = f["lunch_restaurant"] or "(미기재)"
     vehicle = f.get("vehicle_number") or "(미기재)"
     dist = max(0.0, f["odometer_end"] - f["odometer_start"])
@@ -131,10 +211,21 @@ def form_to_raw_text(form: dict) -> str:
         f"- 최초 누적 주행거리: {f['odometer_start']} km",
         f"- 운행 종료 주행거리: {f['odometer_end']} km",
         f"- 금일 주행거리(종료-최초): {round(dist, 1)} km",
-        f"- 점심 식당: {lunch}",
-        f"- 오전 방문지: {morning}",
-        f"- 오후 방문지: {afternoon}",
     ]
+    if hide_lunch:
+        lines.append("- [점심 장소 비노출] 식당명·점심 위치를 일지에 쓰지 말 것. lunch_place=\"\". 중식 목적 trip 생성 금지.")
+        lines.append(
+            f"- 점심 시간대(참고·시간 제외용): {settings.get('lunch_start', '12:00') if settings else '12:00'}"
+            f" ~ {settings.get('lunch_end', '13:00') if settings else '13:00'} (장소 비공개)"
+        )
+    else:
+        lines.append(f"- 점심 식당: {lunch}")
+    lines.extend(
+        [
+            f"- 오전 방문지: {morning}",
+            f"- 오후 방문지: {afternoon}",
+        ]
+    )
     if note:
         lines.append(f"- 추가 메모: {note}")
     lines.append("")
@@ -527,8 +618,6 @@ def _apply_odometer(log: dict, form: dict | None) -> dict:
         if f["odometer_end"] >= f["odometer_start"] and (f["odometer_end"] or f["odometer_start"]):
             dist = round(f["odometer_end"] - f["odometer_start"], 1)
             log["total_distance_km"] = dist
-    if f["lunch_restaurant"]:
-        log["lunch_place"] = f["lunch_restaurant"]
     # 작성 폼 차량번호가 있으면 설정값보다 우선
     if f.get("vehicle_number"):
         log["vehicle"] = f["vehicle_number"]
@@ -559,6 +648,9 @@ def generate_driving_log(
 
     settings = settings or {}
     f = normalize_form(form)
+    # 사생활 보호: 기본으로 점심 장소 입력을 생성 파이프라인에서 제거
+    if omit_lunch_place_enabled(settings):
+        f = {**f, "lunch_restaurant": ""}
 
     has_form = bool(
         f["morning_places"]
@@ -604,7 +696,7 @@ def generate_driving_log(
     # 구조화 입력이 있으면 raw_text 보강
     prompt_text = raw_text or ""
     if has_form:
-        prompt_text = form_to_raw_text(f) + ("\n" + raw_text if raw_text else "")
+        prompt_text = form_to_raw_text(f, settings) + ("\n" + raw_text if raw_text else "")
 
     engine = "openai"
     engine_info: dict[str, str] | None = None
@@ -641,14 +733,18 @@ def generate_driving_log(
         raw_log["date"] = date.today().isoformat()
     raw_log = _apply_odometer(raw_log, f)
 
+    # 생성 직후·검증 전 점심 장소 스크럽 (AI가 식당을 지어내도 제거)
+    raw_log = scrub_lunch_place_privacy(raw_log, settings)
+
     validated = validate_log(raw_log, settings)
     # odometer·차량번호 필드 유지
     if validated.get("enriched_log") is not None:
         validated["enriched_log"] = _apply_odometer(validated["enriched_log"], f)
-        if f["lunch_restaurant"]:
-            validated["enriched_log"]["lunch_place"] = f["lunch_restaurant"]
         if f.get("vehicle_number"):
             validated["enriched_log"]["vehicle"] = f["vehicle_number"]
+        validated["enriched_log"] = scrub_lunch_place_privacy(
+            validated["enriched_log"], settings
+        )
         # 혹시 validate 경로로 남은 내부 키 제거
         validated["enriched_log"].pop("_openai_error", None)
 

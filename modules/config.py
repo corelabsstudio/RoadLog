@@ -425,6 +425,8 @@ DEFAULT_USER_SETTINGS = {
     "lunch_start": "12:00",
     "lunch_end": "13:00",
     "exclude_lunch": True,
+    # 점심 장소(식당명·위치)는 근무시간 외 사생활 — 기본 비노출
+    "omit_lunch_place": True,
     "frequent_places": [],
     "default_purpose": "업무 출장",
     "fuel_type": "휘발유",

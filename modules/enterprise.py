@@ -48,15 +48,17 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 DEFAULT_COMPANY_CONFIG: dict[str, Any] = {
     "company_name": "",
-    "policy_note": "업무 운행만 기록하며, 사적 이용은 제외합니다.",
+    "policy_note": "업무 운행만 기록하며, 사적 이용은 제외합니다. 점심 장소(식당·위치)는 사생활로 일지에 기록하지 않습니다.",
     "require_approval": True,
     "lunch_start": "12:00",
     "lunch_end": "13:00",
     "exclude_lunch": True,
+    # 팀 공통: 점심 장소 비노출 (시간 제외만)
+    "omit_lunch_place": True,
     "hubs": [
         {"name": "본사", "address": ""},
     ],
-    "allowed_purposes": ["업무 출장", "고객 미팅", "납품", "현장 점검", "업무 복귀", "중식"],
+    "allowed_purposes": ["업무 출장", "고객 미팅", "납품", "현장 점검", "업무 복귀"],
     "updated_at": None,
 }
 
@@ -767,6 +769,11 @@ def _render_global_config() -> None:
             "점심 구간 운행시간 제외",
             value=bool(cfg.get("exclude_lunch", True)),
         )
+        omit_lunch_place = st.checkbox(
+            "점심 장소(식당·위치)를 일지·제출물에 기록하지 않음 (사생활 보호, 권장)",
+            value=bool(cfg.get("omit_lunch_place", True)),
+            help="중식 시간대 제외는 유지하고, 어디 갔는지만 팀·개인 일지에 남기지 않습니다.",
+        )
 
         st.markdown("#### 공통 거점 (한 줄에 하나: 이름 | 주소)")
         hubs = cfg.get("hubs") or []
@@ -804,6 +811,7 @@ def _render_global_config() -> None:
                     "lunch_start": lunch_start,
                     "lunch_end": lunch_end,
                     "exclude_lunch": exclude_lunch,
+                    "omit_lunch_place": omit_lunch_place,
                     "hubs": new_hubs,
                     "allowed_purposes": new_purposes,
                 }

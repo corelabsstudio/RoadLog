@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-reviews-admin-v6" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-lunch-privacy-v7" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -451,9 +451,17 @@
               <label class="field-label" for="odoEnd" data-i18n="create.odo_end">운행 종료 주행거리 (km)</label>
               <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="예: 45267.5" />
             </div>
-            <div class="full">
-              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심은 어디쯤에서 드셨나요?</label>
-              <input type="text" id="lunchPlace" placeholder="예: 강남역 근처, 판교 테크노밸리 쪽" />
+            <div class="full" id="lunchPlaceWrap" hidden>
+              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 장소 (선택 · 기본 비공개)</label>
+              <input type="text" id="lunchPlace" placeholder="기본값: 일지에 남기지 않음" autocomplete="off" />
+              <p class="field-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--muted)" data-i18n="create.lunch_privacy_hint">
+                점심 어디 갔는지는 사생활입니다. 설정에서 「일지에 기록」을 켠 경우에만 제출물에 포함됩니다.
+              </p>
+            </div>
+            <div class="full" id="lunchPrivacyNote">
+              <p style="margin:0;padding:0.65rem 0.85rem;border-radius:10px;border:1px solid rgba(34,211,238,0.18);background:rgba(34,211,238,0.06);font-size:0.85rem;color:#cbd5e1;line-height:1.5" data-i18n="create.lunch_privacy_banner">
+                점심 시간대만 운행시간에서 제외하고, <strong style="color:#a5f3fc">식당·위치는 일지에 넣지 않습니다</strong> (개인·팀 공통 기본값).
+              </p>
             </div>
             <div class="full">
               <label class="field-label" for="morningPlaces" data-i18n="create.morning">오늘 오전에 간 곳</label>
@@ -1157,8 +1165,15 @@
             </div>
             <div class="full checkbox-row">
               <input type="checkbox" id="s_exclude_lunch" checked />
-              <label for="s_exclude_lunch">점심 구간을 운행시간에서 제외</label>
+              <label for="s_exclude_lunch">점심 구간을 운행시간에서 제외 (시간만 · 장소 무관)</label>
             </div>
+            <div class="full checkbox-row">
+              <input type="checkbox" id="s_omit_lunch_place" checked />
+              <label for="s_omit_lunch_place">점심 장소(식당·위치)를 일지·제출물에 기록하지 않음 <span style="color:var(--muted);font-weight:500">(사생활 보호 · 권장)</span></label>
+            </div>
+            <p style="margin:-0.35rem 0 0.75rem;font-size:0.8rem;color:var(--muted);line-height:1.45" data-i18n="settings.lunch_privacy_help">
+              개인·팀 모두 기본 켜짐. 끄면 작성 화면에 점심 장소 입력이 나타나며 Excel/PDF/DOCX에도 포함될 수 있습니다.
+            </p>
             <div class="full">
               <label class="field-label">기본 운행 목적</label>
               <input type="text" id="s_purpose" placeholder="업무 출장" />
@@ -1452,7 +1467,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-reviews-admin-v6"></script>
+  <script src="/app.js?v=20260711-lunch-privacy-v7"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

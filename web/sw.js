@@ -1,5 +1,5 @@
 /* RoadLog PWA Service Worker — offline shell + static cache */
-const CACHE = "roadlog-v6";
+const CACHE = "roadlog-v7";
 const PRECACHE = [
   "/",
   "/index.html",
