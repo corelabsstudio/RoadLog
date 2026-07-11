@@ -1,63 +1,69 @@
-/* RoadLog PWA Service Worker — always prefer fresh shell, keep offline fallback */
-/** 배포마다 올리면 설치 앱이 새 SW를 잡고 갱신됩니다 */
-const VERSION = "20260712-mobile-v19";
+/* RoadLog PWA Service Worker — 항상 최신 셸 우선 (웹·모바일·홈화면 앱 공통) */
+/** 배포 시 scripts/bump_build.py 또는 수동으로 반드시 올릴 것 */
+const VERSION = "20260712-force-v20";
 const CACHE = `roadlog-${VERSION}`;
 
+/** 오프라인용 최소 자산만 (index/app/css 는 캐시에 묶지 않음) */
 const PRECACHE = [
-  "/",
-  "/index.html",
   "/manifest.webmanifest",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
   "/icons/logo.svg",
 ];
 
-/** 네트워크 우선 — 옛 캐시에 막혀 UI가 남는 것 방지 */
-function isNetworkFirst(pathname) {
+function isShellPath(pathname) {
   return (
     pathname === "/" ||
     pathname === "/index.html" ||
     pathname === "/app.js" ||
     pathname === "/styles.css" ||
     pathname === "/sw.js" ||
+    pathname === "/update.html" ||
+    pathname === "/build.json" ||
     pathname === "/manifest.webmanifest" ||
     pathname.startsWith("/locales/") ||
     pathname.endsWith(".js") ||
     pathname.endsWith(".css") ||
-    pathname.endsWith(".json") ||
     pathname.endsWith(".html") ||
+    pathname.endsWith(".json") ||
     pathname.endsWith(".webmanifest")
   );
 }
 
 self.addEventListener("install", (event) => {
+  // 대기 없이 즉시 활성화 후보로
+  self.skipWaiting();
   event.waitUntil(
-    caches
-      .open(CACHE)
-      .then((cache) => cache.addAll(PRECACHE))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then((cache) =>
+      Promise.all(
+        PRECACHE.map((u) =>
+          cache.add(u).catch(() => {
+            /* ignore single failure */
+          })
+        )
+      )
+    )
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
-      )
-      .then(() => self.clients.claim())
-      .then(() =>
-        self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
-          clients.forEach((client) => {
-            client.postMessage({ type: "SW_ACTIVATED", version: VERSION });
-          });
-        })
-      )
+    (async () => {
+      // 모든 옛 캐시 삭제 (버전 불일치 전부)
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+      const clients = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      clients.forEach((client) => {
+        client.postMessage({ type: "SW_ACTIVATED", version: VERSION });
+      });
+    })()
   );
 });
 
-/** 클라이언트가 새 버전 즉시 적용 요청 */
 self.addEventListener("message", (event) => {
   const data = event.data || {};
   if (data.type === "SKIP_WAITING") {
@@ -66,6 +72,11 @@ self.addEventListener("message", (event) => {
   if (data.type === "GET_VERSION" && event.source) {
     event.source.postMessage({ type: "SW_VERSION", version: VERSION });
   }
+  if (data.type === "CLEAR_CACHES") {
+    event.waitUntil(
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+    );
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -73,8 +84,9 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;
 
-  // API — 네트워크만 (오프라인 시 JSON 안내)
+  // API — 네트워크 only
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(req).catch(
@@ -88,37 +100,36 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.origin !== self.location.origin) return;
-
-  // 앱 셸·JS/CSS/locale: 네트워크 우선, 실패 시 캐시
-  if (isNetworkFirst(url.pathname)) {
+  // 앱 셸·JS/CSS: 항상 네트워크 (캐시 저장 안 함 → 설치 앱도 최신)
+  if (isShellPath(url.pathname)) {
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
+      fetch(req, { cache: "no-store" })
+        .then((res) => res)
+        .catch(async () => {
+          const cached = await caches.match(req);
+          if (cached) return cached;
+          if (url.pathname === "/" || url.pathname.endsWith(".html")) {
+            return (
+              (await caches.match("/index.html")) ||
+              new Response("오프라인", { status: 503 })
+            );
           }
-          return res;
+          return new Response("", { status: 503 });
         })
-        .catch(() => caches.match(req).then((c) => c || caches.match("/index.html")))
     );
     return;
   }
 
-  // 아이콘 등: 캐시 우선, 백그라운드 갱신
+  // 아이콘 등: 네트워크 우선, 성공 시 캐시 갱신
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const network = fetch(req)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        })
-        .catch(() => cached || caches.match("/index.html"));
-      return cached || network;
-    })
+    fetch(req)
+      .then((res) => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      })
+      .catch(() => caches.match(req))
   );
 });

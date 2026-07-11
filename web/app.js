@@ -5398,15 +5398,62 @@
   }
 
   /**
-   * 설치 앱(PWA)이 배포 후 항상 최신 화면을 받도록 SW 갱신·적용.
-   * - updateViaCache: 'none' → 브라우저가 sw.js 자체를 캐시에 묶지 않음
-   * - 포커스/주기적 update() 검사
-   * - 새 SW 설치 시 즉시 skipWaiting → controllerchange 후 1회 새로고침
+   * 웹 / 모바일 브라우저 / 홈화면 설치 앱(PWA) 모두 최신 반영.
+   * - sw.js 항상 updateViaCache:none + 버전 쿼리
+   * - 셸(JS/CSS/HTML)은 SW에서 network-only
+   * - /build.json 폴링으로 배포 감지 시 강제 새로고침
+   * - 새 SW → skipWaiting → controllerchange → reload
    */
   function setupPwaAutoUpdate() {
-    if (!("serviceWorker" in navigator)) return;
+    const SHELL_BUILD =
+      document.querySelector('meta[name="rl-build"]')?.content ||
+      "20260712-force-v20";
 
-    // 이전 새로고침 플래그 정리
+    // build.json 폴링 — 서버 배포 후 설치 앱도 따라옴
+    const pollServerBuild = async () => {
+      try {
+        const res = await fetch(`/build.json?t=${Date.now()}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const remote = String(data.build || "").trim();
+        if (!remote) return;
+        const local = localStorage.getItem("rl_build") || SHELL_BUILD;
+        if (remote !== local && remote !== SHELL_BUILD) {
+          try {
+            localStorage.setItem("rl_build", remote);
+            sessionStorage.removeItem("rl_build_reloaded");
+            sessionStorage.removeItem("rl_sw_reloading");
+          } catch {
+            /* ignore */
+          }
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+          }
+          if (window.caches?.keys) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+          }
+          location.replace(
+            `/?fresh=${encodeURIComponent(remote)}&t=${Date.now()}`
+          );
+        }
+      } catch {
+        /* offline ok */
+      }
+    };
+
+    if (!("serviceWorker" in navigator)) {
+      setInterval(pollServerBuild, 45 * 1000);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") pollServerBuild();
+      });
+      pollServerBuild();
+      return;
+    }
+
     try {
       sessionStorage.removeItem("rl_sw_reloading");
     } catch {
@@ -5423,7 +5470,6 @@
         /* ignore */
       }
       refreshing = true;
-      // 짧은 안내 후 최신 셸로 교체
       try {
         toast("새 버전을 적용하는 중…");
       } catch {
@@ -5431,13 +5477,21 @@
       }
       setTimeout(() => {
         window.location.reload();
-      }, 400);
+      }, 350);
     });
 
     navigator.serviceWorker.addEventListener("message", (event) => {
       const data = event.data || {};
       if (data.type === "SW_ACTIVATED" && data.version) {
-        console.info("[RoadLog] service worker", data.version);
+        console.info("[RoadLog] SW activated", data.version);
+        // 셸 빌드와 SW 버전이 다르면 강제 리로드
+        if (data.version !== SHELL_BUILD) {
+          try {
+            localStorage.setItem("rl_build", data.version);
+          } catch {
+            /* ignore */
+          }
+        }
       }
     });
 
@@ -5447,10 +5501,11 @@
       }
     };
 
+    // 버전 쿼리로 옛 sw.js 캐시 회피 (updateViaCache none 과 함께)
+    const swUrl = `/sw.js?v=${encodeURIComponent(SHELL_BUILD)}`;
     navigator.serviceWorker
-      .register("/sw.js?v=20260711-v14", { updateViaCache: "none", scope: "/" })
+      .register(swUrl, { updateViaCache: "none", scope: "/" })
       .then((reg) => {
-        // 이미 대기 중인 워커가 있으면 즉시 적용
         activateWaiting(reg);
 
         reg.addEventListener("updatefound", () => {
@@ -5458,10 +5513,7 @@
           if (!nw) return;
           nw.addEventListener("statechange", () => {
             if (nw.state === "installed") {
-              // 기존 컨트롤러가 있으면 = 업데이트. 즉시 활성화
-              if (navigator.serviceWorker.controller) {
-                nw.postMessage({ type: "SKIP_WAITING" });
-              }
+              nw.postMessage({ type: "SKIP_WAITING" });
             }
           });
         });
@@ -5469,20 +5521,23 @@
         const checkUpdate = () => {
           reg.update().catch(() => {});
           activateWaiting(reg);
+          pollServerBuild();
         };
 
-        // 시작 직후 · 탭 복귀 · 포커스 · 1분마다
         checkUpdate();
-        setInterval(checkUpdate, 60 * 1000);
+        // 설치 앱: 더 자주 검사
+        setInterval(checkUpdate, 30 * 1000);
         document.addEventListener("visibilitychange", () => {
           if (document.visibilityState === "visible") checkUpdate();
         });
         window.addEventListener("focus", checkUpdate);
-        // 온라인 복귀 시
         window.addEventListener("online", checkUpdate);
+        // 페이지 로드 직후 한 번 더
+        setTimeout(checkUpdate, 5000);
       })
       .catch((err) => {
         console.warn("SW register failed", err);
+        setInterval(pollServerBuild, 45 * 1000);
       });
   }
 
