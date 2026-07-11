@@ -112,6 +112,7 @@
   "create.fuel_no": "No",
   "create.fuel_amount": "Fuel amount (₩)",
   "create.fuel_liters": "Liters (optional)",
+  "create.fuel_style_hint": "Shown only if your company form has a fuel field. If it doesn’t, fuel is left off the log.",
   "create.lunch": "Lunch place (optional)",
   "create.lunch_privacy_hint": "Most company logs skip lunch locations. Fill this in only if you really need it.",
   "create.lunch_privacy_banner": "We take lunch hours (e.g. 12–1) out of your driving time, and we don’t write where you ate into the log.",

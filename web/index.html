@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-fuel-v9" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-fuel-style-v10" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -451,20 +451,27 @@
               <label class="field-label" for="odoEnd" data-i18n="create.odo_end">운행 종료 주행거리 (km)</label>
               <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="예: 45267.5" />
             </div>
-            <div>
-              <label class="field-label" for="fuelRefueled" data-i18n="create.fuel_refueled">오늘 주유했나요?</label>
-              <select id="fuelRefueled">
-                <option value="no" data-i18n="create.fuel_no" selected>아니요</option>
-                <option value="yes" data-i18n="create.fuel_yes">네, 주유했어요</option>
-              </select>
-            </div>
-            <div id="fuelAmountWrap" hidden>
-              <label class="field-label" for="fuelAmount" data-i18n="create.fuel_amount">주유 금액 (원)</label>
-              <input type="number" id="fuelAmount" inputmode="numeric" step="100" min="0" placeholder="예: 50000" />
-            </div>
-            <div id="fuelLitersWrap" hidden>
-              <label class="field-label" for="fuelLiters" data-i18n="create.fuel_liters">주유량 (L, 선택)</label>
-              <input type="number" id="fuelLiters" inputmode="decimal" step="0.1" min="0" placeholder="예: 40.5" />
+            <div class="full" id="fuelSection" hidden>
+              <div class="settings-grid" style="margin:0">
+                <div>
+                  <label class="field-label" for="fuelRefueled" data-i18n="create.fuel_refueled">오늘 주유했나요?</label>
+                  <select id="fuelRefueled">
+                    <option value="no" data-i18n="create.fuel_no" selected>아니요</option>
+                    <option value="yes" data-i18n="create.fuel_yes">네, 주유했어요</option>
+                  </select>
+                </div>
+                <div id="fuelAmountWrap" hidden>
+                  <label class="field-label" for="fuelAmount" data-i18n="create.fuel_amount">주유 금액 (원)</label>
+                  <input type="number" id="fuelAmount" inputmode="numeric" step="100" min="0" placeholder="예: 50000" />
+                </div>
+                <div id="fuelLitersWrap" hidden>
+                  <label class="field-label" for="fuelLiters" data-i18n="create.fuel_liters">주유량 (L, 선택)</label>
+                  <input type="number" id="fuelLiters" inputmode="decimal" step="0.1" min="0" placeholder="예: 40.5" />
+                </div>
+              </div>
+              <p style="margin:0.45rem 0 0;font-size:0.8rem;color:var(--muted);line-height:1.45" data-i18n="create.fuel_style_hint">
+                올려 두신 회사 서식에 주유 칸이 있을 때만 보여요. 서식에 없으면 일지에 넣지 않아요.
+              </p>
             </div>
             <div class="full" id="lunchPlaceWrap" hidden>
               <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 장소 (선택)</label>
@@ -1482,7 +1489,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-fuel-v9"></script>
+  <script src="/app.js?v=20260711-fuel-style-v10"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

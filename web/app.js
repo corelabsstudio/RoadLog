@@ -1965,6 +1965,7 @@
       updateAuthUI();
       try {
         state.styleProfile = await api("/api/style");
+        syncFuelFieldsUI();
         if (state.user) renderAppHome();
       } catch {
         /* ignore */
@@ -2347,7 +2348,24 @@
     if (omit && $("#lunchPlace")) $("#lunchPlace").value = "";
   }
 
+  function styleAllowsFuel() {
+    // 회사 서식에 주유 칸이 있을 때만 true (서버 style 상태)
+    const p = state.styleProfile || {};
+    return p.form_has_fuel === true;
+  }
+
   function syncFuelFieldsUI() {
+    const section = $("#fuelSection");
+    const allow = styleAllowsFuel();
+    if (section) section.hidden = !allow;
+    if (!allow) {
+      if ($("#fuelRefueled")) $("#fuelRefueled").value = "no";
+      if ($("#fuelAmount")) $("#fuelAmount").value = "";
+      if ($("#fuelLiters")) $("#fuelLiters").value = "";
+      if ($("#fuelAmountWrap")) $("#fuelAmountWrap").hidden = true;
+      if ($("#fuelLitersWrap")) $("#fuelLitersWrap").hidden = true;
+      return;
+    }
     const yes = ($("#fuelRefueled")?.value || "no") === "yes";
     if ($("#fuelAmountWrap")) $("#fuelAmountWrap").hidden = !yes;
     if ($("#fuelLitersWrap")) $("#fuelLitersWrap").hidden = !yes;
@@ -2359,7 +2377,8 @@
 
   function readForm() {
     const omit = isOmitLunchPlace();
-    const refueled = ($("#fuelRefueled")?.value || "no") === "yes";
+    const allowFuel = styleAllowsFuel();
+    const refueled = allowFuel && ($("#fuelRefueled")?.value || "no") === "yes";
     return {
       vehicle_number: $("#vehicleNumber")?.value?.trim() ?? "",
       odometer_start: $("#odoStart")?.value ?? "",
@@ -3481,7 +3500,9 @@
     }
     try {
       const data = await api("/api/style");
+      state.styleProfile = data;
       renderStyleStatus(data);
+      syncFuelFieldsUI();
     } catch (err) {
       alertBox($("#styleUploadAlert"), "error", err.message);
     }
@@ -3569,7 +3590,17 @@
       try {
         alertBox($("#styleUploadAlert"), "info", "회사 서식·말투를 다시 학습 중...");
         const data = await api("/api/style/learn", { method: "POST" });
-        renderStyleStatus(data);
+        // 학습 응답에 form_has_fuel 포함 + 전체 상태 재조회
+        try {
+          state.styleProfile = await api("/api/style");
+          renderStyleStatus(state.styleProfile);
+        } catch {
+          renderStyleStatus(data);
+          if (data && typeof data === "object") {
+            state.styleProfile = { ...(state.styleProfile || {}), ...data };
+          }
+        }
+        syncFuelFieldsUI();
         alertBox($("#styleUploadAlert"), "ok", "회사 서식 학습 완료");
         toast("서식 학습 완료");
       } catch (err) {

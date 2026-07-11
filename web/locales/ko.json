@@ -112,6 +112,7 @@
   "create.fuel_no": "아니요",
   "create.fuel_amount": "주유 금액 (원)",
   "create.fuel_liters": "주유량 (L, 선택)",
+  "create.fuel_style_hint": "올려 두신 회사 서식에 주유 칸이 있을 때만 보여요. 서식에 없으면 일지에 넣지 않아요.",
   "create.lunch": "점심 장소 (선택)",
   "create.lunch_privacy_hint": "회사 제출용 일지에는 보통 점심 장소를 넣지 않아요. 꼭 필요할 때만 적어 주세요.",
   "create.lunch_privacy_banner": "점심 시간(예: 12~1시)은 운행 시간에서 빼 드리고, 어디 가서 드셨는지는 일지에 적지 않아요.",

@@ -73,6 +73,25 @@ _LUNCH_SUMMARY_RE = re.compile(
 )
 
 
+def scrub_fuel_if_disallowed(log: dict | None, *, allow_fuel: bool) -> dict:
+    """회사 서식에 주유 칸이 없으면 주유 관련 필드를 제거."""
+    if not isinstance(log, dict):
+        return {}
+    out = dict(log)
+    if allow_fuel:
+        return out
+    out["fuel_refueled"] = False
+    out["fuel_amount_krw"] = None
+    out["fuel_liters"] = None
+    # 요약에 주유 언급이 끼면 가볍게 정리
+    summary = str(out.get("summary") or "")
+    if summary and re.search(r"주유|유류|연료|급유", summary):
+        cleaned = re.sub(r"[^.]*?(주유|유류|연료|급유)[^.]*\.?", "", summary)
+        cleaned = re.sub(r"\s{2,}", " ", cleaned).strip(" ·,;/")
+        out["summary"] = cleaned
+    return out
+
+
 def omit_lunch_place_enabled(settings: dict | None) -> bool:
     """기본 True — 점심 장소를 일지/제출물에 넣지 않음."""
     if not settings:
@@ -262,20 +281,32 @@ def form_to_raw_text(form: dict, settings: dict | None = None) -> str:
             f"- 오후 방문지: {afternoon}",
         ]
     )
-    if f.get("fuel_refueled"):
-        amt = f.get("fuel_amount_krw")
-        liters = f.get("fuel_liters")
-        fuel_bits = ["오늘 주유함"]
-        if amt is not None:
-            try:
-                fuel_bits.append(f"금액 {int(amt):,}원" if float(amt) == int(float(amt)) else f"금액 {amt}원")
-            except (TypeError, ValueError):
-                fuel_bits.append(f"금액 {amt}원")
-        if liters is not None:
-            fuel_bits.append(f"주유량 {liters}L")
-        lines.append("- 주유: " + ", ".join(fuel_bits))
+    # 서식에 주유 칸이 있을 때만 프롬프트에 주유 정보 포함
+    if f.get("_allow_fuel"):
+        if f.get("fuel_refueled"):
+            amt = f.get("fuel_amount_krw")
+            liters = f.get("fuel_liters")
+            fuel_bits = ["오늘 주유함"]
+            if amt is not None:
+                try:
+                    fuel_bits.append(
+                        f"금액 {int(amt):,}원"
+                        if float(amt) == int(float(amt))
+                        else f"금액 {amt}원"
+                    )
+                except (TypeError, ValueError):
+                    fuel_bits.append(f"금액 {amt}원")
+            if liters is not None:
+                fuel_bits.append(f"주유량 {liters}L")
+            lines.append("- 주유: " + ", ".join(fuel_bits) + " (서식에 주유 칸 있음 — JSON fuel_* 반영)")
+        else:
+            lines.append("- 주유: 안 함 (서식에 주유 칸 있음 — fuel_refueled=false)")
     else:
-        lines.append("- 주유: 없음")
+        lines.append(
+            "- [주유 칸 없음] 회사 서식에 주유 항목이 없습니다. "
+            "fuel_refueled/fuel_amount_krw/fuel_liters 를 null/false 로 두고 "
+            "요약·구간에 주유 내용을 쓰지 마세요."
+        )
     if note:
         lines.append(f"- 추가 메모: {note}")
     lines.append("")
@@ -711,6 +742,26 @@ def generate_driving_log(
     if omit_lunch_place_enabled(settings):
         f = {**f, "lunch_restaurant": ""}
 
+    # 회사 서식에 주유 칸이 없으면 주유 정보 전부 제외 (AI도 넣지 않음)
+    allow_fuel = False
+    if user_email:
+        try:
+            from modules.style_learn import profile_has_fuel_field
+
+            allow_fuel = profile_has_fuel_field(user_email)
+        except Exception:
+            allow_fuel = False
+    if not allow_fuel:
+        f = {
+            **f,
+            "fuel_refueled": False,
+            "fuel_amount_krw": None,
+            "fuel_liters": None,
+            "_allow_fuel": False,
+        }
+    else:
+        f = {**f, "_allow_fuel": True}
+
     has_form = bool(
         f["morning_places"]
         or f["afternoon_places"]
@@ -794,6 +845,8 @@ def generate_driving_log(
 
     # 생성 직후·검증 전 점심 장소 스크럽 (AI가 식당을 지어내도 제거)
     raw_log = scrub_lunch_place_privacy(raw_log, settings)
+    if not allow_fuel:
+        raw_log = scrub_fuel_if_disallowed(raw_log, allow_fuel=False)
 
     validated = validate_log(raw_log, settings)
     # odometer·차량번호 필드 유지
@@ -804,6 +857,10 @@ def generate_driving_log(
         validated["enriched_log"] = scrub_lunch_place_privacy(
             validated["enriched_log"], settings
         )
+        if not allow_fuel:
+            validated["enriched_log"] = scrub_fuel_if_disallowed(
+                validated["enriched_log"], allow_fuel=False
+            )
         # 혹시 validate 경로로 남은 내부 키 제거
         validated["enriched_log"].pop("_openai_error", None)
 
