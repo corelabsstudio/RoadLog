@@ -1,6 +1,6 @@
 /* RoadLog PWA Service Worker — always prefer fresh shell, keep offline fallback */
 /** 배포마다 올리면 설치 앱이 새 SW를 잡고 갱신됩니다 */
-const VERSION = "20260711-v14";
+const VERSION = "20260712-mobile-v19";
 const CACHE = `roadlog-${VERSION}`;
 
 const PRECACHE = [
