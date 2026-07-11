@@ -45,6 +45,7 @@ from modules.config import (
     ENTERPRISE_PRICE_KRW,
     FREE_MONTHLY_LIMIT,
     MAIL_ORDER_REG_NO,
+    COST_MODE,
     OPENAI_API_KEY,
     PRO_PAYMENT_URL,
     PRO_PRICE_KRW,
@@ -53,6 +54,7 @@ from modules.config import (
     assert_secure_for_production,
     cors_allow_origins,
     data_dir_is_external,
+    is_free_cost_mode,
     is_production,
     llm_configured,
     resolve_llm_config,
@@ -293,23 +295,31 @@ def health():
         storage = "unknown"
     llm = resolve_llm_config()
     persistent = storage == "connected" or data_dir_is_external()
+    free = is_free_cost_mode()
+    # 무료 모드: LLM·유료 볼륨 없이 서비스 가능하면 ready
+    if free:
+        launch_ready = not ALLOW_DEMO_BILLING_UPGRADE
+    else:
+        launch_ready = bool(
+            is_production()
+            and llm_configured()
+            and persistent
+            and not ALLOW_DEMO_BILLING_UPGRADE
+        )
     return {
         "ok": True,
         "app": APP_TITLE,
         "env": APP_ENV,
         "production": is_production(),
+        "cost_mode": COST_MODE,
+        "free_mode": free,
         "storage": storage,
         "data_dir": str(DATA_DIR),
         "storage_persistent": persistent,
-        "openai": llm_configured(),
-        "llm_provider": llm.get("provider") or "",
+        "openai": (not free) and llm_configured(),
+        "llm_provider": "" if free else (llm.get("provider") or ""),
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
-        "launch_ready": bool(
-            is_production()
-            and llm_configured()
-            and persistent
-            and not ALLOW_DEMO_BILLING_UPGRADE
-        ),
+        "launch_ready": launch_ready,
     }
 
 
@@ -332,6 +342,8 @@ def meta():
         "pro_url": PRO_PAYMENT_URL,
         "enterprise_url": ENTERPRISE_PAYMENT_URL,
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
+        "cost_mode": COST_MODE,
+        "free_mode": is_free_cost_mode(),
         "payment_ready": not (
             (not PRO_PAYMENT_URL)
             or "example.com" in (PRO_PAYMENT_URL or "").lower()

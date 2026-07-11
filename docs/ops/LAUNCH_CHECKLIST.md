@@ -2,7 +2,22 @@
 
 배포 코드 패치(v15)와 함께 **호스팅 환경변수**를 맞춰야 라이브 품질이 확보됩니다.
 
-## 0. 로컬에서 비밀값·변수 파일 생성
+## 0. 비용 0 운영 (현재 기본)
+
+```env
+COST_MODE=free
+```
+
+| 쓰는 것 | 안 쓰는 것 (비용) |
+|---------|-------------------|
+| 규칙/스마트 초안 생성 | OpenAI / xAI API |
+| Railway 기본 디스크 | 유료 Volume (선택) |
+| 문의 기반 Pro 등록 | 결제 PG |
+| local_json 저장 | 유료 Supabase (선택) |
+
+나중에 AI를 켜려면 `COST_MODE=paid` + `OPENAI_API_KEY`(또는 `XAI_API_KEY`) 만 넣으면 됩니다.
+
+## 0b. 로컬에서 비밀값·변수 파일 생성
 
 ```powershell
 cd C:\Users\hysoo\Projects\RoadLog
@@ -10,8 +25,7 @@ cd C:\Users\hysoo\Projects\RoadLog
 ```
 
 - `.launch/railway-variables.env` → Railway Variables Raw Editor 붙여넣기  
-- `.launch/SECRETS_README.txt` → 관리자 비밀번호 (gitignore)  
-- OpenAI 한도 초과 시: 결제 충전 **또는** `XAI_API_KEY` (xAI Grok) 추가
+- `.launch/SECRETS_README.txt` → 관리자 비밀번호 (gitignore)
 
 ## 1. Railway Variables (필수)
 

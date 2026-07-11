@@ -248,6 +248,16 @@ ALLOW_DEMO_BILLING_UPGRADE = _get_secret("ALLOW_DEMO_BILLING_UPGRADE", "false").
 # development | production  (운영 공개 시 production)
 APP_ENV = (_get_secret("APP_ENV", "development") or "development").strip().lower()
 
+# free | paid — free 는 OpenAI/xAI/Volume 등 유료 리소스 미사용 (비용 0 운영)
+_COST_RAW = (_get_secret("COST_MODE", "free") or "free").strip().lower()
+COST_MODE = "paid" if _COST_RAW in {"paid", "full", "pro"} else "free"
+
+
+def is_free_cost_mode() -> bool:
+    """비용 0 운영: LLM API 호출·유료 볼륨 필수를 끔."""
+    return COST_MODE != "paid"
+
+
 # CORS: 쉼표 구분 도메인. 운영은 실제 사이트만. 예: https://roadlog.example.com
 ALLOWED_ORIGINS = _get_secret("ALLOWED_ORIGINS", "*")
 
@@ -364,9 +374,22 @@ def security_issues() -> list[dict[str, str]]:
     if not llm_configured():
         issues.append(
             {
-                "level": "critical" if is_production() else "info",
+                # 무료 모드에서는 LLM 없이도 정상 운영
+                "level": "info" if is_free_cost_mode() else ("critical" if is_production() else "info"),
                 "code": "no_openai_key",
-                "message": "LLM API 키 미설정 (OPENAI_API_KEY 또는 XAI_API_KEY). AI 생성은 규칙 초안만 동작합니다.",
+                "message": (
+                    "무료 모드: 규칙 기반 초안으로 동작 (OpenAI 비용 없음)."
+                    if is_free_cost_mode()
+                    else "LLM API 키 미설정 (OPENAI_API_KEY 또는 XAI_API_KEY). AI 생성은 규칙 초안만 동작합니다."
+                ),
+            }
+        )
+    elif is_free_cost_mode() and llm_configured():
+        issues.append(
+            {
+                "level": "info",
+                "code": "llm_skipped_free_mode",
+                "message": "COST_MODE=free — API 키가 있어도 LLM 호출을 하지 않습니다 (비용 방지).",
             }
         )
 
@@ -381,9 +404,14 @@ def security_issues() -> list[dict[str, str]]:
         if not sb_ok:
             issues.append(
                 {
-                    "level": "warn",
+                    # 무료 모드: 유료 Volume 없이 컨테이너 디스크 사용 (재배포 시 초기화 가능)
+                    "level": "info" if is_free_cost_mode() else "warn",
                     "code": "ephemeral_storage",
-                    "message": "DATA_DIR(볼륨) 미설정 + Supabase 미연결 — 재배포 시 회원/일지 유실 위험. Railway Volume을 /data 에 마운트하세요.",
+                    "message": (
+                        "무료 모드: 유료 Volume 없이 로컬 저장. 재배포 시 데이터가 초기화될 수 있습니다."
+                        if is_free_cost_mode()
+                        else "DATA_DIR(볼륨) 미설정 + Supabase 미연결 — 재배포 시 회원/일지 유실 위험. Railway Volume을 /data 에 마운트하세요."
+                    ),
                 }
             )
 
@@ -400,9 +428,13 @@ def security_issues() -> list[dict[str, str]]:
     if is_production() and (not SUPABASE_URL or "xxxx" in (SUPABASE_URL or "")):
         issues.append(
             {
-                "level": "warn",
+                "level": "info" if is_free_cost_mode() else "warn",
                 "code": "local_json_storage",
-                "message": "SUPABASE 미연결 — local_json 저장. Railway 재배포 시 데이터 유실 위험이 있습니다.",
+                "message": (
+                    "무료 모드: Supabase 없이 local_json 저장 (추가 DB 비용 없음)."
+                    if is_free_cost_mode()
+                    else "SUPABASE 미연결 — local_json 저장. Railway 재배포 시 데이터 유실 위험이 있습니다."
+                ),
             }
         )
 

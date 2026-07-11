@@ -123,7 +123,7 @@
   "create.morning": "오늘 오전에 간 곳",
   "create.afternoon": "오늘 오후에 간 곳",
   "create.memo": "추가 메모 (선택)",
-  "create.generate": "✨ AI로 일지 작성",
+  "create.generate": "✨ 일지 초안 작성",
   "create.example": "예시 불러오기",
   "create.result": "생성 결과",
   "create.print": "인쇄",

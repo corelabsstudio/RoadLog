@@ -2444,6 +2444,18 @@ body.modal-open {
   margin: 0;
 }
 
+.free-mode-banner {
+  margin: 0.65rem 0 0;
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(34, 211, 238, 0.22);
+  background: rgba(34, 211, 238, 0.08);
+  color: #a5f3fc;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  max-width: 52rem;
+}
+
 .footer-biz {
   margin: 0.35rem 0 0.15rem;
   display: grid;

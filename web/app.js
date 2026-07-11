@@ -4641,6 +4641,37 @@
     applyPricingCtaLabels();
     applyContactFromMeta(meta);
     applyBusinessFromMeta(meta);
+    applyFreeModeUI(meta);
+  }
+
+  function applyFreeModeUI(meta) {
+    const free = Boolean(meta?.free_mode || meta?.cost_mode === "free");
+    document.body.classList.toggle("cost-free", free);
+    const genBtn = $("#btnGenerate");
+    if (genBtn && free) {
+      // data-i18n 덮어쓰기 방지: 라벨만 보강
+      if (!genBtn.dataset.freeLabelApplied) {
+        genBtn.dataset.freeLabelApplied = "1";
+      }
+    }
+    let banner = $("#freeModeBanner");
+    if (free) {
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "freeModeBanner";
+        banner.className = "free-mode-banner";
+        banner.setAttribute("role", "status");
+        const host =
+          document.querySelector("#view-create .section-head") ||
+          document.querySelector(".nav-inner");
+        if (host) host.appendChild(banner);
+      }
+      banner.hidden = false;
+      banner.textContent =
+        "무료 운영 모드 · 외부 AI API 비용 없이 스마트 초안을 만듭니다. 제출 전 내용만 확인해 주세요.";
+    } else if (banner) {
+      banner.hidden = true;
+    }
   }
 
   function applyBusinessFromMeta(meta) {

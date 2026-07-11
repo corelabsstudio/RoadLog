@@ -15,6 +15,7 @@ from modules.config import (
     FEW_SHOT_EXAMPLES,
     OPENAI_API_KEY,
     OPENAI_MODEL,
+    is_free_cost_mode,
     llm_configured,
     resolve_llm_config,
 )
@@ -444,6 +445,17 @@ def classify_openai_failure(exc: BaseException | None = None, *, no_key: bool = 
     returns: { code, title, detail, user_message }
     """
     if no_key:
+        if is_free_cost_mode():
+            return {
+                "code": "free_mode",
+                "title": "무료 모드 · 스마트 초안",
+                "detail": "COST_MODE=free — 외부 AI API를 호출하지 않습니다.",
+                "user_message": (
+                    "**무료 모드**로 **스마트 초안**을 작성했습니다. "
+                    "OpenAI 등 유료 API 비용이 발생하지 않습니다. "
+                    "제출 전 시간·구간·목적을 한 번 확인해 주세요."
+                ),
+            }
         return {
             "code": "no_api_key",
             "title": "AI 미연결",
@@ -913,7 +925,8 @@ def generate_driving_log(
     engine = "openai"
     engine_info: dict[str, str] | None = None
     openai_exc: BaseException | None = None
-    has_key = llm_configured()
+    # 무료 모드: 키가 있어도 LLM API를 호출하지 않음 (비용 0)
+    has_key = llm_configured() and not is_free_cost_mode()
 
     try:
         if has_key:
@@ -1423,7 +1436,7 @@ def generate_field_visit_log(
     engine = "openai"
     engine_info: dict[str, str] | None = None
     openai_exc: BaseException | None = None
-    has_key = llm_configured()
+    has_key = llm_configured() and not is_free_cost_mode()
 
     try:
         if has_key:
