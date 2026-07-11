@@ -757,9 +757,52 @@
         </div>
         <p class="pricing-note" id="pricingNote">
           현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다.
-          온라인 자동 결제는 준비 중이며, <strong style="color:#e2e8f0">문의 후 관리자가 Pro/Enterprise를 등록</strong>합니다.
-          Enterprise 기본 5인 · 추가 좌석 월 ₩2,000 · 세금계산서 지원.
+          Pro는 스마트스토어 결제 후
+          <a href="#pro-claim" data-nav="pro-claim" style="color:#5eead4;font-weight:700">결제 확인 신청</a>을 남겨 주시면
+          관리자가 반영합니다. Enterprise는 문의·세금계산서 지원.
         </p>
+      </div>
+    </section>
+
+    <!-- PRO CLAIM: 스마트스토어 결제 후 주문번호 접수 → 관리자 푸시 -->
+    <section class="view" id="view-pro-claim">
+      <div class="container" style="max-width:34rem">
+        <div class="section-head" style="text-align:left">
+          <div class="eyebrow">Pro</div>
+          <h2>결제 확인 신청</h2>
+          <p style="margin:0.4rem 0 0;max-width:40ch;color:var(--muted)">
+            스마트스토어에서 결제하신 뒤, 주문번호와 로드로그 가입 이메일을 남겨 주세요.
+            확인되면 <strong style="color:#e2e8f0">Pro</strong>가 반영됩니다.
+          </p>
+        </div>
+        <div class="panel" style="padding:1.25rem">
+          <form id="proClaimForm" class="stack-form" autocomplete="on">
+            <label class="field">
+              <span class="field-label">스마트스토어 주문번호</span>
+              <input type="text" id="claimOrderId" name="order_id" required
+                placeholder="주문번호 (네이버 주문내역)" maxlength="80" />
+            </label>
+            <label class="field">
+              <span class="field-label">로드로그 가입 이메일</span>
+              <input type="email" id="claimEmail" name="email" required
+                placeholder="you@company.com" maxlength="120" />
+            </label>
+            <label class="field">
+              <span class="field-label">이름 (선택)</span>
+              <input type="text" id="claimName" name="name" placeholder="홍길동" maxlength="40" />
+            </label>
+            <label class="field">
+              <span class="field-label">메모 (선택)</span>
+              <textarea id="claimNote" name="note" rows="2" placeholder="결제 관련 메모" maxlength="300"></textarea>
+            </label>
+            <div id="claimAlert" class="form-alert hidden" role="status"></div>
+            <button type="submit" class="btn btn-primary btn-block" id="btnClaimSubmit">확인 요청 보내기</button>
+          </form>
+          <p style="margin:1rem 0 0;font-size:0.85rem;color:var(--muted);line-height:1.5">
+            아직 결제 전이라면
+            <a href="#pricing" data-nav="pricing" style="color:#5eead4">요금제</a>에서 Pro 결제를 먼저 진행해 주세요.
+          </p>
+        </div>
       </div>
     </section>
 

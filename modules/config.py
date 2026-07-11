@@ -498,6 +498,14 @@ def assert_secure_for_production() -> None:
     print(f"[RoadLog security:critical-soft] {msg}", flush=True)
 
 
+# ── 관리자 폰 알림 (결제 클레임 등) ─────────────────────
+# ntfy: 폰에 ntfy 앱 설치 → 토픽 구독. 서버는 NTFY_TOPIC 만 설정.
+NTFY_SERVER = _get_secret("NTFY_SERVER", "https://ntfy.sh")
+NTFY_TOPIC = _get_secret("NTFY_TOPIC", "")
+NTFY_TOKEN = _get_secret("NTFY_TOKEN", "")
+TELEGRAM_BOT_TOKEN = _get_secret("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = _get_secret("TELEGRAM_CHAT_ID", "")
+
 # ── LLM (OpenAI 호환: OpenAI / xAI 등) ─────────────────
 OPENAI_API_KEY = _get_secret("OPENAI_API_KEY", "")
 # xAI 등 OpenAI 호환 키 (OPENAI 가 없거나 한도 초과 시 폴백)

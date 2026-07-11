@@ -75,6 +75,7 @@ from modules.rate_limit import (
     limiter,
 )
 from modules.validator import validate_log
+from modules import notify as notify_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -350,6 +351,8 @@ def meta():
             or "example.com" in (PRO_PAYMENT_URL or "").lower()
             or "your-payment" in (PRO_PAYMENT_URL or "").lower()
         ),
+        "pro_claim_path": "#pro-claim",
+        "notify_ready": notify_ops.notify_configured(),
         "default_settings": DEFAULT_USER_SETTINGS,
         "default_templates_url": "/assets/templates/manifest.json",
         "business": {
@@ -365,6 +368,94 @@ def meta():
 
 class UpgradeBody(BaseModel):
     plan: str  # pro | enterprise
+
+
+class PaymentClaimBody(BaseModel):
+    """스마트스토어 결제 후 Pro 반영 요청 → 관리자 폰 알림."""
+
+    order_id: str
+    email: str
+    name: str = ""
+    note: str = ""
+    plan: str = "pro"
+
+
+@app.post("/api/billing/claim")
+def billing_claim(body: PaymentClaimBody, request: Request):
+    """
+    스마트스토어 결제 완료 고객이 주문번호·이메일을 남기면
+    관리자 폰(ntfy/Telegram)으로 푸시합니다.
+    """
+    ip = _client_ip(request)
+    _rate_limit_or_429(
+        f"claim:{ip}",
+        limit=8,
+        window_sec=3600,
+        what="결제 확인 요청",
+    )
+    order_id = (body.order_id or "").strip()
+    email = (body.email or "").strip().lower()
+    if len(order_id) < 4:
+        raise HTTPException(400, "주문번호(또는 결제 확인 번호)를 입력해 주세요.")
+    if not email or "@" not in email:
+        raise HTTPException(400, "로드로그 가입 이메일을 올바르게 입력해 주세요.")
+
+    claim = notify_ops.save_claim(
+        order_id=order_id,
+        email=email,
+        name=body.name or "",
+        note=body.note or "",
+        plan=(body.plan or "pro").strip().lower() or "pro",
+    )
+    title = "로드로그 · 결제 확인 요청"
+    msg = (
+        f"plan={claim['plan']}\n"
+        f"주문/결제번호: {claim['order_id']}\n"
+        f"가입 이메일: {claim['email']}\n"
+        f"이름: {claim.get('name') or '-'}\n"
+        f"메모: {claim.get('note') or '-'}\n"
+        f"시각: {claim['created_at']}\n"
+        f"→ 관리자에서 Pro 반영해 주세요."
+    )
+    push = notify_ops.send_admin_push(title, msg, priority=5)
+    return {
+        "ok": True,
+        "message": "접수되었습니다. 확인 후 Pro가 반영됩니다. 조금만 기다려 주세요.",
+        "claim_id": claim["id"],
+        "notify": push,
+    }
+
+
+@app.get("/api/admin/claims")
+def admin_claims(
+    limit: int = Query(default=30, ge=1, le=100),
+    authorization: str | None = Header(default=None),
+):
+    _require_admin(authorization)
+    return {
+        "ok": True,
+        "items": notify_ops.list_claims(limit=limit),
+        "notify_configured": notify_ops.notify_configured(),
+    }
+
+
+@app.post("/api/admin/notify-test")
+def admin_notify_test(authorization: str | None = Header(default=None)):
+    """관리자 폰 알림 테스트."""
+    _require_admin(authorization)
+    if not notify_ops.notify_configured():
+        raise HTTPException(
+            400,
+            "NTFY_TOPIC 또는 TELEGRAM_BOT_TOKEN+TELEGRAM_CHAT_ID 를 Railway에 설정하세요.",
+        )
+    push = notify_ops.send_admin_push(
+        "로드로그 · 알림 테스트",
+        "푸시가 정상적으로 연결되었습니다.",
+        priority=4,
+    )
+    if not push.get("ok"):
+        raise HTTPException(502, f"알림 전송 실패: {push}")
+    return {"ok": True, "notify": push}
 
 
 @app.post("/api/billing/upgrade")

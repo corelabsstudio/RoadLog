@@ -844,6 +844,8 @@
     stamp: "view-create", // 근무 중 → 퀵 스탬프
     report: "view-create", // 퇴근 후 → 일지 정리
     pricing: "view-pricing",
+    "pro-claim": "view-pro-claim",
+    claim: "view-pro-claim",
     style: "view-style",
     settings: "view-settings",
     admin: "view-admin",
@@ -856,6 +858,8 @@
   /** 관리자 대시보드에 있어도 메뉴로 바로 이동 가능한 화면 */
   const ADMIN_FREE_VIEWS = new Set([
     "pricing",
+    "pro-claim",
+    "claim",
     "contact",
     "settings",
     "about",
@@ -5571,8 +5575,14 @@
         if (!isPlaceholderPayUrl(url)) {
           window.open(url, "_blank", "noopener,noreferrer");
           toast(
-            `${planLabel} 결제 페이지를 열었습니다. 결제 완료 후 관리자 확인 또는 웹훅으로 요금제가 적용됩니다.`
+            `${planLabel} 결제 페이지를 열었습니다. 결제 후 사이트에서 「결제 확인 신청」(#pro-claim)을 남겨 주세요.`
           );
+          // 결제한 사용자가 돌아오면 바로 신청하도록 안내
+          setTimeout(() => {
+            if (plan === "pro") {
+              /* keep soft; user may still be on store tab */
+            }
+          }, 0);
           return;
         }
         // 결제 미연결: 문의 화면 + mailto 초안
@@ -5625,6 +5635,50 @@
     );
   }
 
+  function bindProClaim() {
+    const form = $("#proClaimForm");
+    if (!form) return;
+    // prefill email if logged in
+    const emailEl = $("#claimEmail");
+    if (emailEl && state.user?.email) {
+      emailEl.value = state.user.email;
+    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const order_id = ($("#claimOrderId")?.value || "").trim();
+      const email = ($("#claimEmail")?.value || "").trim();
+      const name = ($("#claimName")?.value || "").trim();
+      const note = ($("#claimNote")?.value || "").trim();
+      const alertEl = $("#claimAlert");
+      const btn = $("#btnClaimSubmit");
+      if (btn) btn.disabled = true;
+      try {
+        await api("/api/billing/claim", {
+          method: "POST",
+          body: JSON.stringify({ order_id, email, name, note, plan: "pro" }),
+        });
+        if (alertEl) {
+          alertEl.classList.remove("hidden");
+          alertEl.className = "form-alert ok";
+          alertEl.textContent =
+            "접수되었습니다. 확인 후 Pro가 반영됩니다. 조금만 기다려 주세요.";
+        }
+        toast("결제 확인 요청을 보냈습니다");
+        if ($("#claimOrderId")) $("#claimOrderId").value = "";
+        if ($("#claimNote")) $("#claimNote").value = "";
+      } catch (err) {
+        if (alertEl) {
+          alertEl.classList.remove("hidden");
+          alertEl.className = "form-alert error";
+          alertEl.textContent = err.message || "접수에 실패했습니다.";
+        }
+        toast(err.message || "접수 실패");
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
   // ── Init ──
   async function init() {
     // 1) i18n: state.lang 기준 사전 로드 후 DOM 텍스트 적용
@@ -5645,6 +5699,7 @@
     bindAdmin();
     bindAdminViewAs();
     bindPricing();
+    bindProClaim();
     bindFeedbackForm();
     bindDemoPlayer();
     bindPwaInstall();
