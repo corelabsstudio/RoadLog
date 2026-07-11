@@ -90,7 +90,7 @@
   "create.title_field": "외근·출장 일지",
   "create.sub_field": "오늘 방문한 곳과 결과만 적으면 AI가 회사 제출용 외근일지로 정리합니다.",
   "create.form_title_field": "오늘 외근 정보",
-  "create.generate_field": "✨ AI로 외근일지 작성",
+  "create.generate_field": "✨ 외근일지 초안 작성",
   "field.department": "부서 (선택)",
   "field.summary": "오늘 업무 한 줄 (선택)",
   "field.visits": "오늘 방문·업무 내용",
