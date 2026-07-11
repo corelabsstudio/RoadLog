@@ -1702,7 +1702,13 @@
       }
     }
     document.body.classList.toggle("admin-view-as", real && mode !== "admin");
-    document.body.dataset.viewAs = real ? mode : "";
+    // 중요: 빈 문자열이어도 data-view-as 속성이 body에 남으면
+    // closest("[data-view-as]") 가 모든 클릭에 매칭되어 오동작함
+    if (real) {
+      document.body.dataset.viewAs = mode;
+    } else {
+      delete document.body.dataset.viewAs;
+    }
 
     // 관리자 페이지 버튼 active
     $$("[data-view-as]").forEach((btn) => {
@@ -1717,14 +1723,20 @@
   function bindAdminViewAs() {
     document.body.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-view-as]");
-      if (!btn) return;
+      // body 자체에 data-view-as 가 남은 경우 무시 (역할 미리보기 버튼만 처리)
+      if (!btn || btn === document.body) return;
       e.preventDefault();
       if (!isRealAdmin()) {
-        toast("관리자 로그인 후 사용할 수 있습니다");
+        // 역할 미리보기는 관리자 전용 기능
+        toast("관리자만 사용할 수 있는 미리보기입니다");
         return;
       }
       setViewAsMode(btn.dataset.viewAs);
     });
+    // 페이지 로드 시 body 속성 잔여 정리
+    if (!isRealAdmin()) {
+      delete document.body.dataset.viewAs;
+    }
     syncViewAsControls();
   }
 
