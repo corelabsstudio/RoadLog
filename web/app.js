@@ -1725,12 +1725,9 @@
       const btn = e.target.closest("[data-view-as]");
       // body 자체에 data-view-as 가 남은 경우 무시 (역할 미리보기 버튼만 처리)
       if (!btn || btn === document.body) return;
+      // 관리자가 아니면 아무 반응 없음 (토스트·알림 금지)
+      if (!isRealAdmin()) return;
       e.preventDefault();
-      if (!isRealAdmin()) {
-        // 역할 미리보기는 관리자 전용 기능
-        toast("관리자만 사용할 수 있는 미리보기입니다");
-        return;
-      }
       setViewAsMode(btn.dataset.viewAs);
     });
     // 페이지 로드 시 body 속성 잔여 정리
