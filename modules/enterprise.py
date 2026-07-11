@@ -770,9 +770,9 @@ def _render_global_config() -> None:
             value=bool(cfg.get("exclude_lunch", True)),
         )
         omit_lunch_place = st.checkbox(
-            "점심 장소(식당·위치)를 일지·제출물에 기록하지 않음 (사생활 보호, 권장)",
+            "팀원 일지에 점심 장소(식당·위치) 넣지 않기",
             value=bool(cfg.get("omit_lunch_place", True)),
-            help="중식 시간대 제외는 유지하고, 어디 갔는지만 팀·개인 일지에 남기지 않습니다.",
+            help="점심 시간은 운행 시간에서 빼되, 어디 가서 먹었는지는 일지에 남기지 않습니다.",
         )
 
         st.markdown("#### 공통 거점 (한 줄에 하나: 이름 | 주소)")

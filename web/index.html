@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-lunch-privacy-v7" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-user-copy-v8" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -452,15 +452,15 @@
               <input type="number" id="odoEnd" inputmode="decimal" step="0.1" min="0" placeholder="예: 45267.5" />
             </div>
             <div class="full" id="lunchPlaceWrap" hidden>
-              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 장소 (선택 · 기본 비공개)</label>
-              <input type="text" id="lunchPlace" placeholder="기본값: 일지에 남기지 않음" autocomplete="off" />
+              <label class="field-label" for="lunchPlace" data-i18n="create.lunch">점심 장소 (선택)</label>
+              <input type="text" id="lunchPlace" placeholder="예: 강남역 근처 (꼭 필요할 때만)" autocomplete="off" />
               <p class="field-hint" style="margin:0.35rem 0 0;font-size:0.8rem;color:var(--muted)" data-i18n="create.lunch_privacy_hint">
-                점심 어디 갔는지는 사생활입니다. 설정에서 「일지에 기록」을 켠 경우에만 제출물에 포함됩니다.
+                회사 제출용 일지에는 보통 점심 장소를 넣지 않아요. 꼭 필요할 때만 적어 주세요.
               </p>
             </div>
             <div class="full" id="lunchPrivacyNote">
               <p style="margin:0;padding:0.65rem 0.85rem;border-radius:10px;border:1px solid rgba(34,211,238,0.18);background:rgba(34,211,238,0.06);font-size:0.85rem;color:#cbd5e1;line-height:1.5" data-i18n="create.lunch_privacy_banner">
-                점심 시간대만 운행시간에서 제외하고, <strong style="color:#a5f3fc">식당·위치는 일지에 넣지 않습니다</strong> (개인·팀 공통 기본값).
+                점심 시간(예: 12~1시)은 운행 시간에서 빼 드리고, <strong style="color:#a5f3fc">어디 가서 드셨는지는 일지에 적지 않아요.</strong>
               </p>
             </div>
             <div class="full">
@@ -1134,7 +1134,7 @@
         </div>
 
         <div class="panel">
-          <div class="panel-head"><h2 data-i18n="settings.vehicle_title">차량 · 생성 기본값</h2></div>
+          <div class="panel-head"><h2 data-i18n="settings.vehicle_title">내 차량 · 일지 기본 정보</h2></div>
           <div class="settings-grid">
             <div>
               <label class="field-label">차량번호</label>
@@ -1165,14 +1165,14 @@
             </div>
             <div class="full checkbox-row">
               <input type="checkbox" id="s_exclude_lunch" checked />
-              <label for="s_exclude_lunch">점심 구간을 운행시간에서 제외 (시간만 · 장소 무관)</label>
+              <label for="s_exclude_lunch" data-i18n="settings.exclude_lunch">점심 시간은 운행 시간에서 빼기</label>
             </div>
             <div class="full checkbox-row">
               <input type="checkbox" id="s_omit_lunch_place" checked />
-              <label for="s_omit_lunch_place">점심 장소(식당·위치)를 일지·제출물에 기록하지 않음 <span style="color:var(--muted);font-weight:500">(사생활 보호 · 권장)</span></label>
+              <label for="s_omit_lunch_place" data-i18n="settings.omit_lunch_place">점심 장소는 일지에 남기지 않기</label>
             </div>
             <p style="margin:-0.35rem 0 0.75rem;font-size:0.8rem;color:var(--muted);line-height:1.45" data-i18n="settings.lunch_privacy_help">
-              개인·팀 모두 기본 켜짐. 끄면 작성 화면에 점심 장소 입력이 나타나며 Excel/PDF/DOCX에도 포함될 수 있습니다.
+              켜 두면 식당 이름·점심 위치가 일지와 다운로드 파일에 들어가지 않아요. 끄면 작성 화면에서 점심 장소를 직접 입력할 수 있어요.
             </p>
             <div class="full">
               <label class="field-label">기본 운행 목적</label>
@@ -1467,7 +1467,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-lunch-privacy-v7"></script>
+  <script src="/app.js?v=20260711-user-copy-v8"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
