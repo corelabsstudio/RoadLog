@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260712-force-v20" />
+  <meta name="rl-build" content="20260712-force-v21" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260712-force-v20";
+      var BUILD = "20260712-force-v21";
       try {
         var prev = localStorage.getItem("rl_build");
         if (prev === BUILD) return;
@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260712-force-v20" />
+  <link rel="stylesheet" href="/styles.css?v=20260712-force-v21" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -290,9 +290,6 @@
             <div class="landing-review-grid" id="landingReviewGrid" aria-live="polite">
               <!-- 공개 후기는 /api/reviews 로 채웁니다 -->
             </div>
-            <p class="landing-reviews-note" id="landingReviewsNote" data-i18n="landing.reviews_note">
-              베타 의견 · 관리자가 공개한 후기만 표시됩니다.
-            </p>
           </div>
         </section>
 
@@ -1596,7 +1593,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260712-force-v20"></script>
+  <script src="/app.js?v=20260712-force-v21"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
