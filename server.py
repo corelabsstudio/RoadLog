@@ -54,6 +54,7 @@ from modules.export import export_docx, export_excel, export_pdf
 from modules.generator import generate_driving_log
 from modules import style_learn
 from modules import admin_ops
+from modules import reviews as reviews_ops
 from modules.validator import validate_log
 
 ROOT = Path(__file__).resolve().parent
@@ -840,6 +841,102 @@ class VipBody(BaseModel):
     id: str
     email: str = ""
     note: str = ""
+
+
+class ReviewBody(BaseModel):
+    text: str
+    text_en: str = ""
+    name: str
+    name_en: str = ""
+    role: str = ""
+    role_en: str = ""
+    initial: str = ""
+    stars: int = 5
+    published: bool = True
+    sort_order: int | None = None
+
+
+class ReviewPublishBody(BaseModel):
+    published: bool
+
+
+@app.get("/api/reviews")
+def public_reviews():
+    """비로그인 랜딩용 공개 후기."""
+    items = reviews_ops.list_public_reviews()
+    return {"reviews": items, "count": len(items)}
+
+
+@app.get("/api/admin/reviews")
+def admin_reviews_list(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    items = reviews_ops.list_admin_reviews()
+    return {"reviews": items, "count": len(items)}
+
+
+@app.post("/api/admin/reviews")
+def admin_reviews_create(
+    body: ReviewBody, authorization: str | None = Header(default=None)
+):
+    _require_admin(authorization)
+    try:
+        row = reviews_ops.create_review(body.model_dump())
+        return {
+            "ok": True,
+            "review": row,
+            "reviews": reviews_ops.list_admin_reviews(),
+        }
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.put("/api/admin/reviews/{review_id}")
+def admin_reviews_update(
+    review_id: str,
+    body: ReviewBody,
+    authorization: str | None = Header(default=None),
+):
+    _require_admin(authorization)
+    try:
+        row = reviews_ops.update_review(review_id, body.model_dump())
+        return {
+            "ok": True,
+            "review": row,
+            "reviews": reviews_ops.list_admin_reviews(),
+        }
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
+@app.patch("/api/admin/reviews/{review_id}/publish")
+def admin_reviews_publish(
+    review_id: str,
+    body: ReviewPublishBody,
+    authorization: str | None = Header(default=None),
+):
+    _require_admin(authorization)
+    try:
+        row = reviews_ops.set_review_published(review_id, body.published)
+        return {
+            "ok": True,
+            "review": row,
+            "reviews": reviews_ops.list_admin_reviews(),
+        }
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+
+
+@app.delete("/api/admin/reviews/{review_id}")
+def admin_reviews_delete(
+    review_id: str, authorization: str | None = Header(default=None)
+):
+    _require_admin(authorization)
+    ok = reviews_ops.delete_review(review_id)
+    if not ok:
+        raise HTTPException(404, "후기를 찾을 수 없습니다.")
+    return {"ok": True, "reviews": reviews_ops.list_admin_reviews()}
 
 
 @app.get("/api/admin/dashboard")

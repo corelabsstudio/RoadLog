@@ -46,6 +46,8 @@
     viewAs: localStorage.getItem(VIEW_AS_KEY) || "admin",
     /** driving | field — 일지 작성 유형 */
     reportMode: "driving",
+    /** 공개 랜딩 후기 캐시 */
+    publicReviews: null,
   };
 
   // ── i18n ──────────────────────────────────────────
@@ -315,6 +317,13 @@
   async function setLanguage(lang) {
     await loadLocale(lang);
     applyI18n();
+    try {
+      if (typeof renderLandingReviews === "function") {
+        renderLandingReviews(state.publicReviews);
+      }
+    } catch {
+      /* ignore */
+    }
     try {
       if (typeof loadStamps === "function") loadStamps();
       if (typeof renderStampList === "function") renderStampList();
@@ -3834,6 +3843,219 @@
     });
   }
 
+  // ── Landing reviews (public + admin) ──
+  function reviewLocalized(r, field) {
+    const en = state.lang === "en";
+    if (en) {
+      const alt = r[`${field}_en`];
+      if (alt) return alt;
+    }
+    return r[field] || "";
+  }
+
+  function starsLabel(n) {
+    const s = Math.max(1, Math.min(5, Number(n) || 5));
+    return "★".repeat(s) + "☆".repeat(5 - s);
+  }
+
+  function renderLandingReviews(list) {
+    const grid = $("#landingReviewGrid");
+    const section = document.querySelector(".landing-reviews");
+    if (!grid) return;
+    const items = Array.isArray(list) ? list : [];
+    state.publicReviews = items;
+    if (!items.length) {
+      grid.innerHTML = `<p class="landing-reviews-note" style="grid-column:1/-1">${escapeHtml(
+        tt("landing.reviews_empty") || "아직 공개된 후기가 없습니다."
+      )}</p>`;
+      // 공개 후기 0개여도 섹션 헤더는 유지 (빈 안내 문구)
+      if (section) section.classList.remove("is-empty");
+      return;
+    }
+    if (section) section.classList.remove("is-empty");
+    grid.innerHTML = items
+      .map((r, i) => {
+        const text = reviewLocalized(r, "text");
+        const name = reviewLocalized(r, "name") || "User";
+        const role = reviewLocalized(r, "role");
+        const initial = (r.initial || name[0] || "?").slice(0, 2);
+        const stars = starsLabel(r.stars);
+        const accent = i === 1 ? " is-accent" : "";
+        const quote = text.startsWith("“") || text.startsWith('"') ? text : `“${text}”`;
+        return `<article class="landing-review-card${accent}">
+          <div class="landing-review-stars" aria-label="${Number(r.stars) || 5}/5">${stars}</div>
+          <p class="landing-review-text">${escapeHtml(quote)}</p>
+          <div class="landing-review-meta">
+            <div class="landing-review-avatar" aria-hidden="true">${escapeHtml(initial)}</div>
+            <div>
+              <div class="landing-review-name">${escapeHtml(name)}</div>
+              <div class="landing-review-role">${escapeHtml(role)}</div>
+            </div>
+          </div>
+        </article>`;
+      })
+      .join("");
+  }
+
+  async function loadPublicReviews() {
+    try {
+      const data = await api("/api/reviews");
+      renderLandingReviews(data.reviews || []);
+    } catch {
+      // 오프라인 시 기존 정적/캐시 유지
+      if (!state.publicReviews) renderLandingReviews([]);
+    }
+  }
+
+  function resetReviewForm() {
+    if ($("#reviewEditId")) $("#reviewEditId").value = "";
+    if ($("#reviewName")) $("#reviewName").value = "";
+    if ($("#reviewRole")) $("#reviewRole").value = "";
+    if ($("#reviewInitial")) $("#reviewInitial").value = "";
+    if ($("#reviewStars")) $("#reviewStars").value = "5";
+    if ($("#reviewText")) $("#reviewText").value = "";
+    if ($("#reviewTextEn")) $("#reviewTextEn").value = "";
+    if ($("#reviewNameEn")) $("#reviewNameEn").value = "";
+    if ($("#reviewRoleEn")) $("#reviewRoleEn").value = "";
+    if ($("#reviewSort")) $("#reviewSort").value = "";
+    if ($("#reviewPublished")) $("#reviewPublished").value = "1";
+    const btn = $("#btnSaveReview");
+    if (btn) btn.textContent = "후기 저장";
+  }
+
+  function fillReviewForm(r) {
+    if (!r) return;
+    if ($("#reviewEditId")) $("#reviewEditId").value = r.id || "";
+    if ($("#reviewName")) $("#reviewName").value = r.name || "";
+    if ($("#reviewRole")) $("#reviewRole").value = r.role || "";
+    if ($("#reviewInitial")) $("#reviewInitial").value = r.initial || "";
+    if ($("#reviewStars")) $("#reviewStars").value = String(r.stars ?? 5);
+    if ($("#reviewText")) $("#reviewText").value = r.text || "";
+    if ($("#reviewTextEn")) $("#reviewTextEn").value = r.text_en || "";
+    if ($("#reviewNameEn")) $("#reviewNameEn").value = r.name_en || "";
+    if ($("#reviewRoleEn")) $("#reviewRoleEn").value = r.role_en || "";
+    if ($("#reviewSort")) $("#reviewSort").value = String(r.sort_order ?? "");
+    if ($("#reviewPublished")) $("#reviewPublished").value = r.published === false ? "0" : "1";
+    const btn = $("#btnSaveReview");
+    if (btn) btn.textContent = "후기 수정 저장";
+    $("#adminReviewsPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function collectReviewForm() {
+    const sortRaw = $("#reviewSort")?.value?.trim();
+    const payload = {
+      name: $("#reviewName")?.value?.trim() || "",
+      role: $("#reviewRole")?.value?.trim() || "",
+      initial: $("#reviewInitial")?.value?.trim() || "",
+      stars: Number($("#reviewStars")?.value || 5),
+      text: $("#reviewText")?.value?.trim() || "",
+      text_en: $("#reviewTextEn")?.value?.trim() || "",
+      name_en: $("#reviewNameEn")?.value?.trim() || "",
+      role_en: $("#reviewRoleEn")?.value?.trim() || "",
+      published: ($("#reviewPublished")?.value || "1") === "1",
+    };
+    if (sortRaw !== "" && sortRaw != null) {
+      payload.sort_order = Number(sortRaw);
+    }
+    return payload;
+  }
+
+  function renderAdminReviewList(reviews) {
+    const list = $("#adminReviewList");
+    if (!list) return;
+    const items = Array.isArray(reviews) ? reviews : [];
+    if (!items.length) {
+      list.innerHTML = `<p style="color:var(--muted);font-size:0.9rem">등록된 후기가 없습니다. 위에서 추가해 주세요.</p>`;
+      return;
+    }
+    list.innerHTML = items
+      .map((r) => {
+        const pub = r.published !== false;
+        const preview = (r.text || "").slice(0, 120);
+        return `<div class="admin-review-item${pub ? "" : " is-hidden-review"}" data-review-id="${escapeHtml(
+          r.id || ""
+        )}">
+          <div class="admin-review-item-main">
+            <div class="admin-review-item-head">
+              <strong>${escapeHtml(r.name || "")}</strong>
+              <span class="admin-review-badge">${escapeHtml(r.role || "—")}</span>
+              <span class="admin-review-badge ${pub ? "is-on" : "is-off"}">${pub ? "공개" : "숨김"}</span>
+              <span class="admin-review-badge">${starsLabel(r.stars)}</span>
+              <span class="admin-review-badge">정렬 ${escapeHtml(String(r.sort_order ?? 0))}</span>
+            </div>
+            <p class="admin-review-item-text">${escapeHtml(preview)}${(r.text || "").length > 120 ? "…" : ""}</p>
+            <div class="admin-review-item-meta">${escapeHtml(
+              (r.updated_at || r.created_at || "").slice(0, 19).replace("T", " ")
+            )}</div>
+          </div>
+          <div class="admin-review-item-actions">
+            <button type="button" class="btn btn-ghost" data-review-edit="${escapeHtml(r.id || "")}">수정</button>
+            <button type="button" class="btn btn-ghost" data-review-toggle="${escapeHtml(r.id || "")}" data-pub="${
+          pub ? "0" : "1"
+        }">${pub ? "숨기기" : "공개"}</button>
+            <button type="button" class="btn btn-ghost" data-review-del="${escapeHtml(r.id || "")}">삭제</button>
+          </div>
+        </div>`;
+      })
+      .join("");
+
+    list.querySelectorAll("[data-review-edit]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-review-edit");
+        const row = items.find((x) => String(x.id) === String(id));
+        if (row) fillReviewForm(row);
+      });
+    });
+    list.querySelectorAll("[data-review-toggle]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-review-toggle");
+        const published = btn.getAttribute("data-pub") === "1";
+        try {
+          const res = await api(`/api/admin/reviews/${encodeURIComponent(id)}/publish`, {
+            method: "PATCH",
+            body: JSON.stringify({ published }),
+          });
+          renderAdminReviewList(res.reviews || []);
+          loadPublicReviews();
+          toast(published ? "후기 공개됨" : "후기 숨김");
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    });
+    list.querySelectorAll("[data-review-del]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("이 후기를 삭제할까요?")) return;
+        try {
+          const id = btn.getAttribute("data-review-del");
+          const res = await api(`/api/admin/reviews/${encodeURIComponent(id)}`, {
+            method: "DELETE",
+          });
+          renderAdminReviewList(res.reviews || []);
+          loadPublicReviews();
+          if ($("#reviewEditId")?.value === id) resetReviewForm();
+          toast("후기 삭제됨");
+        } catch (err) {
+          toast(err.message);
+        }
+      });
+    });
+  }
+
+  async function loadAdminReviews() {
+    try {
+      const data = await api("/api/admin/reviews");
+      renderAdminReviewList(data.reviews || []);
+    } catch (err) {
+      const list = $("#adminReviewList");
+      if (list) {
+        list.innerHTML = `<p style="color:var(--danger);font-size:0.9rem">${escapeHtml(
+          err.message || "후기를 불러오지 못했습니다."
+        )}</p>`;
+      }
+    }
+  }
+
   function ymdLocal(d) {
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -3998,6 +4220,7 @@
       if ($("#adminProPrice")) $("#adminProPrice").value = b.pro_price_krw ?? 2900;
       if ($("#adminEntPrice")) $("#adminEntPrice").value = b.enterprise_price_krw ?? 19900;
       renderVipList(data.vip_members || []);
+      loadAdminReviews();
     } catch (err) {
       toast(err.message);
     }
@@ -4051,6 +4274,38 @@
       } catch (err) {
         alertBox($("#adminVipAlert"), "error", err.message);
       }
+    });
+
+    $("#btnSaveReview")?.addEventListener("click", async () => {
+      try {
+        const payload = collectReviewForm();
+        const editId = $("#reviewEditId")?.value?.trim() || "";
+        const res = editId
+          ? await api(`/api/admin/reviews/${encodeURIComponent(editId)}`, {
+              method: "PUT",
+              body: JSON.stringify(payload),
+            })
+          : await api("/api/admin/reviews", {
+              method: "POST",
+              body: JSON.stringify(payload),
+            });
+        renderAdminReviewList(res.reviews || []);
+        resetReviewForm();
+        loadPublicReviews();
+        alertBox(
+          $("#adminReviewAlert"),
+          "ok",
+          editId ? "후기가 수정되었습니다." : "후기가 등록되었습니다."
+        );
+        toast(editId ? "후기 수정 완료" : "후기 등록 완료");
+      } catch (err) {
+        alertBox($("#adminReviewAlert"), "error", err.message);
+      }
+    });
+
+    $("#btnResetReviewForm")?.addEventListener("click", () => {
+      resetReviewForm();
+      alertBox($("#adminReviewAlert"), "ok", "입력 칸을 비웠습니다.");
     });
   }
 
@@ -5074,6 +5329,7 @@
     bindPwaInstall();
 
     applyI18n(); // data-i18n 노드에 t() 결과 반영
+    loadPublicReviews();
 
     try {
       state.meta = await api("/api/meta");

@@ -60,7 +60,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260711-reviews-v5" />
+  <link rel="stylesheet" href="/styles.css?v=20260711-reviews-admin-v6" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -231,49 +231,11 @@
               <h2 data-i18n="landing.reviews_title">먼저 써 본 분들이 남긴 이야기</h2>
               <p data-i18n="landing.reviews_sub">퇴근 전 일지 정리, 제출용 톤, 저장·이어쓰기에 대한 초기 사용자 피드백입니다.</p>
             </div>
-            <div class="landing-review-grid">
-              <article class="landing-review-card">
-                <div class="landing-review-stars" aria-label="5점 만점">★★★★★</div>
-                <p class="landing-review-text" data-i18n="landing.r1_text">
-                  “방문지만 찍고 메모 몇 줄 남기면 제출용 문서로 정리돼서, 차 안에서 엑셀 붙잡고 있을 일이 줄었어요.”
-                </p>
-                <div class="landing-review-meta">
-                  <div class="landing-review-avatar" aria-hidden="true" data-i18n="landing.r1_initial">김</div>
-                  <div>
-                    <div class="landing-review-name" data-i18n="landing.r1_name">김지훈</div>
-                    <div class="landing-review-role" data-i18n="landing.r1_role">영업 · 제조업</div>
-                  </div>
-                </div>
-              </article>
-              <article class="landing-review-card is-accent">
-                <div class="landing-review-stars" aria-label="5점 만점">★★★★★</div>
-                <p class="landing-review-text" data-i18n="landing.r2_text">
-                  “법인차 일지를 매주 모으는데, 형식이 들쭉날쭉하지 않아서 팀 취합이 훨씬 편해졌습니다.”
-                </p>
-                <div class="landing-review-meta">
-                  <div class="landing-review-avatar" aria-hidden="true" data-i18n="landing.r2_initial">박</div>
-                  <div>
-                    <div class="landing-review-name" data-i18n="landing.r2_name">박서연</div>
-                    <div class="landing-review-role" data-i18n="landing.r2_role">총무 · 건설 현장</div>
-                  </div>
-                </div>
-              </article>
-              <article class="landing-review-card">
-                <div class="landing-review-stars" aria-label="5점 만점">★★★★★</div>
-                <p class="landing-review-text" data-i18n="landing.r3_text">
-                  “외근 동선이 많은 날에도 집에서 이어서 고칠 수 있어서, 퇴근 전에 급하게 쓰다 마는 일이 줄었어요.”
-                </p>
-                <div class="landing-review-meta">
-                  <div class="landing-review-avatar" aria-hidden="true" data-i18n="landing.r3_initial">이</div>
-                  <div>
-                    <div class="landing-review-name" data-i18n="landing.r3_name">이준호</div>
-                    <div class="landing-review-role" data-i18n="landing.r3_role">외근 매니저 · 서비스</div>
-                  </div>
-                </div>
-              </article>
+            <div class="landing-review-grid" id="landingReviewGrid" aria-live="polite">
+              <!-- 공개 후기는 /api/reviews 로 채웁니다 -->
             </div>
-            <p class="landing-reviews-note" data-i18n="landing.reviews_note">
-              실제 후기가 쌓이면 이 영역에 반영합니다. 지금은 도입 시나리오에 맞춘 초기 피드백 예시입니다.
+            <p class="landing-reviews-note" id="landingReviewsNote" data-i18n="landing.reviews_note">
+              관리자가 등록·공개한 후기가 이 영역에 표시됩니다.
             </p>
           </div>
         </section>
@@ -885,7 +847,7 @@
             <div>
               <div class="eyebrow">Admin</div>
               <h2>관리자 페이지</h2>
-              <p style="margin:0.4rem 0 0;max-width:none">일·월 매출 확인 · 구독 요금 변경 · VIP(평생 무료) 회원 관리 · 고객 문의 메일</p>
+              <p style="margin:0.4rem 0 0;max-width:none">일·월 매출 · 요금 · VIP · 메인 후기 관리 · 고객 문의 메일</p>
             </div>
             <a
               class="btn btn-ghost admin-mail-btn"
@@ -1027,7 +989,7 @@
           <div id="adminBillingAlert"></div>
         </div>
 
-        <div class="panel">
+        <div class="panel" style="margin-bottom:1rem">
           <div class="panel-head"><h2>VIP 회원 (평생 무료)</h2></div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
             VIP로 등록된 아이디/이메일은 구독 결제 없이 무제한 이용합니다.
@@ -1047,6 +1009,66 @@
           </div>
           <div id="adminVipAlert"></div>
           <div id="vipList" class="style-samples" style="margin-top:1rem"></div>
+        </div>
+
+        <div class="panel" id="adminReviewsPanel">
+          <div class="panel-head"><h2>메인 후기 관리</h2></div>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem">
+            비로그인 메인(랜딩)에 보이는 후기를 등록·수정·숨김 처리합니다.
+            <strong style="color:#e2e8f0">공개</strong> 상태만 방문자에게 표시됩니다.
+          </p>
+          <input type="hidden" id="reviewEditId" value="" />
+          <div class="settings-grid">
+            <div>
+              <label class="field-label" for="reviewName">이름</label>
+              <input type="text" id="reviewName" placeholder="예: 김지훈" maxlength="40" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewRole">직군 · 업종</label>
+              <input type="text" id="reviewRole" placeholder="예: 영업 · 제조업" maxlength="60" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewInitial">이니셜 (아바타)</label>
+              <input type="text" id="reviewInitial" placeholder="비우면 이름 첫 글자" maxlength="2" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewStars">별점 (1~5)</label>
+              <input type="number" id="reviewStars" min="1" max="5" step="1" value="5" />
+            </div>
+            <div class="full">
+              <label class="field-label" for="reviewText">후기 내용 (한국어)</label>
+              <textarea id="reviewText" rows="3" placeholder="따옴표 없이 본문만 입력해도 됩니다."></textarea>
+            </div>
+            <div class="full">
+              <label class="field-label" for="reviewTextEn">후기 내용 (English, 선택)</label>
+              <textarea id="reviewTextEn" rows="2" placeholder="Optional English quote"></textarea>
+            </div>
+            <div>
+              <label class="field-label" for="reviewNameEn">Name (EN, 선택)</label>
+              <input type="text" id="reviewNameEn" placeholder="Jihun K." maxlength="40" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewRoleEn">Role (EN, 선택)</label>
+              <input type="text" id="reviewRoleEn" placeholder="Sales · Manufacturing" maxlength="60" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewSort">정렬 순서 (작을수록 앞)</label>
+              <input type="number" id="reviewSort" step="1" placeholder="비우면 자동" />
+            </div>
+            <div>
+              <label class="field-label" for="reviewPublished">공개 여부</label>
+              <select id="reviewPublished">
+                <option value="1" selected>공개 (메인 표시)</option>
+                <option value="0">숨김</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="btnSaveReview" type="button">후기 저장</button>
+            <button class="btn btn-ghost" id="btnResetReviewForm" type="button">입력 초기화</button>
+          </div>
+          <div id="adminReviewAlert"></div>
+          <div id="adminReviewList" class="admin-review-list" style="margin-top:1rem"></div>
         </div>
       </div>
     </section>
@@ -1430,7 +1452,7 @@
     </button>
   </div>
 
-  <script src="/app.js?v=20260711-reviews-v5"></script>
+  <script src="/app.js?v=20260711-reviews-admin-v6"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

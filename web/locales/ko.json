@@ -76,7 +76,8 @@
   "landing.r3_initial": "이",
   "landing.r3_name": "이준호",
   "landing.r3_role": "외근 매니저 · 서비스",
-  "landing.reviews_note": "실제 후기가 쌓이면 이 영역에 반영합니다. 지금은 도입 시나리오에 맞춘 초기 피드백 예시입니다.",
+  "landing.reviews_note": "관리자가 등록·공개한 후기가 이 영역에 표시됩니다.",
+  "landing.reviews_empty": "아직 공개된 후기가 없습니다.",
 
   "create.eyebrow": "Create",
   "create.title": "운행일지 작성",

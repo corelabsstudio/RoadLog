@@ -76,7 +76,8 @@
   "landing.r3_initial": "J",
   "landing.r3_name": "Junho L.",
   "landing.r3_role": "Field manager · Services",
-  "landing.reviews_note": "We’ll replace this with live reviews as they come in. For now these reflect common early-user scenarios.",
+  "landing.reviews_note": "Reviews marked public by an admin appear here.",
+  "landing.reviews_empty": "No public reviews yet.",
 
   "create.eyebrow": "Create",
   "create.title": "Write driving log",
