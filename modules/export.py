@@ -72,6 +72,20 @@ def _meta(log: dict) -> dict[str, str]:
         "점심 제외시간": format_minutes_kr(int(log.get("total_lunch_excluded_minutes") or 0)),
         "요약": str(log.get("summary") or ""),
     }
+    if log.get("fuel_refueled"):
+        amt = log.get("fuel_amount_krw")
+        liters = log.get("fuel_liters")
+        if amt is not None and amt != "":
+            try:
+                meta["주유 금액"] = f"{int(float(amt)):,}원"
+            except (TypeError, ValueError):
+                meta["주유 금액"] = f"{amt}원"
+        else:
+            meta["주유"] = "함"
+        if liters is not None and liters != "":
+            meta["주유량"] = f"{liters} L"
+    else:
+        meta["주유"] = "안 함"
     # 점심 장소는 사생활 — 비어 있지 않고 명시 허용된 경우만 포함
     lunch = str(log.get("lunch_place") or "").strip()
     if lunch and (
@@ -260,6 +274,12 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         ("총 거리(km)", meta["총 거리(km)"]),
         ("총 운행시간", meta["총 운행시간"]),
     ]
+    if meta.get("주유 금액"):
+        meta_items.append(("주유 금액", meta["주유 금액"]))
+    elif meta.get("주유"):
+        meta_items.append(("주유", meta["주유"]))
+    if meta.get("주유량"):
+        meta_items.append(("주유량", meta["주유량"]))
     row = 3
     col = 1
     for label, val in meta_items:
@@ -499,6 +519,9 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     story.append(Paragraph("차량 운행일지", title_style))
     story.append(Spacer(1, 4 * mm))
 
+    fuel_label = meta.get("주유 금액") or meta.get("주유") or "—"
+    if meta.get("주유량"):
+        fuel_label = f"{fuel_label} · {meta['주유량']}"
     meta_data = [
         [
             Paragraph(f"<b>작성일</b>  {meta['작성일']}", body),
@@ -511,6 +534,10 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         [
             Paragraph(f"<b>총 거리</b>  {meta['총 거리(km)']} km", body),
             Paragraph(f"<b>총 운행시간</b>  {meta['총 운행시간']}", body),
+        ],
+        [
+            Paragraph(f"<b>주유</b>  {fuel_label}", body),
+            Paragraph(f"<b>점심 제외</b>  {meta.get('점심 제외시간') or '—'}", body),
         ],
     ]
     meta_table = Table(meta_data, colWidths=[90 * mm, 90 * mm])
@@ -741,9 +768,17 @@ def export_docx(log: dict) -> tuple[bytes, str]:
     set_run_font(ir, size=10)
 
     info2 = doc.add_paragraph()
+    fuel_bits = []
+    if meta.get("주유 금액"):
+        fuel_bits.append(f"주유: {meta['주유 금액']}")
+    elif meta.get("주유"):
+        fuel_bits.append(f"주유: {meta['주유']}")
+    if meta.get("주유량"):
+        fuel_bits.append(meta["주유량"])
+    fuel_txt = ("    " + " · ".join(fuel_bits)) if fuel_bits else ""
     ir2 = info2.add_run(
         f"총 거리: {meta['총 거리(km)']} km    총 운행시간: {meta['총 운행시간']}    "
-        f"점심 제외: {meta['점심 제외시간']}"
+        f"점심 제외: {meta['점심 제외시간']}{fuel_txt}"
     )
     set_run_font(ir2, size=10)
 

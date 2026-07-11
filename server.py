@@ -630,6 +630,9 @@ def generate(body: GenerateBody, authorization: str | None = Header(default=None
             "morning_places": body.morning_places,
             "afternoon_places": body.afternoon_places,
             "extra_note": body.raw_text,
+            "fuel_refueled": False,
+            "fuel_amount_krw": None,
+            "fuel_liters": None,
         }
     result = generate_driving_log(
         body.raw_text or "",

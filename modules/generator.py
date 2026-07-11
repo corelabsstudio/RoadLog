@@ -58,7 +58,10 @@ JSON 스키마:
   ],
   "total_distance_km": 0.0,
   "summary": "금일 운행 요약 (한 문장)",
-  "lunch_place": ""
+  "lunch_place": "",
+  "fuel_refueled": false,
+  "fuel_amount_krw": null,
+  "fuel_liters": null
 }
 """
 
@@ -183,6 +186,36 @@ def normalize_form(form: dict | None) -> dict[str, Any]:
     else:
         vehicle = str(vehicle or "").strip()
 
+    # 주유
+    refueled_raw = form.get("fuel_refueled")
+    if isinstance(refueled_raw, str):
+        fuel_refueled = refueled_raw.strip().lower() in ("1", "true", "yes", "y", "네", "예")
+    else:
+        fuel_refueled = bool(refueled_raw)
+    try:
+        fuel_amount = form.get("fuel_amount_krw")
+        if fuel_amount in (None, ""):
+            fuel_amount_krw = None
+        else:
+            fuel_amount_krw = float(fuel_amount)
+            if fuel_amount_krw < 0:
+                fuel_amount_krw = None
+    except (TypeError, ValueError):
+        fuel_amount_krw = None
+    try:
+        fuel_l = form.get("fuel_liters")
+        if fuel_l in (None, ""):
+            fuel_liters = None
+        else:
+            fuel_liters = float(fuel_l)
+            if fuel_liters < 0:
+                fuel_liters = None
+    except (TypeError, ValueError):
+        fuel_liters = None
+    if not fuel_refueled:
+        fuel_amount_krw = None
+        fuel_liters = None
+
     return {
         "odometer_start": odo_s,
         "odometer_end": odo_e,
@@ -191,6 +224,9 @@ def normalize_form(form: dict | None) -> dict[str, Any]:
         "afternoon_places": afternoon_list,
         "vehicle_number": vehicle,
         "extra_note": (form.get("extra_note") or form.get("note") or "").strip(),
+        "fuel_refueled": fuel_refueled,
+        "fuel_amount_krw": fuel_amount_krw,
+        "fuel_liters": fuel_liters,
     }
 
 
@@ -226,12 +262,27 @@ def form_to_raw_text(form: dict, settings: dict | None = None) -> str:
             f"- 오후 방문지: {afternoon}",
         ]
     )
+    if f.get("fuel_refueled"):
+        amt = f.get("fuel_amount_krw")
+        liters = f.get("fuel_liters")
+        fuel_bits = ["오늘 주유함"]
+        if amt is not None:
+            try:
+                fuel_bits.append(f"금액 {int(amt):,}원" if float(amt) == int(float(amt)) else f"금액 {amt}원")
+            except (TypeError, ValueError):
+                fuel_bits.append(f"금액 {amt}원")
+        if liters is not None:
+            fuel_bits.append(f"주유량 {liters}L")
+        lines.append("- 주유: " + ", ".join(fuel_bits))
+    else:
+        lines.append("- 주유: 없음")
     if note:
         lines.append(f"- 추가 메모: {note}")
     lines.append("")
     lines.append(
         "위 정보를 바탕으로 시간·구간·목적을 채운 공식 운행일지 JSON을 작성하세요. "
-        "누적 주행거리와 총 거리는 반드시 입력값을 따르세요."
+        "누적 주행거리와 총 거리는 반드시 입력값을 따르세요. "
+        "주유 여부와 금액이 있으면 JSON에 fuel_refueled, fuel_amount_krw, fuel_liters 필드로 반영하세요."
     )
     return "\n".join(lines)
 
@@ -610,7 +661,7 @@ def _add_minutes(hhmm: str, add: int) -> str:
 
 
 def _apply_odometer(log: dict, form: dict | None) -> dict:
-    """누적 주행거리·차량번호 등 폼 입력 강제 반영."""
+    """누적 주행거리·차량번호·주유 등 폼 입력 강제 반영."""
     f = normalize_form(form)
     if f["odometer_start"] or f["odometer_end"]:
         log["odometer_start"] = f["odometer_start"]
@@ -621,6 +672,14 @@ def _apply_odometer(log: dict, form: dict | None) -> dict:
     # 작성 폼 차량번호가 있으면 설정값보다 우선
     if f.get("vehicle_number"):
         log["vehicle"] = f["vehicle_number"]
+    # 주유 기록 (폼 값이 소스 오브 트루스)
+    log["fuel_refueled"] = bool(f.get("fuel_refueled"))
+    if f.get("fuel_refueled"):
+        log["fuel_amount_krw"] = f.get("fuel_amount_krw")
+        log["fuel_liters"] = f.get("fuel_liters")
+    else:
+        log["fuel_amount_krw"] = None
+        log["fuel_liters"] = None
     return log
 
 

@@ -2347,12 +2347,26 @@
     if (omit && $("#lunchPlace")) $("#lunchPlace").value = "";
   }
 
+  function syncFuelFieldsUI() {
+    const yes = ($("#fuelRefueled")?.value || "no") === "yes";
+    if ($("#fuelAmountWrap")) $("#fuelAmountWrap").hidden = !yes;
+    if ($("#fuelLitersWrap")) $("#fuelLitersWrap").hidden = !yes;
+    if (!yes) {
+      if ($("#fuelAmount")) $("#fuelAmount").value = "";
+      if ($("#fuelLiters")) $("#fuelLiters").value = "";
+    }
+  }
+
   function readForm() {
     const omit = isOmitLunchPlace();
+    const refueled = ($("#fuelRefueled")?.value || "no") === "yes";
     return {
       vehicle_number: $("#vehicleNumber")?.value?.trim() ?? "",
       odometer_start: $("#odoStart")?.value ?? "",
       odometer_end: $("#odoEnd")?.value ?? "",
+      fuel_refueled: refueled,
+      fuel_amount_krw: refueled ? ($("#fuelAmount")?.value ?? "") : "",
+      fuel_liters: refueled ? ($("#fuelLiters")?.value ?? "") : "",
       // 사생활 보호 시 서버로도 보내지 않음
       lunch_restaurant: omit ? "" : ($("#lunchPlace")?.value?.trim() ?? ""),
       morning_places: $("#morningPlaces")?.value?.trim() ?? "",
@@ -2392,7 +2406,9 @@
   function bindGenerate() {
     $("#odoStart")?.addEventListener("input", updateDistHint);
     $("#odoEnd")?.addEventListener("input", updateDistHint);
+    $("#fuelRefueled")?.addEventListener("change", syncFuelFieldsUI);
     updateDistHint();
+    syncFuelFieldsUI();
 
     $("#btnExample")?.addEventListener("click", () => {
       if (state.reportMode === "field") {
@@ -2559,6 +2575,24 @@
             lunch_restaurant: form.lunch_restaurant,
             morning_places: form.morning_places || "",
             afternoon_places: form.afternoon_places || "",
+            form: {
+              vehicle_number: form.vehicle_number,
+              odometer_start: form.odometer_start === "" ? null : Number(form.odometer_start),
+              odometer_end: form.odometer_end === "" ? null : Number(form.odometer_end),
+              lunch_restaurant: form.lunch_restaurant,
+              morning_places: form.morning_places || "",
+              afternoon_places: form.afternoon_places || "",
+              fuel_refueled: !!form.fuel_refueled,
+              fuel_amount_krw:
+                form.fuel_amount_krw === "" || form.fuel_amount_krw == null
+                  ? null
+                  : Number(form.fuel_amount_krw),
+              fuel_liters:
+                form.fuel_liters === "" || form.fuel_liters == null
+                  ? null
+                  : Number(form.fuel_liters),
+              extra_note: form.raw_text || "",
+            },
           }),
         });
         state.usage = data.usage ?? state.usage;
@@ -2725,6 +2759,21 @@
     ];
     if (log.lunch_place && !isOmitLunchPlace()) {
       lines.splice(4, 0, `점심: ${log.lunch_place}`);
+    }
+    if (log.fuel_refueled) {
+      let fuel = "주유: 함";
+      if (log.fuel_amount_krw != null && log.fuel_amount_krw !== "") {
+        const n = Number(log.fuel_amount_krw);
+        fuel += Number.isFinite(n)
+          ? ` · ${Math.round(n).toLocaleString("ko-KR")}원`
+          : ` · ${log.fuel_amount_krw}`;
+      }
+      if (log.fuel_liters != null && log.fuel_liters !== "") {
+        fuel += ` · ${log.fuel_liters}L`;
+      }
+      lines.push(fuel);
+    } else if (log.fuel_refueled === false) {
+      lines.push("주유: 안 함");
     }
     (log.trips || []).forEach((t, i) => {
       lines.push(
@@ -2897,6 +2946,24 @@
       // 점심 장소는 사생활 — 기본 비노출
       if (!isField && log.lunch_place && !isOmitLunchPlace()) {
         metrics.push(["점심", log.lunch_place]);
+      }
+      if (!isField) {
+        if (log.fuel_refueled) {
+          let fuelLabel = "주유함";
+          if (log.fuel_amount_krw != null && log.fuel_amount_krw !== "") {
+            const n = Number(log.fuel_amount_krw);
+            fuelLabel =
+              Number.isFinite(n)
+                ? `${Math.round(n).toLocaleString("ko-KR")}원`
+                : String(log.fuel_amount_krw);
+          }
+          if (log.fuel_liters != null && log.fuel_liters !== "") {
+            fuelLabel += ` · ${log.fuel_liters}L`;
+          }
+          metrics.push(["주유", fuelLabel]);
+        } else if (log.fuel_refueled === false) {
+          metrics.push(["주유", "안 함"]);
+        }
       }
       $("#metrics").innerHTML = metrics
         .map(
@@ -3664,6 +3731,22 @@
     <tr>
       <th>총 거리(km)</th><td>${escapeHtml(String(log.total_distance_km ?? ""))}</td>
       <th>순수 운행</th><td>${escapeHtml(String(log.total_net_display || log.total_net_minutes || ""))}</td>
+    </tr>
+    <tr>
+      <th>주유</th><td colspan="3">${escapeHtml(
+        log.fuel_refueled
+          ? [
+              log.fuel_amount_krw != null && log.fuel_amount_krw !== ""
+                ? `${Number(log.fuel_amount_krw).toLocaleString("ko-KR")}원`
+                : "함",
+              log.fuel_liters != null && log.fuel_liters !== "" ? `${log.fuel_liters}L` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : log.fuel_refueled === false
+            ? "안 함"
+            : "—"
+      )}</td>
     </tr>
   </table>
   <table class="trips">
@@ -5374,6 +5457,7 @@
 
     applyI18n(); // data-i18n 노드에 t() 결과 반영
     syncLunchPrivacyUI();
+    syncFuelFieldsUI();
     loadPublicReviews();
 
     try {
