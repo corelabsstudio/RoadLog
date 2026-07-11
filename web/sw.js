@@ -1,5 +1,5 @@
 /* RoadLog PWA Service Worker — offline shell + static cache */
-const CACHE = "roadlog-v3";
+const CACHE = "roadlog-v4";
 const PRECACHE = [
   "/",
   "/index.html",
@@ -9,15 +9,18 @@ const PRECACHE = [
   "/icons/logo.svg",
 ];
 
-/** 항상 네트워크 우선 — 옛 캐시에 막혀 UI 키(nav.start 등)가 남는 것 방지 */
+/** 항상 네트워크 우선 — 옛 캐시에 막혀 랜딩/카피/UI가 남는 것 방지 */
 function isNetworkFirst(pathname) {
   return (
+    pathname === "/" ||
+    pathname === "/index.html" ||
     pathname === "/app.js" ||
     pathname === "/styles.css" ||
     pathname.startsWith("/locales/") ||
     pathname.endsWith(".js") ||
     pathname.endsWith(".css") ||
-    pathname.endsWith(".json")
+    pathname.endsWith(".json") ||
+    pathname.endsWith(".html")
   );
 }
 
