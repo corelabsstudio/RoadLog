@@ -1,79 +1,133 @@
 # RoadLog 저장 지점 (Save Point)
 
-> 다음에 **「로드로그 불러와줘」** / **「RoadLog 이어서」** 라고 하면 이 경로·커밋 기준으로 복구하면 됩니다.
+> **로드로그 본체:** **「로드로그 불러와줘」** / **「RoadLog 이어서」** → 이 문서 + `AGENTS.md`  
+> **홍보 프로그램(ReachKit):** **「홍보 불러와」** / **「ReachKit 이어서」** → `tools/community_poster/SAVE_POINT.md`
 
-**저장 시각:** 2026-07-12  
-**로컬 패치:** 정식 런칭용 (보안·제출물 스크럽·레이트리밋·요금/푸터 UX) — 배포 전 `docs/ops/LAUNCH_CHECKLIST.md` 필수  
-**이전 커밋 기준:** `bb0e894` / `44e3b7d` (`main`)  
-**라이브:** https://roadlog.co.kr/
+**저장 시각:** 2026-07-17  
+**로컬 경로:** `C:\Users\hysoo\Projects\RoadLog`  
+**라이브:** https://roadlog.co.kr/  
+**GitHub:** `corelabsstudio/RoadLog` · `main`  
+**최근 배포 커밋:** `65fb589` — 인쇄 미리보기 빈 창 수정 (Blob URL)  
+**프론트 빌드:** `20260712-print-v25` (`web/build.json` · `app.js?v=…`)
 
-## 프로젝트 위치
+---
 
-```
-C:\Users\hysoo\projects\RoadLog
-```
+## 2026-07-17 세션에서 한 일
 
-## 실행 방법 (로컬)
+### 1) Railway · live 관리자
+- Account API 토큰 재발급 후 `.launch/railway.token` 에 저장 (커밋 금지)
+- 프로젝트: RoadLog · env `production` · service `web`
+  - projectId: `9d3da15b-b2e6-4790-af3c-b0229e2d1965`
+  - environmentId: `367f2cc2-ac64-4daf-b04d-0d28f4ac97c7`
+  - serviceId: `ebf3faf1-2f14-425a-acad-9cc2c67fa633`
+- live `ADMIN_PASSWORD` 변경 후 `serviceInstanceRedeploy` → 로그인 확인 OK
+- **관리자 ID:** `hhs126` (이메일 `hhs126@roadlog.local` 가능)
+- **비번:** 로컬 `.env` · Railway Variables · (선택) `railway-variables.env` 와 동일 — **채팅/커밋에 비번 적지 말 것**
+- 예전 401 원인: 로컬 `.env` 비번 ≠ live Railway 비번
+- 로그인 API: `POST /api/auth/login` · body `{ "email": "hhs126", "password": "…" }`
+
+### 2) 인쇄 미리보기 버그 수정 (live 반영됨)
+- **증상:** 인쇄 → 미리보기 누르면 빈 창
+- **원인:** `window.open(..., "noopener,noreferrer")` 후 `document.write` 불가
+- **수정:** `web/app.js` `openPrint` — HTML Blob + `URL.createObjectURL` 로 새 탭 오픈
+- 커밋: `65fb589` · Railway SUCCESS · live에 `createObjectURL` 확인
+
+### 3) 수익화·홍보 방향 (합의)
+- **현금화 속도: RoadLog > Trace** (live + 스마트스토어 claim 경로 있음)
+- 홍보는 아직 **0** — 제품·로그인·결제 경로 준비 후 단계
+- 다음: 지인 DM 3~5명 → 오픈채 1곳 → (여유 시) 블로그 1글
+- 문구: `docs/marketing/CONTENT_PACK.md` · 채널: `CHANNELS.md`
+- 유료 광고는 초반 비추천
+
+### 4) 토큰 발급 시 주의 (다음에 막히면)
+- **Account Tokens:** https://railway.com/account/tokens (또는 railway.app)
+- **Create 직후 전체 문자열만** 유효 (목록 `****-xxxx` 는 비밀값 아님)
+- Workspace: RoadLog가 있는 쪽 (예: CoreLabs's Projects)
+- Project Settings → Tokens 는 별개(계정 인증 필요할 수 있음) — 변수 수정은 Account 토큰으로 가능했음
+
+---
+
+## 불러올 때 할 일 (에이전트)
+
+1. `cd C:\Users\hysoo\Projects\RoadLog`
+2. `git status` / `git log -3 --oneline` 확인
+3. 필요 시 로컬 서버:  
+   `.\.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8501`
+4. live 변수/배포: `.launch/railway.token` (Account 토큰) + GraphQL
+5. 홍보 툴은 별도 트리거 시 `tools/community_poster/SAVE_POINT.md` 우선
+
+---
+
+## 제품 / 서버
+
+- FastAPI + 정적 SPA (`web/`) · PWA · AI 운행·외근 일지
+- Free / Pro(스마트스토어) / Enterprise · claim `#pro-claim` · ntfy 푸시
+- 관리자 대시보드 · 역할 미리보기(view-as) — **비관리자는 클릭해도 silent**
+- 사용자 UI: OpenAI 비용/운영 배너 비노출
+- 인쇄: Blob 미리보기 + 프린터 인쇄 (`openPrint`)
+- 마케팅 문구: `docs/marketing/CONTENT_PACK.md`, `CHANNELS.md`
+
+### 로컬 실행
 
 ```powershell
-cd C:\Users\hysoo\projects\RoadLog
+cd C:\Users\hysoo\Projects\RoadLog
 .\.venv\Scripts\python.exe -m uvicorn server:app --host 127.0.0.1 --port 8501
 # → http://127.0.0.1:8501/
 ```
 
-데스크톱 런처: `scripts/launch_roadlog.vbs` (포트 8501)
+데스크톱(웹앱): `scripts/launch_roadlog.vbs` (포트 8501)
 
-Streamlit(기업용 좌석·승인 등):
+---
+
+## ReachKit (홍보 프로그램) — 상세는 전용 저장 지점
+
+**전용 저장 지점:** `tools/community_poster/SAVE_POINT.md`  
+**트리거:** 「홍보 불러와」 / 「ReachKit 이어서」
+
+요약: ReachKit · 구조 파악 · 사이드바 UI · 3채널 검증 · CAPTCHA는 가입 시 사용자
 
 ```powershell
-streamlit run app.py
+C:\Users\hysoo\Projects\RoadLog\tools\community_poster\ReachKit.bat
 ```
 
-## 이 저장 지점에 포함된 주요 기능
+---
 
-### 제품 / UI
-- FastAPI + 정적 SPA (`web/`) · PWA 설치 · 브랜드 부제 **AI 운행·외근 일지**
-- 운행일지 + 외근·출장 일지 모드
-- 로그인 / 회원가입 / 로그인 정보 저장
-- 퀵 스탬프 · AI 일지 생성 · Excel / PDF / DOCX
-- 회사 서식 학습 · 설정 · 요금제 · 문의 · 약관
-- 랜딩: B2B 톤 · 후기(Reviews) 섹션
-- i18n KO/EN · 스마트 근무시간 라우팅
+## 배포 / 인프라
 
-### 사생활 / 주유
-- **점심 장소 기본 비노출** (시간만 운행시간에서 제외)
-- 설정: 「점심 장소는 일지에 남기지 않기」
-- **주유 여부·금액·(선택) 주유량** 입력
-- 회사 서식에 **주유 칸이 있을 때만** UI 표시 + 일지 반영 (`form_has_fuel`)
+- Railway web service: `ebf3faf1-2f14-425a-acad-9cc2c67fa633`
+- 토큰: `.launch/railway.token` (커밋 금지)
+- 변수 백업(로컬 전용): `railway-variables.env` (커밋 금지 · 시크릿)
+- ntfy topic: `.launch/ntfy_topic.txt`
+- PWA 강제 갱신: https://roadlog.co.kr/update.html · `scripts/bump_build.py`
+- 배포: `git push origin main` (GitHub 연동 자동 배포 확인됨)
 
-### 관리자
-- 매출 · 사용 횟수 · 요금 · VIP
-- 역할 미리보기 (Pro / Enterprise / Free)
-- **메인 후기 CRUD** (공개/숨김/수정/삭제) → `/api/reviews`
+---
 
-### PWA / 배포 캐시
-- SW 자동 갱신 · `updateViaCache: none` · 앱 셸 no-cache
-- 강제 갱신 페이지: https://roadlog.co.kr/update.html  
-  (일반 창이 옛 캐시에 묶였을 때 1회 접속)
+## 다음 우선순위 (제안)
 
-## 의도적 제외 (로컬 전용 · Git 미포함)
+1. **홍보 시작** — 지인 DM 템플릿 C (`CONTENT_PACK`) 3~5명
+2. Free 가입·생성 여부 관리자 패널로 확인
+3. (선택) Pro 결제 claim 플로우 실사용 1회 점검
+4. Trace는 제품 다듬기 병행, 수익 실험은 RoadLog 우선
 
-- `.env` (API 키 등)
-- `data/users.json`, 세션, 사용량, `data/admin/`, 개인 서식 샘플 등 런타임 데이터
+---
 
-## 배포
+## 의도적 제외 (Git 미포함)
 
-- GitHub: `https://github.com/corelabsstudio/RoadLog.git` · 브랜치 `main`
-- 도메인: `roadlog.co.kr` → Railway
-- 보안 점검: `docs/ops/DEPLOY_SECURITY_CHECKLIST.md` · `python scripts/check_security.py`
+- `.env`, `.launch/*` 시크릿
+- `railway-variables.env`
+- `data/users.json`, 세션, 사용량, 개인 서식
+- `tools/community_poster/data/*.json` (비밀번호 가능)
 
-## 복구 / 확인
+---
+
+## 복구 확인
 
 ```powershell
-cd C:\Users\hysoo\projects\RoadLog
+cd C:\Users\hysoo\Projects\RoadLog
 git status
 git log -1 --oneline
-# 기대: bb0e894 또는 그 이후 main
+Test-Path .launch\railway.token
+Test-Path tools\community_poster\app.py
+# live 인쇄 수정 여부: app.js 에 createObjectURL
 ```
-
-사이트 캐시 문제 시: https://roadlog.co.kr/update.html
