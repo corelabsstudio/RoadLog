@@ -3843,24 +3843,35 @@
     }
     const paper = $("#paperSize")?.value || "A4";
     const orient = $("#printOrient")?.value || "portrait";
-    const html = buildPrintHtml(state.lastLog, paper, orient);
-    const w = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
+    let html = buildPrintHtml(state.lastLog, paper, orient);
+    // 미리보기: 자동 window.print() 제거 (빈 창 방지 + 인쇄 대화상자 안 띄움)
+    if (previewOnly) {
+      html = html.replace(/<script>[\s\S]*?<\/script>\s*/i, "");
+    }
+    // Blob URL로 열기 — noopener 창에 document.write 하면 빈 화면이 됨
+    let url;
+    try {
+      const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+      url = URL.createObjectURL(blob);
+    } catch (e) {
+      toast("인쇄 문서를 만들지 못했습니다");
+      return;
+    }
+    const w = window.open(url, "_blank", "width=900,height=1000");
     if (!w) {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {}
       toast("팝업이 차단되었습니다. 브라우저에서 팝업을 허용해 주세요.");
       return;
     }
-    w.document.open();
-    w.document.write(html);
-    w.document.close();
+    // 창이 로드된 뒤 URL 해제 (너무 빨리 revoke 하면 빈 화면)
+    setTimeout(() => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch (_) {}
+    }, 120000);
     if (previewOnly) {
-      // 미리보기만 — 자동 print 스크립트 제거를 위해 다시 씀
-      const htmlNoAuto = html.replace(
-        /<script>[\s\S]*?<\/script>/i,
-        "<script>/* preview */<\/script>"
-      );
-      w.document.open();
-      w.document.write(htmlNoAuto);
-      w.document.close();
       toast("인쇄 미리보기 창을 열었습니다");
     } else {
       toast("인쇄 대화상자를 엽니다");
