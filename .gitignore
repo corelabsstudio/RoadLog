@@ -34,3 +34,12 @@ data/landing_*.png
 *.docx
 !web/assets/templates/*.xlsx
 !web/assets/templates/*.docx
+
+# community poster local secrets
+tools/community_poster/data/*.json
+!tools/community_poster/data/.gitkeep
+
+
+# local railway var dump (secrets)
+railway-variables.env
+
