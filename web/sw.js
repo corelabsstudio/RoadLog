@@ -1,6 +1,6 @@
 /* RoadLog PWA Service Worker — 항상 최신 셸 우선 (웹·모바일·홈화면 앱 공통) */
 /** 배포 시 scripts/bump_build.py 또는 수동으로 반드시 올릴 것 */
-const VERSION = "20260712-print-v25";
+const VERSION = "20260722-sound-v1";
 const CACHE = `roadlog-${VERSION}`;
 
 /** 오프라인용 최소 자산만 (index/app/css 는 캐시에 묶지 않음) */

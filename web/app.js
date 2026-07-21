@@ -701,6 +701,16 @@
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2600);
+    // soft success tick for completion-style messages
+    try {
+      const s = String(msg || "");
+      if (
+        window.CoreLabsSound &&
+        /성공|완료|저장|생성|삭제|로그인|로그아웃|전환|불러/.test(s)
+      ) {
+        window.CoreLabsSound.play("success");
+      }
+    } catch (_) {}
   }
 
   function alertBox(el, type, msg) {
@@ -2322,6 +2332,9 @@
       modal.classList.add("is-open");
       document.body.classList.add("modal-open");
       $("#careModalOk")?.focus();
+      try {
+        window.CoreLabsSound && window.CoreLabsSound.play("success");
+      } catch (_) {}
     });
   }
 
