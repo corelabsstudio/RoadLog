@@ -52,6 +52,8 @@
     entBillingPeriod: "monthly",
     /** 업무 요약 기간: week | month */
     reportPeriod: "month",
+    /** 마지막 요약 payload (PNG 생성용) */
+    lastReportSummary: null,
     /** 공개 랜딩 후기 캐시 */
     publicReviews: null,
   };
@@ -6014,6 +6016,7 @@
 
   function renderReportsSummary(data) {
     if (!data) return;
+    state.lastReportSummary = data;
     const rangeEl = $("#reportRangeLabel");
     if (rangeEl) {
       rangeEl.textContent = `기간: ${data.date_from || "—"} ~ ${data.date_to || "—"} · ${
@@ -6085,6 +6088,210 @@
     return x.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
   }
 
+  async function downloadReportFile(format) {
+    if (!state.token) {
+      openAuth();
+      toast("다운로드는 로그인 후 가능합니다");
+      return;
+    }
+    const period = state.reportPeriod === "week" ? "week" : "month";
+    const fmt = format === "xlsx" ? "xlsx" : "pdf";
+    const url = `/api/logs/summary/export?period=${encodeURIComponent(
+      period
+    )}&format=${fmt}`;
+    try {
+      toast(fmt === "pdf" ? "PDF 생성 중…" : "Excel 생성 중…");
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      if (!res.ok) {
+        let msg = `다운로드 실패 (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j.detail) msg = typeof j.detail === "string" ? j.detail : msg;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      let filename =
+        fmt === "pdf" ? "RoadLog_업무요약.pdf" : "RoadLog_업무요약.xlsx";
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = /filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i.exec(cd);
+      if (m) {
+        try {
+          filename = decodeURIComponent(m[1] || m[2] || filename);
+        } catch {
+          filename = m[1] || m[2] || filename;
+        }
+      }
+      const a = document.createElement("a");
+      const href = URL.createObjectURL(blob);
+      a.href = href;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 2000);
+      toast(fmt === "pdf" ? "PDF를 저장했습니다" : "Excel을 저장했습니다");
+    } catch (err) {
+      toast(err.message || "다운로드 실패");
+    }
+  }
+
+  function downloadReportPng() {
+    const data = state.lastReportSummary;
+    if (!data || !state.token) {
+      toast("먼저 요약을 불러와 주세요");
+      return;
+    }
+    const W = 1080;
+    const H = 1350;
+    const canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      toast("이미지 생성을 지원하지 않는 환경입니다");
+      return;
+    }
+    // background
+    ctx.fillStyle = "#0b1220";
+    ctx.fillRect(0, 0, W, H);
+    // card
+    const pad = 48;
+    ctx.fillStyle = "#0f172a";
+    roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 28);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(34,211,238,0.45)";
+    ctx.lineWidth = 2;
+    roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 28);
+    ctx.stroke();
+
+    let y = pad + 64;
+    ctx.fillStyle = "#67e8f9";
+    ctx.font = "700 22px Malgun Gothic, sans-serif";
+    ctx.fillText("RoadLog · 업무 요약", pad + 48, y);
+    y += 48;
+    ctx.fillStyle = "#f8fafc";
+    ctx.font = "800 40px Malgun Gothic, sans-serif";
+    ctx.fillText(String(data.period_label || "업무 요약"), pad + 48, y);
+    y += 36;
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "500 22px Malgun Gothic, sans-serif";
+    ctx.fillText(
+      `${data.date_from || ""} ~ ${data.date_to || ""}`,
+      pad + 48,
+      y
+    );
+    y += 56;
+
+    const metrics = [
+      ["총 거리", `${data.total_distance_km ?? 0} km`],
+      ["총 일지", `${data.total_logs ?? 0}건`],
+      ["외근", `${data.field_count ?? 0}건`],
+      ["운행", `${data.driving_count ?? 0}건`],
+    ];
+    const boxW = (W - pad * 2 - 48 * 2 - 24) / 2;
+    const boxH = 110;
+    metrics.forEach((m, i) => {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = pad + 48 + col * (boxW + 24);
+      const by = y + row * (boxH + 16);
+      ctx.fillStyle = "#1e293b";
+      roundRect(ctx, x, by, boxW, boxH, 16);
+      ctx.fill();
+      ctx.fillStyle = "#94a3b8";
+      ctx.font = "600 18px Malgun Gothic, sans-serif";
+      ctx.fillText(m[0], x + 20, by + 36);
+      ctx.fillStyle = "#5eead4";
+      ctx.font = "800 34px Malgun Gothic, sans-serif";
+      ctx.fillText(m[1], x + 20, by + 80);
+    });
+    y += boxH * 2 + 48;
+
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "700 24px Malgun Gothic, sans-serif";
+    ctx.fillText("주요 방문지 Top 3", pad + 48, y);
+    y += 40;
+    const tops = data.top_places || [];
+    if (!tops.length) {
+      ctx.fillStyle = "#64748b";
+      ctx.font = "500 20px Malgun Gothic, sans-serif";
+      ctx.fillText("기록 없음", pad + 48, y);
+      y += 36;
+    } else {
+      tops.slice(0, 3).forEach((tp, i) => {
+        ctx.fillStyle = "#f8fafc";
+        ctx.font = "600 22px Malgun Gothic, sans-serif";
+        const line = `${i + 1}. ${tp.place || ""}`;
+        ctx.fillText(line.slice(0, 28), pad + 48, y);
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText(`${tp.count || 0}회`, W - pad - 120, y);
+        y += 40;
+      });
+    }
+
+    y += 24;
+    ctx.fillStyle = "#e2e8f0";
+    ctx.font = "700 22px Malgun Gothic, sans-serif";
+    ctx.fillText("일지 목록", pad + 48, y);
+    y += 36;
+    const logs = (data.logs || []).slice(0, 8);
+    if (!logs.length) {
+      ctx.fillStyle = "#64748b";
+      ctx.font = "500 18px Malgun Gothic, sans-serif";
+      ctx.fillText("이 기간 일지 없음", pad + 48, y);
+    } else {
+      logs.forEach((row) => {
+        const kind = row.report_type === "field" ? "외근" : "운행";
+        const sum = String(row.summary || row.title || "").slice(0, 32);
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = "500 18px Malgun Gothic, sans-serif";
+        ctx.fillText(
+          `· ${row.date || "—"} [${kind}] ${sum}`,
+          pad + 48,
+          y
+        );
+        y += 32;
+      });
+    }
+
+    ctx.fillStyle = "#64748b";
+    ctx.font = "500 16px Malgun Gothic, sans-serif";
+    ctx.fillText("roadlog.co.kr · CoreLabs", pad + 48, H - pad - 36);
+
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        toast("이미지 저장 실패");
+        return;
+      }
+      const a = document.createElement("a");
+      const href = URL.createObjectURL(blob);
+      a.href = href;
+      const p = data.period || "summary";
+      a.download = `RoadLog_업무요약_${p}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 2000);
+      toast("이미지를 저장했습니다");
+    }, "image/png");
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + w, y, x + w, y + h, radius);
+    ctx.arcTo(x + w, y + h, x, y + h, radius);
+    ctx.arcTo(x, y + h, x, y, radius);
+    ctx.arcTo(x, y, x + w, y, radius);
+    ctx.closePath();
+  }
+
   function bindReports() {
     document.body.addEventListener("click", (e) => {
       const chip = e.target.closest("[data-report-period]");
@@ -6097,6 +6304,11 @@
       }
     });
     $("#btnReportRefresh")?.addEventListener("click", () => loadReportsSummary());
+    $("#btnReportPdf")?.addEventListener("click", () => downloadReportFile("pdf"));
+    $("#btnReportExcel")?.addEventListener("click", () =>
+      downloadReportFile("xlsx")
+    );
+    $("#btnReportPng")?.addEventListener("click", () => downloadReportPng());
     $("#btnReportCopy")?.addEventListener("click", async () => {
       const text = $("#reportTextBox")?.textContent || "";
       if (!text.trim() || text.includes("불러오는 중") || text.includes("로그인")) {

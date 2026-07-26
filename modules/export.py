@@ -894,6 +894,270 @@ def build_excel_bytes_pandas(log: dict) -> tuple[bytes, str]:
     return buf.getvalue(), f"{_filename_base(log)}.xlsx"
 
 
+def export_summary_excel(summary: dict[str, Any]) -> tuple[bytes, str]:
+    """주간/월간 업무 요약 → Excel (제출·메일 첨부용)."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    s = summary or {}
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "업무요약"
+
+    header_fill = PatternFill("solid", fgColor="0F172A")
+    header_font = Font(color="FFFFFF", bold=True, size=11)
+    title_font = Font(bold=True, size=14, color="0F172A")
+    accent = Font(bold=True, color="0D9488")
+
+    ws["A1"] = "로드로그 업무 요약"
+    ws["A1"].font = title_font
+    ws.merge_cells("A1:D1")
+    ws["A2"] = f"{s.get('period_label') or ''} · {s.get('date_from') or ''} ~ {s.get('date_to') or ''}"
+    ws["A2"].font = Font(color="64748B", size=10)
+    ws.merge_cells("A2:D2")
+
+    rows = [
+        ("총 일지(건)", s.get("total_logs") or 0),
+        ("운행일지(건)", s.get("driving_count") or 0),
+        ("외근·출장(건)", s.get("field_count") or 0),
+        ("총 운행거리(km)", s.get("total_distance_km") or 0),
+    ]
+    ws["A4"] = "지표"
+    ws["B4"] = "값"
+    for col in ("A", "B"):
+        cell = ws[f"{col}4"]
+        cell.fill = header_fill
+        cell.font = header_font
+    for i, (k, v) in enumerate(rows, start=5):
+        ws[f"A{i}"] = k
+        ws[f"B{i}"] = v
+        ws[f"B{i}"].font = accent
+
+    ws["A10"] = "주요 방문지 Top 3"
+    ws["A10"].font = Font(bold=True, size=12)
+    ws["A11"] = "순위"
+    ws["B11"] = "방문지"
+    ws["C11"] = "횟수"
+    for col in ("A", "B", "C"):
+        cell = ws[f"{col}11"]
+        cell.fill = header_fill
+        cell.font = header_font
+    tops = s.get("top_places") or []
+    if not tops:
+        ws["A12"] = "—"
+        ws["B12"] = "(기록 없음)"
+        ws["C12"] = 0
+    else:
+        for i, tp in enumerate(tops[:3], start=12):
+            ws[f"A{i}"] = i - 11
+            ws[f"B{i}"] = tp.get("place") or ""
+            ws[f"C{i}"] = tp.get("count") or 0
+
+    ws2 = wb.create_sheet("일지목록")
+    headers = ["날짜", "유형", "거리(km)", "제목", "요약"]
+    for c, h in enumerate(headers, start=1):
+        cell = ws2.cell(1, c, h)
+        cell.fill = header_fill
+        cell.font = header_font
+    for r, row in enumerate(s.get("logs") or [], start=2):
+        kind = "외근" if row.get("report_type") == "field" else "운행"
+        ws2.cell(r, 1, row.get("date") or "")
+        ws2.cell(r, 2, kind)
+        ws2.cell(r, 3, row.get("distance_km") or 0)
+        ws2.cell(r, 4, row.get("title") or "")
+        ws2.cell(r, 5, row.get("summary") or "")
+
+    ws3 = wb.create_sheet("제출용텍스트")
+    ws3["A1"] = s.get("report_text") or ""
+    ws3["A1"].alignment = Alignment(wrap_text=True, vertical="top")
+    ws3.column_dimensions["A"].width = 80
+    ws3.row_dimensions[1].height = 220
+
+    for col, w in (("A", 22), ("B", 36), ("C", 12), ("D", 24)):
+        ws.column_dimensions[col].width = w
+    for col, w in (("A", 12), ("B", 10), ("C", 12), ("D", 22), ("E", 48)):
+        ws2.column_dimensions[col].width = w
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    period = s.get("period") or "summary"
+    d0 = str(s.get("date_from") or "").replace("-", "")
+    d1 = str(s.get("date_to") or "").replace("-", "")
+    name = f"RoadLog_업무요약_{period}_{d0}_{d1}.xlsx"
+    return buf.getvalue(), name
+
+
+def export_summary_pdf(summary: dict[str, Any]) -> tuple[bytes, str]:
+    """주간/월간 업무 요약 → PDF (결재판·메일 첨부용, 워터마크 없음)."""
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+    s = summary or {}
+    font_name = _register_korean_font()
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=16 * mm,
+        rightMargin=16 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title="로드로그 업무 요약",
+        author="RoadLog",
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "SumTitle",
+        parent=styles["Title"],
+        fontName=font_name,
+        fontSize=18,
+        textColor=colors.HexColor("#0B1F3A"),
+        alignment=TA_CENTER,
+        spaceAfter=8,
+    )
+    body = ParagraphStyle(
+        "SumBody",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=10,
+        leading=15,
+        textColor=colors.HexColor("#0F172A"),
+        alignment=TA_LEFT,
+    )
+    small = ParagraphStyle(
+        "SumSmall",
+        parent=body,
+        fontSize=9,
+        textColor=colors.HexColor("#475569"),
+    )
+
+    story: list[Any] = []
+    story.append(Paragraph("로드로그 업무 요약", title_style))
+    story.append(
+        Paragraph(
+            f"{s.get('period_label') or ''} &nbsp;|&nbsp; "
+            f"{s.get('date_from') or ''} ~ {s.get('date_to') or ''}",
+            small,
+        )
+    )
+    story.append(Spacer(1, 5 * mm))
+
+    metrics = [
+        [
+            Paragraph(f"<b>총 일지</b><br/>{s.get('total_logs') or 0}건", body),
+            Paragraph(f"<b>운행</b><br/>{s.get('driving_count') or 0}건", body),
+            Paragraph(f"<b>외근</b><br/>{s.get('field_count') or 0}건", body),
+            Paragraph(
+                f"<b>총 거리</b><br/>{s.get('total_distance_km') or 0} km", body
+            ),
+        ]
+    ]
+    mt = Table(metrics, colWidths=[42 * mm, 42 * mm, 42 * mm, 42 * mm])
+    mt.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F0FDFA")),
+                ("BOX", (0, 0), (-1, -1), 0.8, colors.HexColor("#0D9488")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#99F6E4")),
+                ("TOPPADDING", (0, 0), (-1, -1), 8),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    story.append(mt)
+    story.append(Spacer(1, 6 * mm))
+
+    story.append(Paragraph("<b>주요 방문지 Top 3</b>", body))
+    story.append(Spacer(1, 2 * mm))
+    tops = s.get("top_places") or []
+    top_data = [["순위", "방문지", "횟수"]]
+    if not tops:
+        top_data.append(["—", "(기록 없음)", "0"])
+    else:
+        for i, tp in enumerate(tops[:3], start=1):
+            top_data.append([str(i), str(tp.get("place") or ""), str(tp.get("count") or 0)])
+    tt = Table(top_data, colWidths=[20 * mm, 120 * mm, 28 * mm])
+    tt.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F3A")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(tt)
+    story.append(Spacer(1, 6 * mm))
+
+    story.append(Paragraph("<b>기간 내 일지</b>", body))
+    story.append(Spacer(1, 2 * mm))
+    log_data = [["날짜", "유형", "거리", "요약"]]
+    for row in (s.get("logs") or [])[:40]:
+        kind = "외근" if row.get("report_type") == "field" else "운행"
+        km = row.get("distance_km") or ""
+        if km != "" and km is not None:
+            try:
+                km = f"{float(km):g} km"
+            except (TypeError, ValueError):
+                km = str(km)
+        summary = str(row.get("summary") or row.get("title") or "")[:60]
+        log_data.append(
+            [
+                str(row.get("date") or ""),
+                kind,
+                str(km),
+                summary,
+            ]
+        )
+    if len(log_data) == 1:
+        log_data.append(["—", "—", "—", "(일지 없음)"])
+    lt = Table(log_data, colWidths=[24 * mm, 16 * mm, 22 * mm, 106 * mm])
+    lt.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0F172A")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#CBD5E1")),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    story.append(lt)
+    story.append(Spacer(1, 8 * mm))
+    story.append(
+        Paragraph(
+            "본 문서는 RoadLog에 저장된 일지를 집계한 제출용 요약입니다. "
+            "상세 일지는 각 일자 문서를 함께 첨부해 주세요.",
+            small,
+        )
+    )
+    story.append(Paragraph("https://roadlog.co.kr", small))
+
+    doc.build(story)
+    period = s.get("period") or "summary"
+    d0 = str(s.get("date_from") or "").replace("-", "")
+    d1 = str(s.get("date_to") or "").replace("-", "")
+    name = f"RoadLog_업무요약_{period}_{d0}_{d1}.pdf"
+    return buf.getvalue(), name
+
+
 def build_pdf_bytes(log: dict) -> tuple[bytes, str]:
     """PDF — reportlab, 한글 폰트(맑은고딕) 자동, 메모리 전용."""
     return export_pdf(log)

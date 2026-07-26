@@ -5087,3 +5087,20 @@ label.field-label {
   white-space: nowrap;
 }
 
+.report-export-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
+}
+.landing-report-bullets {
+  margin: 1rem 0 0;
+  padding-left: 1.2rem;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 40rem;
+}
+.landing-report-bullets li { margin: 0.35rem 0; }
+.landing-report-pitch { border-top: 1px solid rgba(148,163,184,0.12); }
+

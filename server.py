@@ -70,7 +70,13 @@ from modules.config import (
     resolve_llm_config,
     security_issues,
 )
-from modules.export import export_docx, export_excel, export_pdf
+from modules.export import (
+    export_docx,
+    export_excel,
+    export_pdf,
+    export_summary_excel,
+    export_summary_pdf,
+)
 from modules.generator import generate_driving_log, scrub_submission_log
 from modules import style_learn
 from modules import admin_ops
@@ -986,6 +992,48 @@ def api_logs_summary(
     except Exception as e:
         raise HTTPException(500, f"요약 생성 실패: {e}") from e
     return {"ok": True, **data}
+
+
+@app.get("/api/logs/summary/export")
+def api_logs_summary_export(
+    period: str = Query(default="month"),
+    format: str = Query(default="pdf", description="pdf | xlsx | excel"),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """업무 요약 PDF/Excel 다운로드 (워터마크 없음)."""
+    user = _token_user(authorization)
+    p = (period or "month").lower().strip()
+    if p not in ("week", "month", "custom", "주간", "월간", "7d"):
+        p = "month"
+    try:
+        summary = db.summarize_user_logs(
+            user["email"],
+            period=p,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"요약 생성 실패: {e}") from e
+
+    fmt = (format or "pdf").lower().strip()
+    try:
+        if fmt in ("xlsx", "excel", "xls"):
+            data, name = export_summary_excel(summary)
+            media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            data, name = export_summary_pdf(summary)
+            media = "application/pdf"
+    except Exception as e:
+        raise HTTPException(500, f"내보내기 실패: {e}") from e
+
+    from urllib.parse import quote
+
+    headers = {
+        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"
+    }
+    return Response(content=data, media_type=media, headers=headers)
 
 
 @app.get("/api/logs/{log_id}")
