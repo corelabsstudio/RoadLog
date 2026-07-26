@@ -225,8 +225,11 @@ COLORS = {
 }
 
 # ── 요금제 (PLG 정상가) ──
-# Pro 월: 사비 결제해도 부담 적은 구간 / 연: 월 환산 할인으로 선결제 유도
-FREE_MONTHLY_LIMIT = 15
+# Free: 가입 후 누적 총 N회 (월 리셋 없음 · 기간 무제한). 소진 후 Pro.
+# 권장 구간 10~15회 중 전환 여유를 두고 15회.
+FREE_TOTAL_LIMIT = 15
+# 하위 호환 별칭 (옛 코드·문서)
+FREE_MONTHLY_LIMIT = FREE_TOTAL_LIMIT
 PRO_PRICE_KRW = 4900
 PRO_ANNUAL_MONTHLY_EQ_KRW = 3900
 PRO_ANNUAL_PRICE_KRW = PRO_ANNUAL_MONTHLY_EQ_KRW * 12  # 46,800

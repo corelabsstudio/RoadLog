@@ -50,6 +50,7 @@ from modules.config import (
     ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
     ENTERPRISE_SEAT_PRICE_KRW,
     FREE_MONTHLY_LIMIT,
+    FREE_TOTAL_LIMIT,
     MAIL_ORDER_REG_NO,
     COST_MODE,
     OPENAI_API_KEY,
@@ -345,7 +346,8 @@ def meta():
         "studio_en": STUDIO_NAME_EN,
         "contact_email": CONTACT_EMAIL,
         "contact_form_url": CONTACT_FORM_URL or "",
-        "free_limit": FREE_MONTHLY_LIMIT,
+        "free_limit": FREE_TOTAL_LIMIT,
+        "free_limit_period": "lifetime",  # monthly 아님 · 가입 후 누적
         "pro_price": int(billing.get("pro_price_krw") or PRO_PRICE_KRW),
         "pro_annual_price": int(
             billing.get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW
@@ -587,10 +589,11 @@ def _issue_session(user: dict, message: str) -> dict:
     token = secrets.token_urlsafe(32)
     _sessions[token] = user
     _persist_sessions()
-    used = db.get_usage(user["email"])
-    limit = FREE_MONTHLY_LIMIT
+    used = db.get_usage_lifetime(user["email"])
+    limit = FREE_TOTAL_LIMIT
+    plan = (user.get("plan") or user.get("plan_type") or "free").lower()
     unlimited = (
-        user.get("plan") == "pro"
+        plan in ("pro", "enterprise")
         or user.get("is_admin")
         or user.get("is_vip")
     )
@@ -601,6 +604,7 @@ def _issue_session(user: dict, message: str) -> dict:
         "usage": used,
         "limit": limit,
         "unlimited": unlimited,
+        "free_limit_period": "lifetime",
         "message": message,
     }
 
@@ -801,22 +805,24 @@ def login(body: AuthBody, request: Request):
 @app.get("/api/me")
 def me(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
-    used = db.get_usage(user["email"])
+    used = db.get_usage_lifetime(user["email"])
     settings = db.load_settings(user["email"])
+    plan = (user.get("plan") or user.get("plan_type") or "free").lower()
     unlimited = (
-        user.get("plan") == "pro"
+        plan in ("pro", "enterprise")
         or user.get("is_admin")
         or user.get("is_vip")
     )
     return {
         "user": user,
         "usage": used,
-        "limit": FREE_MONTHLY_LIMIT,
+        "limit": FREE_TOTAL_LIMIT,
         "settings": settings,
         "unlimited": unlimited,
+        "free_limit_period": "lifetime",
         "remain": None
         if unlimited
-        else max(0, FREE_MONTHLY_LIMIT - used),
+        else max(0, FREE_TOTAL_LIMIT - used),
     }
 
 
@@ -856,14 +862,19 @@ def generate(
         window_sec=GENERATE_WINDOW,
         what="일지 생성",
     )
-    plan = user.get("plan") or "free"
-    used = db.get_usage(user["email"])
-    unlimited = plan == "pro" or user.get("is_admin") or user.get("is_vip")
+    plan = (user.get("plan") or user.get("plan_type") or "free").lower()
+    used = db.get_usage_lifetime(user["email"])
+    unlimited = (
+        plan in ("pro", "enterprise")
+        or user.get("is_admin")
+        or user.get("is_vip")
+    )
 
-    if not unlimited and used >= FREE_MONTHLY_LIMIT:
+    if not unlimited and used >= FREE_TOTAL_LIMIT:
         raise HTTPException(
             403,
-            f"이번 달 Free 한도({FREE_MONTHLY_LIMIT}회)를 모두 사용했습니다. Pro로 업그레이드해 주세요.",
+            f"무료 체험 한도({FREE_TOTAL_LIMIT}회)를 모두 사용했습니다. "
+            "Pro로 업그레이드하면 무제한 이용할 수 있습니다.",
         )
 
     settings = body.settings or db.load_settings(user["email"])
@@ -926,10 +937,14 @@ def generate(
         except Exception as e:
             print(f"[RoadLog] auto-save log failed: {e}", flush=True)
 
+    # 생성 실패·빈 결과면 증가 없음 → 누적 재조회
+    if not (log and has_content):
+        used = db.get_usage_lifetime(user["email"])
     return {
         **result,
         "usage": used,
-        "limit": FREE_MONTHLY_LIMIT,
+        "limit": FREE_TOTAL_LIMIT,
+        "free_limit_period": "lifetime",
         "plan": plan,
         "saved": saved,
     }

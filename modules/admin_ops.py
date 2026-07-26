@@ -581,6 +581,14 @@ def usage_dashboard(month: str | None = None) -> dict[str, Any]:
             if used > 0:
                 free_users_with_use += 1
 
+        # Free 한도는 가입 후 누적. 유료/관리자 통계 행은 월 사용량 유지.
+        display_used = used
+        if tier == "free":
+            try:
+                display_used = int(db.get_usage_lifetime(em) or 0)
+            except Exception:
+                display_used = used
+
         rows.append(
             {
                 "email": em,
@@ -589,11 +597,12 @@ def usage_dashboard(month: str | None = None) -> dict[str, Any]:
                 "tier": tier,
                 "is_admin": is_admin,
                 "is_vip": vip,
-                "usage": used,
+                "usage": display_used,
+                "usage_month": used,
                 "limit": None if unlimited else FREE_MONTHLY_LIMIT,
                 "remaining": None
                 if unlimited
-                else max(0, FREE_MONTHLY_LIMIT - used),
+                else max(0, FREE_MONTHLY_LIMIT - display_used),
             }
         )
 

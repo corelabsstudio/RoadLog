@@ -343,7 +343,7 @@ def render_pricing() -> None:
   <span class="uil-badge uil-badge-free">Free</span>
   <h3 style="margin:0.6rem 0;">₩0 / 월</h3>
   <ul style="color:#6B7280;line-height:1.75;font-size:0.92rem;">
-    <li>월 {FREE_MONTHLY_LIMIT}회 생성</li>
+    <li>가입 후 총 {FREE_MONTHLY_LIMIT}회 생성</li>
     <li>Excel · PDF · DOCX 클린 다운로드</li>
     <li>워터마크 없음</li>
     <li>개인 설정 저장</li>

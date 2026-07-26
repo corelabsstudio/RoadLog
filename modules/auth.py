@@ -141,10 +141,11 @@ def refresh_user_plan() -> None:
 
 
 def get_monthly_usage() -> int:
+    """Free 한도용 누적 사용량 (월 리셋 없음). 함수명 호환 유지."""
     u = current_user()
     if not u:
         return 0
-    return db.get_usage(u["email"])
+    return db.get_usage_lifetime(u["email"])
 
 
 def can_generate() -> tuple[bool, str]:
@@ -156,7 +157,7 @@ def can_generate() -> tuple[bool, str]:
     if used >= FREE_MONTHLY_LIMIT:
         return (
             False,
-            f"이번 달 Free 한도({FREE_MONTHLY_LIMIT}회)를 모두 사용했습니다. Pro로 업그레이드해 주세요.",
+            f"무료 체험 한도({FREE_MONTHLY_LIMIT}회)를 모두 사용했습니다. Pro로 업그레이드해 주세요.",
         )
     return True, "ok"
 

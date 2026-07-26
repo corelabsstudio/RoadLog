@@ -436,11 +436,13 @@ def _safe_filename(s: str) -> str:
     return "".join(c if c.isalnum() or c in "._-@" else "_" for c in s)
 
 
-# ── 월간 사용량 (매월 1일 자동 리셋 구조) ─────────────
+# ── 사용량 ────────────────────────────────────────────
+# 월별 키는 관리자 통계용으로 유지.
+# Free 한도는 get_usage_lifetime() 누적 총합 (가입 후 리셋 없음).
 
 
 def get_usage(email: str, month: str | None = None) -> int:
-    """해당 월 생성 횟수. month 미지정 시 이번 달."""
+    """해당 월 생성 횟수. month 미지정 시 이번 달. (통계용)"""
     email = email.strip().lower()
     month = month or _month_key()
 
@@ -462,6 +464,43 @@ def get_usage(email: str, month: str | None = None) -> int:
 
     usage = _read_json(USAGE_JSON, {})
     return int(usage.get(email, {}).get(month, 0))
+
+
+def get_usage_lifetime(email: str) -> int:
+    """가입 후 누적 생성 횟수 (Free 한도 판정용 · 월 리셋 없음)."""
+    email = (email or "").strip().lower()
+    if not email:
+        return 0
+
+    if _sb.enabled:
+        try:
+            res = (
+                _sb.client.table("usage")
+                .select("count")
+                .eq("email", email)
+                .execute()
+            )
+            total = 0
+            for row in res.data or []:
+                total += int(row.get("count") or 0)
+            return total
+        except Exception:
+            pass
+
+    usage = _read_json(USAGE_JSON, {})
+    months = usage.get(email) or {}
+    if not isinstance(months, dict):
+        return 0
+    total = 0
+    for k, v in months.items():
+        # 예약 키 제외
+        if str(k).startswith("_"):
+            continue
+        try:
+            total += int(v or 0)
+        except (TypeError, ValueError):
+            continue
+    return total
 
 
 def get_all_usage_map(month: str | None = None) -> dict[str, int]:
@@ -498,7 +537,10 @@ def get_all_usage_map(month: str | None = None) -> dict[str, int]:
 
 
 def increment_usage(email: str, amount: int = 1) -> int:
-    """사용량 +1 후 현재 값 반환. 월 키 기준으로 분리 → 매월 1일 자연 리셋."""
+    """
+    사용량 +amount.
+    월별 카운터는 통계용으로 유지하고, 반환값은 누적 총합(lifetime).
+    """
     email = email.strip().lower()
     month = _month_key()
 
@@ -526,7 +568,7 @@ def increment_usage(email: str, amount: int = 1) -> int:
                         "updated_at": _now_iso(),
                     }
                 ).execute()
-            return new_val
+            return get_usage_lifetime(email)
         except Exception:
             pass
 
@@ -534,7 +576,7 @@ def increment_usage(email: str, amount: int = 1) -> int:
     usage.setdefault(email, {})
     usage[email][month] = int(usage[email].get(month, 0)) + amount
     _write_json(USAGE_JSON, usage)
-    return usage[email][month]
+    return get_usage_lifetime(email)
 
 
 # ── 결제 / 수익 (관리자 대시보드) ─────────────────────

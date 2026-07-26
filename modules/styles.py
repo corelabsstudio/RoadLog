@@ -1268,7 +1268,7 @@ def render_landing_hero() -> None:
         p1, p2, p3, p4 = st.columns(4)
         p1.markdown("✓ **Excel · PDF · DOCX**")
         p2.markdown("✓ **점심시간 자동 제외**")
-        p3.markdown(f"✓ **Free 월 {FREE_MONTHLY_LIMIT}회**")
+        p3.markdown(f"✓ **Free 총 {FREE_MONTHLY_LIMIT}회** (가입 후)")
         p4.markdown("✓ **업무용 격식 문체**")
 
 
@@ -1361,7 +1361,7 @@ def render_usage_bar(used: int, limit: int, is_pro: bool) -> None:
 <div class="uil-usage">
   <div style="display:flex;justify-content:space-between;align-items:center;">
     <span><span class="uil-badge uil-badge-free">Free</span>
-    &nbsp; 이번 달 <strong style="color:#0B1220;">{used}/{limit}</strong>회</span>
+    &nbsp; 가입 후 <strong style="color:#0B1220;">{used}/{limit}</strong>회</span>
     <span style="color:#94A3B8;font-size:0.82rem;">잔여 {remain}회</span>
   </div>
   <div class="uil-usage-bar">
@@ -1396,7 +1396,7 @@ def render_pricing_cards(payment_url: str, free_limit: int = FREE_MONTHLY_LIMIT)
     <span class="uil-badge uil-badge-free">Free</span>
     <h3>₩0 <small>/ 월</small></h3>
     <ul>
-      <li>월 {free_limit}회 생성</li>
+      <li>가입 후 총 {free_limit}회 생성</li>
       <li>Excel · PDF · DOCX 클린 다운로드</li>
       <li>워터마크 없음</li>
       <li>개인 설정 저장</li>
@@ -1469,7 +1469,7 @@ def render_login_nudge() -> None:
   <div style="font-size:1.25rem;">🔐</div>
   <div>
     <strong>왼쪽에서 로그인하면 바로 생성할 수 있어요</strong><br/>
-    <span>Free 요금제는 월 {FREE_MONTHLY_LIMIT}회 · 가입 1분이면 충분합니다</span>
+    <span>Free는 가입 후 총 {FREE_MONTHLY_LIMIT}회 · 소진 시 Pro</span>
   </div>
 </div>
         """,
