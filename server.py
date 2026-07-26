@@ -1090,7 +1090,7 @@ def export(body: ExportBody, authorization: str | None = Header(default=None)):
     fmt = (body.format or "").lower().strip()
     clean_log = scrub_submission_log(body.log or {})
     try:
-        if fmt == "excel":
+        if fmt in ("excel", "xlsx", "xls"):
             data, name = export_excel(clean_log)
             media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         elif fmt == "pdf":
@@ -1100,7 +1100,7 @@ def export(body: ExportBody, authorization: str | None = Header(default=None)):
             data, name = export_docx(clean_log)
             media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         else:
-            raise HTTPException(400, "format은 excel | pdf | docx 중 하나여야 합니다.")
+            raise HTTPException(400, "format은 excel | xlsx | pdf | docx 중 하나여야 합니다.")
     except HTTPException:
         raise
     except Exception as e:
