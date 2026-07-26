@@ -4968,3 +4968,122 @@ label.field-label {
 .admin-bar-row {
   font-size: max(0.88rem, 14px) !important;
 }
+
+/* ── 업무 요약 리포트 ── */
+.report-period-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: space-between;
+}
+.report-period-bar .pro-billing-toggle {
+  margin: 0;
+  min-width: min(100%, 18rem);
+}
+.report-range {
+  margin: 0.85rem 0 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+.report-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+@media (min-width: 720px) {
+  .report-metrics {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.report-metric {
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 14px;
+  padding: 1rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.report-metric .rm-label {
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+.report-metric .rm-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.report-metric .rm-unit {
+  font-size: 0.8rem;
+  color: #5eead4;
+}
+.report-top-places {
+  margin: 0;
+  padding: 0 0 0 1.2rem;
+  color: #e2e8f0;
+}
+.report-top-places li {
+  margin: 0.45rem 0;
+  line-height: 1.45;
+}
+.report-top-places .tp-count {
+  color: #94a3b8;
+  font-size: 0.88rem;
+  margin-left: 0.35rem;
+}
+.report-empty {
+  color: var(--muted);
+  font-size: 0.9rem;
+  list-style: none;
+  margin-left: -1.2rem;
+}
+.report-text {
+  margin: 0.5rem 0 0;
+  padding: 1rem 1.05rem;
+  border-radius: 12px;
+  background: #0b1220;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  color: #cbd5e1;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 22rem;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.report-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.report-log-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  font-size: 0.88rem;
+}
+.report-log-item strong {
+  color: #e2e8f0;
+  font-weight: 700;
+}
+.report-log-item .rl-meta {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+.report-log-item .rl-km {
+  color: #5eead4;
+  font-weight: 700;
+  white-space: nowrap;
+}
+

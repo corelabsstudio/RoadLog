@@ -961,6 +961,33 @@ def api_list_logs(
     return {"ok": True, "items": items, "count": len(items)}
 
 
+@app.get("/api/logs/summary")
+def api_logs_summary(
+    period: str = Query(default="month", description="week | month | custom"),
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    authorization: str | None = Header(default=None),
+):
+    """
+    주간/월간 업무 요약.
+    총 km · 운행/외근 건수 · 방문 Top3 · 복붙용 report_text
+    """
+    user = _token_user(authorization)
+    p = (period or "month").lower().strip()
+    if p not in ("week", "month", "custom", "주간", "월간", "7d"):
+        p = "month"
+    try:
+        data = db.summarize_user_logs(
+            user["email"],
+            period=p,
+            date_from=date_from,
+            date_to=date_to,
+        )
+    except Exception as e:
+        raise HTTPException(500, f"요약 생성 실패: {e}") from e
+    return {"ok": True, **data}
+
+
 @app.get("/api/logs/{log_id}")
 def api_get_log(log_id: str, authorization: str | None = Header(default=None)):
     user = _token_user(authorization)

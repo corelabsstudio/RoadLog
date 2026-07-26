@@ -881,3 +881,204 @@ def delete_user_log(email: str, log_id: str) -> bool:
         return False
     _write_json(_logs_path(email), new_items)
     return True
+
+
+def _parse_log_date(s: str) -> datetime | None:
+    s = (s or "").strip()[:10]
+    if not s:
+        return None
+    try:
+        return datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+
+def _period_range(
+    period: str = "month",
+    *,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    now: datetime | None = None,
+) -> tuple[str, str, str]:
+    """반환: (period, date_from YYYY-MM-DD, date_to YYYY-MM-DD) inclusive."""
+    now = now or datetime.now()
+    today = now.date()
+    p = (period or "month").lower().strip()
+    if date_from and date_to:
+        return "custom", date_from[:10], date_to[:10]
+    if p in ("week", "주간", "7d"):
+        start = today.fromordinal(today.toordinal() - 6)
+        return "week", start.isoformat(), today.isoformat()
+    # month default
+    start = today.replace(day=1)
+    return "month", start.isoformat(), today.isoformat()
+
+
+def _log_distance_km(log: dict[str, Any]) -> float:
+    try:
+        td = log.get("total_distance_km")
+        if td is not None and str(td).strip() != "":
+            return max(0.0, float(td))
+    except (TypeError, ValueError):
+        pass
+    total = 0.0
+    for t in log.get("trips") or []:
+        if not isinstance(t, dict):
+            continue
+        try:
+            total += max(0.0, float(t.get("distance_km") or 0))
+        except (TypeError, ValueError):
+            continue
+    return round(total, 1)
+
+
+def _places_from_log(log: dict[str, Any]) -> list[str]:
+    places: list[str] = []
+    for v in log.get("visits") or []:
+        if isinstance(v, dict):
+            p = str(v.get("place") or v.get("to") or "").strip()
+            if p:
+                places.append(p)
+    for t in log.get("trips") or []:
+        if not isinstance(t, dict):
+            continue
+        for key in ("to", "from"):
+            p = str(t.get(key) or "").strip()
+            if p and p not in ("본사", "회사", "차고지"):
+                places.append(p)
+    return places
+
+
+def _normalize_place(name: str) -> str:
+    s = " ".join(str(name or "").split())
+    if len(s) > 40:
+        s = s[:40].rstrip() + "…"
+    return s
+
+
+def summarize_user_logs(
+    email: str,
+    *,
+    period: str = "month",
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict[str, Any]:
+    """
+    저장된 일지 집계.
+    - 총 운행거리, 운행/외근 건수, 방문 Top3, 일별 건수
+    - report_text: 복붙·캡처 제출용 텍스트
+    """
+    period_key, d_from, d_to = _period_range(
+        period, date_from=date_from, date_to=date_to
+    )
+    items = _load_user_logs_raw(email)
+    filtered: list[dict[str, Any]] = []
+    for it in items:
+        d = str(it.get("date") or "")[:10]
+        if not d:
+            continue
+        if d < d_from or d > d_to:
+            continue
+        filtered.append(it)
+
+    total_km = 0.0
+    driving_count = 0
+    field_count = 0
+    place_counts: dict[str, int] = {}
+    by_day: dict[str, int] = {}
+    log_rows: list[dict[str, Any]] = []
+
+    for it in filtered:
+        body = it.get("log") if isinstance(it.get("log"), dict) else {}
+        rtype = (it.get("report_type") or body.get("report_type") or "driving").lower()
+        if rtype in ("field", "field_visit", "outing", "외근"):
+            rtype = "field"
+            field_count += 1
+        else:
+            rtype = "driving"
+            driving_count += 1
+
+        km = _log_distance_km(body) if rtype == "driving" else 0.0
+        # 외근에 거리가 있으면 합산
+        if rtype == "field":
+            km = _log_distance_km(body)
+        total_km += km
+
+        d = str(it.get("date") or "")[:10]
+        by_day[d] = by_day.get(d, 0) + 1
+
+        for p in _places_from_log(body):
+            key = _normalize_place(p)
+            if key:
+                place_counts[key] = place_counts.get(key, 0) + 1
+
+        log_rows.append(
+            {
+                "id": it.get("id"),
+                "date": d,
+                "report_type": rtype,
+                "title": it.get("title") or "",
+                "summary": it.get("summary") or _summary_from_log(body),
+                "distance_km": km,
+            }
+        )
+
+    top_places = sorted(
+        [{"place": k, "count": v} for k, v in place_counts.items()],
+        key=lambda x: (-x["count"], x["place"]),
+    )[:3]
+
+    day_series = [
+        {"date": d, "count": by_day[d]}
+        for d in sorted(by_day.keys())
+    ]
+    log_rows.sort(key=lambda x: x.get("date") or "", reverse=True)
+
+    total_logs = driving_count + field_count
+    total_km_r = round(total_km, 1)
+    period_label = {
+        "week": "최근 7일",
+        "month": "이번 달",
+        "custom": f"{d_from} ~ {d_to}",
+    }.get(period_key, period_key)
+
+    lines = [
+        f"[로드로그 업무 요약] {period_label}",
+        f"기간: {d_from} ~ {d_to}",
+        f"총 일지: {total_logs}건 (운행 {driving_count} · 외근 {field_count})",
+        f"총 운행거리: {total_km_r} km",
+    ]
+    if top_places:
+        lines.append("주요 방문지 Top 3:")
+        for i, tp in enumerate(top_places, 1):
+            lines.append(f"  {i}. {tp['place']} ({tp['count']}회)")
+    else:
+        lines.append("주요 방문지: (기록 없음)")
+    if log_rows:
+        lines.append("")
+        lines.append("일지 목록:")
+        for row in log_rows[:20]:
+            kind = "외근" if row["report_type"] == "field" else "운행"
+            dist = f" · {row['distance_km']}km" if row.get("distance_km") else ""
+            lines.append(
+                f"  · {row['date']} [{kind}] {row.get('summary') or row.get('title') or ''}{dist}"
+            )
+        if len(log_rows) > 20:
+            lines.append(f"  … 외 {len(log_rows) - 20}건")
+    lines.append("")
+    lines.append("— RoadLog · https://roadlog.co.kr")
+
+    return {
+        "period": period_key,
+        "period_label": period_label,
+        "date_from": d_from,
+        "date_to": d_to,
+        "total_logs": total_logs,
+        "driving_count": driving_count,
+        "field_count": field_count,
+        "total_distance_km": total_km_r,
+        "top_places": top_places,
+        "by_day": day_series,
+        "logs": log_rows[:50],
+        "report_text": "\n".join(lines),
+    }

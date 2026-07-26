@@ -50,6 +50,8 @@
     proBillingPeriod: "monthly",
     /** Enterprise 결제 주기: monthly | annual */
     entBillingPeriod: "monthly",
+    /** 업무 요약 기간: week | month */
+    reportPeriod: "month",
     /** 공개 랜딩 후기 캐시 */
     publicReviews: null,
   };
@@ -858,6 +860,8 @@
     stamp: "view-create", // 근무 중 → 퀵 스탬프
     report: "view-create", // 퇴근 후 → 일지 정리
     pricing: "view-pricing",
+    reports: "view-reports",
+    summary: "view-reports",
     "pro-claim": "view-pro-claim",
     claim: "view-pro-claim",
     style: "view-style",
@@ -881,6 +885,8 @@
     "privacy",
     "create",
     "style",
+    "reports",
+    "summary",
     "admin",
     "features",
     "demo",
@@ -1065,6 +1071,9 @@
     }
     if (name === "style") loadStyleStatus({ promptAuth: false });
     if (name === "admin") loadAdminDashboard({ promptAuth: false });
+    if (name === "reports" || name === "summary") {
+      loadReportsSummary();
+    }
     if (name === "create" || name === "stamp" || name === "report") {
       setReportMode(state.reportMode || "driving");
       prefillVehicleFromSettings();
@@ -1763,6 +1772,7 @@
     const navSettings = $("#navSettings");
     const navCreate = $("#navCreate");
     const navStyle = $("#navStyle");
+    const navReports = $("#navReports");
     const navAdmin = $("#navAdmin");
     const eu = getEffectiveUser();
     // 설정(근무 시간)은 로그인 없이 사용 가능
@@ -1773,9 +1783,11 @@
       if (adminOnlyUi) {
         navCreate?.classList.add("hidden");
         navStyle?.classList.add("hidden");
+        navReports?.classList.add("hidden");
       } else {
         navCreate?.classList.remove("hidden");
         navStyle?.classList.remove("hidden");
+        navReports?.classList.remove("hidden");
       }
       // 관리자 메뉴: 실제 관리자 + 관리자 보기 모드일 때만
       if (adminOnlyUi) navAdmin?.classList.remove("hidden");
@@ -1783,6 +1795,7 @@
     } else {
       navCreate?.classList.remove("hidden");
       navStyle?.classList.add("hidden");
+      navReports?.classList.add("hidden");
       navAdmin?.classList.add("hidden");
     }
     // 로그인·시작 버튼 한글 라벨
@@ -5934,6 +5947,182 @@
     );
   }
 
+  // ── 업무 요약 (주간/월간) ─────────────────────────────
+  async function loadReportsSummary() {
+    const period =
+      state.reportPeriod === "week" ? "week" : "month";
+    state.reportPeriod = period;
+    $$("[data-report-period]").forEach((el) => {
+      el.classList.toggle("is-active", el.dataset.reportPeriod === period);
+    });
+
+    const rangeEl = $("#reportRangeLabel");
+    const textBox = $("#reportTextBox");
+    const listEl = $("#reportLogList");
+    const alertEl = $("#reportAlert");
+
+    if (!state.token) {
+      if (rangeEl) rangeEl.textContent = "기간: 로그인 후 확인할 수 있습니다";
+      if (textBox)
+        textBox.textContent =
+          "로그인한 뒤 저장된 일지를 모아 주간·월간 요약을 만듭니다.";
+      if (listEl)
+        listEl.innerHTML =
+          '<p class="report-empty">로그인하면 기간 내 일지가 표시됩니다.</p>';
+      setReportMetricsEmpty();
+      if (alertEl) {
+        alertEl.classList.remove("hidden");
+        alertEl.className = "form-alert info";
+        alertEl.textContent = "업무 요약은 로그인 후 이용할 수 있습니다.";
+      }
+      return;
+    }
+
+    if (alertEl) {
+      alertEl.classList.add("hidden");
+      alertEl.textContent = "";
+    }
+    if (textBox) textBox.textContent = "불러오는 중…";
+    try {
+      const data = await api(
+        `/api/logs/summary?period=${encodeURIComponent(period)}`
+      );
+      renderReportsSummary(data);
+    } catch (err) {
+      if (textBox)
+        textBox.textContent = err.message || "요약을 불러오지 못했습니다.";
+      if (alertEl) {
+        alertEl.classList.remove("hidden");
+        alertEl.className = "form-alert error";
+        alertEl.textContent = err.message || "요약 실패";
+      }
+      setReportMetricsEmpty();
+    }
+  }
+
+  function setReportMetricsEmpty() {
+    if ($("#rmKm")) $("#rmKm").textContent = "—";
+    if ($("#rmTotal")) $("#rmTotal").textContent = "—";
+    if ($("#rmField")) $("#rmField").textContent = "—";
+    if ($("#rmDriving")) $("#rmDriving").textContent = "—";
+    if ($("#rmTotalSub")) $("#rmTotalSub").textContent = "운행 · 외근";
+    const top = $("#reportTopPlaces");
+    if (top)
+      top.innerHTML =
+        '<li class="report-empty">일지를 생성·저장하면 여기에 표시됩니다.</li>';
+  }
+
+  function renderReportsSummary(data) {
+    if (!data) return;
+    const rangeEl = $("#reportRangeLabel");
+    if (rangeEl) {
+      rangeEl.textContent = `기간: ${data.date_from || "—"} ~ ${data.date_to || "—"} · ${
+        data.period_label || ""
+      }`;
+    }
+    if ($("#rmKm"))
+      $("#rmKm").textContent = formatNum(data.total_distance_km ?? 0);
+    if ($("#rmTotal")) $("#rmTotal").textContent = String(data.total_logs ?? 0);
+    if ($("#rmField")) $("#rmField").textContent = String(data.field_count ?? 0);
+    if ($("#rmDriving"))
+      $("#rmDriving").textContent = String(data.driving_count ?? 0);
+    if ($("#rmTotalSub")) {
+      $("#rmTotalSub").textContent = `운행 ${data.driving_count ?? 0} · 외근 ${
+        data.field_count ?? 0
+      }`;
+    }
+
+    const top = $("#reportTopPlaces");
+    const places = data.top_places || [];
+    if (top) {
+      if (!places.length) {
+        top.innerHTML =
+          '<li class="report-empty">이 기간에 방문 기록이 없습니다.</li>';
+      } else {
+        top.innerHTML = places
+          .map(
+            (p, i) =>
+              `<li><strong>${i + 1}. ${escapeHtml(p.place || "")}</strong>` +
+              `<span class="tp-count">${escapeHtml(String(p.count || 0))}회</span></li>`
+          )
+          .join("");
+      }
+    }
+
+    const textBox = $("#reportTextBox");
+    if (textBox) textBox.textContent = data.report_text || "(요약 없음)";
+
+    const listEl = $("#reportLogList");
+    const logs = data.logs || [];
+    if (listEl) {
+      if (!logs.length) {
+        listEl.innerHTML =
+          '<p class="report-empty">이 기간에 저장된 일지가 없습니다. 일지를 생성하면 자동으로 쌓입니다.</p>';
+      } else {
+        listEl.innerHTML = logs
+          .map((row) => {
+            const kind = row.report_type === "field" ? "외근" : "운행";
+            const km =
+              row.distance_km && Number(row.distance_km) > 0
+                ? `${formatNum(row.distance_km)} km`
+                : "";
+            return `<div class="report-log-item">
+              <div>
+                <strong>${escapeHtml(row.date || "—")} · ${escapeHtml(kind)}</strong>
+                <div class="rl-meta">${escapeHtml(row.summary || row.title || "")}</div>
+              </div>
+              ${km ? `<span class="rl-km">${escapeHtml(km)}</span>` : ""}
+            </div>`;
+          })
+          .join("");
+      }
+    }
+  }
+
+  function formatNum(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x)) return "0";
+    return x.toLocaleString("ko-KR", { maximumFractionDigits: 1 });
+  }
+
+  function bindReports() {
+    document.body.addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-report-period]");
+      if (chip && chip.closest("#reportPeriodToggle")) {
+        e.preventDefault();
+        state.reportPeriod =
+          chip.dataset.reportPeriod === "week" ? "week" : "month";
+        loadReportsSummary();
+        return;
+      }
+    });
+    $("#btnReportRefresh")?.addEventListener("click", () => loadReportsSummary());
+    $("#btnReportCopy")?.addEventListener("click", async () => {
+      const text = $("#reportTextBox")?.textContent || "";
+      if (!text.trim() || text.includes("불러오는 중") || text.includes("로그인")) {
+        toast("복사할 요약이 없습니다");
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        toast("요약 텍스트를 복사했습니다");
+      } catch {
+        // fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          toast("요약 텍스트를 복사했습니다");
+        } catch {
+          toast("복사에 실패했습니다");
+        }
+        ta.remove();
+      }
+    });
+  }
+
   function bindProClaim() {
     const form = $("#proClaimForm");
     if (!form) return;
@@ -6013,6 +6202,7 @@
     bindAdminViewAs();
     bindPricing();
     bindProClaim();
+    bindReports();
     bindFeedbackForm();
     bindDemoPlayer();
     bindPwaInstall();

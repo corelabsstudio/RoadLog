@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260727-free-lifetime" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-reports-v1" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -133,6 +133,7 @@
       <nav class="nav-links" id="navLinks">
         <a href="#home" data-nav="home" class="active" data-i18n="nav.home">홈</a>
         <a href="#create" data-nav="create" id="navCreate" data-i18n="nav.create">일지 작성</a>
+        <a href="#reports" data-nav="reports" id="navReports" class="hidden">업무 요약</a>
         <a href="#pricing" data-nav="pricing" data-i18n="nav.pricing">요금제</a>
         <a href="#contact" data-nav="contact" data-i18n="nav.contact">문의</a>
         <a href="#style" data-nav="style" id="navStyle" class="hidden" data-i18n="nav.style">회사 서식</a>
@@ -333,10 +334,21 @@
             <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-report-mode="driving">운행일지</button>
             <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-report-mode="field">외근·출장</button>
             <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">퀵 스탬프</button>
+            <button type="button" class="btn btn-ghost btn-lg" data-nav="reports">업무 요약</button>
             <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
           </div>
 
           <div class="app-home-grid">
+            <button type="button" class="app-tile" data-nav="reports">
+              <span class="app-tile-watermark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <span class="app-tile-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16M8 16l3-4 3 2 4-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+              <strong>업무 요약</strong>
+              <span class="app-tile-desc">주간·월간 km · 외근 · 방문 Top3</span>
+            </button>
             <button type="button" class="app-tile" data-nav="create" data-report-mode="driving">
               <span class="app-tile-watermark" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.5"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -430,6 +442,81 @@
     </section>
 
     <!-- CREATE -->
+    <!-- REPORTS: 주간/월간 업무 요약 -->
+    <section class="view" id="view-reports">
+      <div class="container" style="max-width:52rem">
+        <div class="section-head" style="text-align:left;margin-bottom:1rem">
+          <div class="eyebrow">Reports</div>
+          <h2>업무 요약</h2>
+          <p style="margin:0.4rem 0 0;max-width:48ch;color:var(--muted)">
+            저장된 일지를 모아 총 운행거리·외근 건수·주요 방문지를 한눈에 봅니다.
+            캡처하거나 텍스트로 복사해 월말 보고에 쓸 수 있습니다.
+          </p>
+        </div>
+
+        <div class="panel" style="padding:1.15rem 1.25rem;margin-bottom:1rem">
+          <div class="report-period-bar">
+            <div class="pro-billing-toggle" id="reportPeriodToggle" role="group" aria-label="요약 기간">
+              <button type="button" class="billing-chip is-active" data-report-period="week" id="chipReportWeek">최근 7일</button>
+              <button type="button" class="billing-chip" data-report-period="month" id="chipReportMonth">이번 달</button>
+            </div>
+            <button type="button" class="btn btn-ghost" id="btnReportRefresh">새로고침</button>
+          </div>
+          <p class="report-range" id="reportRangeLabel">기간: —</p>
+          <div id="reportAlert" class="form-alert hidden" role="status"></div>
+        </div>
+
+        <div class="report-metrics" id="reportMetrics">
+          <div class="report-metric">
+            <span class="rm-label">총 운행거리</span>
+            <strong class="rm-value" id="rmKm">—</strong>
+            <span class="rm-unit">km</span>
+          </div>
+          <div class="report-metric">
+            <span class="rm-label">총 일지</span>
+            <strong class="rm-value" id="rmTotal">—</strong>
+            <span class="rm-unit" id="rmTotalSub">운행 · 외근</span>
+          </div>
+          <div class="report-metric">
+            <span class="rm-label">외근·출장</span>
+            <strong class="rm-value" id="rmField">—</strong>
+            <span class="rm-unit">건</span>
+          </div>
+          <div class="report-metric">
+            <span class="rm-label">운행일지</span>
+            <strong class="rm-value" id="rmDriving">—</strong>
+            <span class="rm-unit">건</span>
+          </div>
+        </div>
+
+        <div class="panel" style="padding:1.15rem 1.25rem;margin-bottom:1rem">
+          <div class="panel-head" style="margin-top:0">
+            <h2>주요 방문지 Top 3</h2>
+          </div>
+          <ol class="report-top-places" id="reportTopPlaces">
+            <li class="report-empty">일지를 생성·저장하면 여기에 표시됩니다.</li>
+          </ol>
+        </div>
+
+        <div class="panel" style="padding:1.15rem 1.25rem;margin-bottom:1rem">
+          <div class="panel-head" style="margin-top:0">
+            <h2>제출용 요약 텍스트</h2>
+            <button type="button" class="btn btn-primary btn-sm" id="btnReportCopy">텍스트 복사</button>
+          </div>
+          <pre class="report-text" id="reportTextBox" aria-label="요약 텍스트">로그인한 뒤 요약을 불러옵니다.</pre>
+        </div>
+
+        <div class="panel" style="padding:1.15rem 1.25rem;margin-bottom:1.5rem">
+          <div class="panel-head" style="margin-top:0">
+            <h2>기간 내 일지</h2>
+          </div>
+          <div id="reportLogList" class="report-log-list">
+            <p class="report-empty">—</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="view" id="view-create">
       <div class="container" id="app-panel">
         <div class="section-head" style="text-align:left;margin-bottom:1rem">
@@ -1666,8 +1753,8 @@
     </button>
   </div>
 
-  <script src="/ui-sound.js?v=20260727-free-lifetime"></script>
-  <script src="/app.js?v=20260727-free-lifetime"></script>
+  <script src="/ui-sound.js?v=20260727-reports-v1"></script>
+  <script src="/app.js?v=20260727-reports-v1"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
