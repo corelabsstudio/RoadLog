@@ -61,8 +61,14 @@ def save_claim(
     name: str = "",
     note: str = "",
     plan: str = "pro",
+    billing_period: str = "monthly",
 ) -> dict[str, Any]:
     items = _read_claims()
+    period = (billing_period or "monthly").strip().lower()
+    if period in ("year", "yearly"):
+        period = "annual"
+    if period not in ("monthly", "annual"):
+        period = "monthly"
     entry = {
         "id": secrets_token(),
         "order_id": order_id.strip(),
@@ -70,6 +76,7 @@ def save_claim(
         "name": (name or "").strip(),
         "note": (note or "").strip(),
         "plan": plan or "pro",
+        "billing_period": period,
         "status": "pending",
         "created_at": _now(),
     }

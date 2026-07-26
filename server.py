@@ -41,12 +41,21 @@ from modules.config import (
     CONTACT_FORM_URL,
     DATA_DIR,
     DEFAULT_USER_SETTINGS,
+    ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW,
+    ENTERPRISE_ANNUAL_PAYMENT_URL,
+    ENTERPRISE_ANNUAL_PRICE_KRW,
+    ENTERPRISE_BASE_SEATS,
     ENTERPRISE_PAYMENT_URL,
     ENTERPRISE_PRICE_KRW,
+    ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
+    ENTERPRISE_SEAT_PRICE_KRW,
     FREE_MONTHLY_LIMIT,
     MAIL_ORDER_REG_NO,
     COST_MODE,
     OPENAI_API_KEY,
+    PRO_ANNUAL_MONTHLY_EQ_KRW,
+    PRO_ANNUAL_PAYMENT_URL,
+    PRO_ANNUAL_PRICE_KRW,
     PRO_PAYMENT_URL,
     PRO_PRICE_KRW,
     STUDIO_NAME,
@@ -338,11 +347,38 @@ def meta():
         "contact_form_url": CONTACT_FORM_URL or "",
         "free_limit": FREE_MONTHLY_LIMIT,
         "pro_price": int(billing.get("pro_price_krw") or PRO_PRICE_KRW),
+        "pro_annual_price": int(
+            billing.get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW
+        ),
+        "pro_annual_monthly_eq": int(
+            billing.get("pro_annual_monthly_eq_krw") or PRO_ANNUAL_MONTHLY_EQ_KRW
+        ),
         "enterprise_price": int(
             billing.get("enterprise_price_krw") or ENTERPRISE_PRICE_KRW
         ),
+        "enterprise_annual_price": int(
+            billing.get("enterprise_annual_price_krw") or ENTERPRISE_ANNUAL_PRICE_KRW
+        ),
+        "enterprise_annual_monthly_eq": int(
+            billing.get("enterprise_annual_monthly_eq_krw")
+            or ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW
+        ),
+        "enterprise_base_seats": int(
+            billing.get("enterprise_base_seats") or ENTERPRISE_BASE_SEATS
+        ),
+        "enterprise_seat_price": int(
+            billing.get("enterprise_seat_price_krw") or ENTERPRISE_SEAT_PRICE_KRW
+        ),
+        "enterprise_seat_annual_price": int(
+            billing.get("enterprise_seat_annual_price_krw")
+            or ENTERPRISE_SEAT_ANNUAL_PRICE_KRW
+        ),
         "pro_url": PRO_PAYMENT_URL,
+        "pro_annual_url": (PRO_ANNUAL_PAYMENT_URL or PRO_PAYMENT_URL or "").strip(),
         "enterprise_url": ENTERPRISE_PAYMENT_URL,
+        "enterprise_annual_url": (
+            ENTERPRISE_ANNUAL_PAYMENT_URL or ENTERPRISE_PAYMENT_URL or ""
+        ).strip(),
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
         "cost_mode": COST_MODE,
         "free_mode": is_free_cost_mode(),
@@ -378,6 +414,7 @@ class PaymentClaimBody(BaseModel):
     name: str = ""
     note: str = ""
     plan: str = "pro"
+    billing_period: str = "monthly"  # monthly | annual
 
 
 @app.post("/api/billing/claim")
@@ -400,22 +437,29 @@ def billing_claim(body: PaymentClaimBody, request: Request):
     if not email or "@" not in email:
         raise HTTPException(400, "로드로그 가입 이메일을 올바르게 입력해 주세요.")
 
+    period = (body.billing_period or "monthly").strip().lower()
+    if period not in ("monthly", "annual", "year", "yearly"):
+        period = "monthly"
+    if period in ("year", "yearly"):
+        period = "annual"
     claim = notify_ops.save_claim(
         order_id=order_id,
         email=email,
         name=body.name or "",
         note=body.note or "",
         plan=(body.plan or "pro").strip().lower() or "pro",
+        billing_period=period,
     )
+    period_label = "연 결제" if claim.get("billing_period") == "annual" else "월 결제"
     title = "로드로그 · 결제 확인 요청"
     msg = (
-        f"plan={claim['plan']}\n"
+        f"plan={claim['plan']} ({period_label})\n"
         f"주문/결제번호: {claim['order_id']}\n"
         f"가입 이메일: {claim['email']}\n"
         f"이름: {claim.get('name') or '-'}\n"
         f"메모: {claim.get('note') or '-'}\n"
         f"시각: {claim['created_at']}\n"
-        f"→ 관리자에서 Pro 반영해 주세요."
+        f"→ 관리자에서 {claim['plan']} 반영해 주세요."
     )
     push = notify_ops.send_admin_push(title, msg, priority=5)
     return {
@@ -1061,6 +1105,13 @@ def style_activate(sample_id: str, authorization: str | None = Header(default=No
 class BillingBody(BaseModel):
     pro_price_krw: int
     enterprise_price_krw: int
+    pro_annual_price_krw: int | None = None
+    pro_annual_monthly_eq_krw: int | None = None
+    enterprise_annual_price_krw: int | None = None
+    enterprise_annual_monthly_eq_krw: int | None = None
+    enterprise_base_seats: int | None = None
+    enterprise_seat_price_krw: int | None = None
+    enterprise_seat_annual_price_krw: int | None = None
 
 
 class VipBody(BaseModel):
@@ -1194,6 +1245,13 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
             body.pro_price_krw,
             body.enterprise_price_krw,
             updated_by=admin.get("email") or "",
+            pro_annual_price=body.pro_annual_price_krw,
+            pro_annual_monthly_eq=body.pro_annual_monthly_eq_krw,
+            enterprise_annual_price=body.enterprise_annual_price_krw,
+            enterprise_annual_monthly_eq=body.enterprise_annual_monthly_eq_krw,
+            enterprise_base_seats=body.enterprise_base_seats,
+            enterprise_seat_price=body.enterprise_seat_price_krw,
+            enterprise_seat_annual_price=body.enterprise_seat_annual_price_krw,
         )
         return {"ok": True, "billing": cfg}
     except ValueError as e:

@@ -2089,6 +2089,81 @@ input[type="number"] {
   color: var(--muted);
 }
 
+.price-annual-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.82rem;
+  color: #99f6e4;
+  line-height: 1.45;
+}
+
+.price-annual-hint strong {
+  color: #ccfbf1;
+  font-weight: 700;
+}
+
+.price-annual-sub {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.price-vat {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  vertical-align: middle;
+}
+
+.price-vat-inline {
+  display: inline;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fcd34d;
+}
+
+.pro-billing-toggle {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.85rem 0 0.35rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.billing-chip {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.5rem 0.4rem;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.billing-chip:hover {
+  color: #e2e8f0;
+}
+
+.billing-chip.is-active {
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.22), rgba(56, 189, 248, 0.16));
+  color: #ecfeff;
+  box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
+}
+
 .price-seat {
   margin: 0.2rem 0 0;
   font-size: 0.82rem;

@@ -224,17 +224,29 @@ COLORS = {
     "warning": "#D97706",
 }
 
-# ── 요금제 (초기 런칭가 — 사용자 확보 후 단계적 인상) ──
+# ── 요금제 (PLG 정상가) ──
+# Pro 월: 사비 결제해도 부담 적은 구간 / 연: 월 환산 할인으로 선결제 유도
 FREE_MONTHLY_LIMIT = 15
-PRO_PRICE_KRW = 2900
-ENTERPRISE_PRICE_KRW = 19900
+PRO_PRICE_KRW = 4900
+PRO_ANNUAL_MONTHLY_EQ_KRW = 3900
+PRO_ANNUAL_PRICE_KRW = PRO_ANNUAL_MONTHLY_EQ_KRW * 12  # 46,800
+# Enterprise: 월 89,000 / 연 890,000 VAT 별도 = 월×10 (2개월 무료, 약 16.7% 할인)
+# 연 상품 권장 표기: "₩890,000 (VAT 별도, 2개월 무료 혜택)"
+ENTERPRISE_PRICE_KRW = 89000
+ENTERPRISE_ANNUAL_PRICE_KRW = 890000
+ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW = ENTERPRISE_ANNUAL_PRICE_KRW // 12  # 74,166
+# 기본 포함 좌석 초과 시 추가 Seat 단가 (월 8,000 · 연 80,000 = 월×10, 2개월 무료)
 ENTERPRISE_BASE_SEATS = 5
-ENTERPRISE_SEAT_PRICE_KRW = 2000
+ENTERPRISE_SEAT_PRICE_KRW = 8000
+ENTERPRISE_SEAT_ANNUAL_PRICE_KRW = 80000
 PRO_PAYMENT_URL = _get_secret("PRO_PAYMENT_URL", "https://your-payment-link.example.com")
+# 연 결제 스마트스토어 상품 URL (비우면 월 결제 URL 사용)
+PRO_ANNUAL_PAYMENT_URL = _get_secret("PRO_ANNUAL_PAYMENT_URL", "") or ""
 ENTERPRISE_PAYMENT_URL = _get_secret(
     "ENTERPRISE_PAYMENT_URL",
     _get_secret("PRO_PAYMENT_URL", "https://your-payment-link.example.com"),
 )
+ENTERPRISE_ANNUAL_PAYMENT_URL = _get_secret("ENTERPRISE_ANNUAL_PAYMENT_URL", "") or ""
 # 결제 없이 /api/billing/upgrade 로 plan 변경 허용 여부 (로컬 데모 전용)
 # 운영/공개 배포에서는 반드시 false 유지. 관리자 화면의 수동 플랜 변경은 별도.
 ALLOW_DEMO_BILLING_UPGRADE = _get_secret("ALLOW_DEMO_BILLING_UPGRADE", "false").lower() in (

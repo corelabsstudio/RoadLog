@@ -1,7 +1,7 @@
 # RoadLog 홍보 콘텐츠 팩
 
 > 사이트: https://roadlog.co.kr  
-> 초기 런칭가: Free 월 15회 · Pro ₩2,900 · Enterprise ₩19,900(5인)  
+> 정상가(VAT 별도): Free 월 15회 · Pro 월 ₩4,900 / 연 ₩46,800 · Enterprise 월 ₩89,000 / 연 ₩890,000(2개월 무료, 5인)  
 > 사용법: 아래 문구를 복사해 카카오/블로그/커뮤니티에 붙인 뒤 링크만 확인
 
 ---
@@ -24,7 +24,7 @@ RoadLog — AI 운행·외근 일지. 한 줄 입력으로 회사 제출용 Exce
 운행일지·외근일지, 아직도 엑셀에 복붙하세요?
 
 RoadLog가 자연어 메모 → 회사 제출용 문서로 정리해 줍니다.
-Free 월 15회 · Pro 월 2,900원 · https://roadlog.co.kr
+Free 월 15회 · Pro 월 4,900원 (연 결제 시 월 3,900원) · https://roadlog.co.kr
 ```
 
 ---
@@ -38,17 +38,18 @@ Free 월 15회 · Pro 월 2,900원 · https://roadlog.co.kr
 RoadLog: 방문·거리만 적으면 AI가 격식 있는 운행/외근일지 작성
 → Excel · PDF · DOCX 바로 다운로드
 
-지금은 초기 런칭가예요.
-Free 체험 → https://roadlog.co.kr
+Free로 바로 써 보세요.
+https://roadlog.co.kr
 ```
 
 ### B. 가격 강조형
 ```
-AI 운행일지 RoadLog 런칭 중!
+AI 운행일지 RoadLog
 
 · Free: 월 15회 무료
-· Pro: 월 2,900원 (커피 한 잔)
-· 팀(Enterprise): 5인 월 19,900원
+· Pro: 월 4,900원 · 연 결제 시 월 3,900원
+· 팀(Enterprise): 5인 월 89,000원 · 연 890,000원(VAT 별도, 2개월 무료)
+· 추가 인원: 1인당 월 8,000원 · 연 80,000원 (VAT 별도)
 
 회사 양식 학습 + 제출용 문서까지.
 https://roadlog.co.kr
@@ -61,7 +62,7 @@ https://roadlog.co.kr
 https://roadlog.co.kr
 로그인 → 일지 작성 → 예시 불러오기 → AI 생성
 
-Free로 충분하고, 팀에 쓰면 Enterprise도 싸게 열어 둠.
+Free로 충분하고, 팀에 쓰면 Enterprise도 있습니다.
 피드백 주시면 바로 반영할게!
 ```
 
@@ -88,12 +89,15 @@ Free로 충분하고, 팀에 쓰면 Enterprise도 싸게 열어 둠.
 3. Excel · PDF · DOCX로 바로 다운로드
 4. (선택) 회사 서식 학습 · 외근·출장 모드
 
-## 요금 (초기 런칭가)
+## 요금
 | 플랜 | 가격 | 대상 |
 |------|------|------|
 | Free | 0원 · 월 15회 | 체험 |
-| Pro | 월 2,900원 | 개인 무제한 |
-| Enterprise | 월 19,900원(5인) | 팀·법인 |
+| Pro 월 | 월 4,900원 | 개인 무제한 |
+| Pro 연 | 연 46,800원 (월 3,900원 상당) | 선결제 할인 |
+| Enterprise 월 | 월 89,000원(기본 5인) | 팀·법인 |
+| Enterprise 연 | 연 890,000원 VAT 별도 (2개월 무료 · 월×10) | 팀·법인 선결제 권장 |
+| 추가 좌석 | 1인 월 8,000원 · 연 80,000원 | 기본 인원 초과 시 |
 
 ## 이런 분께 추천
 - 매일/매주 운행·외근 기록을 제출하는 분
@@ -114,7 +118,7 @@ Free로 충분하고, 팀에 쓰면 Enterprise도 싸게 열어 둠.
 운행일지 때문에 퇴근이 늦어지면 안 되잖아요.
 
 RoadLog = AI 운행·외근 일지
-Free 15회 · Pro 2,900원
+Free 15회 · Pro 월 4,900원 · 연 결제 할인
 https://roadlog.co.kr
 
 #운행일지 #업무자동화 #SaaS #RoadLog
@@ -125,7 +129,7 @@ https://roadlog.co.kr
 현장·영업 직군의 “제출용 일지”는 여전히 수작업이 많습니다.
 
 RoadLog는 자연어 입력을 회사 제출용 문서(Excel/PDF/DOCX)로 정리하는 AI 업무 도구입니다.
-초기 런칭가로 Free·Pro·Enterprise를 열었습니다.
+Free · Pro · Enterprise로 개인부터 팀까지 쓸 수 있습니다.
 
 관심 있는 팀/담당자분 편하게 메시지 주세요.
 https://roadlog.co.kr

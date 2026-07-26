@@ -72,7 +72,7 @@
 
   <meta
     name="description"
-    content="로드로그(RoadLog) — AI 운행·외근 일지. 메모를 회사 제출용 Excel·PDF·DOCX로 정리합니다. Free 월 15회 · Pro 월 2,900원(초기 런칭가, 문의 등록)."
+    content="로드로그(RoadLog) — AI 운행·외근 일지. 메모를 회사 제출용 Excel·PDF·DOCX로 정리합니다. Free 월 15회 · Pro 월 4,900원 · 연 결제 시 월 3,900원."
   />
   <meta
     name="keywords"
@@ -90,7 +90,7 @@
   <meta property="og:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     property="og:description"
-    content="메모를 회사 제출용 운행·외근 일지로. Free 월 15회 · Pro 월 2,900원(초기 런칭가). Excel · PDF · DOCX."
+    content="메모를 회사 제출용 운행·외근 일지로. Free 월 15회 · Pro 월 4,900원. Excel · PDF · DOCX."
   />
   <meta property="og:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
   <meta property="og:image:width" content="1200" />
@@ -102,7 +102,7 @@
   <meta name="twitter:title" content="로드로그 — AI 운행·외근 일지" />
   <meta
     name="twitter:description"
-    content="메모를 회사 제출용 일지로. Free 체험 · Pro 초기 런칭가 월 2,900원."
+    content="메모를 회사 제출용 일지로. Free 체험 · Pro 월 4,900원 · 연 결제 할인."
   />
   <meta name="twitter:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
 
@@ -116,7 +116,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260722-sound-v1" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-vat-excl" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -185,7 +185,7 @@
               </p>
               <ul class="landing-proof" aria-label="핵심 지표">
                 <li><strong>Free</strong><span data-i18n="landing.proof_1">월 15회 체험</span></li>
-                <li><strong>Pro</strong><span data-i18n="landing.proof_2">월 2,900원</span></li>
+                <li><strong>Pro</strong><span data-i18n="landing.proof_2">월 4,900원</span></li>
                 <li><strong>Export</strong><span data-i18n="landing.proof_3">Excel · PDF · DOCX</span></li>
               </ul>
               <div class="hero-cta landing-cta">
@@ -355,7 +355,7 @@
                 <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.75"/></svg>
               </span>
               <strong>외근·출장</strong>
-              <span class="app-tile-desc">방문·결과·후속을 제출용 보고서로</span>
+              <span class="app-tile-desc">스탬프·단문 → 제출용 보고서로</span>
             </button>
             <button type="button" class="app-tile" data-nav="style">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -450,14 +450,14 @@
           </button>
         </div>
 
-        <!-- 퀵 스탬프 (운행 모드) -->
-        <div class="panel quick-stamp-panel" id="quickStampPanel" data-mode-panel="driving">
+        <!-- 퀵 스탬프 (운행·외근 공통) -->
+        <div class="panel quick-stamp-panel" id="quickStampPanel">
           <div class="panel-head">
             <h2 data-i18n="create.stamp_title">퀵 스탬프</h2>
             <span class="pill">GPS · 시간</span>
           </div>
           <p class="quick-stamp-desc" data-i18n="create.stamp_desc">
-            버튼 한 번으로 현재 시각과 GPS 주소를 기록합니다. 현장 도착·출발 시 바로 찍어 두면 방문지 입력이 끝납니다.
+            버튼 한 번으로 현재 시각과 GPS 주소를 기록합니다. 현장 도착·출발 시 바로 찍어 두면 방문 입력이 끝납니다. 짧은 메모만 보완하면 AI가 제출용 문장으로 정리합니다.
           </p>
           <div class="quick-stamp-actions">
             <button class="btn btn-primary" id="btnQuickStamp" type="button" data-i18n-keep-html>
@@ -467,8 +467,9 @@
               </svg>
               <span data-i18n-text data-i18n="create.stamp_btn">지금 위치 스탬프</span>
             </button>
-            <button class="btn btn-ghost" id="btnStampsToMorning" type="button" data-i18n="create.stamp_to_am">오전 방문지에 반영</button>
-            <button class="btn btn-ghost" id="btnStampsToAfternoon" type="button" data-i18n="create.stamp_to_pm">오후 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnStampsToMorning" type="button" data-stamp-for="driving" data-i18n="create.stamp_to_am">오전 방문지에 반영</button>
+            <button class="btn btn-ghost" id="btnStampsToAfternoon" type="button" data-stamp-for="driving" data-i18n="create.stamp_to_pm">오후 방문지에 반영</button>
+            <button class="btn btn-ghost hidden" id="btnStampsToField" type="button" data-stamp-for="field" data-i18n="create.stamp_to_field">방문 내용에 반영</button>
             <button class="btn btn-ghost" id="btnClearStamps" type="button" data-i18n="create.stamp_clear">오늘 스탬프 비우기</button>
           </div>
           <ul class="quick-stamp-list" id="quickStampList" aria-live="polite">
@@ -567,7 +568,7 @@
             </div>
             <div class="full">
               <label class="field-label" for="fieldVisits" data-i18n="field.visits">오늘 방문·업무 내용</label>
-              <textarea id="fieldVisits" style="min-height:120px" placeholder="한 줄에 한 곳, 또는 자유 서술&#10;예:&#10;강남 A사 — 계약 조건 협의 / 견적 재요청&#10;판교 B사 — 데모 시연 / 다음 주 본사 방문 조율"></textarea>
+              <textarea id="fieldVisits" style="min-height:120px" placeholder="퀵 스탬프로 위치를 찍거나, 한 줄에 한 곳 단문&#10;예:&#10;[오전] 10:20 · 강남대로 · A사 계약 협의 / 견적 재요청&#10;판교 B사 — 데모 / 다음 주 본사 방문 조율"></textarea>
             </div>
             <div class="full">
               <label class="field-label" for="fieldNext" data-i18n="field.next">후속 조치 (선택)</label>
@@ -579,7 +580,7 @@
             </div>
           </div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.75rem" data-i18n="field.hint">
-            방문처·목적만 적어도 AI가 제출용 외근일지 문장으로 정리합니다.
+            스탬프·단문만 있어도 됩니다. AI가 목적·결과·후속을 제출용 외근일지로 정리합니다.
           </p>
           </div>
 
@@ -691,11 +692,11 @@
     <section class="view" id="view-pricing">
       <div class="container">
         <div class="section-head">
-          <div class="eyebrow">Pricing · Early</div>
+          <div class="eyebrow">Pricing</div>
           <h2>개인은 Pro, 팀은 Enterprise</h2>
           <p>
-            지금은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다. Free로 충분히 써 보고,
-            필요할 때만 저렴하게 올리면 됩니다. 기업은 세금계산서·좌석 확장으로 맞춰 드립니다.
+            Free로 충분히 써 보고, 필요할 때 Pro·Enterprise로 올리면 됩니다.
+            기업은 세금계산서·좌석 확장으로 맞춰 드립니다.
           </p>
         </div>
         <div class="pricing pricing-3">
@@ -714,49 +715,76 @@
             <button class="btn btn-ghost btn-block" data-nav="create" type="button">무료로 시작</button>
           </div>
           <div class="price-card">
-            <span class="badge">Pro · 런칭가</span>
+            <span class="badge">Pro</span>
             <div class="price-amount">
-              <h3>₩<span id="pricePro">2,900</span> <small>/ 월</small></h3>
+              <h3>₩<span id="pricePro">4,900</span> <small>/ 월</small></h3>
+              <p class="price-annual-hint" id="proAnnualHint">
+                연 결제 시 월 <strong>₩<span id="priceProAnnualEq">3,900</span></strong>
+                · 연 <strong>₩<span id="priceProAnnual">46,800</span></strong>
+              </p>
             </div>
-            <p class="price-desc">개인·프리랜서 무제한 · 커피 한 잔 가격</p>
+            <p class="price-desc">개인·프리랜서 무제한</p>
             <ul>
               <li>무제한 생성 · 광고 제거</li>
               <li>개인용 모드 유지</li>
               <li>말투·서식 학습</li>
               <li>우선 지원</li>
+              <li>연 결제 시 약 20% 절약 · 현금 흐름 유리</li>
             </ul>
-            <p class="trial-hint" id="proTrialHint">초기 런칭가 · 결제 연동 전엔 문의로 등록</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro 등록 문의하기</button>
-            <a class="price-link" id="proLink" href="#contact" data-nav="contact">도입 문의 · Pro 등록 요청</a>
+            <div class="pro-billing-toggle" id="proBillingToggle" role="group" aria-label="Pro 결제 주기">
+              <button type="button" class="billing-chip is-active" data-billing-period="monthly" id="chipProMonthly">월 결제</button>
+              <button type="button" class="billing-chip" data-billing-period="annual" id="chipProAnnual">연 결제 · 추천</button>
+            </div>
+            <p class="trial-hint" id="proTrialHint">결제 완료 후 Pro 요금제가 적용됩니다</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradePro" type="button">Pro 월 결제하기</button>
+            <a class="price-link" id="proLink" href="#pro-claim" data-nav="pro-claim">결제 후 확인 신청</a>
           </div>
           <div class="price-card featured">
-            <span class="badge">Enterprise · 런칭가</span>
+            <span class="badge">Enterprise</span>
             <div class="price-amount">
-              <span class="price-from">시작 가격 · 기본 5인 기준</span>
-              <h3>₩<span id="priceEnt">19,900</span> <small>/ 월</small></h3>
-              <p class="price-seat">추가 인원당 <strong>₩2,000</strong></p>
+              <span class="price-from">기본 <span id="priceEntBaseSeats">5</span>인 포함</span>
+              <h3>₩<span id="priceEnt">89,000</span> <small>/ 월</small></h3>
+              <p class="price-annual-hint" id="entAnnualHint">
+                연 결제 <strong>₩<span id="priceEntAnnual">890,000</span></strong>
+                <strong class="price-vat">VAT 별도</strong>
+                · <strong>2개월 무료</strong>
+                <span class="price-annual-sub">월 ₩89,000 × 10개월 값만 결제 (약 16.7% 할인)</span>
+              </p>
+              <p class="price-seat" id="priceEntSeatPolicy">
+                기본 인원 초과 시 1인 추가
+                <strong>월 ₩<span id="priceEntSeat">8,000</span></strong>
+                · 연 <strong>₩<span id="priceEntSeatAnnual">80,000</span></strong>
+                <span class="price-vat-inline">VAT 별도</span>
+              </p>
             </div>
-            <p class="price-desc">팀·법인 · 좌석 기반 확장</p>
+            <p class="price-desc">팀·법인 · 좌석(Seat) 기반 확장 · 표시 금액 VAT 별도</p>
             <div class="trust-signals" aria-label="기업 신뢰 안내">
               <span class="trust-badge">세금계산서 발행 가능</span>
+              <span class="trust-badge">VAT 별도 · 연 890,000</span>
               <span class="trust-badge">기업용 관리자 페이지 제공</span>
             </div>
             <ul>
               <li>팀 통계 · 일지 승인/반려</li>
               <li>공통 거점·정책 설정</li>
               <li>기업용 대시보드 · 관리자 콘솔</li>
-              <li>무제한 생성 · 좌석 확장</li>
+              <li>기본 5인 포함 · 초과 시 좌석 추가</li>
+              <li>연 ₩890,000 (VAT 별도) · 2개월 무료 혜택</li>
             </ul>
-            <p class="trial-hint" id="entTrialHint">법인 문의 · 세금계산서 · 초기 런칭가</p>
-            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise 도입 문의</button>
+            <div class="pro-billing-toggle" id="entBillingToggle" role="group" aria-label="Enterprise 결제 주기">
+              <button type="button" class="billing-chip is-active" data-ent-billing-period="monthly" id="chipEntMonthly">월 결제</button>
+              <button type="button" class="billing-chip" data-ent-billing-period="annual" id="chipEntAnnual">연 ₩890,000 · 2개월 무료</button>
+            </div>
+            <p class="trial-hint" id="entTrialHint">연 ₩890,000 VAT 별도 · 2개월 무료 · 세금계산서</p>
+            <button class="btn btn-primary btn-block" id="btnUpgradeEnt" type="button">Enterprise 월 결제하기</button>
             <a class="price-link" id="entLink" href="#contact" data-nav="contact">도입 문의 · 세금계산서</a>
           </div>
         </div>
         <p class="pricing-note" id="pricingNote">
-          현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다.
-          Pro는 스마트스토어 결제 후
+          표시 금액은 <strong style="color:#e2e8f0">VAT(부가세) 별도</strong>입니다.
+          Enterprise 연 결제는 <strong style="color:#e2e8f0">₩890,000 (2개월 무료)</strong>를 권장합니다.
+          결제 후
           <a href="#pro-claim" data-nav="pro-claim" style="color:#5eead4;font-weight:700">결제 확인 신청</a>을 남겨 주시면
-          관리자가 반영합니다. Enterprise는 문의·세금계산서 지원.
+          관리자가 반영합니다. 세금계산서·도입 문의 지원.
         </p>
       </div>
     </section>
@@ -768,12 +796,26 @@
           <div class="eyebrow">Pro</div>
           <h2>결제 확인 신청</h2>
           <p style="margin:0.4rem 0 0;max-width:40ch;color:var(--muted)">
-            스마트스토어에서 결제하신 뒤, 주문번호와 로드로그 가입 이메일을 남겨 주세요.
-            확인되면 <strong style="color:#e2e8f0">Pro</strong>가 반영됩니다.
+            결제하신 뒤, 플랜·주기·주문번호와 로드로그 가입 이메일을 남겨 주세요.
+            확인되면 <strong style="color:#e2e8f0">Pro / Enterprise</strong>가 반영됩니다.
           </p>
         </div>
         <div class="panel" style="padding:1.25rem">
           <form id="proClaimForm" class="stack-form" autocomplete="on">
+            <label class="field">
+              <span class="field-label">플랜</span>
+              <select id="claimPlan" name="plan">
+                <option value="pro">Pro</option>
+                <option value="enterprise">Enterprise</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">결제 주기</span>
+              <select id="claimBillingPeriod" name="billing_period">
+                <option value="monthly">월 결제</option>
+                <option value="annual">연 결제 (할인)</option>
+              </select>
+            </label>
             <label class="field">
               <span class="field-label">스마트스토어 주문번호</span>
               <input type="text" id="claimOrderId" name="order_id" required
@@ -1105,10 +1147,41 @@
               <input type="number" id="adminProPrice" min="0" step="100" />
             </div>
             <div>
+              <label class="field-label" for="adminProAnnualPrice">Pro 연 결제 총액 (원)</label>
+              <input type="number" id="adminProAnnualPrice" min="0" step="100" />
+            </div>
+            <div>
+              <label class="field-label" for="adminProAnnualEq">Pro 연 결제 월 환산 (원)</label>
+              <input type="number" id="adminProAnnualEq" min="0" step="100" />
+            </div>
+            <div>
               <label class="field-label" for="adminEntPrice">Enterprise 월 요금 (원)</label>
               <input type="number" id="adminEntPrice" min="0" step="100" />
             </div>
+            <div>
+              <label class="field-label" for="adminEntAnnualPrice">Enterprise 연 결제 총액 (원)</label>
+              <input type="number" id="adminEntAnnualPrice" min="0" step="1000" />
+            </div>
+            <div>
+              <label class="field-label" for="adminEntAnnualEq">Enterprise 연 결제 월 환산 (원)</label>
+              <input type="number" id="adminEntAnnualEq" min="0" step="100" />
+            </div>
+            <div>
+              <label class="field-label" for="adminEntBaseSeats">Enterprise 기본 좌석 수</label>
+              <input type="number" id="adminEntBaseSeats" min="1" step="1" />
+            </div>
+            <div>
+              <label class="field-label" for="adminEntSeatPrice">추가 좌석 월 단가 (원/인)</label>
+              <input type="number" id="adminEntSeatPrice" min="0" step="100" />
+            </div>
+            <div>
+              <label class="field-label" for="adminEntSeatAnnual">추가 좌석 연 단가 (원/인)</label>
+              <input type="number" id="adminEntSeatAnnual" min="0" step="1000" />
+            </div>
           </div>
+          <p style="color:var(--muted);font-size:0.82rem;margin:0.5rem 0 0;line-height:1.45">
+            기본 좌석을 넘는 인원은 추가 Seat로 과금합니다. 권장: 월 8,000원 · 연 80,000원(2개월 무료).
+          </p>
           <div class="form-actions">
             <button class="btn btn-primary" id="btnSaveBilling" type="button">요금 저장</button>
           </div>
@@ -1593,8 +1666,8 @@
     </button>
   </div>
 
-  <script src="/ui-sound.js?v=20260722-sound-v1"></script>
-  <script src="/app.js?v=20260722-sound-v1"></script>
+  <script src="/ui-sound.js?v=20260727-vat-excl"></script>
+  <script src="/app.js?v=20260727-vat-excl"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -1607,7 +1680,7 @@
     "offers": {
       "@type": "AggregateOffer",
       "lowPrice": "0",
-      "highPrice": "19900",
+      "highPrice": "890000",
       "priceCurrency": "KRW",
       "offerCount": "3"
     },

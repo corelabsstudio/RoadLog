@@ -30,6 +30,7 @@ from modules.config import (
     DATA_DIR,
     ENTERPRISE_BASE_SEATS,
     ENTERPRISE_PRICE_KRW,
+    ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
     ENTERPRISE_SEAT_PRICE_KRW,
 )
 from modules.styles import render_footer, render_page_header
@@ -483,7 +484,8 @@ def _render_team_seats() -> None:
         st.markdown("#### 좌석 추가 결제")
         st.caption(
             f"기본 {ENTERPRISE_BASE_SEATS}인 초과 시 · "
-            f"석당 {_fmt_won(ENTERPRISE_SEAT_PRICE_KRW)}/월"
+            f"1인 추가 {_fmt_won(ENTERPRISE_SEAT_PRICE_KRW)}/월 "
+            f"(연 {_fmt_won(ENTERPRISE_SEAT_ANNUAL_PRICE_KRW)} · 2개월 무료)"
         )
         add_n = st.number_input(
             "추가할 좌석 수",

@@ -46,6 +46,10 @@
     viewAs: localStorage.getItem(VIEW_AS_KEY) || "admin",
     /** driving | field — 일지 작성 유형 */
     reportMode: "driving",
+    /** Pro 결제 주기: monthly | annual */
+    proBillingPeriod: "monthly",
+    /** Enterprise 결제 주기: monthly | annual */
+    entBillingPeriod: "monthly",
     /** 공개 랜딩 후기 캐시 */
     publicReviews: null,
   };
@@ -111,7 +115,7 @@
       "create.mode_driving": "Driving log",
       "create.mode_driving_hint": "Vehicle · distance · stops",
       "create.mode_field": "Field visit",
-      "create.mode_field_hint": "Visits · outcomes · follow-ups",
+      "create.mode_field_hint": "Stamp · short notes · results",
       "create.stamp_empty": "No stamps yet. Tap “Stamp location now” in the field.",
       "create.example": "Load example",
     },
@@ -1073,13 +1077,13 @@
       // stamp: 퀵 스탬프 포커스 / report: 일지 입력 폼 포커스
       if (!opts.skipScroll) {
         setTimeout(() => {
-          if (name === "stamp" && state.reportMode !== "field") {
+          if (name === "stamp") {
             document.getElementById("quickStampPanel")?.scrollIntoView({
               behavior: "smooth",
               block: "start",
             });
             $("#btnQuickStamp")?.focus?.();
-          } else if (name === "report" || state.reportMode === "field") {
+          } else if (name === "report") {
             document.getElementById("reportFormPanel")?.scrollIntoView({
               behavior: "smooth",
               block: "start",
@@ -1364,6 +1368,10 @@
     $$("[data-mode-panel]").forEach((el) => {
       el.classList.toggle("hidden", el.dataset.modePanel !== m);
     });
+    // 퀵 스탬프 반영 버튼: 운행=오전/오후, 외근=방문 내용
+    $$("[data-stamp-for]").forEach((el) => {
+      el.classList.toggle("hidden", el.dataset.stampFor !== m);
+    });
     const title = $("#createTitle");
     const sub = $("#createSub");
     const formTitle = $("#reportFormTitle");
@@ -1374,7 +1382,11 @@
         : tt("create.generate", "✨ AI로 일지 작성");
     if (m === "field") {
       if (title) title.textContent = tt("create.title_field", "외근·출장 일지");
-      if (sub) sub.textContent = tt("create.sub_field", "");
+      if (sub)
+        sub.textContent = tt(
+          "create.sub_field",
+          "퀵 스탬프로 위치·시간을 찍고, 짧은 메모만 보완하면 AI가 제출용 외근일지로 정리합니다."
+        );
       if (formTitle) formTitle.textContent = tt("create.form_title_field", "오늘 외근 정보");
     } else {
       if (title) title.textContent = tt("create.title", "운행일지 작성");
@@ -2497,12 +2509,14 @@
       const btns = [$("#btnGenerate"), $("#btnGenerateSticky")].filter(Boolean);
 
       if (isField) {
+        // 스탬프 → 방문 내용 자동 병합 (운행 모드와 동일 흐름)
+        const mergedField = mergeStampsIntoFieldVisits();
         const form = readFieldForm();
         if (!form.visits_text && !form.work_summary && !form.next_actions && !form.raw_text) {
           alertBox(
             $("#genAlert"),
             "warn",
-            "방문·업무 내용, 한 줄 요약, 후속 조치 중 하나 이상 입력해 주세요."
+            "퀵 스탬프를 찍거나, 방문·업무 내용·한 줄 요약·후속 조치 중 하나 이상 입력해 주세요."
           );
           $("#fieldVisits")?.focus?.();
           return;
@@ -2511,7 +2525,13 @@
           btn.disabled = true;
           btn.innerHTML = `<span class="spinner"></span> 생성 중...`;
         });
-        alertBox($("#genAlert"), "info", "입력 내용으로 AI가 외근·출장 일지를 작성 중입니다…");
+        const mergeHint =
+          mergedField.added > 0 ? ` (스탬프 +${mergedField.added})` : "";
+        alertBox(
+          $("#genAlert"),
+          "info",
+          `입력·스탬프 데이터로 AI가 외근·출장 일지를 작성 중입니다…${mergeHint}`
+        );
         try {
           const data = await api("/api/generate", {
             method: "POST",
@@ -4420,8 +4440,22 @@
       }
 
       const b = data.billing || {};
-      if ($("#adminProPrice")) $("#adminProPrice").value = b.pro_price_krw ?? 2900;
-      if ($("#adminEntPrice")) $("#adminEntPrice").value = b.enterprise_price_krw ?? 19900;
+      if ($("#adminProPrice")) $("#adminProPrice").value = b.pro_price_krw ?? 4900;
+      if ($("#adminProAnnualPrice"))
+        $("#adminProAnnualPrice").value = b.pro_annual_price_krw ?? 46800;
+      if ($("#adminProAnnualEq"))
+        $("#adminProAnnualEq").value = b.pro_annual_monthly_eq_krw ?? 3900;
+      if ($("#adminEntPrice")) $("#adminEntPrice").value = b.enterprise_price_krw ?? 89000;
+      if ($("#adminEntAnnualPrice"))
+        $("#adminEntAnnualPrice").value = b.enterprise_annual_price_krw ?? 890000;
+      if ($("#adminEntAnnualEq"))
+        $("#adminEntAnnualEq").value = b.enterprise_annual_monthly_eq_krw ?? 74166;
+      if ($("#adminEntBaseSeats"))
+        $("#adminEntBaseSeats").value = b.enterprise_base_seats ?? 5;
+      if ($("#adminEntSeatPrice"))
+        $("#adminEntSeatPrice").value = b.enterprise_seat_price_krw ?? 8000;
+      if ($("#adminEntSeatAnnual"))
+        $("#adminEntSeatAnnual").value = b.enterprise_seat_annual_price_krw ?? 80000;
       renderVipList(data.vip_members || []);
       loadAdminReviews();
     } catch (err) {
@@ -4440,11 +4474,25 @@
       try {
         const pro = Number($("#adminProPrice")?.value || 0);
         const ent = Number($("#adminEntPrice")?.value || 0);
+        const proAnnual = Number($("#adminProAnnualPrice")?.value || 0);
+        const proAnnualEq = Number($("#adminProAnnualEq")?.value || 0);
+        const entAnnual = Number($("#adminEntAnnualPrice")?.value || 0);
+        const entAnnualEq = Number($("#adminEntAnnualEq")?.value || 0);
+        const entBaseSeats = Number($("#adminEntBaseSeats")?.value || 5);
+        const entSeat = Number($("#adminEntSeatPrice")?.value || 0);
+        const entSeatAnnual = Number($("#adminEntSeatAnnual")?.value || 0);
         await api("/api/admin/billing", {
           method: "PUT",
           body: JSON.stringify({
             pro_price_krw: pro,
             enterprise_price_krw: ent,
+            pro_annual_price_krw: proAnnual,
+            pro_annual_monthly_eq_krw: proAnnualEq,
+            enterprise_annual_price_krw: entAnnual,
+            enterprise_annual_monthly_eq_krw: entAnnualEq,
+            enterprise_base_seats: entBaseSeats,
+            enterprise_seat_price_krw: entSeat,
+            enterprise_seat_annual_price_krw: entSeatAnnual,
           }),
         });
         alertBox($("#adminBillingAlert"), "ok", "구독 요금이 저장되었습니다.");
@@ -4648,9 +4696,32 @@
     if (meta.pro_price != null && $("#pricePro")) {
       $("#pricePro").textContent = formatPriceKrw(meta.pro_price);
     }
+    if (meta.pro_annual_price != null && $("#priceProAnnual")) {
+      $("#priceProAnnual").textContent = formatPriceKrw(meta.pro_annual_price);
+    }
+    if (meta.pro_annual_monthly_eq != null && $("#priceProAnnualEq")) {
+      $("#priceProAnnualEq").textContent = formatPriceKrw(meta.pro_annual_monthly_eq);
+    }
     if (meta.enterprise_price != null && $("#priceEnt")) {
       $("#priceEnt").textContent = formatPriceKrw(meta.enterprise_price);
     }
+    if (meta.enterprise_annual_price != null && $("#priceEntAnnual")) {
+      $("#priceEntAnnual").textContent = formatPriceKrw(meta.enterprise_annual_price);
+    }
+    if (meta.enterprise_base_seats != null && $("#priceEntBaseSeats")) {
+      $("#priceEntBaseSeats").textContent = String(meta.enterprise_base_seats);
+    }
+    if (meta.enterprise_seat_price != null && $("#priceEntSeat")) {
+      $("#priceEntSeat").textContent = formatPriceKrw(meta.enterprise_seat_price);
+    }
+    if (meta.enterprise_seat_annual_price != null && $("#priceEntSeatAnnual")) {
+      $("#priceEntSeatAnnual").textContent = formatPriceKrw(
+        meta.enterprise_seat_annual_price
+      );
+    }
+    refreshClaimPeriodLabels();
+    syncProBillingUI();
+    syncEntBillingUI();
     const wirePayLink = (sel, url) => {
       const el = $(sel);
       if (!el) return;
@@ -5058,6 +5129,14 @@
     return `[${p}] ${t} · ${stampShortAddress(s)}`;
   }
 
+  function ensureStampLine(el, line) {
+    if (!el || !line) return false;
+    const prev = el.value || "";
+    if (prev.includes(line)) return false;
+    el.value = prev.trim() ? `${prev.trim()}\n${line}` : line;
+    return true;
+  }
+
   /** 일지 생성 직전: localStorage 스탬프 → 오전/오후 필드 병합 (데이터 손실 방지) */
   function mergeStampsIntoFormFields() {
     loadStamps();
@@ -5069,14 +5148,6 @@
     let mAdd = 0;
     let aAdd = 0;
 
-    const ensureLine = (el, line) => {
-      if (!el || !line) return false;
-      const prev = el.value || "";
-      if (prev.includes(line)) return false;
-      el.value = prev.trim() ? `${prev.trim()}\n${line}` : line;
-      return true;
-    };
-
     // 시간 오름차순으로 병합 (일지 가독성)
     const ordered = [...stamps].sort(
       (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
@@ -5085,12 +5156,29 @@
       const period = s.period || stampPeriodFromTs(s.timestamp);
       const line = stampLine(s);
       if (period === "morning") {
-        if (ensureLine(morningEl, line)) mAdd += 1;
+        if (ensureStampLine(morningEl, line)) mAdd += 1;
       } else {
-        if (ensureLine(afternoonEl, line)) aAdd += 1;
+        if (ensureStampLine(afternoonEl, line)) aAdd += 1;
       }
     }
     return { morning: mAdd, afternoon: aAdd };
+  }
+
+  /** 외근 생성 직전: 스탬프 → 방문·업무 내용 필드 병합 */
+  function mergeStampsIntoFieldVisits() {
+    loadStamps();
+    const stamps = state.stamps || [];
+    if (!stamps.length) return { added: 0 };
+    const el = $("#fieldVisits");
+    if (!el) return { added: 0 };
+    let added = 0;
+    const ordered = [...stamps].sort(
+      (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+    );
+    for (const s of ordered) {
+      if (ensureStampLine(el, stampLine(s))) added += 1;
+    }
+    return { added };
   }
 
   function appendStampsToField(fieldId) {
@@ -5115,18 +5203,24 @@
     );
     let added = 0;
     for (const s of ordered) {
-      const line = stampLine(s);
-      if (!(el.value || "").includes(line)) {
-        const prev = (el.value || "").trim();
-        el.value = prev ? `${prev}\n${line}` : line;
-        added += 1;
-      }
+      if (ensureStampLine(el, stampLine(s))) added += 1;
     }
     toast(
       wantMorning
         ? `오전 방문지에 ${added}건 반영`
         : `오후 방문지에 ${added}건 반영`
     );
+  }
+
+  function appendAllStampsToFieldVisits() {
+    loadStamps();
+    const stamps = state.stamps || [];
+    if (!stamps.length) {
+      toast("스탬프가 없습니다");
+      return;
+    }
+    const { added } = mergeStampsIntoFieldVisits();
+    toast(`방문 내용에 ${added}건 반영`);
   }
 
   function bindQuickStamp() {
@@ -5179,15 +5273,13 @@
         );
         toast(`퀵 스탬프 저장 (${periodLabel(period)})`);
 
-        // 카테고리 필드에 자동 반영 (짧은 주소 + 오전/오후 태그)
-        const field = period === "morning" ? "#morningPlaces" : "#afternoonPlaces";
-        const el = $(field);
-        if (el) {
-          const line = stampLine(stamp);
-          const prev = (el.value || "").trim();
-          if (!prev.includes(line)) {
-            el.value = prev ? `${prev}\n${line}` : line;
-          }
+        // 현재 모드 입력란에 자동 반영
+        const line = stampLine(stamp);
+        if (state.reportMode === "field") {
+          ensureStampLine($("#fieldVisits"), line);
+        } else {
+          const field = period === "morning" ? "#morningPlaces" : "#afternoonPlaces";
+          ensureStampLine($(field), line);
         }
       } catch (err) {
         const denied =
@@ -5237,6 +5329,9 @@
     );
     $("#btnStampsToAfternoon")?.addEventListener("click", () =>
       appendStampsToField("#afternoonPlaces")
+    );
+    $("#btnStampsToField")?.addEventListener("click", () =>
+      appendAllStampsToFieldVisits()
     );
     $("#btnClearStamps")?.addEventListener("click", () => {
       if (!state.stamps?.length) return;
@@ -5558,10 +5653,23 @@
     );
   }
 
-  function paymentUrlForPlan(plan) {
+  function paymentUrlForPlan(plan, period) {
     const meta = state.meta || {};
+    const p = period || "monthly";
     if (plan === "enterprise") {
+      if (p === "annual") {
+        return (
+          meta.enterprise_annual_url ||
+          meta.enterprise_url ||
+          meta.pro_url ||
+          ""
+        ).trim();
+      }
       return (meta.enterprise_url || meta.pro_url || "").trim();
+    }
+    const proPeriod = period || state.proBillingPeriod || "monthly";
+    if (proPeriod === "annual") {
+      return (meta.pro_annual_url || meta.pro_url || "").trim();
     }
     return (meta.pro_url || "").trim();
   }
@@ -5569,6 +5677,97 @@
   /** 결제 없이 plan 올리는 데모 API — 운영에서는 비활성 */
   function demoBillingUpgradeEnabled() {
     return Boolean(state.meta?.demo_billing_upgrade);
+  }
+
+  function refreshClaimPeriodLabels() {
+    const meta = state.meta || {};
+    const claimPeriod = $("#claimBillingPeriod");
+    const claimPlan = $("#claimPlan")?.value || "pro";
+    if (!claimPeriod) return;
+    const isEnt = claimPlan === "enterprise";
+    const m = formatPriceKrw(
+      isEnt ? meta.enterprise_price || 89000 : meta.pro_price || 4900
+    );
+    const a = formatPriceKrw(
+      isEnt
+        ? meta.enterprise_annual_price || 890000
+        : meta.pro_annual_price || 46800
+    );
+    const optM = claimPeriod.querySelector('option[value="monthly"]');
+    const optA = claimPeriod.querySelector('option[value="annual"]');
+    if (optM) optM.textContent = `월 결제 (₩${m})`;
+    if (optA) {
+      optA.textContent = isEnt
+        ? `연 결제 (₩${a} VAT 별도 · 2개월 무료)`
+        : `연 결제 (₩${a} · 할인)`;
+    }
+  }
+
+  function syncProBillingUI() {
+    const period = state.proBillingPeriod === "annual" ? "annual" : "monthly";
+    state.proBillingPeriod = period;
+    $$("[data-billing-period]").forEach((el) => {
+      el.classList.toggle("is-active", el.dataset.billingPeriod === period);
+    });
+    const meta = state.meta || {};
+    const proBtn = $("#btnUpgradePro");
+    const proHint = $("#proTrialHint");
+    const demo = demoBillingUpgradeEnabled();
+    const proUrl = paymentUrlForPlan("pro", period);
+    if (demo) return;
+    if (!isPlaceholderPayUrl(proUrl)) {
+      if (proBtn) {
+        proBtn.textContent =
+          period === "annual" ? "Pro 연 결제하기" : "Pro 월 결제하기";
+      }
+      if (proHint) {
+        const eq = formatPriceKrw(meta.pro_annual_monthly_eq || 3900);
+        const annual = formatPriceKrw(meta.pro_annual_price || 46800);
+        const monthly = formatPriceKrw(meta.pro_price || 4900);
+        proHint.textContent =
+          period === "annual"
+            ? `연 ₩${annual} 선결제 (월 ₩${eq} 상당) · 결제 후 Pro 반영`
+            : `월 ₩${monthly} · 결제 완료 후 Pro 요금제 적용`;
+      }
+    }
+  }
+
+  function syncEntBillingUI() {
+    const period = state.entBillingPeriod === "annual" ? "annual" : "monthly";
+    state.entBillingPeriod = period;
+    $$("[data-ent-billing-period]").forEach((el) => {
+      el.classList.toggle("is-active", el.dataset.entBillingPeriod === period);
+    });
+    const meta = state.meta || {};
+    const entBtn = $("#btnUpgradeEnt");
+    const entHint = $("#entTrialHint");
+    const demo = demoBillingUpgradeEnabled();
+    const entUrl = paymentUrlForPlan("enterprise", period);
+    if (demo) return;
+    if (!isPlaceholderPayUrl(entUrl)) {
+      if (entBtn) {
+        entBtn.textContent =
+          period === "annual"
+            ? "Enterprise 연 ₩890,000 · 2개월 무료"
+            : "Enterprise 월 결제하기";
+      }
+      if (entHint) {
+        const annual = formatPriceKrw(meta.enterprise_annual_price || 890000);
+        const monthly = formatPriceKrw(meta.enterprise_price || 89000);
+        entHint.textContent =
+          period === "annual"
+            ? `연 ₩${annual} VAT 별도 · 2개월 무료 (월 ₩${monthly} × 10개월)`
+            : `월 ₩${monthly} VAT 별도 · 법인 결제 · 세금계산서`;
+      }
+    } else {
+      if (entBtn) entBtn.textContent = "Enterprise 도입 문의";
+      if (entHint) {
+        entHint.textContent =
+          period === "annual"
+            ? "연 ₩890,000 VAT 별도 · 2개월 무료 · 세금계산서"
+            : "법인 문의 · VAT 별도 · 세금계산서";
+      }
+    }
   }
 
   function applyPricingCtaLabels() {
@@ -5590,21 +5789,24 @@
           "데모 업그레이드가 켜져 있습니다. 운영 배포 전 ALLOW_DEMO_BILLING_UPGRADE=false 로 끄세요.";
       }
     } else if (!isPlaceholderPayUrl(proUrl) || !isPlaceholderPayUrl(entUrl)) {
-      if (proBtn) proBtn.textContent = "Pro 결제하기";
-      if (entBtn) entBtn.textContent = "Enterprise 결제하기";
-      if (proHint) proHint.textContent = "결제 완료 후 Pro 요금제가 적용됩니다";
-      if (entHint) entHint.textContent = "법인 결제 · 세금계산서 지원";
+      syncProBillingUI();
+      syncEntBillingUI();
+      if (note) {
+        note.innerHTML =
+          "표시 금액은 <strong style=\"color:#e2e8f0\">VAT(부가세) 별도</strong>입니다. " +
+          "Enterprise 연 결제는 <strong style=\"color:#e2e8f0\">₩890,000 · 2개월 무료</strong>(월 89,000×10)를 권장합니다. " +
+          '결제 후 <a href="#pro-claim" data-nav="pro-claim" style="color:#5eead4;font-weight:700">결제 확인 신청</a>을 남겨 주세요. 세금계산서·도입 문의 가능.';
+      }
     } else {
       // 결제 미연결: 문의 기반 수동 등록 (부끄럽지 않은 명시)
       if (proBtn) proBtn.textContent = "Pro 등록 문의하기";
       if (entBtn) entBtn.textContent = "Enterprise 도입 문의";
-      if (proHint) proHint.textContent = "초기 런칭가 · 문의 후 관리자가 플랜 반영";
-      if (entHint) entHint.textContent = "세금계산서 · 도입 상담 환영";
+      if (proHint) proHint.textContent = "문의 후 관리자가 플랜 반영";
+      if (entHint) entHint.textContent = "연 ₩890,000 VAT 별도 · 2개월 무료 · 세금계산서";
       if (note) {
         note.innerHTML =
-          '현재 가격은 <strong style="color:#e2e8f0">초기 런칭가</strong>입니다. ' +
           '온라인 결제 연동 전이면 <strong style="color:#e2e8f0">문의</strong>로 Pro/Enterprise 등록을 요청해 주세요. ' +
-          "관리자가 VIP·플랜을 수동 반영합니다.";
+          "Enterprise 연 상품은 <strong style=\"color:#e2e8f0\">₩890,000 (VAT 별도, 2개월 무료)</strong> 권장입니다.";
       }
       const proLink = $("#proLink");
       const entLink = $("#entLink");
@@ -5624,8 +5826,41 @@
   }
 
   function bindPricing() {
+    document.body.addEventListener("click", (e) => {
+      const proChip = e.target.closest("[data-billing-period]");
+      if (proChip && proChip.closest("#proBillingToggle")) {
+        e.preventDefault();
+        state.proBillingPeriod =
+          proChip.dataset.billingPeriod === "annual" ? "annual" : "monthly";
+        syncProBillingUI();
+        return;
+      }
+      const entChip = e.target.closest("[data-ent-billing-period]");
+      if (entChip && entChip.closest("#entBillingToggle")) {
+        e.preventDefault();
+        state.entBillingPeriod =
+          entChip.dataset.entBillingPeriod === "annual" ? "annual" : "monthly";
+        syncEntBillingUI();
+      }
+    });
+
     async function startPaidOrDemo(plan) {
-      const planLabel = plan === "enterprise" ? "Enterprise" : "Pro";
+      const period =
+        plan === "enterprise"
+          ? state.entBillingPeriod === "annual"
+            ? "annual"
+            : "monthly"
+          : state.proBillingPeriod === "annual"
+            ? "annual"
+            : "monthly";
+      const planLabel =
+        plan === "enterprise"
+          ? period === "annual"
+            ? "Enterprise 연 결제 (2개월 무료)"
+            : "Enterprise 월 결제"
+          : period === "annual"
+            ? "Pro 연 결제"
+            : "Pro 월 결제";
 
       // 운영 기본: 결제 링크로 이동 (무료 plan 변경 없음)
       if (!demoBillingUpgradeEnabled()) {
@@ -5634,17 +5869,18 @@
           toast("업그레이드는 로그인 후 진행할 수 있습니다");
           return;
         }
-        const url = paymentUrlForPlan(plan);
+        const url = paymentUrlForPlan(plan, period);
         if (!isPlaceholderPayUrl(url)) {
           window.open(url, "_blank", "noopener,noreferrer");
           toast(
-            `${planLabel} 결제 페이지를 열었습니다. 결제 후 사이트에서 「결제 확인 신청」(#pro-claim)을 남겨 주세요.`
+            `${planLabel} 페이지를 열었습니다. 결제 후 「결제 확인 신청」에서 플랜·주기를 선택해 주세요.`
           );
-          // 결제한 사용자가 돌아오면 바로 신청하도록 안내
           setTimeout(() => {
-            if (plan === "pro") {
-              /* keep soft; user may still be on store tab */
-            }
+            const cp = $("#claimBillingPeriod");
+            const cpl = $("#claimPlan");
+            if (cp) cp.value = period;
+            if (cpl) cpl.value = plan === "enterprise" ? "enterprise" : "pro";
+            refreshClaimPeriodLabels();
           }, 0);
           return;
         }
@@ -5706,25 +5942,39 @@
     if (emailEl && state.user?.email) {
       emailEl.value = state.user.email;
     }
+    $("#claimPlan")?.addEventListener("change", () => refreshClaimPeriodLabels());
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const order_id = ($("#claimOrderId")?.value || "").trim();
       const email = ($("#claimEmail")?.value || "").trim();
       const name = ($("#claimName")?.value || "").trim();
       const note = ($("#claimNote")?.value || "").trim();
+      const billing_period =
+        ($("#claimBillingPeriod")?.value || "monthly") === "annual"
+          ? "annual"
+          : "monthly";
+      const plan =
+        ($("#claimPlan")?.value || "pro") === "enterprise" ? "enterprise" : "pro";
       const alertEl = $("#claimAlert");
       const btn = $("#btnClaimSubmit");
       if (btn) btn.disabled = true;
       try {
         await api("/api/billing/claim", {
           method: "POST",
-          body: JSON.stringify({ order_id, email, name, note, plan: "pro" }),
+          body: JSON.stringify({
+            order_id,
+            email,
+            name,
+            note,
+            plan,
+            billing_period,
+          }),
         });
         if (alertEl) {
           alertEl.classList.remove("hidden");
           alertEl.className = "form-alert ok";
-          alertEl.textContent =
-            "접수되었습니다. 확인 후 Pro가 반영됩니다. 조금만 기다려 주세요.";
+          const planLabel = plan === "enterprise" ? "Enterprise" : "Pro";
+          alertEl.textContent = `접수되었습니다. 확인 후 ${planLabel}가 반영됩니다. 조금만 기다려 주세요.`;
         }
         toast("결제 확인 요청을 보냈습니다");
         if ($("#claimOrderId")) $("#claimOrderId").value = "";

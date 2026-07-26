@@ -14,8 +14,15 @@ from typing import Any
 
 from modules.config import (
     DATA_DIR,
+    ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW,
+    ENTERPRISE_ANNUAL_PRICE_KRW,
+    ENTERPRISE_BASE_SEATS,
     ENTERPRISE_PRICE_KRW,
+    ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
+    ENTERPRISE_SEAT_PRICE_KRW,
     FREE_MONTHLY_LIMIT,
+    PRO_ANNUAL_MONTHLY_EQ_KRW,
+    PRO_ANNUAL_PRICE_KRW,
     PRO_PRICE_KRW,
 )
 from modules import db
@@ -53,7 +60,14 @@ def _now_iso() -> str:
 def default_billing_config() -> dict[str, Any]:
     return {
         "pro_price_krw": PRO_PRICE_KRW,
+        "pro_annual_price_krw": PRO_ANNUAL_PRICE_KRW,
+        "pro_annual_monthly_eq_krw": PRO_ANNUAL_MONTHLY_EQ_KRW,
         "enterprise_price_krw": ENTERPRISE_PRICE_KRW,
+        "enterprise_annual_price_krw": ENTERPRISE_ANNUAL_PRICE_KRW,
+        "enterprise_annual_monthly_eq_krw": ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW,
+        "enterprise_base_seats": ENTERPRISE_BASE_SEATS,
+        "enterprise_seat_price_krw": ENTERPRISE_SEAT_PRICE_KRW,
+        "enterprise_seat_annual_price_krw": ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
         "updated_at": None,
         "updated_by": None,
     }
@@ -66,20 +80,77 @@ def load_billing_config() -> dict[str, Any]:
         _write_json(BILLING_CONFIG_PATH, base)
         return base
     merged = {**base, **data}
-    # 초기 시드 가격(9,900 / 89,000 등)이고 관리자가 직접 저장한 적 없으면
-    # 현재 config 런칭가로 한 번 맞춘다. (배포 서버 data 볼륨 대응)
+    # 과거 런칭/시드 가격 → 현재 PLG 정상가 (관리자 수동 저장은 유지)
     pro = int(merged.get("pro_price_krw") or 0)
     ent = int(merged.get("enterprise_price_krw") or 0)
-    seed_prices = {8900, 9900, 89000, 99000}
-    if not merged.get("updated_by") and (pro in seed_prices or ent in seed_prices):
-        merged = {
-            **merged,
-            "pro_price_krw": PRO_PRICE_KRW,
-            "enterprise_price_krw": ENTERPRISE_PRICE_KRW,
-            "updated_at": _now_iso(),
-            "updated_by": "launch_price_migration",
-        }
+    updated_by = merged.get("updated_by")
+    auto_migrators = {
+        None,
+        "",
+        "launch_price_migration",
+        "normal_price_migration",
+        "normal_price",
+        "plg_price",
+        "plg_price_migration",
+    }
+    legacy_pro = {2900, 8900, 9900}
+    legacy_ent = {19900}
+    missing_annual = (
+        not int(merged.get("pro_annual_price_krw") or 0)
+        or not int(merged.get("enterprise_annual_price_krw") or 0)
+    )
+    needs_mig = updated_by in auto_migrators and (
+        pro in legacy_pro or ent in legacy_ent or missing_annual
+    )
+    if needs_mig:
+        if pro in legacy_pro:
+            merged["pro_price_krw"] = PRO_PRICE_KRW
+        if ent in legacy_ent:
+            merged["enterprise_price_krw"] = ENTERPRISE_PRICE_KRW
+        if not int(merged.get("pro_annual_price_krw") or 0):
+            merged["pro_annual_price_krw"] = PRO_ANNUAL_PRICE_KRW
+        if not int(merged.get("pro_annual_monthly_eq_krw") or 0):
+            merged["pro_annual_monthly_eq_krw"] = PRO_ANNUAL_MONTHLY_EQ_KRW
+        if not int(merged.get("enterprise_annual_price_krw") or 0):
+            merged["enterprise_annual_price_krw"] = ENTERPRISE_ANNUAL_PRICE_KRW
+        if not int(merged.get("enterprise_annual_monthly_eq_krw") or 0):
+            merged["enterprise_annual_monthly_eq_krw"] = ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW
+        merged["updated_at"] = _now_iso()
+        merged["updated_by"] = "plg_price_migration"
         _write_json(BILLING_CONFIG_PATH, merged)
+    # annual 필드 보정
+    if not int(merged.get("pro_annual_price_krw") or 0):
+        merged["pro_annual_price_krw"] = PRO_ANNUAL_PRICE_KRW
+    if not int(merged.get("pro_annual_monthly_eq_krw") or 0):
+        annual = int(merged.get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW)
+        merged["pro_annual_monthly_eq_krw"] = annual // 12 or PRO_ANNUAL_MONTHLY_EQ_KRW
+    if not int(merged.get("enterprise_annual_price_krw") or 0):
+        merged["enterprise_annual_price_krw"] = ENTERPRISE_ANNUAL_PRICE_KRW
+    if not int(merged.get("enterprise_annual_monthly_eq_krw") or 0):
+        ea = int(merged.get("enterprise_annual_price_krw") or ENTERPRISE_ANNUAL_PRICE_KRW)
+        merged["enterprise_annual_monthly_eq_krw"] = (
+            ea // 12 or ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW
+        )
+    # 좌석 단가 보정 (구 2,000원 → 8,000 / 연 80,000)
+    seat = int(merged.get("enterprise_seat_price_krw") or 0)
+    if seat in (0, 2000) and updated_by in auto_migrators | {
+        "plg_price_migration",
+        "plg_ent_annual",
+    }:
+        merged["enterprise_seat_price_krw"] = ENTERPRISE_SEAT_PRICE_KRW
+        merged["enterprise_seat_annual_price_krw"] = ENTERPRISE_SEAT_ANNUAL_PRICE_KRW
+        if not int(merged.get("enterprise_base_seats") or 0):
+            merged["enterprise_base_seats"] = ENTERPRISE_BASE_SEATS
+        if updated_by in auto_migrators | {"plg_ent_annual", "plg_price"}:
+            merged["updated_by"] = "seat_price_migration"
+            merged["updated_at"] = _now_iso()
+            _write_json(BILLING_CONFIG_PATH, merged)
+    if not int(merged.get("enterprise_seat_price_krw") or 0):
+        merged["enterprise_seat_price_krw"] = ENTERPRISE_SEAT_PRICE_KRW
+    if not int(merged.get("enterprise_seat_annual_price_krw") or 0):
+        merged["enterprise_seat_annual_price_krw"] = ENTERPRISE_SEAT_ANNUAL_PRICE_KRW
+    if not int(merged.get("enterprise_base_seats") or 0):
+        merged["enterprise_base_seats"] = ENTERPRISE_BASE_SEATS
     return merged
 
 
@@ -87,12 +158,73 @@ def save_billing_config(
     pro_price: int,
     enterprise_price: int,
     updated_by: str = "",
+    pro_annual_price: int | None = None,
+    pro_annual_monthly_eq: int | None = None,
+    enterprise_annual_price: int | None = None,
+    enterprise_annual_monthly_eq: int | None = None,
+    enterprise_base_seats: int | None = None,
+    enterprise_seat_price: int | None = None,
+    enterprise_seat_annual_price: int | None = None,
 ) -> dict[str, Any]:
     if pro_price < 0 or enterprise_price < 0:
         raise ValueError("금액은 0 이상이어야 합니다.")
+    prev = load_billing_config()
+    annual = (
+        int(pro_annual_price)
+        if pro_annual_price is not None
+        else int(prev.get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW)
+    )
+    if annual < 0:
+        raise ValueError("연 결제 금액은 0 이상이어야 합니다.")
+    monthly_eq = (
+        int(pro_annual_monthly_eq)
+        if pro_annual_monthly_eq is not None
+        else (annual // 12 if annual else PRO_ANNUAL_MONTHLY_EQ_KRW)
+    )
+    ent_annual = (
+        int(enterprise_annual_price)
+        if enterprise_annual_price is not None
+        else int(prev.get("enterprise_annual_price_krw") or ENTERPRISE_ANNUAL_PRICE_KRW)
+    )
+    if ent_annual < 0:
+        raise ValueError("Enterprise 연 결제 금액은 0 이상이어야 합니다.")
+    ent_eq = (
+        int(enterprise_annual_monthly_eq)
+        if enterprise_annual_monthly_eq is not None
+        else (ent_annual // 12 if ent_annual else ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW)
+    )
+    base_seats = (
+        int(enterprise_base_seats)
+        if enterprise_base_seats is not None
+        else int(prev.get("enterprise_base_seats") or ENTERPRISE_BASE_SEATS)
+    )
+    seat_price = (
+        int(enterprise_seat_price)
+        if enterprise_seat_price is not None
+        else int(prev.get("enterprise_seat_price_krw") or ENTERPRISE_SEAT_PRICE_KRW)
+    )
+    seat_annual = (
+        int(enterprise_seat_annual_price)
+        if enterprise_seat_annual_price is not None
+        else int(
+            prev.get("enterprise_seat_annual_price_krw")
+            or ENTERPRISE_SEAT_ANNUAL_PRICE_KRW
+        )
+    )
+    if base_seats < 1:
+        raise ValueError("기본 좌석은 1 이상이어야 합니다.")
+    if seat_price < 0 or seat_annual < 0:
+        raise ValueError("좌석 단가는 0 이상이어야 합니다.")
     cfg = {
         "pro_price_krw": int(pro_price),
+        "pro_annual_price_krw": annual,
+        "pro_annual_monthly_eq_krw": int(monthly_eq),
         "enterprise_price_krw": int(enterprise_price),
+        "enterprise_annual_price_krw": ent_annual,
+        "enterprise_annual_monthly_eq_krw": int(ent_eq),
+        "enterprise_base_seats": base_seats,
+        "enterprise_seat_price_krw": seat_price,
+        "enterprise_seat_annual_price_krw": seat_annual,
         "updated_at": _now_iso(),
         "updated_by": updated_by,
     }
@@ -104,8 +236,19 @@ def get_pro_price() -> int:
     return int(load_billing_config().get("pro_price_krw") or PRO_PRICE_KRW)
 
 
+def get_pro_annual_price() -> int:
+    return int(load_billing_config().get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW)
+
+
 def get_enterprise_price() -> int:
     return int(load_billing_config().get("enterprise_price_krw") or ENTERPRISE_PRICE_KRW)
+
+
+def get_enterprise_annual_price() -> int:
+    return int(
+        load_billing_config().get("enterprise_annual_price_krw")
+        or ENTERPRISE_ANNUAL_PRICE_KRW
+    )
 
 
 # ── VIP (평생 무료) ───────────────────────────────────
