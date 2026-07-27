@@ -4,19 +4,245 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>무료 운행일지 엑셀 서식 다운로드 | 로드로그</title>
-  <meta name="description" content="개인업무·법인차·월간요약 운행일지 엑셀 서식 무료 다운로드. 현장 기록이 번거로우면 로드로그 스탬프로 정리하세요." />
+  <meta name="description" content="개인업무·법인차·월간요약 운행일지 엑셀 서식 무료 다운로드. 가입·결제 없이 바로 받기. 현장 기록이 번거로우면 로드로그 스탬프로 정리하세요." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://roadlog.co.kr/resources/" />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://roadlog.co.kr/resources/" />
   <meta property="og:title" content="무료 운행일지 엑셀 서식 | 로드로그" />
-  <meta property="og:description" content="운행일지 엑셀 3종 무료. 스탬프형 정리는 roadlog.co.kr" />
+  <meta property="og:description" content="운행일지 엑셀 3종 무료. 가입 없이 바로 받기 · 스탬프형 정리는 roadlog.co.kr" />
   <meta property="og:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
   <meta name="theme-color" content="#030712" />
   <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
-  <link rel="stylesheet" href="/styles.css?v=20260727-resources2" />
-  <link rel="stylesheet" href="/blog/blog.css?v=20260727-resources2" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-free-templates" />
+  <link rel="stylesheet" href="/blog/blog.css?v=20260727-free-templates" />
+  <style>
+    .res-hero {
+      margin-bottom: 8px;
+    }
+    .res-hero h1 {
+      font-family: var(--font-display);
+      font-size: clamp(1.55rem, 3.8vw, 2.2rem);
+      line-height: 1.28;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+      word-break: keep-all;
+    }
+    .res-lead {
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 40rem;
+      font-size: 1.02rem;
+    }
+    .res-lead strong { color: #e2e8f0; font-weight: 650; }
+    .res-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 0;
+    }
+    .res-pills span {
+      font-size: 0.82rem;
+      font-weight: 650;
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.55);
+    }
+    .res-cta-box {
+      margin-top: 28px;
+      padding: 24px 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(34, 211, 238, 0.38);
+      background:
+        radial-gradient(ellipse 80% 100% at 100% 0%, rgba(34, 211, 238, 0.14), transparent 55%),
+        linear-gradient(135deg, rgba(8, 145, 178, 0.18), rgba(3, 7, 18, 0.55));
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+    }
+    .res-cta-box h2 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      margin: 0 0 8px;
+      color: #f1f5f9;
+    }
+    .res-cta-box > p {
+      color: var(--muted);
+      margin: 0 0 16px;
+      line-height: 1.6;
+      font-size: 0.98rem;
+    }
+    .res-btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .res-btn-row .btn {
+      text-decoration: none;
+      justify-content: center;
+    }
+    .res-cta-meta {
+      margin-top: 14px;
+      font-size: 0.88rem;
+      color: var(--muted-2);
+      line-height: 1.55;
+    }
+    .res-cta-meta a { color: var(--cyan); }
+    .res-section {
+      margin-top: 40px;
+    }
+    .res-section h2 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      margin: 0 0 14px;
+      color: #f1f5f9;
+    }
+    .res-section > p {
+      color: var(--muted);
+      line-height: 1.65;
+      margin: 0 0 16px;
+      max-width: 42rem;
+    }
+    .res-sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .res-sheet-card {
+      padding: 18px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(8, 12, 24, 0.85);
+    }
+    .res-sheet-card .num {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 750;
+      color: #67e8f9;
+      letter-spacing: 0.04em;
+      margin-bottom: 8px;
+    }
+    .res-sheet-card h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+      font-weight: 750;
+      color: #f1f5f9;
+      letter-spacing: -0.015em;
+      word-break: keep-all;
+    }
+    .res-sheet-card p {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.55;
+      color: var(--muted);
+      word-break: keep-all;
+    }
+    .res-pack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    .res-pack-card {
+      padding: 16px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+      background: rgba(8, 12, 24, 0.82);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .res-pack-card strong {
+      font-size: 0.95rem;
+      color: #f1f5f9;
+    }
+    .res-pack-card p {
+      margin: 0;
+      flex: 1;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .res-pack-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .res-pack-actions a {
+      font-size: 0.82rem;
+      font-weight: 650;
+      color: #67e8f9;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(34, 211, 238, 0.28);
+      background: rgba(34, 211, 238, 0.08);
+    }
+    .res-pack-actions a:hover {
+      border-color: rgba(34, 211, 238, 0.5);
+      background: rgba(34, 211, 238, 0.14);
+    }
+    .res-steps {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+    .res-steps li {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      background: rgba(8, 12, 24, 0.6);
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.95rem;
+    }
+    .res-steps li::before {
+      content: counter(step);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-weight: 750;
+      font-size: 0.9rem;
+      color: #a5f3fc;
+      background: rgba(34, 211, 238, 0.12);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+    }
+    .res-soft-cta {
+      margin-top: 36px;
+      padding: 22px 20px;
+      border-radius: 16px;
+      border: 1px solid rgba(148, 163, 184, 0.16);
+      background: rgba(8, 12, 24, 0.75);
+    }
+    .res-soft-cta h2 {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      margin: 0 0 10px;
+      color: #f1f5f9;
+    }
+    .res-soft-cta p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+    .res-soft-cta a.btn { text-decoration: none; }
+    @media (max-width: 800px) {
+      .res-sheet-grid { grid-template-columns: 1fr; }
+      .res-btn-row .btn { width: 100%; }
+    }
+  </style>
 </head>
 <body class="blog-page">
   <header class="blog-nav">
@@ -34,48 +260,130 @@
   </header>
 
   <main class="blog-wrap">
-    <div class="blog-kicker">Free templates</div>
-    <h1 style="font-family:var(--font-display);font-size:clamp(1.5rem,3.5vw,2.1rem);margin-bottom:12px">
-      무료 운행일지 엑셀 서식
-    </h1>
-    <p class="lead" style="color:var(--muted);line-height:1.65;max-width:40rem">
-      개인·업무용 일일 운행일지, 법인·공용 차량 일지, 월간 요약 시트 3종을 한 파일에 담았습니다.
-      세무 판단용이 아니라 <strong>업무 기록·정리용</strong> 템플릿입니다.
-    </p>
+    <div class="res-hero">
+      <div class="blog-kicker">Free templates · No signup</div>
+      <h1>무료 운행일지 엑셀 서식</h1>
+      <p class="res-lead">
+        개인·업무용 일일 운행일지, 법인·공용 차량 일지, 월간 요약 시트 3종을 한 파일에 담았습니다.
+        세무 판단용이 아니라 <strong>업무 기록·정리용</strong> 템플릿입니다.
+        가입·결제·이메일 없이 바로 받을 수 있습니다.
+      </p>
+      <div class="res-pills" aria-label="포함 내용">
+        <span>엑셀 3종 + 이용안내</span>
+        <span>가입 없이 다운로드</span>
+        <span>구글 시트 열기</span>
+        <span>회사 제출 양식 5종</span>
+      </div>
+    </div>
 
-    <div class="cta-box" style="margin-top:28px">
-      <h3>엑셀 다운로드</h3>
+    <div class="res-cta-box" id="download">
+      <h2>서식 팩 다운로드</h2>
       <p>로드로그_무료_운행일지_서식팩 · 시트 4개 (이용안내 포함)</p>
-      <div class="btn-row">
+      <div class="res-btn-row">
         <a class="btn btn-primary" href="/assets/templates/roadlog-driving-log-templates.xlsx" download="로드로그_무료_운행일지_서식팩.xlsx">사이트에서 받기</a>
         <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/1LtmoSJO_-a5KbNEWwGAn8EV2E7Oo3b4G/export?format=xlsx" rel="noopener noreferrer" target="_blank">구글에서 받기</a>
-        <a class="btn btn-ghost" href="/">로드로그 체험하기</a>
+        <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/1LtmoSJO_-a5KbNEWwGAn8EV2E7Oo3b4G/edit?usp=sharing" rel="noopener noreferrer" target="_blank">시트 바로 보기</a>
       </div>
-      <p style="margin-top:12px;font-size:0.88rem;color:var(--muted-2)">
-        시트 바로 보기:
-        <a href="https://docs.google.com/spreadsheets/d/1LtmoSJO_-a5KbNEWwGAn8EV2E7Oo3b4G/edit?usp=sharing" rel="noopener noreferrer" target="_blank" style="color:var(--cyan)">Google 스프레드시트 열기</a>
+      <p class="res-cta-meta">
+        파일 형식: .xlsx · Microsoft Excel / Google 스프레드시트 / 한셀 호환<br />
+        문제가 있으면 <a href="/#contact">문의</a>로 알려 주세요.
       </p>
     </div>
 
-    <div class="article-body" style="margin-top:32px">
-      <h2 style="font-family:var(--font-display);font-size:1.2rem;margin-bottom:12px">구성</h2>
-      <ul style="color:var(--muted);line-height:1.7;padding-left:1.2rem">
-        <li>이용안내 · 로드로그 소개 (소프트 CTA)</li>
-        <li>01 개인·업무용 일일 운행일지</li>
-        <li>02 법인·공용 차량 운행일지</li>
-        <li>03 월간 운행 요약</li>
-      </ul>
-      <h2 style="font-family:var(--font-display);font-size:1.2rem;margin:24px 0 12px">엑셀이 번거로울 때</h2>
-      <p style="color:var(--muted);line-height:1.7">
+    <section class="res-section" aria-labelledby="sheet-title">
+      <h2 id="sheet-title">서식 팩 구성</h2>
+      <div class="res-sheet-grid">
+        <article class="res-sheet-card">
+          <span class="num">SHEET 01</span>
+          <h3>개인·업무용 일일 운행일지</h3>
+          <p>개인 차량·업무 이동을 하루 단위로 남기는 기본 양식입니다.</p>
+        </article>
+        <article class="res-sheet-card">
+          <span class="num">SHEET 02</span>
+          <h3>법인·공용 차량 운행일지</h3>
+          <p>팀·총무가 공용 차량 이용을 정리할 때 쓰기 좋은 양식입니다.</p>
+        </article>
+        <article class="res-sheet-card">
+          <span class="num">SHEET 03</span>
+          <h3>월간 운행 요약</h3>
+          <p>월말에 한 장으로 거리·건수를 모아 보는 요약 시트입니다.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="res-section" aria-labelledby="how-title">
+      <h2 id="how-title">받는 방법</h2>
+      <ol class="res-steps">
+        <li><span><strong style="color:#e2e8f0">사이트에서 받기</strong>를 누르면 엑셀 파일이 바로 내려받습니다. 가입이 필요 없습니다.</span></li>
+        <li><span>구글에서 쓰려면 <strong style="color:#e2e8f0">시트 바로 보기</strong> → 파일 메뉴에서 사본 만들기를 하세요.</span></li>
+        <li><span>회사 양식이 따로 있으면 아래 <strong style="color:#e2e8f0">회사 제출용 5종</strong>을 고르거나, 로드로그에 서식을 올려 AI가 맞추게 할 수 있습니다.</span></li>
+      </ol>
+    </section>
+
+    <section class="res-section" aria-labelledby="pack-title">
+      <h2 id="pack-title">회사 제출용 기본 서식 5종</h2>
+      <p>업종·기록 방식에 맞춰 골라 쓰는 단품 양식입니다. Excel · Word 둘 다 받을 수 있습니다.</p>
+      <div class="res-pack-grid">
+        <article class="res-pack-card">
+          <strong>기본형</strong>
+          <p>가장 많이 쓰는 일반 업무 운행 양식</p>
+          <div class="res-pack-actions">
+            <a href="/assets/templates/01_기본형_운행일지.xlsx" download>Excel</a>
+            <a href="/assets/templates/01_기본형_운행일지.docx" download>Word</a>
+          </div>
+        </article>
+        <article class="res-pack-card">
+          <strong>간단형</strong>
+          <p>항목을 줄인 빠른 기록용 양식</p>
+          <div class="res-pack-actions">
+            <a href="/assets/templates/02_간단형_운행일지.xlsx" download>Excel</a>
+            <a href="/assets/templates/02_간단형_운행일지.docx" download>Word</a>
+          </div>
+        </article>
+        <article class="res-pack-card">
+          <strong>상세형 · 누적거리</strong>
+          <p>누적거리·점심까지 적는 상세 양식</p>
+          <div class="res-pack-actions">
+            <a href="/assets/templates/03_상세형_누적거리.xlsx" download>Excel</a>
+            <a href="/assets/templates/03_상세형_누적거리.docx" download>Word</a>
+          </div>
+        </article>
+        <article class="res-pack-card">
+          <strong>영업·외근형</strong>
+          <p>거래처 방문·영업 외근 기록용</p>
+          <div class="res-pack-actions">
+            <a href="/assets/templates/04_영업외근형.xlsx" download>Excel</a>
+            <a href="/assets/templates/04_영업외근형.docx" download>Word</a>
+          </div>
+        </article>
+        <article class="res-pack-card">
+          <strong>현장·공사형</strong>
+          <p>현장 이동·공사 지원 운행용</p>
+          <div class="res-pack-actions">
+            <a href="/assets/templates/05_현장공사형.xlsx" download>Excel</a>
+            <a href="/assets/templates/05_현장공사형.docx" download>Word</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="res-soft-cta">
+      <h2>엑셀이 번거로울 때</h2>
+      <p>
         현장에서 위치 스탬프와 짧은 메모만 남기면 제출용 Excel · PDF · DOCX로 정리되는
         <a href="/" style="color:var(--cyan)">로드로그(roadlog.co.kr)</a>를 무료로 써 보세요.
         카드 없이 가입 · Free 10회.
       </p>
-      <p class="disclaimer" style="margin-top:28px">
-        면책: 본 서식은 기록·정리 편의용이며 세무·법률 자문이 아닙니다.
-        비용 인정·의무 여부는 전문가 및 최신 규정을 확인하세요.
-      </p>
+      <div class="res-btn-row">
+        <a class="btn btn-primary" href="/#create">로드로그 무료 시작</a>
+        <a class="btn btn-ghost" href="/blog/">운행일지 가이드 보기</a>
+      </div>
     </div>
+
+    <p class="disclaimer" style="margin-top:32px">
+      면책: 본 서식은 기록·정리 편의용이며 세무·법률 자문이 아닙니다.
+      비용 인정·의무 여부는 전문가 및 최신 규정을 확인하세요.
+    </p>
 
     <footer class="blog-foot">
       <a href="/blog/">가이드 보기</a>
