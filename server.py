@@ -17,13 +17,14 @@ from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
+from fastapi import Cookie, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from modules import db
+from modules import visitors as visitors_ops
 from modules.config import (
     ADMIN_EMAIL,
     ADMIN_PASSWORD,
@@ -1232,6 +1233,33 @@ def public_reviews():
     """비로그인 랜딩용 공개 후기."""
     items = reviews_ops.list_public_reviews()
     return {"reviews": items, "count": len(items)}
+
+
+@app.get("/api/stats/visitors")
+def stats_visitors(
+    response: Response,
+    request: Request,
+    rl_vid: str | None = Cookie(default=None, alias=visitors_ops.COOKIE_NAME),
+    hit: int = Query(default=1, ge=0, le=1),
+):
+    """
+    총 방문자 수 (브라우저 쿠키 기준 1회 카운트).
+    hit=0 이면 조회만, hit=1(기본) 이면 신규 방문자 시 +1.
+    localhost / webdriver 는 프론트에서 hit=0 권장.
+    """
+    if hit == 0:
+        return {"total": visitors_ops.get_total(), "counted": False}
+    total, vid, is_new = visitors_ops.touch_visitor(rl_vid)
+    response.set_cookie(
+        key=visitors_ops.COOKIE_NAME,
+        value=vid,
+        max_age=visitors_ops.COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=bool(is_production()),
+        path="/",
+    )
+    return {"total": total, "counted": is_new}
 
 
 @app.get("/api/admin/reviews")

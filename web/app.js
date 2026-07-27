@@ -4147,6 +4147,47 @@
     }
   }
 
+  /** 푸터 총 방문자 수 (쿠키 기준 브라우저당 1회 집계) */
+  function isVisitorTestTraffic() {
+    try {
+      const h = (location.hostname || "").toLowerCase();
+      if (
+        h === "localhost" ||
+        h === "127.0.0.1" ||
+        h === "0.0.0.0" ||
+        h === "[::1]" ||
+        h === "::1"
+      ) {
+        return true;
+      }
+      if (location.protocol === "file:") return true;
+      if (/[?&](debug|nocount|audit)=1(?:&|$)/.test(location.search || "")) return true;
+      if (navigator.webdriver === true) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  function formatVisitorCount(n) {
+    if (n == null || Number.isNaN(Number(n))) return "—";
+    try {
+      return Number(n).toLocaleString("ko-KR");
+    } catch (_) {
+      return String(n);
+    }
+  }
+
+  async function loadVisitorStats() {
+    const el = $("#footerVisitorCount");
+    if (!el) return;
+    const hit = isVisitorTestTraffic() ? 0 : 1;
+    try {
+      const data = await api(`/api/stats/visitors?hit=${hit}`);
+      el.textContent = formatVisitorCount(data?.total);
+    } catch {
+      /* keep em dash */
+    }
+  }
+
   function resetReviewForm() {
     if ($("#reviewEditId")) $("#reviewEditId").value = "";
     if ($("#reviewName")) $("#reviewName").value = "";
@@ -6500,6 +6541,7 @@
     syncLunchPrivacyUI();
     syncFuelFieldsUI();
     loadPublicReviews();
+    loadVisitorStats();
 
     try {
       state.meta = await api("/api/meta");
