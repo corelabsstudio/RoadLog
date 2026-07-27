@@ -1,0 +1,222 @@
+/* RoadLog Blog — SEO content (dark brand) */
+.blog-page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+.blog-nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(12px);
+  background: rgba(3, 7, 18, 0.88);
+  border-bottom: 1px solid var(--line);
+}
+.blog-nav-inner {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.blog-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: var(--text);
+  font-weight: 700;
+}
+.blog-brand img {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+.blog-brand span {
+  font-size: 0.95rem;
+}
+.blog-brand small {
+  display: block;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+.blog-nav-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.blog-nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.blog-nav-links a:hover {
+  color: var(--cyan);
+  border-color: var(--line);
+}
+.blog-wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 36px 20px 80px;
+}
+.blog-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cyan);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.blog-hero h1 {
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 4vw, 2.35rem);
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+.blog-hero p.lead {
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  max-width: 42rem;
+}
+.blog-meta {
+  margin: 18px 0 28px;
+  color: var(--muted-2);
+  font-size: 0.9rem;
+}
+.blog-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 28px;
+}
+.blog-card {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 22px 22px 20px;
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.blog-card:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--glow);
+  transform: translateY(-1px);
+}
+.blog-card .tag {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--cyan);
+  background: var(--cyan-soft);
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.blog-card h2 {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+.blog-card p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.blog-card .more {
+  margin-top: 12px;
+  color: var(--cyan);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.article-body {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: #e2e8f0;
+}
+.article-body h2 {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  margin: 1.6em 0 0.55em;
+  color: var(--text);
+}
+.article-body p {
+  margin: 0 0 1em;
+}
+.article-body ul {
+  margin: 0 0 1.1em 1.2em;
+}
+.article-body li {
+  margin: 0.35em 0;
+}
+.article-body a {
+  color: var(--cyan);
+}
+.source-box {
+  margin: 1.4em 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: rgba(8, 145, 178, 0.08);
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+.source-box strong {
+  color: var(--text);
+}
+.cta-box {
+  margin: 2em 0 1em;
+  padding: 22px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.18), rgba(3, 7, 18, 0.4));
+}
+.cta-box h3 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+.cta-box p {
+  color: var(--muted);
+  margin-bottom: 14px;
+  font-size: 0.98rem;
+}
+.cta-box .btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.disclaimer {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--muted-2);
+  line-height: 1.55;
+}
+.blog-foot {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--muted-2);
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.blog-foot a {
+  color: var(--cyan);
+  text-decoration: none;
+}

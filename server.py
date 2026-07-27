@@ -1503,9 +1503,16 @@ def spa_fallback(path: str):
     # API·헬스 경로가 정적 폴백에 먹히지 않게
     if path.startswith("api/") or path in {"health", "healthz"}:
         raise HTTPException(404, "Not Found")
+    # 정적 파일 → 디렉터리 index.html → path.html (SEO 블로그 URL)
     safe = _safe_web_file(path)
     if safe is not None:
         return _file_response(safe)
+    cleaned = path.strip("/")
+    if cleaned and ".." not in cleaned.replace("\\", "/").split("/"):
+        for rel in (f"{cleaned}/index.html", f"{cleaned}.html"):
+            safe_idx = _safe_web_file(rel)
+            if safe_idx is not None:
+                return _file_response(safe_idx)
     # 존재하지 않는 SPA 라우트만 index 폴백 (경로 탈출 시도는 404)
     if ".." in path.replace("\\", "/").split("/"):
         raise HTTPException(404, "Not Found")
