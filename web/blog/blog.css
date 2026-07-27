@@ -220,3 +220,9 @@
   color: var(--cyan);
   text-decoration: none;
 }
+
+.news-summary { margin: 0 0 1.2em 1.1em; }
+.news-summary li { margin: 0.45em 0; color: #e2e8f0; }
+.news-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.news-tags .tag { margin-bottom: 0; }
+.pitch-box h3 { color: #a5f3fc; }
