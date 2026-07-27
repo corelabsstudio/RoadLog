@@ -1864,7 +1864,7 @@
         }
       } else {
         const used = state.usage || 0;
-        const limit = state.limit || 15;
+        const limit = state.limit || 10;
         usageEl.innerHTML = `<span class="uil-badge uil-badge-free">Free</span><span>체험 ${used}/${limit}회 · 잔여 ${Math.max(
           0,
           limit - used
@@ -1975,7 +1975,7 @@
       return;
     }
     const used = state.usage || 0;
-    const limit = state.limit || 15;
+    const limit = state.limit || 10;
     const pct = Math.min(100, Math.round((used / Math.max(1, limit)) * 100));
     label.innerHTML = `<strong style="color:#e2e8f0">Free</strong> · 가입 후 ${used}/${limit}회`;
     remain.textContent = `잔여 ${Math.max(0, limit - used)}회 · 리셋 없음`;

@@ -226,8 +226,7 @@ COLORS = {
 
 # ── 요금제 (PLG 정상가) ──
 # Free: 가입 후 누적 총 N회 (월 리셋 없음 · 기간 무제한). 소진 후 Pro.
-# 권장 구간 10~15회 중 전환 여유를 두고 15회.
-FREE_TOTAL_LIMIT = 15
+FREE_TOTAL_LIMIT = 10
 # 하위 호환 별칭 (옛 코드·문서)
 FREE_MONTHLY_LIMIT = FREE_TOTAL_LIMIT
 PRO_PRICE_KRW = 4900
