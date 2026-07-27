@@ -315,9 +315,9 @@
         btnStart.textContent = tt("nav.admin", "관리자");
         btnStart.dataset.nav = "admin";
       } else {
-        btnStart.textContent = tt("nav.write_log", "일지 작성");
-        // 시간대 자동 진입 제거 — 항상 일지 작성 화면
-        btnStart.dataset.nav = "create";
+        // 로그인 시 메인(홈)으로 — 유형 선택·스탬프가 있는 작업 홈
+        btnStart.textContent = tt("nav.home", "홈");
+        btnStart.dataset.nav = "home";
       }
     }
   }
@@ -1403,6 +1403,19 @@
     if (genBtn && !genBtn.disabled) genBtn.textContent = genLabel;
     const genSticky = $("#btnGenerateSticky");
     if (genSticky && !genSticky.disabled) genSticky.textContent = genLabel;
+    // 홈 큰 스탬프 힌트
+    const homeHint = $("#appHomeStampHint");
+    if (homeHint) {
+      homeHint.textContent =
+        m === "field"
+          ? "외근·출장 · 방문 내용에 자동 반영"
+          : "운행일지 · 방문지에 자동 반영";
+    }
+    const writeBtn = $("#btnHomeWriteLog");
+    if (writeBtn) {
+      writeBtn.textContent =
+        m === "field" ? "외근일지 작성 이어하기" : "운행일지 작성 이어하기";
+    }
     if (opts.toast) {
       toast(m === "field" ? "외근·출장 일지 모드" : "운행일지 모드");
     }
@@ -1828,20 +1841,12 @@
     if ($("#appHomeDate")) $("#appHomeDate").textContent = dateStr;
     if ($("#appHomeGreeting")) $("#appHomeGreeting").textContent = `${name}님, 안녕하세요`;
     if ($("#appHomeSub")) {
-      if (eu.is_admin) {
-        $("#appHomeSub").textContent =
-          "일지 작성과 관리자 운영을 이어서 진행할 수 있습니다.";
-      } else if (eu.plan_type === "enterprise" || eu._viewAs === "enterprise") {
-        $("#appHomeSub").textContent =
-          "Enterprise · 팀 운행일지와 회사 서식을 관리하세요.";
-      } else if (eu.plan === "pro") {
-        $("#appHomeSub").textContent =
-          "Pro · 운행·외근 일지를 무제한으로 작성하세요.";
-      } else {
-        $("#appHomeSub").textContent =
-          "오늘 운행·외근 일지를 작성하거나 회사 서식을 관리하세요.";
-      }
+      $("#appHomeSub").textContent =
+        "아래에서 운행/외근을 고른 뒤, 큰 스탬프 버튼으로 위치를 찍어 주세요.";
     }
+    // 홈 모드 탭·스탬프 목록 동기화
+    setReportMode(state.reportMode || "driving");
+    renderHomeStampList();
 
     // 사용량
     const usageEl = $("#appHomeUsage");
@@ -5048,7 +5053,29 @@
     return s.address_full || s.address || "";
   }
 
+  function renderHomeStampList() {
+    const homeList = $("#appHomeStampList");
+    if (!homeList) return;
+    const stamps = state.stamps || [];
+    if (!stamps.length) {
+      homeList.innerHTML =
+        '<li class="app-home-stamp-empty">오늘 스탬프가 없습니다. 위 버튼을 눌러 주세요.</li>';
+      return;
+    }
+    homeList.innerHTML = stamps
+      .slice(0, 4)
+      .map((s) => {
+        const shortA = stampShortAddress(s);
+        return `<li>
+          <span class="hs-time">${escapeHtml(formatStampTime(s.timestamp))}</span>
+          <span class="hs-addr">${escapeHtml(shortA)}</span>
+        </li>`;
+      })
+      .join("");
+  }
+
   function renderStampList() {
+    renderHomeStampList();
     const list = $("#quickStampList");
     if (!list) return;
     const stamps = state.stamps || [];
@@ -5099,6 +5126,85 @@
         </li>`;
       })
       .join("");
+  }
+
+  async function doQuickStamp(triggerBtn) {
+    const buttons = [
+      triggerBtn,
+      $("#btnQuickStamp"),
+      $("#btnHomeQuickStamp"),
+    ].filter(Boolean);
+    const unique = [...new Set(buttons)];
+    unique.forEach((b) => {
+      b.classList.add("is-loading");
+      b.disabled = true;
+    });
+    const alertEls = [$("#stampAlert"), $("#appHomeStampAlert")].filter(Boolean);
+    alertEls.forEach((el) => alertBox(el, "info", "위치·주소를 확인하는 중…"));
+    try {
+      const pos = await getPosition();
+      const lat = pos.coords.latitude;
+      const lon = pos.coords.longitude;
+      const timestamp = new Date().toISOString();
+      let address_short;
+      let address_full;
+      let raw = {};
+      try {
+        const geo = await reverseGeocode(lat, lon);
+        address_short = geo.address_short;
+        address_full = geo.address_full;
+        raw = geo.raw || {};
+      } catch (geoErr) {
+        address_full = `좌표 ${lat.toFixed(5)}, ${lon.toFixed(5)} (주소 변환 실패)`;
+        address_short = address_full;
+        console.warn(geoErr);
+      }
+      const period = stampPeriodFromTs(timestamp);
+      const stamp = {
+        id: `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
+        timestamp,
+        date: new Date(timestamp).toISOString().slice(0, 10),
+        period,
+        address: address_short,
+        address_short,
+        address_full,
+        raw,
+        lat,
+        lon,
+      };
+      state.stamps = [stamp, ...(state.stamps || [])];
+      saveStamps();
+      renderStampList();
+      const okMsg = `기록됨 · ${periodLabel(period)} · ${formatStampTime(
+        timestamp
+      )} · ${address_short}`;
+      alertEls.forEach((el) => alertBox(el, "ok", okMsg));
+      toast(`퀵 스탬프 저장 (${periodLabel(period)})`);
+
+      const line = stampLine(stamp);
+      if (state.reportMode === "field") {
+        ensureStampLine($("#fieldVisits"), line);
+      } else {
+        const field =
+          period === "morning" ? "#morningPlaces" : "#afternoonPlaces";
+        ensureStampLine($(field), line);
+      }
+    } catch (err) {
+      const denied =
+        err &&
+        (err.code === 1 ||
+          /denied|permission|권한/i.test(String(err.message || err)));
+      const msg = denied
+        ? "위치 접근 권한이 필요합니다"
+        : err.message || "위치를 가져오지 못했습니다";
+      alertEls.forEach((el) => alertBox(el, "error", msg));
+      toast(msg);
+    } finally {
+      unique.forEach((b) => {
+        b.classList.remove("is-loading");
+        b.disabled = false;
+      });
+    }
   }
 
   function getPosition() {
@@ -5239,75 +5345,12 @@
     loadStamps();
     renderStampList();
 
-    $("#btnQuickStamp")?.addEventListener("click", async () => {
-      const btn = $("#btnQuickStamp");
-      btn?.classList.add("is-loading");
-      if (btn) btn.disabled = true;
-      alertBox($("#stampAlert"), "info", "위치·주소를 확인하는 중…");
-      try {
-        const pos = await getPosition();
-        const lat = pos.coords.latitude;
-        const lon = pos.coords.longitude;
-        const timestamp = new Date().toISOString();
-        let address_short;
-        let address_full;
-        let raw = {};
-        try {
-          const geo = await reverseGeocode(lat, lon);
-          address_short = geo.address_short;
-          address_full = geo.address_full;
-          raw = geo.raw || {};
-        } catch (geoErr) {
-          address_full = `좌표 ${lat.toFixed(5)}, ${lon.toFixed(5)} (주소 변환 실패)`;
-          address_short = address_full;
-          console.warn(geoErr);
-        }
-        const period = stampPeriodFromTs(timestamp);
-        const stamp = {
-          id: `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
-          timestamp,
-          date: new Date(timestamp).toISOString().slice(0, 10),
-          period, // morning | afternoon — 일지 매핑 핵심
-          address: address_short, // 일지·리스트 기본 = 짧은 주소
-          address_short,
-          address_full,
-          raw,
-          lat,
-          lon,
-        };
-        state.stamps = [stamp, ...(state.stamps || [])];
-        saveStamps();
-        renderStampList();
-        alertBox(
-          $("#stampAlert"),
-          "ok",
-          `기록됨 · ${periodLabel(period)} · ${formatStampTime(timestamp)} · ${address_short}`
-        );
-        toast(`퀵 스탬프 저장 (${periodLabel(period)})`);
-
-        // 현재 모드 입력란에 자동 반영
-        const line = stampLine(stamp);
-        if (state.reportMode === "field") {
-          ensureStampLine($("#fieldVisits"), line);
-        } else {
-          const field = period === "morning" ? "#morningPlaces" : "#afternoonPlaces";
-          ensureStampLine($(field), line);
-        }
-      } catch (err) {
-        const denied =
-          err &&
-          (err.code === 1 ||
-            /denied|permission|권한/i.test(String(err.message || err)));
-        const msg = denied
-          ? "위치 접근 권한이 필요합니다"
-          : err.message || "위치를 가져오지 못했습니다";
-        alertBox($("#stampAlert"), "error", msg);
-        toast(msg);
-      } finally {
-        btn?.classList.remove("is-loading");
-        if (btn) btn.disabled = false;
-      }
-    });
+    const onStampClick = (e) => {
+      const btn = e.currentTarget;
+      doQuickStamp(btn);
+    };
+    $("#btnQuickStamp")?.addEventListener("click", onStampClick);
+    $("#btnHomeQuickStamp")?.addEventListener("click", onStampClick);
 
     $("#quickStampList")?.addEventListener("click", (e) => {
       const del = e.target.closest("[data-del-stamp]");
@@ -6479,16 +6522,21 @@
     }
     markSessionReady();
 
-    // 홈/빈 해시: 항상 메인(home). 관리자 운영 모드만 admin 대시보드.
-    // 딥링크(#pricing, #create, #stamp 등)는 그대로 존중. 시간대 자동 이동 없음.
+    // PC·앱 공통: 빈 해시/홈 → 메인(home). 딥링크만 존중.
+    // 관리자 운영 모드도 작업 홈(유형 선택·스탬프)을 기본으로 연다.
     let initial = getViewFromLocation();
     const h = (location.hash || "").replace(/^#/, "").trim();
     if (!h || h === "home") {
-      initial =
-        sessionOk && isAdminMainMode() ? "admin" : "home";
+      initial = "home";
     }
 
-    showView(initial, { replaceHistory: true });
+    showView(initial, { replaceHistory: true, skipScroll: false });
+    // 진입 시 스크롤 맨 위 — 유형 선택·큰 스탬프가 바로 보이도록
+    try {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    } catch {
+      window.scrollTo(0, 0);
+    }
 
     if (sessionOk && currentViewName === "home") {
       updateHomeMode();

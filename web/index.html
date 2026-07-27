@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260727-home-entry" />
+  <meta name="rl-build" content="20260727-home-stamp" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260727-home-entry";
+      var BUILD = "20260727-home-stamp";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -128,7 +128,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260727-home-entry" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-home-stamp" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -356,14 +356,14 @@
         </div>
       </div><!-- /guestHome -->
 
-      <!-- 로그인 후: 작업 홈 (대시보드) -->
+      <!-- 로그인 후: 작업 홈 (스크롤 없이 유형 선택 + 큰 스탬프) -->
       <div id="appHome" class="hidden">
         <div class="container app-home">
           <header class="app-home-head">
             <div>
               <p class="app-home-kicker" id="appHomeDate">—</p>
               <h1 class="app-home-title" id="appHomeGreeting">안녕하세요</h1>
-              <p class="app-home-sub" id="appHomeSub">오늘 운행일지를 작성하거나 서식을 관리하세요.</p>
+              <p class="app-home-sub" id="appHomeSub">유형을 고른 뒤 위치 스탬프를 찍어 주세요.</p>
             </div>
             <div class="app-home-usage" id="appHomeUsage">
               <span class="uil-badge uil-badge-free">Free</span>
@@ -371,13 +371,65 @@
             </div>
           </header>
 
-          <div class="app-home-primary">
-            <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-report-mode="driving">운행일지</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-report-mode="field">외근·출장</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="create" data-scroll="quickStampPanel">퀵 스탬프</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="reports">업무 요약</button>
-            <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
-          </div>
+          <!-- 1) 일지 유형 선택 (홈에서 바로 · 화면 이동 없음) -->
+          <section class="app-home-work" aria-label="오늘 일지 작업">
+            <p class="app-home-work-label">오늘 일지 유형</p>
+            <div
+              class="report-mode-tabs app-home-mode-tabs"
+              id="appHomeModeTabs"
+              role="tablist"
+              aria-label="일지 유형"
+            >
+              <button
+                type="button"
+                class="report-mode-tab is-active"
+                role="tab"
+                aria-selected="true"
+                data-report-mode="driving"
+                id="homeTabDriving"
+              >
+                <span class="report-mode-label">운행일지</span>
+                <span class="report-mode-hint">차량 · 거리 · 방문</span>
+              </button>
+              <button
+                type="button"
+                class="report-mode-tab"
+                role="tab"
+                aria-selected="false"
+                data-report-mode="field"
+                id="homeTabField"
+              >
+                <span class="report-mode-label">외근·출장</span>
+                <span class="report-mode-hint">현장 · 단문 보고</span>
+              </button>
+            </div>
+
+            <!-- 2) 큰 스탬프 버튼 (홈에서 GPS 바로 기록) -->
+            <button type="button" class="app-home-stamp-btn" id="btnHomeQuickStamp">
+              <span class="app-home-stamp-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.8"/>
+                  <path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <span class="app-home-stamp-text">
+                <strong>지금 위치 스탬프</strong>
+                <small id="appHomeStampHint">운행일지 · 방문지에 자동 반영</small>
+              </span>
+            </button>
+            <div id="appHomeStampAlert" class="app-home-stamp-alert" aria-live="polite"></div>
+            <ul class="app-home-stamp-list" id="appHomeStampList" aria-live="polite">
+              <li class="app-home-stamp-empty">오늘 스탬프가 없습니다. 위 버튼을 눌러 주세요.</li>
+            </ul>
+
+            <div class="app-home-primary">
+              <button type="button" class="btn btn-primary btn-lg" data-nav="create" id="btnHomeWriteLog">
+                일지 작성 이어하기
+              </button>
+              <button type="button" class="btn btn-ghost btn-lg" data-nav="reports">업무 요약</button>
+              <button type="button" class="btn btn-ghost btn-lg" data-nav="style">회사 서식</button>
+            </div>
+          </section>
 
           <div class="app-home-grid">
             <button type="button" class="app-tile" data-nav="reports">
@@ -390,25 +442,15 @@
               <strong>업무 요약</strong>
               <span class="app-tile-desc">주간·월간 km · 외근 · 방문 Top3</span>
             </button>
-            <button type="button" class="app-tile" data-nav="create" data-report-mode="driving">
+            <button type="button" class="app-tile" data-nav="create">
               <span class="app-tile-watermark" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.5"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
               </span>
               <span class="app-tile-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.75"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
               </span>
-              <strong>운행일지</strong>
-              <span class="app-tile-desc">차량·거리·방문지 입력 후 AI 작성</span>
-            </button>
-            <button type="button" class="app-tile" data-nav="create" data-report-mode="field">
-              <span class="app-tile-watermark" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.5"/></svg>
-              </span>
-              <span class="app-tile-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h10M4 17h14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="18" cy="12" r="2.5" stroke="currentColor" stroke-width="1.75"/></svg>
-              </span>
-              <strong>외근·출장</strong>
-              <span class="app-tile-desc">스탬프·단문 → 제출용 보고서로</span>
+              <strong>일지 작성</strong>
+              <span class="app-tile-desc">선택 모드로 AI 작성 화면 열기</span>
             </button>
             <button type="button" class="app-tile" data-nav="style">
               <span class="app-tile-watermark" aria-hidden="true">
@@ -1801,8 +1843,8 @@
     </button>
   </div>
 
-  <script src="/ui-sound.js?v=20260727-home-entry"></script>
-  <script src="/app.js?v=20260727-home-entry"></script>
+  <script src="/ui-sound.js?v=20260727-home-stamp"></script>
+  <script src="/app.js?v=20260727-home-stamp"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

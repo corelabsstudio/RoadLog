@@ -217,11 +217,149 @@ img {
   color: #cbd5e1;
   white-space: nowrap;
 }
+/* 로그인 홈: 유형 선택 + 큰 스탬프 (스크롤 없이 1화면) */
+.app-home-work {
+  margin-bottom: 1.5rem;
+  padding: 1.1rem 1.15rem 1.2rem;
+  border-radius: 18px;
+  border: 1px solid rgba(34, 211, 238, 0.18);
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(34, 211, 238, 0.1), transparent 55%),
+    linear-gradient(165deg, rgba(12, 20, 38, 0.98), rgba(6, 10, 22, 0.99));
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
+}
+.app-home-work-label {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.app-home-mode-tabs {
+  margin-bottom: 0.95rem;
+}
+.app-home-stamp-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 5.5rem;
+  padding: 1.15rem 1.25rem;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  text-align: left;
+  color: #031018;
+  background: linear-gradient(135deg, #22d3ee 0%, #2dd4bf 45%, #38bdf8 100%);
+  box-shadow:
+    0 14px 36px rgba(34, 211, 238, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  font: inherit;
+}
+.app-home-stamp-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow:
+    0 18px 40px rgba(34, 211, 238, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.app-home-stamp-btn:active {
+  transform: translateY(0);
+}
+.app-home-stamp-btn:disabled,
+.app-home-stamp-btn.is-loading {
+  opacity: 0.72;
+  cursor: wait;
+  transform: none;
+}
+.app-home-stamp-icon {
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 16, 24, 0.14);
+  color: #031018;
+}
+.app-home-stamp-icon svg {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: block;
+}
+.app-home-stamp-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.app-home-stamp-text strong {
+  font-size: clamp(1.15rem, 3.5vw, 1.4rem);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.app-home-stamp-text small {
+  font-size: 0.86rem;
+  font-weight: 600;
+  opacity: 0.78;
+  line-height: 1.35;
+}
+.app-home-stamp-alert {
+  min-height: 0;
+  margin-top: 0.55rem;
+  font-size: 0.86rem;
+  color: #a5f3fc;
+}
+.app-home-stamp-alert:empty {
+  display: none;
+}
+.app-home-stamp-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 7.5rem;
+  overflow: auto;
+}
+.app-home-stamp-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  background: rgba(8, 12, 24, 0.55);
+  font-size: 0.86rem;
+  color: #e2e8f0;
+}
+.app-home-stamp-empty {
+  justify-content: center;
+  color: var(--muted) !important;
+  border-style: dashed !important;
+  background: transparent !important;
+}
+.app-home-stamp-list .hs-time {
+  color: #67e8f9;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.app-home-stamp-list .hs-addr {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .app-home-primary {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
-  margin-bottom: 1.5rem;
+  margin-top: 0.95rem;
+  margin-bottom: 0;
 }
 .app-home-primary .btn {
   min-height: 48px;
@@ -378,7 +516,25 @@ img {
 
 @media (max-width: 900px) {
   .app-home {
-    padding: 1.25rem 0 2rem;
+    padding: 0.85rem 0 2rem;
+  }
+  .app-home-head {
+    margin-bottom: 1rem;
+    gap: 0.85rem;
+  }
+  .app-home-title {
+    font-size: clamp(1.35rem, 5.5vw, 1.7rem);
+  }
+  .app-home-sub {
+    font-size: 0.9rem;
+  }
+  .app-home-work {
+    padding: 0.95rem 0.95rem 1.05rem;
+    margin-bottom: 1.15rem;
+  }
+  .app-home-stamp-btn {
+    min-height: 5.1rem;
+    padding: 1rem 1.05rem;
   }
   .app-home-primary {
     flex-direction: column;
