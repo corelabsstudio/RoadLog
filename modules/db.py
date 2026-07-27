@@ -378,6 +378,213 @@ def list_users() -> list[dict]:
     return [_normalize_user(u) for u in users.values()]
 
 
+def is_tester_account(user_or_email: dict | str) -> bool:
+    """QA·데모·@roadlog.test 등 테스트 계정 여부. 관리자는 항상 False."""
+    if isinstance(user_or_email, dict):
+        u = user_or_email
+        email = (u.get("email") or "").strip().lower()
+        if u.get("is_admin"):
+            return False
+    else:
+        email = str(user_or_email or "").strip().lower()
+        u = get_user(email) or {"email": email}
+        if u.get("is_admin"):
+            return False
+    if not email or "@" not in email:
+        return False
+    admin_user, _, admin_email = get_admin_credentials()
+    admin_ids = {
+        (admin_user or "").strip().lower(),
+        (admin_email or "").strip().lower(),
+        f"{(admin_user or '').strip().lower()}@roadlog.local",
+    }
+    if email in admin_ids or email.endswith("@roadlog.local"):
+        return False
+    domain = email.rsplit("@", 1)[-1]
+    if domain in {
+        "roadlog.test",
+        "test.com",
+        "example.com",
+        "localhost",
+        "email.com",
+    }:
+        return True
+    local = email.split("@", 1)[0]
+    test_prefixes = (
+        "qa",
+        "demo",
+        "style",
+        "bill_",
+        "ai_",
+        "launch_",
+        "limit_",
+        "review",
+        "ok_",
+        "persist_",
+        "team",
+        "test",
+        "smoke",
+        "volume",
+    )
+    if local.startswith(test_prefixes):
+        return True
+    name = str(u.get("name") or "").lower()
+    if any(k in name for k in ("qa", "tester", "demo", "smoke", "reviewer")):
+        return True
+    return False
+
+
+def delete_user(email: str, *, force: bool = False) -> dict[str, Any]:
+    """
+    회원 및 관련 로컬 데이터 삭제.
+    관리자 계정은 force=True 여도 삭제하지 않음.
+    """
+    import shutil
+
+    email = (email or "").strip().lower()
+    if not email:
+        return {"ok": False, "email": email, "reason": "empty"}
+
+    admin_user, _, admin_email = get_admin_credentials()
+    admin_ids = {
+        (admin_user or "").strip().lower(),
+        (admin_email or "").strip().lower(),
+        f"{(admin_user or '').strip().lower()}@roadlog.local",
+    }
+    if email in admin_ids:
+        return {"ok": False, "email": email, "reason": "admin_protected"}
+
+    existing = get_user(email)
+    if existing and existing.get("is_admin"):
+        return {"ok": False, "email": email, "reason": "admin_protected"}
+    if not existing and not force:
+        return {"ok": False, "email": email, "reason": "not_found"}
+
+    removed: list[str] = []
+
+    if _sb.enabled:
+        try:
+            _sb.client.table("profiles").delete().eq("email", email).execute()
+            removed.append("profile")
+        except Exception:
+            pass
+        try:
+            _sb.client.table("user_settings").delete().eq("email", email).execute()
+            removed.append("settings_sb")
+        except Exception:
+            pass
+        try:
+            _sb.client.table("usage").delete().eq("email", email).execute()
+            removed.append("usage_sb")
+        except Exception:
+            pass
+    else:
+        users = _read_json(USERS_JSON, {})
+        if email in users:
+            users.pop(email, None)
+            _write_json(USERS_JSON, users)
+            removed.append("users.json")
+
+    # usage.json
+    try:
+        usage = _read_json(USAGE_JSON, {})
+        if email in usage:
+            usage.pop(email, None)
+            _write_json(USAGE_JSON, usage)
+            removed.append("usage.json")
+    except Exception:
+        pass
+
+    # settings file
+    try:
+        sp = SETTINGS_DIR / f"{_safe_filename(email)}.json"
+        if sp.exists():
+            sp.unlink()
+            removed.append("settings")
+    except Exception:
+        pass
+
+    # logs
+    try:
+        lp = _logs_path(email)
+        if lp.exists():
+            lp.unlink()
+            removed.append("logs")
+    except Exception:
+        pass
+
+    # styles dir
+    try:
+        from modules.config import DATA_DIR
+
+        style_dir = DATA_DIR / "styles" / email
+        if style_dir.exists():
+            shutil.rmtree(style_dir, ignore_errors=True)
+            removed.append("styles")
+    except Exception:
+        pass
+
+    # user_configs (username part)
+    try:
+        from modules.config import DATA_DIR
+
+        uname = email.split("@", 1)[0]
+        cfg = DATA_DIR / "user_configs" / f"config_{uname}.json"
+        if cfg.exists() and uname not in {
+            (admin_user or "").strip().lower(),
+            "hhs126",
+        }:
+            cfg.unlink()
+            removed.append("user_config")
+    except Exception:
+        pass
+
+    return {
+        "ok": True,
+        "email": email,
+        "removed": removed,
+        "was_tester": is_tester_account(existing or email),
+    }
+
+
+def purge_tester_users() -> dict[str, Any]:
+    """테스터/QA 계정 일괄 삭제. 관리자는 제외."""
+    deleted: list[dict] = []
+    skipped: list[dict] = []
+    for u in list_users():
+        email = (u.get("email") or "").strip().lower()
+        if not email:
+            continue
+        if u.get("is_admin") or not is_tester_account(u):
+            skipped.append(
+                {
+                    "email": email,
+                    "reason": "admin" if u.get("is_admin") else "not_tester",
+                    "plan": u.get("plan"),
+                }
+            )
+            continue
+        result = delete_user(email)
+        if result.get("ok"):
+            deleted.append(result)
+        else:
+            skipped.append(result)
+    return {
+        "ok": True,
+        "deleted_count": len(deleted),
+        "deleted": deleted,
+        "skipped": skipped,
+        "remaining": [
+            {
+                "email": x.get("email"),
+                "plan": x.get("plan"),
+                "is_admin": bool(x.get("is_admin")),
+            }
+            for x in list_users()
+        ],
+    }
+
+
 # ── 사용자 설정 ────────────────────────────────────────
 
 

@@ -1378,6 +1378,48 @@ def admin_vip_remove(member_id: str, authorization: str | None = Header(default=
     return {"ok": True, "vip_members": admin_ops.load_vip_members()}
 
 
+def _drop_sessions_for_email(email: str) -> int:
+    """메모리·디스크 세션에서 해당 회원 토큰 제거."""
+    email = (email or "").strip().lower()
+    if not email:
+        return 0
+    drop = [tok for tok, u in list(_sessions.items()) if (u.get("email") or "").lower() == email]
+    for tok in drop:
+        _sessions.pop(tok, None)
+    if drop:
+        _persist_sessions()
+    return len(drop)
+
+
+@app.delete("/api/admin/users/{email}")
+def admin_delete_user(email: str, authorization: str | None = Header(default=None)):
+    """단일 회원 삭제 (관리자 제외)."""
+    _require_admin(authorization)
+    result = db.delete_user(email)
+    if not result.get("ok"):
+        reason = result.get("reason") or "failed"
+        if reason == "not_found":
+            raise HTTPException(404, "회원을 찾을 수 없습니다.")
+        if reason == "admin_protected":
+            raise HTTPException(400, "관리자 계정은 삭제할 수 없습니다.")
+        raise HTTPException(400, reason)
+    n = _drop_sessions_for_email(email)
+    result["sessions_dropped"] = n
+    return result
+
+
+@app.post("/api/admin/users/purge-testers")
+def admin_purge_testers(authorization: str | None = Header(default=None)):
+    """테스터·QA 계정 일괄 삭제. 관리자·실사용 패턴은 유지."""
+    _require_admin(authorization)
+    result = db.purge_tester_users()
+    dropped = 0
+    for row in result.get("deleted") or []:
+        dropped += _drop_sessions_for_email(row.get("email") or "")
+    result["sessions_dropped"] = dropped
+    return result
+
+
 # ── 정적 파일 ─────────────────────────────────────────
 
 _TEXT_MEDIA = {
