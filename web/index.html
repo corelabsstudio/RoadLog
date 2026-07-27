@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260727-reload-fix" />
+  <meta name="rl-build" content="20260727-home-entry" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260727-reload-fix";
+      var BUILD = "20260727-home-entry";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -128,7 +128,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260727-reload-fix" />
+  <link rel="stylesheet" href="/styles.css?v=20260727-home-entry" />
 </head>
 <body class="session-checking">
   <!-- NAV -->
@@ -1413,7 +1413,7 @@
         <div class="section-head" style="text-align:left">
           <div class="eyebrow" data-i18n="settings.eyebrow">Settings</div>
           <h2 data-i18n="settings.title">내 설정</h2>
-          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="settings.sub">근무 시간에 따라 앱이 스탬프/일지 화면을 자동으로 엽니다. 언어와 차량 설정을 관리하세요.</p>
+          <p style="margin:0.4rem 0 0;max-width:none" data-i18n="settings.sub">언어·차량·근무 시간 등 이 기기와 계정 기본값을 관리합니다.</p>
         </div>
 
         <div class="panel" style="margin-bottom:1rem">
@@ -1435,11 +1435,11 @@
 
         <div class="panel" style="margin-bottom:1rem">
           <div class="panel-head">
-            <h2 data-i18n="settings.work_title">근무 시간 · 스마트 라우팅</h2>
+            <h2 data-i18n="settings.work_title">근무 시간</h2>
             <span class="pill">Local</span>
           </div>
           <p style="color:var(--muted);font-size:0.88rem;margin:0 0 0.85rem;line-height:1.5" data-i18n="settings.work_desc">
-            근무 중에는 퀵 스탬프, 그 외 시간에는 일지 작성 화면으로 바로 이동합니다.
+            참고용으로 저장합니다. 앱·홈을 열 때 자동으로 스탬프/일지 화면으로 이동하지 않습니다.
           </p>
           <div class="settings-grid">
             <div>
@@ -1801,8 +1801,8 @@
     </button>
   </div>
 
-  <script src="/ui-sound.js?v=20260727-reload-fix"></script>
-  <script src="/app.js?v=20260727-reload-fix"></script>
+  <script src="/ui-sound.js?v=20260727-home-entry"></script>
+  <script src="/app.js?v=20260727-home-entry"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

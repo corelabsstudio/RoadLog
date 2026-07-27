@@ -316,10 +316,8 @@
         btnStart.dataset.nav = "admin";
       } else {
         btnStart.textContent = tt("nav.write_log", "일지 작성");
-        btnStart.dataset.nav =
-          typeof isWithinWorkHours === "function" && isWithinWorkHours()
-            ? "stamp"
-            : "report";
+        // 시간대 자동 진입 제거 — 항상 일지 작성 화면
+        btnStart.dataset.nav = "create";
       }
     }
   }
@@ -768,7 +766,7 @@
     document.body.classList.toggle("has-sticky-cta", isCreate && isMobile);
   }
 
-  // ── 스마트 라우팅 (근무 시간) ──
+  // ── 근무 시간 (참고용 저장 · 자동 화면 이동 없음) ──
   const WORK_HOURS_KEY = "rl_work_hours";
   const DEFAULT_WORK_START = "09:00";
   const DEFAULT_WORK_END = "18:00";
@@ -829,17 +827,16 @@
   }
 
   /**
-   * 근무 중 → stamp(퀵 스탬프), 그 외 → report(일지 정리)
-   * 명시적 딥링크(#pricing 등)가 있으면 호출하지 않음
+   * (레거시) 근무 시간 기반 자동 화면 이동은 제거됨.
+   * 앱·홈 실행 시 항상 home(관리자는 admin). stamp/report 딥링크만 직접 진입.
    */
-  function resolveSmartRoute(now = new Date()) {
-    return isWithinWorkHours(now) ? "stamp" : "report";
+  function resolveSmartRoute(_now = new Date()) {
+    return "home";
   }
 
   function shouldApplySmartRoute() {
-    const h = (location.hash || "").replace(/^#/, "").trim();
-    // 빈 해시·홈만 스마트 라우팅 (딥링크 존중)
-    return !h || h === "home";
+    // 더 이상 시간대별 자동 이동 없음
+    return false;
   }
 
   function fillWorkHoursForm() {
@@ -848,8 +845,7 @@
     if ($("#s_work_end")) $("#s_work_end").value = wh.end;
     const hint = $("#workHoursHint");
     if (hint) {
-      const mode = isWithinWorkHours() ? "근무 중 · 스탬프 화면" : "근무 외 · 일지 정리 화면";
-      hint.textContent = `현재 기준: ${wh.start} ~ ${wh.end} → 앱 실행 시 「${mode}」으로 이동합니다.`;
+      hint.textContent = `저장된 근무 시간: ${wh.start} ~ ${wh.end} (앱·홈 실행 시 자동으로 스탬프/일지 화면으로 이동하지 않습니다)`;
     }
   }
 
@@ -1643,12 +1639,13 @@
   }
 
   /**
-   * 관리자 운영 모드일 때 기본 진입(홈·스마트 라우팅)만 대시보드로 보냄.
+   * 관리자 운영 모드일 때 기본 진입(홈)만 대시보드로 보냄.
    * 요금제·문의·설정·작성·서식 등 명시적 메뉴는 절대 가로채지 않음.
    */
   function resolveAdminMainView(name) {
     if (!isAdminMainMode()) return name;
-    if (name === "home" || name === "stamp" || name === "report") return "admin";
+    // stamp/report 딥링크는 가로채지 않음 — home만 admin
+    if (name === "home") return "admin";
     return name;
   }
 
@@ -6482,43 +6479,19 @@
     }
     markSessionReady();
 
-    // 스마트 라우팅: 홈/빈 해시로 실행 시 근무 시간에 따라 stamp | report
-    // 관리자 세션: 메인은 관리자 대시보드 (매출·사용 건수)
-    // 딥링크(#pricing, #settings 등)는 그대로 존중
-    let initial;
-    if (shouldApplySmartRoute()) {
-      if (sessionOk && isAdminMainMode()) {
-        initial = "admin";
-      } else {
-        const isPwa =
-          window.matchMedia("(display-mode: standalone)").matches ||
-          window.navigator.standalone === true;
-        const hasSessionHint =
-          sessionOk || localStorage.getItem(REMEMBER_KEY) === "1" || isPwa;
-        // 세션·PWA·바로가기: 비서형 진입 / 첫 방문 게스트: 랜딩
-        initial = hasSessionHint ? resolveSmartRoute() : "home";
-      }
-    } else {
-      initial = getViewFromLocation();
+    // 홈/빈 해시: 항상 메인(home). 관리자 운영 모드만 admin 대시보드.
+    // 딥링크(#pricing, #create, #stamp 등)는 그대로 존중. 시간대 자동 이동 없음.
+    let initial = getViewFromLocation();
+    const h = (location.hash || "").replace(/^#/, "").trim();
+    if (!h || h === "home") {
+      initial =
+        sessionOk && isAdminMainMode() ? "admin" : "home";
     }
 
     showView(initial, { replaceHistory: true });
 
     if (sessionOk && currentViewName === "home") {
       updateHomeMode();
-    }
-
-    // 스마트 진입 안내 (stamp/report 일 때만 1회성 · 관리자 제외)
-    if (
-      !isAdminMainMode() &&
-      (initial === "stamp" || initial === "report")
-    ) {
-      const wh = getWorkHours();
-      const label =
-        initial === "stamp"
-          ? `근무 중 (${wh.start}~${wh.end}) · 퀵 스탬프`
-          : `근무 외 시간 · 일지 정리`;
-      setTimeout(() => toast(label), 400);
     }
   }
 
