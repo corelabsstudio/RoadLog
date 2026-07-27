@@ -1069,6 +1069,8 @@ img {
 .landing-section-head {
   margin-bottom: 1.65rem !important;
   max-width: 40rem;
+  margin-inline: auto;
+  text-align: center;
 }
 .landing-section-head h2 {
   font-size: clamp(1.35rem, 4.2vw, 1.85rem) !important;
@@ -1078,6 +1080,8 @@ img {
 }
 .landing-section-head p {
   color: #94a3b8 !important;
+  margin-inline: auto;
+  max-width: 42ch;
 }
 .landing-value-grid {
   display: grid;
@@ -1185,12 +1189,26 @@ img {
 /* Reviews / social proof */
 .landing-reviews {
   padding: 2.75rem 0 1.25rem;
+  text-align: center;
+}
+.landing-reviews .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.landing-reviews .landing-section-head {
+  width: 100%;
+  text-align: center;
 }
 .landing-review-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.9rem;
   margin-top: 0.25rem;
+  width: 100%;
+  max-width: var(--max, 1120px);
+  justify-content: center;
+  text-align: left; /* card body stays readable left-aligned */
 }
 .landing-review-card {
   display: flex;
