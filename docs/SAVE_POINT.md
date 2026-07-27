@@ -1,14 +1,38 @@
 # RoadLog 저장 지점 (Save Point)
 
 > **로드로그 본체:** **「로드로그 불러와줘」** / **「RoadLog 이어서」** → 이 문서 + `AGENTS.md`  
-> **홍보 프로그램(ReachKit):** **「홍보 불러와」** / **「ReachKit 이어서」** → `tools/community_poster/SAVE_POINT.md`
+> **홍보 프로그램(ReachKit):** **「홍보 불러와」** / **「ReachKit 이어서」** → `tools/community_poster/SAVE_POINT.md`  
+> **마케팅 하네스:** **「로드로그 마케팅」** / **「로드로그 SEO」** → `docs/marketing/AGENT_TEAM.md` (+ Context · DAILY_SEO_PROMPT)
 
-**저장 시각:** 2026-07-17  
+**저장 시각:** 2026-07-28 (마케팅 하네스 추가) · 이전 본문 스냅샷 2026-07-21  
 **로컬 경로:** `C:\Users\hysoo\Projects\RoadLog`  
 **라이브:** https://roadlog.co.kr/  
 **GitHub:** `corelabsstudio/RoadLog` · `main`  
-**최근 배포 커밋:** `65fb589` — 인쇄 미리보기 빈 창 수정 (Blob URL)  
-**프론트 빌드:** `20260712-print-v25` (`web/build.json` · `app.js?v=…`)
+**최근 배포:** `6990a78a` SUCCESS (Volume `/data` 연결 후 재배포, 2026-07-21)  
+**프론트 빌드:** `20260712-print-v25` (`web/build.json` · `app.js?v=…`)  
+**데이터:** Railway Volume `web-volume` → mount `/data` · `DATA_DIR=/data`  
+**AI:** OpenAI 키 유효 확인 (models + chat completions OK, model `gpt-4o-mini`)
+
+---
+
+## 2026-07-21 세션에서 한 일
+
+### 1) Railway 토큰·상태 점검
+- `.launch/railway.token` 재등록 (Workspace 스코프 — `me` 실패해도 `projects`/variables OK)
+- GitHub·라이브·배포 SUCCESS 확인
+- OpenAI live 키: **유효** (chat reply OK)
+
+### 2) AdSense 슬롯 정리
+- Railway에 `ADSENSE_CLIENT=ca-pub-xxxxxxxxxxxxxxxx`, `ADSENSE_SLOT=xxxxxxxxxx` 플레이스홀더만 있었음
+- **두 변수 삭제** (기본값 xxxx → Streamlit은 데모 박스만, SPA는 AdSense 미사용)
+- 실제 광고 켤 때: 진짜 `ca-pub-…` + 숫자 slot 을 Variables에 다시 넣으면 됨
+
+### 3) Railway Volume 연결 (완료)
+- Volume 생성: `web-volume` (`2328b382-…`) · instance mount **`/data`** · region sfo
+- Variable: `DATA_DIR=/data`
+- 재배포 SUCCESS · health: `data_dir=/data`, `storage_persistent=true`, `openai=true`
+- 관리자 로그인 OK (env `ADMIN_*` 로 재시드)
+- **주의:** Volume 붙이기 전 컨테이너 ephemeral 데이터는 이전되지 않음. 가입 회원은 초기화됐을 수 있음(관리자는 env로 유지)
 
 ---
 

@@ -1,12 +1,56 @@
 {
-  "updated": "2026-07-27",
+  "updated": "2026-07-28",
   "note": "지갑(세금·규제·벌금·비용인정) 직결 뉴스만. 전문 전재 금지. summary 3~4줄 + source + roadlog_pitch.",
   "items": [
+    {
+      "slug": "2026-07-28-nts-explanation-request-log",
+      "date": "2026-07-28",
+      "title": "업무용 승용차 해명자료 요청이 늘 때 — 운행기록이 비면 설명이 어려워진다",
+      "tags": [
+        "해명자료",
+        "법인차",
+        "운행기록부"
+      ],
+      "wallet": "소명·경비 부인 리스크",
+      "source_name": "세무 실무 해설 (해명자료·운행기록부)",
+      "source_url": "https://gmg-tax.com/news/?bmode=view&idx=15113355",
+      "summary": [
+        "업무용 승용차 비용처리와 관련해 해명자료 제출 요청이 반복된다는 실무 안내가 공유되고 있습니다.",
+        "임직원전용 보험 미가입·운행기록부 미작성·불분명 작성이 불리한 근거로 거론됩니다.",
+        "법인·일부 개인사업자 모두 ‘작성 대상·대상 차량’을 다시 확인하라는 메시지가 강합니다.",
+        "금액 한도·인정 여부는 사안마다 달라, 현장에서는 끊기지 않는 일자별 기록이 통제 가능한 부분입니다."
+      ],
+      "pitch": "해명 단계에서 가장 먼저 비는 건 월말에 몰아 쓴 엑셀입니다. 로드로그는 방문 직후 위치 스탬프와 짧은 메모로 원천 기록을 남기고 제출용 Excel·PDF·DOCX로 정리합니다. 세무 판단·절세 보장은 하지 않습니다."
+    },
+    {
+      "slug": "2026-07-28-company-car-deduction-records",
+      "date": "2026-07-28",
+      "title": "법인 업무용 차량 비용 — ‘운행 기록 유무’가 공제 논의의 출발점",
+      "tags": [
+        "법인차",
+        "비용공제",
+        "운행기록"
+      ],
+      "wallet": "비용 인정 프레임",
+      "source_name": "PwC Worldwide Tax Summaries — Korea Corporate Deductions",
+      "source_url": "https://taxsummaries.pwc.com/republic-of-korea/corporate/deductions",
+      "summary": [
+        "국제 세무 요약 자료는 한국 법인 업무용 승용차 비용 공제 논의에서 운행 기록(또는 업무 사용 증빙)을 전제로 설명합니다.",
+        "기록이 없을 때의 공제 한도 프레임이 별도로 소개되지만, 구체 금액·적용은 시점·법령·개별 사안에 따릅니다.",
+        "사적 이용 분에 대한 부인·업무사용비율 산정 또한 기록과 연결됩니다.",
+        "실무 메시지는 ‘숫자 암기’보다 ‘차량별 일자 기록을 남길 체계’에 가깝습니다."
+      ],
+      "pitch": "공제 해석은 세무사 영역이고, 로드로그는 현장 원천 데이터를 쌓는 도구입니다. Free로 루틴을 만든 뒤 주간·월간 문서로 정리해 보세요. 한도 수치를 단정하거나 절세를 약속하지 않습니다."
+    },
     {
       "slug": "2026-07-27-nts-corporate-car-audit",
       "date": "2026-07-27",
       "title": "국세청, 법인차 사적 이용 고강도 점검 — 운행 기록이 소명의 핵심",
-      "tags": ["법인차", "세무조사", "운행일지"],
+      "tags": [
+        "법인차",
+        "세무조사",
+        "운행일지"
+      ],
       "wallet": "세금·비용 부인 리스크",
       "source_name": "관련 세무 해설·보도 종합",
       "source_url": "https://www.eacar.co.kr/article/223820849062",
@@ -22,7 +66,11 @@
       "slug": "2026-07-27-green-plate-high-end-corp-car",
       "date": "2026-07-27",
       "title": "고가 법인차 ‘연두색 번호판’ 이슈 — 비용 처리 전제 조건 점검",
-      "tags": ["연두색번호판", "법인차", "규제"],
+      "tags": [
+        "연두색번호판",
+        "법인차",
+        "규제"
+      ],
       "wallet": "규제·비용 처리 전제",
       "source_name": "업무용 승용차 비용·번호판 관련 실무 해설",
       "source_url": "https://www.spendit.kr/blog/%EC%97%85%EB%AC%B4%EC%9A%A9-%EC%8A%B9%EC%9A%A9%EC%B0%A8-%EC%9A%B4%ED%96%89%EC%9D%BC%EC%A7%80-%ED%95%AD%EB%AA%A9-%EC%9E%91%EC%84%B1%EB%B2%95-31498",
@@ -38,7 +86,11 @@
       "slug": "2026-07-27-nts-vehicle-log-form-notice",
       "date": "2026-07-27",
       "title": "국세청, 업무용승용차 운행기록 방법 고시 — ‘작성·비치’가 기본 프레임",
-      "tags": ["국세청", "고시", "운행기록부"],
+      "tags": [
+        "국세청",
+        "고시",
+        "운행기록부"
+      ],
       "wallet": "제도·비용 인정 프레임",
       "source_name": "국세청 고시",
       "source_url": "https://www.nts.go.kr/nts/na/ntt/selectNttInfo.do?nttSn=1303826&mi=",
@@ -54,7 +106,11 @@
       "slug": "2026-07-27-personal-biz-vehicle-expense-log",
       "date": "2026-07-27",
       "title": "개인사업자 차량 비용·유류비 — ‘한도’ 검색 전에 기록부터",
-      "tags": ["개인사업자", "유류비", "증빙"],
+      "tags": [
+        "개인사업자",
+        "유류비",
+        "증빙"
+      ],
       "wallet": "경비·한도·증빙",
       "source_name": "개인사업자 승용차 비용처리 안내",
       "source_url": "https://help.jobis.co/hc/ko/articles/360002790173",
@@ -70,7 +126,11 @@
       "slug": "2026-07-27-driving-log-filing-timing",
       "date": "2026-07-27",
       "title": "차량운행일지, 언제 누구에게 넘기나 — 신고 시즌 전에 쌓아 두기",
-      "tags": ["신고", "운행일지", "일정"],
+      "tags": [
+        "신고",
+        "운행일지",
+        "일정"
+      ],
       "wallet": "신고·소명 일정",
       "source_name": "차량운행일지 작성 안내",
       "source_url": "https://www.heumtax.com/contents/posts/driving-log-guide",
