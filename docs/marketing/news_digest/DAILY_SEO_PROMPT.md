@@ -72,9 +72,19 @@ git commit -m "content: daily RoadLog news SEO digest YYYY-MM-DD"
 git push origin main
 python scripts/_deploy_latest.py
 ```
+
+### F. 티스토리 동시 발행 (토큰 있을 때만)
+블로그: https://onhae126.tistory.com/ (`TISTORY_BLOG_NAME=onhae126`)  
+설정: `RoadLog/.launch/tistory.env` (없으면 스킵)
+
+```
+python tools/tistory_publish/publish.py --file web/blog/<flagship>.html --title "글제목" --tags "로드로그,운행일지,법인차"
+```
+
 라이브 URL 확인 후 보고:
 - 브리핑 N건 URL
 - 풀 포스팅 1건 URL
+- 티스토리 URL 또는 SKIP_NO_TOKEN
 - 스킵/무뉴스 사유
 
 ## 프로젝트 경로

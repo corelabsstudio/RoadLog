@@ -43,3 +43,8 @@ tools/community_poster/data/*.json
 # local railway var dump (secrets)
 railway-variables.env
 
+
+# Tistory secrets
+.launch/tistory.env
+tools/tistory_publish/publish_log.jsonl
+
