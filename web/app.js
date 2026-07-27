@@ -5525,9 +5525,19 @@
   function setupPwaAutoUpdate() {
     const SHELL_BUILD =
       document.querySelector('meta[name="rl-build"]')?.content ||
-      "20260712-force-v20";
+      "20260727-reload-fix";
+
+    // 셸이 로드됐으면 localStorage를 셸 기준으로 정착 (poll/early 스크립트 충돌 방지)
+    try {
+      localStorage.setItem("rl_build", SHELL_BUILD);
+      sessionStorage.setItem("rl_build_reloaded", SHELL_BUILD);
+    } catch {
+      /* ignore */
+    }
 
     // build.json 폴링 — 서버 배포 후 설치 앱도 따라옴
+    // 주의: build.json 만 앞서고 HTML/SW 가 뒤처지면 강제 reload 하면 무한 루프 난다.
+    // remote === 새 배포 + 아직 이 세션에서 1회만 시도 + 셸이 아직 구버전이면 1회 새로고침.
     const pollServerBuild = async () => {
       try {
         const res = await fetch(`/build.json?t=${Date.now()}`, {
@@ -5537,27 +5547,53 @@
         const data = await res.json();
         const remote = String(data.build || "").trim();
         if (!remote) return;
-        const local = localStorage.getItem("rl_build") || SHELL_BUILD;
-        if (remote !== local && remote !== SHELL_BUILD) {
+
+        // 셸과 서버 동일 → 정착
+        if (remote === SHELL_BUILD) {
           try {
-            localStorage.setItem("rl_build", remote);
-            sessionStorage.removeItem("rl_build_reloaded");
-            sessionStorage.removeItem("rl_sw_reloading");
+            localStorage.setItem("rl_build", SHELL_BUILD);
           } catch {
             /* ignore */
           }
-          if ("serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-          if (window.caches?.keys) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-          location.replace(
-            `/?fresh=${encodeURIComponent(remote)}&t=${Date.now()}`
-          );
+          return;
         }
+
+        // remote ≠ 셸: 이미 이 remote 로 1회 시도했으면 중단 (HTML 미배포 등 불일치 시 루프 차단)
+        let attempted = "";
+        try {
+          attempted = sessionStorage.getItem("rl_build_reload_attempt") || "";
+        } catch {
+          /* ignore */
+        }
+        if (attempted === remote) {
+          console.warn(
+            "[RoadLog] build.json=",
+            remote,
+            " but shell=",
+            SHELL_BUILD,
+            " — reload already attempted; stopping loop"
+          );
+          return;
+        }
+
+        try {
+          sessionStorage.setItem("rl_build_reload_attempt", remote);
+          localStorage.setItem("rl_build", remote);
+          // early-script 가드와 충돌하지 않도록 reloaded 는 지우지 않음
+        } catch {
+          /* ignore */
+        }
+        if ("serviceWorker" in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((r) => r.unregister()));
+        }
+        if (window.caches?.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        location.replace(
+          `/?fresh=${encodeURIComponent(remote)}&t=${Date.now()}`
+        );
       } catch {
         /* offline ok */
       }
@@ -5572,17 +5608,18 @@
       return;
     }
 
-    try {
-      sessionStorage.removeItem("rl_sw_reloading");
-    } catch {
-      /* ignore */
-    }
-
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (refreshing) return;
+      // 같은 세션에서 controllerchange 로 이미 리로드했으면 중단
       try {
         if (sessionStorage.getItem("rl_sw_reloading") === "1") return;
+        // 셸 BUILD 로 이미 정착했으면 SW 교체만으로 다시 reload 하지 않음
+        // (옛 SW → 새 SW claim 시 불필요한 깜빡임/루프 방지)
+        const settled = sessionStorage.getItem("rl_build_reloaded");
+        if (settled === SHELL_BUILD && localStorage.getItem("rl_build") === SHELL_BUILD) {
+          return;
+        }
         sessionStorage.setItem("rl_sw_reloading", "1");
       } catch {
         /* ignore */
@@ -5602,10 +5639,10 @@
       const data = event.data || {};
       if (data.type === "SW_ACTIVATED" && data.version) {
         console.info("[RoadLog] SW activated", data.version);
-        // 셸 빌드와 SW 버전이 다르면 강제 리로드
-        if (data.version !== SHELL_BUILD) {
+        // SW 버전이 셸과 같으면 정착. 다르면 poll 이 1회만 처리.
+        if (data.version === SHELL_BUILD) {
           try {
-            localStorage.setItem("rl_build", data.version);
+            localStorage.setItem("rl_build", SHELL_BUILD);
           } catch {
             /* ignore */
           }
