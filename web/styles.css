@@ -5267,14 +5267,42 @@ label.field-label {
   gap: 0.45rem;
   margin-top: 0.85rem;
 }
+/* Centered pitch section: keep bullet+text as one left-aligned block in the middle */
 .landing-report-bullets {
-  margin: 1rem 0 0;
-  padding-left: 1.2rem;
+  list-style: none;
+  margin: 1rem auto 1.15rem;
+  padding: 0;
   color: #cbd5e1;
   font-size: 0.95rem;
   line-height: 1.55;
-  max-width: 40rem;
+  max-width: 28rem;
+  width: fit-content;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
 }
-.landing-report-bullets li { margin: 0.35rem 0; }
+.landing-report-bullets li {
+  margin: 0;
+  position: relative;
+  padding-left: 1.15rem;
+  word-break: keep-all;
+}
+.landing-report-bullets li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #67e8f9;
+  font-weight: 700;
+}
 .landing-report-pitch { border-top: 1px solid rgba(148,163,184,0.12); }
+.landing-report-pitch .landing-report-actions {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
 
