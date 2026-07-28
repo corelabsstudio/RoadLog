@@ -3863,278 +3863,156 @@
       ? String(log.total_distance_km)
       : "";
 
-    // A4 양식이 빈칸이어도 꽉 차 보이도록 최소 구간 행 확보
-    const MIN_TRIP_ROWS = 12;
-    const nTripRows = Math.max(trips.length, MIN_TRIP_ROWS);
-    const rowParts = [];
-    for (let i = 0; i < nTripRows; i++) {
-      const t = trips[i] || {};
-      const empty = !trips[i];
-      rowParts.push(`<tr class="${i % 2 === 1 ? "zebra" : ""}${empty ? " blank" : ""}">
+    const rows = trips
+      .map((t, i) => {
+        return `<tr class="${i % 2 === 1 ? "zebra" : ""}">
           <td class="c">${i + 1}</td>
           <td class="c">${escapeHtml(t.depart_time || "")}</td>
           <td class="c">${escapeHtml(t.arrive_time || "")}</td>
           <td>${escapeHtml(t.from || "")}</td>
           <td>${escapeHtml(t.to || "")}</td>
           <td>${escapeHtml(t.purpose || "")}</td>
-          <td class="c">${escapeHtml(t.distance_km != null && t.distance_km !== "" ? String(t.distance_km) : "")}</td>
+          <td class="c">${escapeHtml(String(t.distance_km ?? ""))}</td>
           <td class="c">${escapeHtml(t.duration_display || "")}</td>
           <td>${escapeHtml(t.memo || "")}</td>
-        </tr>`);
-    }
-    const rows = rowParts.join("");
+        </tr>`;
+      })
+      .join("");
 
     const page = paperCssSize(paper, orient);
-    const isLand = orient === "landscape";
-    const pageMargin = "10mm";
     return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8" />
 <title>${escapeHtml(formTitle)}</title>
 <style>
-  @page {
-    size: ${page};
-    margin: ${pageMargin};
-  }
+  @page { size: ${page}; margin: 10mm; }
   * { box-sizing: border-box; }
-  html, body {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 0;
-    background: #fff;
-  }
   body {
     font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
     color: #0f172a;
     font-size: 10pt;
     line-height: 1.4;
-    overflow-x: hidden;
-  }
-  .sheet {
-    width: 100%;
-    max-width: 100%;
-    min-height: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-  }
-  .sheet-body {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .trips-wrap {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-  }
-  .sheet-foot {
-    flex: 0 0 auto;
-    margin-top: 10px;
+    margin: 0;
+    padding: 0;
+    background: #fff;
   }
   .title-bar {
     background: #0f172a;
     color: #fff;
     text-align: center;
-    padding: 14px 12px 12px;
-    margin: 0 0 10px;
-    border-radius: 2px;
+    padding: 12px 10px 10px;
+    margin: 0 0 12px;
   }
   .title-bar h1 {
     margin: 0;
-    font-size: 18pt;
+    font-size: 16pt;
     font-weight: 700;
     letter-spacing: -0.02em;
   }
   .title-bar p {
     margin: 4px 0 0;
-    font-size: 9pt;
+    font-size: 8.5pt;
     color: #cbd5e1;
     font-weight: 500;
   }
   table.meta, table.trips, table.summary-box, table.sign {
     width: 100%;
-    max-width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
   }
-  /* 상단 정보 — 칸 넓고 높게 */
   table.meta {
     margin-bottom: 8px;
-    font-size: 10pt;
+    font-size: 9.5pt;
   }
-  table.meta col.lab { width: 18%; }
-  table.meta col.val { width: 32%; }
   table.meta th, table.meta td {
-    border: 1px solid #94a3b8;
-    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    padding: 7px 8px;
     vertical-align: middle;
-    height: 38px;
   }
   table.meta th {
     background: #f1f5f9;
-    color: #1e293b;
+    color: #334155;
     font-weight: 700;
+    width: 14%;
     text-align: center;
-    font-size: 9.5pt;
-    letter-spacing: -0.02em;
-    white-space: normal;
-    word-break: keep-all;
-    line-height: 1.25;
+    white-space: nowrap;
   }
-  table.meta td {
-    background: #fff;
-    color: #0f172a;
-    font-size: 10.5pt;
-    padding-left: 14px;
-  }
+  table.meta td { width: 36%; }
   table.summary-box {
     margin-bottom: 10px;
-    font-size: 10pt;
+    font-size: 9.5pt;
   }
   table.summary-box th, table.summary-box td {
-    border: 1px solid #94a3b8;
-    padding: 12px 14px;
+    border: 1px solid #cbd5e1;
+    padding: 8px 10px;
     vertical-align: middle;
-    min-height: 44px;
   }
   table.summary-box th {
     background: #f1f5f9;
-    color: #1e293b;
+    color: #334155;
     font-weight: 700;
-    width: 18%;
+    width: 14%;
     text-align: center;
-    font-size: 9.5pt;
   }
-  table.summary-box td {
-    font-size: 10.5pt;
-    line-height: 1.45;
-  }
-  /* 구간 표 — 행 높이 크게, 헤더 또렷하게 */
   table.trips {
-    flex: 1 1 auto;
-    height: 100%;
-    font-size: 9.5pt;
+    font-size: 9pt;
+    margin-bottom: 4px;
   }
-  table.trips thead th {
+  table.trips th, table.trips td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 5px;
+    vertical-align: middle;
+  }
+  table.trips th {
     background: #1e293b;
     color: #fff;
     font-weight: 700;
     text-align: center;
-    padding: 10px 6px;
-    border: 1px solid #334155;
-    font-size: 9.5pt;
-  }
-  table.trips tbody {
-    height: 100%;
-  }
-  table.trips tbody tr {
-    height: calc((100% - 0px) / var(--trip-rows, 12));
-    min-height: 28px;
-  }
-  table.trips td {
-    border: 1px solid #94a3b8;
-    padding: 8px 6px;
-    vertical-align: middle;
-    word-break: keep-all;
-    overflow-wrap: anywhere;
   }
   table.trips tr.zebra td { background: #f8fafc; }
-  table.trips tr.blank td {
-    color: transparent;
-    background: #fff;
-  }
-  table.trips tr.blank.zebra td { background: #f8fafc; }
   table.trips td.c { text-align: center; }
   table.trips tr.total td {
     background: #eef2ff;
     font-weight: 700;
     border-top: 2px solid #0f172a;
-    padding: 10px 6px;
-    height: 36px;
-    color: #0f172a;
   }
   table.sign {
-    width: 52%;
-    max-width: 280px;
+    width: 280px;
     margin-left: auto;
-    font-size: 10pt;
+    margin-top: 18px;
+    font-size: 9.5pt;
   }
   table.sign th, table.sign td {
-    border: 1px solid #94a3b8;
-    padding: 8px 10px;
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
     text-align: center;
   }
   table.sign th {
     background: #f1f5f9;
-    color: #1e293b;
+    color: #334155;
     font-weight: 700;
   }
   table.sign td {
-    height: 52px;
+    height: 48px;
     color: #94a3b8;
-    font-size: 9.5pt;
   }
   .foot {
-    margin-top: 8px;
+    margin-top: 10px;
     font-size: 8pt;
     color: #64748b;
     text-align: right;
   }
   @media print {
-    html, body {
-      width: 100%;
-      height: 100%;
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-    body {
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-      height: 100%;
-    }
-    .sheet {
-      min-height: calc(100vh - 0.1px);
-      height: 100%;
-      page-break-inside: avoid;
-      box-sizing: border-box;
-    }
-    table.trips tr { page-break-inside: avoid; }
-    .no-print { display: none !important; }
-  }
-  @media screen {
-    body {
-      background: #e2e8f0;
-      padding: 16px;
-    }
-    .sheet {
-      background: #fff;
-      width: ${isLand ? "297mm" : "210mm"};
-      height: ${isLand ? "210mm" : "297mm"};
-      min-height: ${isLand ? "210mm" : "297mm"};
-      max-width: 100%;
-      margin: 0 auto;
-      padding: 12mm 11mm;
-      box-sizing: border-box;
-      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.14);
-    }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   }
 </style>
 </head>
 <body>
-  <div class="sheet" style="--trip-rows: ${nTripRows}">
   <div class="title-bar">
     <h1>${escapeHtml(formTitle)}</h1>
-    <p>업무용 차량 운행 기록 · 제출용 · ${escapeHtml(paper || "A4")}</p>
+    <p>업무용 차량 운행 기록 · 제출용</p>
   </div>
   <table class="meta">
-    <colgroup>
-      <col class="lab" /><col class="val" /><col class="lab" /><col class="val" />
-    </colgroup>
     <tr>
       <th>작성일</th><td>${escapeHtml(String(log.date || "—"))}</td>
       <th>차량번호</th><td>${escapeHtml(String(log.vehicle || "—"))}</td>
@@ -4144,11 +4022,11 @@
       <th>회사명</th><td>${escapeHtml(String(log.company_name || "—"))}</td>
     </tr>
     <tr>
-      <th>누적거리</th><td>${escapeHtml(odoTxt)}</td>
-      <th>총 거리</th><td>${escapeHtml(distTotal ? distTotal + " km" : "—")}</td>
+      <th>누적 주행거리</th><td>${escapeHtml(odoTxt)}</td>
+      <th>총 운행거리</th><td>${escapeHtml(distTotal ? distTotal + " km" : "—")}</td>
     </tr>
     <tr>
-      <th>운행시간</th><td>${escapeHtml(String(netDur))}</td>
+      <th>총 운행시간</th><td>${escapeHtml(String(netDur))}</td>
       <th>주유</th><td>${escapeHtml(fuelTxt)}</td>
     </tr>
   </table>
@@ -4158,36 +4036,24 @@
       <td>${escapeHtml(String(log.summary || ""))}</td>
     </tr>
   </table>
-  <div class="sheet-body"><div class="trips-wrap">
   <table class="trips">
-    <colgroup>
-      <col style="width:5%" />
-      <col style="width:9%" />
-      <col style="width:9%" />
-      <col style="width:16%" />
-      <col style="width:16%" />
-      <col style="width:13%" />
-      <col style="width:8%" />
-      <col style="width:11%" />
-      <col style="width:13%" />
-    </colgroup>
     <thead>
       <tr>
-        <th>순번</th>
-        <th>출발시각</th>
-        <th>도착시각</th>
+        <th style="width:36px">순번</th>
+        <th style="width:64px">출발</th>
+        <th style="width:64px">도착</th>
         <th>출발지</th>
         <th>도착지</th>
-        <th>운행목적</th>
-        <th>거리(km)</th>
-        <th>운행시간</th>
-        <th>비고</th>
+        <th style="width:90px">목적</th>
+        <th style="width:56px">거리</th>
+        <th style="width:70px">운행시간</th>
+        <th style="width:80px">비고</th>
       </tr>
     </thead>
     <tbody>
       ${
         rows ||
-        `<tr><td colspan="9" style="text-align:center;padding:12px;color:#64748b">운행 구간 없음</td></tr>`
+        `<tr><td colspan="9" style="text-align:center;padding:16px;color:#64748b">운행 구간 없음</td></tr>`
       }
       <tr class="total">
         <td class="c">합계</td>
@@ -4198,15 +4064,11 @@
       </tr>
     </tbody>
   </table>
-  </div>
-  <div class="sheet-foot">
   <table class="sign">
     <tr><th>작성자</th><th>확인자</th></tr>
-    <tr><td>( 서 명 )</td><td>( 서 명 )</td></tr>
+    <tr><td>(서명)</td><td>(서명)</td></tr>
   </table>
-  <div class="foot no-print">미리보기 · ${escapeHtml(paper)} ${isLand ? "가로" : "세로"} · A4 꽉 채움</div>
-  </div></div>
-  </div>
+  <div class="foot">용지: ${escapeHtml(paper)} · ${orient === "landscape" ? "가로" : "세로"}</div>
   <script>
     window.onload = function () {
       setTimeout(function () { window.focus(); window.print(); }, 250);
@@ -4214,6 +4076,8 @@
   <\/script>
 </body>
 </html>`;
+  }
+
   function openPrint(previewOnly) {
     if (!state.lastLog) {
       toast("먼저 일지를 생성해 주세요");
