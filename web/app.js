@@ -5478,8 +5478,17 @@
   function ensureStampLine(el, line) {
     if (!el || !line) return false;
     const prev = el.value || "";
+    // 동일 주소·시각이 이미 있으면 스킵 (줄 전체 또는 주소 부분 중복)
     if (prev.includes(line)) return false;
+    const addrPart = String(line).split("·").slice(1).join("·").trim();
+    if (addrPart && prev.includes(addrPart)) return false;
     el.value = prev.trim() ? `${prev.trim()}\n${line}` : line;
+    try {
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch {
+      /* ignore */
+    }
     return true;
   }
 
@@ -5529,33 +5538,75 @@
 
   function appendStampsToField(fieldId) {
     const el = $(fieldId);
-    if (!el) return;
+    if (!el) {
+      toast("방문지 입력란을 찾지 못했습니다. 일지 작성 화면인지 확인해 주세요.");
+      return;
+    }
+    // 입력란이 숨겨진 모드(외근 등)면 안내
+    const modePanel = el.closest("[data-mode-panel]");
+    if (
+      modePanel &&
+      (modePanel.hidden ||
+        modePanel.classList.contains("hidden") ||
+        modePanel.style.display === "none")
+    ) {
+      toast("운행일지 모드에서만 오전·오후 방문지에 반영됩니다");
+      return;
+    }
     loadStamps();
     const wantMorning = fieldId.includes("morning");
-    const stamps = (state.stamps || []).filter((s) => {
+    const label = wantMorning ? "오전 방문지" : "오후 방문지";
+    const all = Array.isArray(state.stamps) ? [...state.stamps] : [];
+    if (!all.length) {
+      toast("먼저 「지금 위치 스탬프」로 위치를 찍어 주세요");
+      return;
+    }
+    // 1) 같은 시간대 스탬프 우선 반영
+    // 2) 없으면 전체 스탬프를 선택한 칸에 반영 (버튼이 안 먹는 것처럼 보이던 원인)
+    const matched = all.filter((s) => {
       const p = s.period || stampPeriodFromTs(s.timestamp);
       return wantMorning ? p === "morning" : p === "afternoon";
     });
-    if (!stamps.length) {
-      toast(
-        wantMorning
-          ? "오전 스탬프가 없습니다"
-          : "오후 스탬프가 없습니다"
-      );
-      return;
-    }
-    const ordered = [...stamps].sort(
+    const useAll = matched.length === 0;
+    const stamps = (useAll ? all : matched).sort(
       (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
     );
+
     let added = 0;
-    for (const s of ordered) {
+    for (const s of stamps) {
       if (ensureStampLine(el, stampLine(s))) added += 1;
     }
-    toast(
-      wantMorning
-        ? `오전 방문지에 ${added}건 반영`
-        : `오후 방문지에 ${added}건 반영`
-    );
+
+    try {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.focus({ preventScroll: true });
+      el.classList.add("field-flash");
+      setTimeout(() => el.classList.remove("field-flash"), 1200);
+    } catch {
+      /* ignore */
+    }
+
+    if (added > 0) {
+      toast(
+        useAll
+          ? `${label}에 스탬프 ${added}건 반영 (해당 시간대 스탬프가 없어 전체 반영)`
+          : `${label}에 ${added}건 반영했습니다`
+      );
+      alertBox(
+        $("#stampAlert"),
+        "ok",
+        useAll
+          ? `${label}에 ${added}건 반영 · 오전/오후 구분이 없어 전체를 넣었습니다`
+          : `${label}에 ${added}건 반영했습니다`
+      );
+    } else {
+      toast(`${label}에 이미 같은 스탬프가 있습니다`);
+      alertBox(
+        $("#stampAlert"),
+        "info",
+        `${label} 입력란에 이미 반영된 스탬프입니다. 필드를 확인해 주세요.`
+      );
+    }
   }
 
   function appendAllStampsToFieldVisits() {
