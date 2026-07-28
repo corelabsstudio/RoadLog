@@ -19,6 +19,18 @@ from modules.validator import format_minutes_kr
 # ────────────────────────────────────────────────────────
 
 
+# 기본 서식 팔레트 — 회사 제출·유튜브 시연용 (서비스 브랜드 노출 없음)
+_FORM_NAVY = "0F172A"
+_FORM_SLATE = "334155"
+_FORM_LINE = "94A3B8"
+_FORM_GRID = "CBD5E1"
+_FORM_HEAD_BG = "1E293B"
+_FORM_ZEBRA = "F8FAFC"
+_FORM_LABEL_BG = "F1F5F9"
+_FORM_TOTAL_BG = "EEF2FF"
+_FORM_TITLE = "차량 운행일지"
+
+
 def _trips_dataframe(log: dict) -> pd.DataFrame:
     """구간 표 — 회사 제출용. 점심제외(분) 칸은 넣지 않음(서식에 거의 없고 0만 반복)."""
     rows = []
@@ -32,11 +44,42 @@ def _trips_dataframe(log: dict) -> pd.DataFrame:
                 "도착지": t.get("to", ""),
                 "운행목적": t.get("purpose", ""),
                 "거리(km)": t.get("distance_km", ""),
-                "순수운행": t.get("duration_display", ""),
+                "운행시간": t.get("duration_display", ""),
                 "비고": t.get("memo", ""),
             }
         )
     return pd.DataFrame(rows)
+
+
+def _fuel_label(meta: dict) -> str:
+    if meta.get("주유 금액"):
+        label = str(meta["주유 금액"])
+    elif meta.get("주유"):
+        label = str(meta["주유"])
+    else:
+        label = "—"
+    if meta.get("주유량"):
+        label = f"{label} · {meta['주유량']}"
+    return label
+
+
+def _meta_display_rows(log: dict, meta: dict | None = None) -> list[tuple[str, str, str, str]]:
+    """메타 2열×N행 (라벨,값,라벨,값) — 인쇄·엑셀·PDF 공통."""
+    meta = meta or _meta(log)
+    odo_s = meta.get("최초 누적(km)") or ""
+    odo_e = meta.get("종료 누적(km)") or ""
+    if odo_s or odo_e:
+        odo_txt = f"{odo_s or '—'} → {odo_e or '—'} km"
+    else:
+        odo_txt = "—"
+    dist = meta.get("총 거리(km)") or ""
+    dist_txt = f"{dist} km" if dist not in ("", None) else "—"
+    return [
+        ("작성일", meta.get("작성일") or "—", "차량번호", meta.get("차량번호") or "—"),
+        ("운전자", meta.get("운전자") or "—", "회사명", meta.get("회사명") or "—"),
+        ("누적 주행거리", odo_txt, "총 운행거리", dist_txt),
+        ("총 운행시간", meta.get("총 운행시간") or "—", "주유", _fuel_label(meta)),
+    ]
 
 
 def _privacy_log(log: dict) -> dict:
@@ -139,60 +182,89 @@ def _export_field_excel(log: dict) -> tuple[bytes, str]:
     wb = Workbook()
     ws = wb.active
     ws.title = "외근일지"
-    navy, teal = "0B1F3A", "0D9488"
+    ws.sheet_view.showGridLines = False
     thin = Border(
-        left=Side(style="thin", color="CBD5E1"),
-        right=Side(style="thin", color="CBD5E1"),
-        top=Side(style="thin", color="CBD5E1"),
-        bottom=Side(style="thin", color="CBD5E1"),
+        left=Side(style="thin", color=_FORM_GRID),
+        right=Side(style="thin", color=_FORM_GRID),
+        top=Side(style="thin", color=_FORM_GRID),
+        bottom=Side(style="thin", color=_FORM_GRID),
     )
-    header_fill = PatternFill("solid", fgColor=navy)
-    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=11)
-    title_font = Font(bold=True, color=navy, name="맑은 고딕", size=16)
-    label_font = Font(bold=True, name="맑은 고딕", size=10)
-    cell_font = Font(name="맑은 고딕", size=10)
-    accent_fill = PatternFill("solid", fgColor="F0FDFA")
+    header_fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
+    label_fill = PatternFill("solid", fgColor=_FORM_LABEL_BG)
+    zebra_fill = PatternFill("solid", fgColor=_FORM_ZEBRA)
+    white_fill = PatternFill("solid", fgColor="FFFFFF")
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
+    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=16)
+    sub_font = Font(color="CBD5E1", name="맑은 고딕", size=9)
+    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=9)
+    cell_font = Font(name="맑은 고딕", size=10, color=_FORM_NAVY)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
 
-    ws.merge_cells("A1:G1")
-    ws["A1"] = "외근·출장 일지"
-    ws["A1"].font = title_font
-    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[1].height = 32
+    n_cols = 7
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n_cols)
+    c = ws.cell(row=1, column=1, value="외근·출장 일지")
+    c.font = title_font
+    c.fill = PatternFill("solid", fgColor=_FORM_NAVY)
+    c.alignment = center
+    ws.row_dimensions[1].height = 34
 
-    meta_items = [
-        ("작성일", str(log.get("date") or "")),
-        ("작성자", str(log.get("author_name") or log.get("driver_name") or "")),
-        ("부서", str(log.get("department") or "")),
-        ("회사명", str(log.get("company_name") or "")),
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
+    s = ws.cell(row=2, column=1, value="방문·업무 결과 기록 · 제출용")
+    s.font = sub_font
+    s.fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
+    s.alignment = center
+    ws.row_dimensions[2].height = 18
+
+    meta_pairs = [
+        ("작성일", str(log.get("date") or "—"), "작성자", str(log.get("author_name") or log.get("driver_name") or "—")),
+        ("부서", str(log.get("department") or "—"), "회사명", str(log.get("company_name") or "—")),
     ]
-    row, col = 3, 1
-    for label, val in meta_items:
-        cell_l = ws.cell(row=row, column=col, value=label)
-        cell_v = ws.cell(row=row, column=col + 1, value=val)
-        cell_l.font = label_font
-        cell_v.font = cell_font
-        cell_l.fill = accent_fill
-        for c in (cell_l, cell_v):
-            c.border = thin
-            c.alignment = Alignment(vertical="center")
-        col += 2
-        if col > 4:
-            col = 1
-            row += 1
+    r = 4
+    for lab1, val1, lab2, val2 in meta_pairs:
+        ws.cell(row=r, column=1, value=lab1).font = label_font
+        ws.cell(row=r, column=1).fill = label_fill
+        ws.cell(row=r, column=1).border = thin
+        ws.cell(row=r, column=1).alignment = center
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=3)
+        ws.cell(row=r, column=2, value=val1).font = cell_font
+        for col in range(2, 4):
+            ws.cell(row=r, column=col).border = thin
+            ws.cell(row=r, column=col).fill = white_fill
+        ws.cell(row=r, column=4, value=lab2).font = label_font
+        ws.cell(row=r, column=4).fill = label_fill
+        ws.cell(row=r, column=4).border = thin
+        ws.cell(row=r, column=4).alignment = center
+        ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=7)
+        ws.cell(row=r, column=5, value=val2).font = cell_font
+        for col in range(5, 8):
+            ws.cell(row=r, column=col).border = thin
+            ws.cell(row=r, column=col).fill = white_fill
+        ws.row_dimensions[r].height = 22
+        r += 1
 
-    row = 6
-    ws.cell(row=row, column=1, value="업무 요약").font = label_font
-    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
-    ws.cell(row=row, column=2, value=str(log.get("summary") or "")).font = cell_font
+    r += 1
+    ws.cell(row=r, column=1, value="업무 요약").font = label_font
+    ws.cell(row=r, column=1).fill = label_fill
+    ws.cell(row=r, column=1).border = thin
+    ws.cell(row=r, column=1).alignment = center
+    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=n_cols)
+    ws.cell(row=r, column=2, value=str(log.get("summary") or "")).font = cell_font
+    for col in range(2, n_cols + 1):
+        ws.cell(row=r, column=col).border = thin
+        ws.cell(row=r, column=col).fill = white_fill
+    ws.row_dimensions[r].height = 28
+    r += 2
 
     headers = ["순번", "시각", "방문처", "목적", "결과", "후속 조치", "비고"]
-    header_row = 8
+    header_row = r
     for i, h in enumerate(headers, start=1):
         cell = ws.cell(row=header_row, column=i, value=h)
         cell.fill = header_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = center
         cell.border = thin
+    ws.row_dimensions[header_row].height = 24
 
     visits = _field_visits(log)
     for r_idx, v in enumerate(visits, start=1):
@@ -205,16 +277,33 @@ def _export_field_excel(log: dict) -> tuple[bytes, str]:
             v.get("next_action") or "",
             v.get("memo") or "",
         ]
+        fill = zebra_fill if r_idx % 2 == 0 else white_fill
         for c_idx, val in enumerate(vals, start=1):
             cell = ws.cell(row=header_row + r_idx, column=c_idx, value=val)
             cell.font = cell_font
             cell.border = thin
-            cell.alignment = Alignment(vertical="center", wrap_text=True)
+            cell.fill = fill
+            cell.alignment = center if c_idx in (1, 2) else left
 
-    sig_row = header_row + len(visits) + 3
-    ws.cell(row=sig_row, column=5, value="작성자: _______________").font = cell_font
-    ws.cell(row=sig_row + 1, column=5, value="확인자: _______________").font = cell_font
-    widths = [6, 10, 18, 16, 22, 18, 14]
+    sig_row = header_row + len(visits) + 2
+    for label, col_s, col_e in (("작성자", 4, 5), ("확인자", 6, 7)):
+        ws.merge_cells(start_row=sig_row, start_column=col_s, end_row=sig_row, end_column=col_e)
+        ws.merge_cells(start_row=sig_row + 1, start_column=col_s, end_row=sig_row + 2, end_column=col_e)
+        head = ws.cell(row=sig_row, column=col_s, value=label)
+        head.font = label_font
+        head.fill = label_fill
+        head.alignment = center
+        for col in range(col_s, col_e + 1):
+            ws.cell(row=sig_row, column=col).border = thin
+            ws.cell(row=sig_row, column=col).fill = label_fill
+        body = ws.cell(row=sig_row + 1, column=col_s, value="(서명)")
+        body.font = Font(name="맑은 고딕", size=9, color="94A3B8")
+        body.alignment = center
+        for rr in (sig_row + 1, sig_row + 2):
+            for col in range(col_s, col_e + 1):
+                ws.cell(row=rr, column=col).border = thin
+
+    widths = [6, 10, 20, 14, 20, 16, 14]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -229,7 +318,7 @@ def _export_field_excel(log: dict) -> tuple[bytes, str]:
 
 
 def export_excel(log: dict) -> tuple[bytes, str]:
-    """openpyxl 기반 .xlsx — 회사 제출용 서식."""
+    """openpyxl 기반 .xlsx — 회사 제출용 기본 서식 (가독·전문 톤)."""
     log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_excel(log)
@@ -241,67 +330,126 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     wb = Workbook()
     ws = wb.active
     ws.title = "운행일지"
+    ws.sheet_view.showGridLines = False
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.fitToPage = True
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.page_margins.left = 0.5
+    ws.page_margins.right = 0.5
+    ws.page_margins.top = 0.5
+    ws.page_margins.bottom = 0.5
+    ws.print_title_rows = "1:1"
 
-    navy = "0B1F3A"
-    teal = "0D9488"
     thin = Border(
-        left=Side(style="thin", color="CBD5E1"),
-        right=Side(style="thin", color="CBD5E1"),
-        top=Side(style="thin", color="CBD5E1"),
-        bottom=Side(style="thin", color="CBD5E1"),
+        left=Side(style="thin", color=_FORM_GRID),
+        right=Side(style="thin", color=_FORM_GRID),
+        top=Side(style="thin", color=_FORM_GRID),
+        bottom=Side(style="thin", color=_FORM_GRID),
     )
-    header_fill = PatternFill("solid", fgColor=navy)
-    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=11)
-    title_font = Font(bold=True, color=navy, name="맑은 고딕", size=16)
-    label_font = Font(bold=True, name="맑은 고딕", size=10)
-    cell_font = Font(name="맑은 고딕", size=10)
-    accent_fill = PatternFill("solid", fgColor="F0FDFA")
+    thick_bottom = Border(
+        left=Side(style="thin", color=_FORM_GRID),
+        right=Side(style="thin", color=_FORM_GRID),
+        top=Side(style="thin", color=_FORM_GRID),
+        bottom=Side(style="medium", color=_FORM_NAVY),
+    )
+    head_fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
+    label_fill = PatternFill("solid", fgColor=_FORM_LABEL_BG)
+    zebra_fill = PatternFill("solid", fgColor=_FORM_ZEBRA)
+    total_fill = PatternFill("solid", fgColor=_FORM_TOTAL_BG)
+    white_fill = PatternFill("solid", fgColor="FFFFFF")
 
-    # 제목 (9열: 순번~비고, 점심제외 칸 없음)
-    ws.merge_cells("A1:I1")
-    ws["A1"] = "차량 운행일지"
-    ws["A1"].font = title_font
-    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[1].height = 32
+    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=18)
+    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=9)
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
+    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=9)
+    cell_font = Font(name="맑은 고딕", size=10, color=_FORM_NAVY)
+    cell_font_sm = Font(name="맑은 고딕", size=9, color=_FORM_NAVY)
+    total_font = Font(bold=True, name="맑은 고딕", size=10, color=_FORM_NAVY)
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    right = Alignment(horizontal="right", vertical="center", wrap_text=True)
+
+    n_cols = 9
+    # ── 제목 바 ──
+    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n_cols)
+    c = ws.cell(row=1, column=1, value=_FORM_TITLE)
+    c.font = title_font
+    c.fill = PatternFill("solid", fgColor=_FORM_NAVY)
+    c.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 36
+
+    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
+    sub = ws.cell(row=2, column=1, value="업무용 차량 운행 기록 · 제출용")
+    sub.font = sub_font
+    sub.fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
+    sub.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[2].height = 18
 
     meta = _meta(log)
-    # 메타 정보 2~3행
-    meta_items = [
-        ("작성일", meta["작성일"]),
-        ("차량번호", meta["차량번호"]),
-        ("운전자", meta["운전자"]),
-        ("회사명", meta["회사명"]),
-        ("총 거리(km)", meta["총 거리(km)"]),
-        ("총 운행시간", meta["총 운행시간"]),
-    ]
-    if meta.get("주유 금액"):
-        meta_items.append(("주유 금액", meta["주유 금액"]))
-    elif meta.get("주유"):
-        meta_items.append(("주유", meta["주유"]))
-    if meta.get("주유량"):
-        meta_items.append(("주유량", meta["주유량"]))
-    row = 3
-    col = 1
-    for label, val in meta_items:
-        cell_l = ws.cell(row=row, column=col, value=label)
-        cell_v = ws.cell(row=row, column=col + 1, value=val)
-        cell_l.font = label_font
-        cell_v.font = cell_font
-        cell_l.fill = accent_fill
-        for c in (cell_l, cell_v):
-            c.border = thin
-            c.alignment = Alignment(vertical="center")
-        col += 2
-        if col > 6:
-            col = 1
-            row += 1
+    # ── 메타 정보 (라벨|값|라벨|값 × 2블록, 9열에 맞춤) ──
+    # A-B | C-D | E-F | G-I  구조로 가독성 확보
+    meta_rows = _meta_display_rows(log, meta)
+    # 재배치: 2쌍씩 → 한 행에 2쌍 (4칸 의미), 실제 셀은 9열 사용
+    # 행 구조: [라벨][값 merge 2][라벨][값 merge 2][라벨][값 merge 2] — 너무 복잡
+    # 단순: 4열 의미 그리드를 9열에 펼침
+    # col map: 1=L1, 2-3=V1, 4=L2, 5-6=V2, 7=pad, 8-9 empty → better:
+    # 1=L1, 2-3=V1, 4=L2, 5-6=V2  and second block on cols for remaining...
+    # Use full width: each pair takes ~4.5 cols → 2 pairs per row
+    # L1: col1, V1: col2-3, L2: col4, V2: col5-6, L3: col7, V3: col8-9 — too many fields
+    # Stick to 2 pairs per row:
+    # L1 col1, V1 col2-3, L2 col4, V2 col5-9 (wider value for places later no)
 
-    row = 6
-    ws.cell(row=row, column=1, value="운행 요약").font = label_font
-    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
-    ws.cell(row=row, column=2, value=meta["요약"]).font = cell_font
+    r = 4
+    for lab1, val1, lab2, val2 in meta_rows:
+        # pair 1
+        c1 = ws.cell(row=r, column=1, value=lab1)
+        c1.font = label_font
+        c1.fill = label_fill
+        c1.border = thin
+        c1.alignment = center
+        ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=4)
+        v1 = ws.cell(row=r, column=2, value=val1)
+        v1.font = cell_font
+        v1.alignment = left
+        for col in range(2, 5):
+            ws.cell(row=r, column=col).border = thin
+            ws.cell(row=r, column=col).fill = white_fill
+        # pair 2
+        c2 = ws.cell(row=r, column=5, value=lab2)
+        c2.font = label_font
+        c2.fill = label_fill
+        c2.border = thin
+        c2.alignment = center
+        ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=9)
+        v2 = ws.cell(row=r, column=6, value=val2)
+        v2.font = cell_font
+        v2.alignment = left
+        for col in range(6, 10):
+            ws.cell(row=r, column=col).border = thin
+            ws.cell(row=r, column=col).fill = white_fill
+        ws.cell(row=r, column=5).border = thin
+        ws.row_dimensions[r].height = 22
+        r += 1
 
-    # 테이블 헤더 (점심제외(분) 제외 — 회사 서식에 거의 없음)
+    # ── 운행 요약 ──
+    r += 1
+    sum_label = ws.cell(row=r, column=1, value="운행 요약")
+    sum_label.font = label_font
+    sum_label.fill = label_fill
+    sum_label.border = thin
+    sum_label.alignment = center
+    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=n_cols)
+    sum_val = ws.cell(row=r, column=2, value=meta.get("요약") or "")
+    sum_val.font = cell_font
+    sum_val.alignment = left
+    for col in range(2, n_cols + 1):
+        ws.cell(row=r, column=col).border = thin
+        ws.cell(row=r, column=col).fill = white_fill
+    ws.row_dimensions[r].height = 28
+    r += 2
+
+    # ── 구간 표 ──
     headers = [
         "순번",
         "출발시각",
@@ -310,47 +458,95 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         "도착지",
         "운행목적",
         "거리(km)",
-        "순수운행",
+        "운행시간",
         "비고",
     ]
-    header_row = 8
+    header_row = r
     for i, h in enumerate(headers, start=1):
         cell = ws.cell(row=header_row, column=i, value=h)
-        cell.fill = header_fill
+        cell.fill = head_fill
         cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = center
         cell.border = thin
+    ws.row_dimensions[header_row].height = 24
 
     df = _trips_dataframe(log)
-    n_cols = len(headers)
-    for r_idx, rec in enumerate(df.to_dict(orient="records"), start=1):
+    records = df.to_dict(orient="records") if not df.empty else []
+    center_cols = {1, 2, 3, 7, 8}
+    for r_idx, rec in enumerate(records, start=1):
+        row = header_row + r_idx
+        fill = zebra_fill if r_idx % 2 == 0 else white_fill
         for c_idx, h in enumerate(headers, start=1):
             val = rec.get(h, "")
-            cell = ws.cell(row=header_row + r_idx, column=c_idx, value=val)
-            cell.font = cell_font
+            cell = ws.cell(row=row, column=c_idx, value=val)
+            cell.font = cell_font_sm
             cell.border = thin
-            cell.alignment = Alignment(
-                horizontal="center" if c_idx in (1, 2, 3, 7) else "left",
-                vertical="center",
-                wrap_text=True,
-            )
+            cell.fill = fill
+            cell.alignment = center if c_idx in center_cols else left
+        ws.row_dimensions[row].height = 22
 
-    # 합계 행
-    total_row = header_row + len(df) + 1
-    ws.cell(row=total_row, column=1, value="합계").font = label_font
-    ws.cell(row=total_row, column=7, value=log.get("total_distance_km", "")).font = label_font
-    for c in range(1, n_cols + 1):
-        ws.cell(row=total_row, column=c).border = thin
-        ws.cell(row=total_row, column=c).fill = accent_fill
+    # 합계
+    total_row = header_row + max(len(records), 0) + 1
+    for col in range(1, n_cols + 1):
+        cell = ws.cell(row=total_row, column=col, value="")
+        cell.fill = total_fill
+        cell.border = thick_bottom
+    ws.cell(row=total_row, column=1, value="합계").font = total_font
+    ws.cell(row=total_row, column=1).alignment = center
+    ws.cell(row=total_row, column=1).fill = total_fill
+    # 거리 합
+    dist_val = log.get("total_distance_km", "")
+    if dist_val in ("", None) and records:
+        try:
+            dist_val = round(sum(float(r.get("거리(km)") or 0) for r in records), 1)
+        except (TypeError, ValueError):
+            dist_val = ""
+    tc = ws.cell(row=total_row, column=7, value=dist_val)
+    tc.font = total_font
+    tc.alignment = center
+    tc.fill = total_fill
+    # 운행시간 총합 표시
+    time_total = meta.get("총 운행시간") or ""
+    tc2 = ws.cell(row=total_row, column=8, value=time_total)
+    tc2.font = total_font
+    tc2.alignment = center
+    tc2.fill = total_fill
+    ws.row_dimensions[total_row].height = 24
 
-    # 서명란 (클린 — 워터마크/서비스명 없음)
-    sig_row = total_row + 3
-    ws.cell(row=sig_row, column=7, value="작성자: _______________").font = cell_font
-    ws.cell(row=sig_row + 1, column=7, value="확인자: _______________").font = cell_font
+    # ── 서명란 (박스형) ──
+    sig_row = total_row + 2
+    ws.merge_cells(start_row=sig_row, start_column=5, end_row=sig_row, end_column=6)
+    ws.merge_cells(start_row=sig_row, start_column=7, end_row=sig_row, end_column=9)
+    ws.merge_cells(start_row=sig_row + 1, start_column=5, end_row=sig_row + 2, end_column=6)
+    ws.merge_cells(start_row=sig_row + 1, start_column=7, end_row=sig_row + 2, end_column=9)
 
-    widths = [6, 10, 10, 18, 18, 14, 10, 12, 18]
+    for label, col_s, col_e in (("작성자", 5, 6), ("확인자", 7, 9)):
+        head = ws.cell(row=sig_row, column=col_s, value=label)
+        head.font = label_font
+        head.fill = label_fill
+        head.alignment = center
+        for col in range(col_s, col_e + 1):
+            ws.cell(row=sig_row, column=col).border = thin
+            ws.cell(row=sig_row, column=col).fill = label_fill
+        body = ws.cell(row=sig_row + 1, column=col_s, value="(서명)")
+        body.font = Font(name="맑은 고딕", size=9, color="94A3B8")
+        body.alignment = Alignment(horizontal="center", vertical="center")
+        for rr in (sig_row + 1, sig_row + 2):
+            for col in range(col_s, col_e + 1):
+                ws.cell(row=rr, column=col).border = thin
+                ws.cell(row=rr, column=col).fill = white_fill
+    ws.row_dimensions[sig_row].height = 18
+    ws.row_dimensions[sig_row + 1].height = 18
+    ws.row_dimensions[sig_row + 2].height = 22
+
+    # 열 너비 (가로 A4 기준 가독)
+    widths = [6, 10, 10, 20, 20, 14, 10, 12, 14]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
+
+    # 인쇄 영역
+    last_data_row = max(total_row, sig_row + 2)
+    ws.print_area = f"A1:I{last_data_row}"
 
     # ⚠️ 워터마크/헤더서비스명/푸터 광고 문구 일절 넣지 않음
     buf = io.BytesIO()
@@ -455,18 +651,16 @@ def _export_field_pdf(log: dict) -> tuple[bytes, str]:
 
 
 def export_pdf(log: dict) -> tuple[bytes, str]:
-    """reportlab PDF. 한글은 시스템 폰트 또는 내장 대체."""
+    """reportlab PDF. 한글은 시스템 폰트 또는 내장 대체. 회사 제출용 기본 서식."""
     log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_pdf(log)
 
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
     from reportlab.platypus import (
         Paragraph,
         SimpleDocTemplate,
@@ -476,16 +670,17 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     )
 
     font_name = _register_korean_font()
+    page = landscape(A4)
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
-        pagesize=A4,
-        leftMargin=16 * mm,
-        rightMargin=16 * mm,
-        topMargin=16 * mm,
-        bottomMargin=16 * mm,
-        title="차량 운행일지",  # 문서 메타 — 서비스 워터마크 아님
+        pagesize=page,
+        leftMargin=12 * mm,
+        rightMargin=12 * mm,
+        topMargin=12 * mm,
+        bottomMargin=12 * mm,
+        title=_FORM_TITLE,
         author=str(log.get("driver_name") or ""),
     )
 
@@ -494,75 +689,144 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         "KRTitle",
         parent=styles["Title"],
         fontName=font_name,
-        fontSize=18,
-        textColor=colors.HexColor("#0B1F3A"),
+        fontSize=16,
+        textColor=colors.white,
         alignment=TA_CENTER,
-        spaceAfter=12,
+        spaceBefore=0,
+        spaceAfter=0,
+        leading=20,
+    )
+    subtitle_style = ParagraphStyle(
+        "KRSub",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=8,
+        textColor=colors.HexColor("#CBD5E1"),
+        alignment=TA_CENTER,
+        leading=11,
     )
     body = ParagraphStyle(
         "KRBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=10,
-        leading=14,
+        fontSize=9,
+        leading=12,
         textColor=colors.HexColor("#0F172A"),
+    )
+    label_s = ParagraphStyle(
+        "KRLabel",
+        parent=body,
+        fontName=font_name,
+        fontSize=8,
+        textColor=colors.HexColor("#334155"),
+        alignment=TA_CENTER,
     )
     small = ParagraphStyle(
         "KRSmall",
         parent=body,
-        fontSize=9,
-        textColor=colors.HexColor("#334155"),
+        fontSize=8,
+        leading=11,
+        textColor=colors.HexColor("#0F172A"),
+    )
+    head_s = ParagraphStyle(
+        "KRHead",
+        parent=body,
+        fontSize=8,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+        leading=11,
     )
 
     meta = _meta(log)
     story: list[Any] = []
-    story.append(Paragraph("차량 운행일지", title_style))
+
+    # 제목 바
+    title_bar = Table(
+        [
+            [Paragraph(_FORM_TITLE, title_style)],
+            [Paragraph("업무용 차량 운행 기록 · 제출용", subtitle_style)],
+        ],
+        colWidths=[page[0] - 24 * mm],
+    )
+    title_bar.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{_FORM_NAVY}")),
+                ("TOPPADDING", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
+                ("TOPPADDING", (0, 1), (-1, 1), 0),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]
+        )
+    )
+    story.append(title_bar)
     story.append(Spacer(1, 4 * mm))
 
-    fuel_label = meta.get("주유 금액") or meta.get("주유") or "—"
-    if meta.get("주유량"):
-        fuel_label = f"{fuel_label} · {meta['주유량']}"
-    meta_data = [
-        [
-            Paragraph(f"<b>작성일</b>  {meta['작성일']}", body),
-            Paragraph(f"<b>차량번호</b>  {meta['차량번호']}", body),
-        ],
-        [
-            Paragraph(f"<b>운전자</b>  {meta['운전자']}", body),
-            Paragraph(f"<b>회사명</b>  {meta['회사명']}", body),
-        ],
-        [
-            Paragraph(f"<b>총 거리</b>  {meta['총 거리(km)']} km", body),
-            Paragraph(f"<b>총 운행시간</b>  {meta['총 운행시간']}", body),
-        ],
-        [
-            Paragraph(f"<b>주유</b>  {fuel_label}", body),
-            Paragraph("", body),
-        ],
-    ]
-    meta_table = Table(meta_data, colWidths=[90 * mm, 90 * mm])
+    # 메타 그리드 (라벨|값|라벨|값)
+    meta_rows = _meta_display_rows(log, meta)
+    meta_table_data = []
+    for lab1, val1, lab2, val2 in meta_rows:
+        meta_table_data.append(
+            [
+                Paragraph(lab1, label_s),
+                Paragraph(str(val1), body),
+                Paragraph(lab2, label_s),
+                Paragraph(str(val2), body),
+            ]
+        )
+    usable = page[0] - 24 * mm
+    meta_table = Table(
+        meta_table_data,
+        colWidths=[usable * 0.14, usable * 0.36, usable * 0.14, usable * 0.36],
+    )
     meta_table.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F0FDFA")),
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#0D9488")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#99F6E4")),
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BACKGROUND", (2, 0), (2, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 8),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    story.append(meta_table)
+    story.append(Spacer(1, 3 * mm))
+
+    # 요약
+    summary_tbl = Table(
+        [
+            [
+                Paragraph("운행 요약", label_s),
+                Paragraph(str(meta.get("요약") or "—"), body),
+            ]
+        ],
+        colWidths=[usable * 0.14, usable * 0.86],
+    )
+    summary_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
                 ("TOPPADDING", (0, 0), (-1, -1), 6),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
-    story.append(meta_table)
+    story.append(summary_tbl)
     story.append(Spacer(1, 4 * mm))
-    story.append(Paragraph(f"<b>운행 요약</b>  {meta['요약']}", body))
-    story.append(Spacer(1, 5 * mm))
 
     # 본문 테이블
-    headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "운행", "비고"]
-    data = [[Paragraph(f"<b>{h}</b>", small) for h in headers]]
+    headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "운행시간", "비고"]
+    data = [[Paragraph(f"<b>{h}</b>", head_s) for h in headers]]
     for i, t in enumerate(log.get("trips") or [], start=1):
         data.append(
             [
@@ -577,32 +841,91 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph(str(t.get("memo", "")), small),
             ]
         )
+    # 합계 행
+    data.append(
+        [
+            Paragraph("<b>합계</b>", small),
+            Paragraph("", small),
+            Paragraph("", small),
+            Paragraph("", small),
+            Paragraph("", small),
+            Paragraph("", small),
+            Paragraph(f"<b>{meta.get('총 거리(km)') or ''}</b>", small),
+            Paragraph(f"<b>{meta.get('총 운행시간') or ''}</b>", small),
+            Paragraph("", small),
+        ]
+    )
 
-    col_w = [12 * mm, 14 * mm, 14 * mm, 28 * mm, 28 * mm, 24 * mm, 14 * mm, 20 * mm, 26 * mm]
+    col_w = [
+        usable * 0.05,
+        usable * 0.07,
+        usable * 0.07,
+        usable * 0.16,
+        usable * 0.16,
+        usable * 0.12,
+        usable * 0.07,
+        usable * 0.10,
+        usable * 0.20,
+    ]
     table = Table(data, colWidths=col_w, repeatRows=1)
-    table.setStyle(
+    style_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_HEAD_BG}")),
+        ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor(f"#{_FORM_TOTAL_BG}")),
+        ("FONTNAME", (0, 0), (-1, -1), font_name),
+        ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+        ("ALIGN", (0, 1), (0, -1), "CENTER"),
+        ("ALIGN", (1, 1), (2, -1), "CENTER"),
+        ("ALIGN", (6, 1), (7, -1), "CENTER"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 3),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+    ]
+    # zebra (data rows only, not header/total)
+    for i in range(1, len(data) - 1):
+        if i % 2 == 0:
+            style_cmds.append(
+                ("BACKGROUND", (0, i), (-1, i), colors.HexColor(f"#{_FORM_ZEBRA}"))
+            )
+    table.setStyle(TableStyle(style_cmds))
+    story.append(table)
+    story.append(Spacer(1, 8 * mm))
+
+    # 서명 박스
+    sig = Table(
+        [
+            [
+                Paragraph("작성자", label_s),
+                Paragraph("확인자", label_s),
+            ],
+            [
+                Paragraph("<font color='#94A3B8'>(서명)</font>", small),
+                Paragraph("<font color='#94A3B8'>(서명)</font>", small),
+            ],
+        ],
+        colWidths=[50 * mm, 50 * mm],
+    )
+    sig.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F3A")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, -1), font_name),
-                ("ALIGN", (0, 0), (-1, 0), "CENTER"),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-                ("LEFTPADDING", (0, 0), (-1, -1), 3),
+                ("TOPPADDING", (0, 0), (-1, 0), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
+                ("TOPPADDING", (0, 1), (-1, 1), 14),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 14),
             ]
         )
     )
-    # 헤더 Paragraph가 흰색이어야 함
-    for cell in data[0]:
-        pass  # Paragraph 색은 스타일로 제어 어려워 배경만 navy
-
-    story.append(table)
-    story.append(Spacer(1, 12 * mm))
-    story.append(Paragraph("작성자: ________________    확인자: ________________", body))
+    # 오른쪽 정렬용 래퍼
+    sig_wrap = Table([[sig]], colWidths=[usable])
+    sig_wrap.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT")]))
+    story.append(sig_wrap)
     # ⚠️ 워터마크 / "Powered by" / 서비스 로고 텍스트 없음
 
     doc.build(story)
@@ -724,25 +1047,33 @@ def export_docx(log: dict) -> tuple[bytes, str]:
     """
     python-docx 기반 .docx
     한글과 컴퓨터(한컴) 오피스에서 정상 개방되는 표준 OOXML.
-    워터마크/머리글 광고 없음.
+    회사 제출용 기본 서식 · 워터마크/머리글 광고 없음.
     """
     log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_docx(log)
 
     from docx import Document
+    from docx.enum.table import WD_TABLE_ALIGNMENT
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml.ns import qn
     from docx.shared import Cm, Pt, RGBColor
 
     doc = Document()
 
-    # 여백
     for section in doc.sections:
-        section.top_margin = Cm(1.8)
-        section.bottom_margin = Cm(1.8)
-        section.left_margin = Cm(1.8)
-        section.right_margin = Cm(1.8)
+        try:
+            from docx.enum.section import WD_ORIENT
+
+            section.orientation = WD_ORIENT.LANDSCAPE
+        except Exception:
+            pass
+        section.page_width = Cm(29.7)
+        section.page_height = Cm(21.0)
+        section.top_margin = Cm(1.2)
+        section.bottom_margin = Cm(1.2)
+        section.left_margin = Cm(1.4)
+        section.right_margin = Cm(1.4)
 
     def set_run_font(run, size=10, bold=False, color=None, font="맑은 고딕"):
         run.bold = bold
@@ -753,40 +1084,62 @@ def export_docx(log: dict) -> tuple[bytes, str]:
         if color:
             run.font.color.rgb = RGBColor(*color)
 
-    # 제목
-    title = doc.add_paragraph()
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    tr = title.add_run("차량 운행일지")
-    set_run_font(tr, size=18, bold=True, color=(11, 31, 58))
+    def set_cell_text(cell, text, *, size=9, bold=False, color=None, align="left"):
+        cell.text = ""
+        p = cell.paragraphs[0]
+        if align == "center":
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        elif align == "right":
+            p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        run = p.add_run(str(text if text is not None else ""))
+        set_run_font(run, size=size, bold=bold, color=color)
+
+    # 제목 바
+    title_tbl = doc.add_table(rows=2, cols=1)
+    title_tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
+    set_cell_text(
+        title_tbl.rows[0].cells[0],
+        _FORM_TITLE,
+        size=16,
+        bold=True,
+        color=(255, 255, 255),
+        align="center",
+    )
+    _set_cell_shading(title_tbl.rows[0].cells[0], _FORM_NAVY)
+    set_cell_text(
+        title_tbl.rows[1].cells[0],
+        "업무용 차량 운행 기록 · 제출용",
+        size=8,
+        color=(203, 213, 225),
+        align="center",
+    )
+    _set_cell_shading(title_tbl.rows[1].cells[0], _FORM_HEAD_BG)
+
+    doc.add_paragraph()
 
     meta = _meta(log)
-    info = doc.add_paragraph()
-    ir = info.add_run(
-        f"작성일: {meta['작성일']}    차량번호: {meta['차량번호']}    "
-        f"운전자: {meta['운전자']}    회사명: {meta['회사명']}"
-    )
-    set_run_font(ir, size=10)
+    meta_rows = _meta_display_rows(log, meta)
+    meta_tbl = doc.add_table(rows=len(meta_rows), cols=4)
+    meta_tbl.style = "Table Grid"
+    for i, (lab1, val1, lab2, val2) in enumerate(meta_rows):
+        set_cell_text(meta_tbl.rows[i].cells[0], lab1, size=8, bold=True, color=(51, 65, 85), align="center")
+        set_cell_text(meta_tbl.rows[i].cells[1], val1, size=9)
+        set_cell_text(meta_tbl.rows[i].cells[2], lab2, size=8, bold=True, color=(51, 65, 85), align="center")
+        set_cell_text(meta_tbl.rows[i].cells[3], val2, size=9)
+        _set_cell_shading(meta_tbl.rows[i].cells[0], _FORM_LABEL_BG)
+        _set_cell_shading(meta_tbl.rows[i].cells[2], _FORM_LABEL_BG)
 
-    info2 = doc.add_paragraph()
-    fuel_bits = []
-    if meta.get("주유 금액"):
-        fuel_bits.append(f"주유: {meta['주유 금액']}")
-    elif meta.get("주유"):
-        fuel_bits.append(f"주유: {meta['주유']}")
-    if meta.get("주유량"):
-        fuel_bits.append(meta["주유량"])
-    fuel_txt = ("    " + " · ".join(fuel_bits)) if fuel_bits else ""
-    ir2 = info2.add_run(
-        f"총 거리: {meta['총 거리(km)']} km    총 운행시간: {meta['총 운행시간']}"
-        f"{fuel_txt}"
-    )
-    set_run_font(ir2, size=10)
+    doc.add_paragraph()
 
-    sum_p = doc.add_paragraph()
-    sr = sum_p.add_run(f"운행 요약: {meta['요약']}")
-    set_run_font(sr, size=10, bold=True)
+    # 요약
+    sum_tbl = doc.add_table(rows=1, cols=2)
+    sum_tbl.style = "Table Grid"
+    set_cell_text(sum_tbl.rows[0].cells[0], "운행 요약", size=8, bold=True, color=(51, 65, 85), align="center")
+    set_cell_text(sum_tbl.rows[0].cells[1], meta.get("요약") or "", size=9)
+    _set_cell_shading(sum_tbl.rows[0].cells[0], _FORM_LABEL_BG)
 
-    # 표
+    doc.add_paragraph()
+
     headers = [
         "순번",
         "출발시각",
@@ -795,21 +1148,16 @@ def export_docx(log: dict) -> tuple[bytes, str]:
         "도착지",
         "운행목적",
         "거리(km)",
-        "순수운행",
+        "운행시간",
         "비고",
     ]
     trips = log.get("trips") or []
-    table = doc.add_table(rows=1 + len(trips), cols=len(headers))
+    table = doc.add_table(rows=1 + len(trips) + 1, cols=len(headers))
     table.style = "Table Grid"
 
     for i, h in enumerate(headers):
-        cell = table.rows[0].cells[i]
-        cell.text = ""
-        p = cell.paragraphs[0]
-        run = p.add_run(h)
-        set_run_font(run, size=9, bold=True, color=(255, 255, 255))
-        # 헤더 배경 (navy)
-        _set_cell_shading(cell, "0B1F3A")
+        set_cell_text(table.rows[0].cells[i], h, size=8, bold=True, color=(255, 255, 255), align="center")
+        _set_cell_shading(table.rows[0].cells[i], _FORM_HEAD_BG)
 
     for r_idx, t in enumerate(trips):
         vals = [
@@ -824,17 +1172,30 @@ def export_docx(log: dict) -> tuple[bytes, str]:
             str(t.get("memo", "")),
         ]
         for c_idx, val in enumerate(vals):
-            cell = table.rows[r_idx + 1].cells[c_idx]
-            cell.text = ""
-            p = cell.paragraphs[0]
-            run = p.add_run(val)
-            set_run_font(run, size=9)
+            align = "center" if c_idx in (0, 1, 2, 6, 7) else "left"
+            set_cell_text(table.rows[r_idx + 1].cells[c_idx], val, size=8, align=align)
+            if (r_idx + 1) % 2 == 0:
+                _set_cell_shading(table.rows[r_idx + 1].cells[c_idx], _FORM_ZEBRA)
+
+    # 합계
+    total_row = table.rows[1 + len(trips)]
+    set_cell_text(total_row.cells[0], "합계", size=9, bold=True, align="center")
+    set_cell_text(total_row.cells[6], str(meta.get("총 거리(km)") or ""), size=9, bold=True, align="center")
+    set_cell_text(total_row.cells[7], str(meta.get("총 운행시간") or ""), size=9, bold=True, align="center")
+    for c in total_row.cells:
+        _set_cell_shading(c, _FORM_TOTAL_BG)
 
     doc.add_paragraph()
-    sig = doc.add_paragraph()
-    sig.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    srun = sig.add_run("작성자: _______________      확인자: _______________")
-    set_run_font(srun, size=10)
+
+    # 서명
+    sig_tbl = doc.add_table(rows=2, cols=2)
+    sig_tbl.style = "Table Grid"
+    set_cell_text(sig_tbl.rows[0].cells[0], "작성자", size=8, bold=True, align="center")
+    set_cell_text(sig_tbl.rows[0].cells[1], "확인자", size=8, bold=True, align="center")
+    set_cell_text(sig_tbl.rows[1].cells[0], "(서명)", size=9, color=(148, 163, 184), align="center")
+    set_cell_text(sig_tbl.rows[1].cells[1], "(서명)", size=9, color=(148, 163, 184), align="center")
+    _set_cell_shading(sig_tbl.rows[0].cells[0], _FORM_LABEL_BG)
+    _set_cell_shading(sig_tbl.rows[0].cells[1], _FORM_LABEL_BG)
 
     # ⚠️ 워터마크 / 머리글 / 바닥글 서비스 문구 없음 (한컴 호환 클린 문서)
 

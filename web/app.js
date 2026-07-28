@@ -3832,16 +3832,45 @@
     const trips = log.trips || [];
     const formTitle =
       (state.styleProfile && state.styleProfile.form_title) || "차량 운행일지";
+    const mins = Number(log.total_net_minutes) || 0;
+    const netDur =
+      log.total_net_display ||
+      (mins
+        ? mins >= 60
+          ? `${Math.floor(mins / 60)}시간 ${mins % 60}분`
+          : `${mins}분`
+        : "—");
+    const odoS = log.odometer_start != null && log.odometer_start !== "" ? String(log.odometer_start) : "—";
+    const odoE = log.odometer_end != null && log.odometer_end !== "" ? String(log.odometer_end) : "—";
+    const odoTxt =
+      odoS !== "—" || odoE !== "—" ? `${odoS} → ${odoE} km` : "—";
+    const fuelTxt = log.fuel_refueled
+      ? [
+          log.fuel_amount_krw != null && log.fuel_amount_krw !== ""
+            ? `${Number(log.fuel_amount_krw).toLocaleString("ko-KR")}원`
+            : "함",
+          log.fuel_liters != null && log.fuel_liters !== "" ? `${log.fuel_liters}L` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : log.fuel_refueled === false
+        ? "안 함"
+        : "—";
+    const distTotal = log.total_distance_km != null && log.total_distance_km !== ""
+      ? String(log.total_distance_km)
+      : "";
+
     const rows = trips
       .map((t, i) => {
-        return `<tr>
-          <td>${i + 1}</td>
-          <td>${escapeHtml(t.depart_time || "")}</td>
-          <td>${escapeHtml(t.arrive_time || "")}</td>
+        return `<tr class="${i % 2 === 1 ? "zebra" : ""}">
+          <td class="c">${i + 1}</td>
+          <td class="c">${escapeHtml(t.depart_time || "")}</td>
+          <td class="c">${escapeHtml(t.arrive_time || "")}</td>
           <td>${escapeHtml(t.from || "")}</td>
           <td>${escapeHtml(t.to || "")}</td>
           <td>${escapeHtml(t.purpose || "")}</td>
-          <td style="text-align:right">${escapeHtml(String(t.distance_km ?? ""))}</td>
+          <td class="c">${escapeHtml(String(t.distance_km ?? ""))}</td>
+          <td class="c">${escapeHtml(t.duration_display || "")}</td>
           <td>${escapeHtml(t.memo || "")}</td>
         </tr>`;
       })
@@ -3854,74 +3883,120 @@
 <meta charset="UTF-8" />
 <title>${escapeHtml(formTitle)}</title>
 <style>
-  @page { size: ${page}; margin: 12mm; }
+  @page { size: ${page}; margin: 10mm; }
   * { box-sizing: border-box; }
   body {
     font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-    color: #111;
-    font-size: 11pt;
-    line-height: 1.45;
+    color: #0f172a;
+    font-size: 10pt;
+    line-height: 1.4;
     margin: 0;
     padding: 0;
+    background: #fff;
   }
-  h1 {
+  .title-bar {
+    background: #0f172a;
+    color: #fff;
     text-align: center;
-    font-size: 18pt;
-    margin: 0 0 14px;
+    padding: 12px 10px 10px;
+    margin: 0 0 12px;
+  }
+  .title-bar h1 {
+    margin: 0;
+    font-size: 16pt;
+    font-weight: 700;
     letter-spacing: -0.02em;
   }
-  .meta {
+  .title-bar p {
+    margin: 4px 0 0;
+    font-size: 8.5pt;
+    color: #cbd5e1;
+    font-weight: 500;
+  }
+  table.meta, table.trips, table.summary-box, table.sign {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 12px;
-    font-size: 10pt;
   }
-  .meta th, .meta td {
-    border: 1px solid #333;
-    padding: 6px 8px;
-    text-align: left;
-  }
-  .meta th {
-    background: #f3f4f6;
-    width: 18%;
-    font-weight: 700;
-  }
-  .trips {
-    width: 100%;
-    border-collapse: collapse;
+  table.meta {
+    margin-bottom: 8px;
     font-size: 9.5pt;
   }
-  .trips th, .trips td {
-    border: 1px solid #333;
-    padding: 6px 5px;
-    vertical-align: top;
+  table.meta th, table.meta td {
+    border: 1px solid #cbd5e1;
+    padding: 7px 8px;
+    vertical-align: middle;
   }
-  .trips th {
-    background: #111827;
+  table.meta th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    width: 14%;
+    text-align: center;
+    white-space: nowrap;
+  }
+  table.meta td { width: 36%; }
+  table.summary-box {
+    margin-bottom: 10px;
+    font-size: 9.5pt;
+  }
+  table.summary-box th, table.summary-box td {
+    border: 1px solid #cbd5e1;
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+  table.summary-box th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+    width: 14%;
+    text-align: center;
+  }
+  table.trips {
+    font-size: 9pt;
+    margin-bottom: 4px;
+  }
+  table.trips th, table.trips td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 5px;
+    vertical-align: middle;
+  }
+  table.trips th {
+    background: #1e293b;
     color: #fff;
     font-weight: 700;
     text-align: center;
   }
-  .summary {
-    margin-top: 12px;
-    border: 1px solid #333;
-    padding: 10px 12px;
-    min-height: 48px;
+  table.trips tr.zebra td { background: #f8fafc; }
+  table.trips td.c { text-align: center; }
+  table.trips tr.total td {
+    background: #eef2ff;
+    font-weight: 700;
+    border-top: 2px solid #0f172a;
   }
-  .summary strong { display: block; margin-bottom: 4px; }
-  .sign {
-    margin-top: 22px;
-    display: flex;
-    justify-content: flex-end;
-    gap: 40px;
-    font-size: 10pt;
+  table.sign {
+    width: 280px;
+    margin-left: auto;
+    margin-top: 18px;
+    font-size: 9.5pt;
   }
-  .sign div { min-width: 140px; text-align: center; }
-  .sign .line { border-bottom: 1px solid #333; height: 28px; margin-top: 6px; }
+  table.sign th, table.sign td {
+    border: 1px solid #cbd5e1;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  table.sign th {
+    background: #f1f5f9;
+    color: #334155;
+    font-weight: 700;
+  }
+  table.sign td {
+    height: 48px;
+    color: #94a3b8;
+  }
   .foot {
     margin-top: 10px;
-    font-size: 8.5pt;
-    color: #555;
+    font-size: 8pt;
+    color: #64748b;
     text-align: right;
   }
   @media print {
@@ -3930,66 +4005,66 @@
 </style>
 </head>
 <body>
-  <h1>${escapeHtml(formTitle)}</h1>
+  <div class="title-bar">
+    <h1>${escapeHtml(formTitle)}</h1>
+    <p>업무용 차량 운행 기록 · 제출용</p>
+  </div>
   <table class="meta">
     <tr>
-      <th>작성일</th><td>${escapeHtml(String(log.date || ""))}</td>
-      <th>차량번호</th><td>${escapeHtml(String(log.vehicle || ""))}</td>
+      <th>작성일</th><td>${escapeHtml(String(log.date || "—"))}</td>
+      <th>차량번호</th><td>${escapeHtml(String(log.vehicle || "—"))}</td>
     </tr>
     <tr>
-      <th>운전자</th><td>${escapeHtml(String(log.driver_name || ""))}</td>
-      <th>회사명</th><td>${escapeHtml(String(log.company_name || ""))}</td>
+      <th>운전자</th><td>${escapeHtml(String(log.driver_name || "—"))}</td>
+      <th>회사명</th><td>${escapeHtml(String(log.company_name || "—"))}</td>
     </tr>
     <tr>
-      <th>최초 누적(km)</th><td>${escapeHtml(String(log.odometer_start ?? ""))}</td>
-      <th>종료 누적(km)</th><td>${escapeHtml(String(log.odometer_end ?? ""))}</td>
+      <th>누적 주행거리</th><td>${escapeHtml(odoTxt)}</td>
+      <th>총 운행거리</th><td>${escapeHtml(distTotal ? distTotal + " km" : "—")}</td>
     </tr>
     <tr>
-      <th>총 거리(km)</th><td>${escapeHtml(String(log.total_distance_km ?? ""))}</td>
-      <th>순수 운행</th><td>${escapeHtml(String(log.total_net_display || log.total_net_minutes || ""))}</td>
+      <th>총 운행시간</th><td>${escapeHtml(String(netDur))}</td>
+      <th>주유</th><td>${escapeHtml(fuelTxt)}</td>
     </tr>
+  </table>
+  <table class="summary-box">
     <tr>
-      <th>주유</th><td colspan="3">${escapeHtml(
-        log.fuel_refueled
-          ? [
-              log.fuel_amount_krw != null && log.fuel_amount_krw !== ""
-                ? `${Number(log.fuel_amount_krw).toLocaleString("ko-KR")}원`
-                : "함",
-              log.fuel_liters != null && log.fuel_liters !== "" ? `${log.fuel_liters}L` : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")
-          : log.fuel_refueled === false
-            ? "안 함"
-            : "—"
-      )}</td>
+      <th>운행 요약</th>
+      <td>${escapeHtml(String(log.summary || ""))}</td>
     </tr>
   </table>
   <table class="trips">
     <thead>
       <tr>
         <th style="width:36px">순번</th>
-        <th style="width:70px">출발</th>
-        <th style="width:70px">도착</th>
+        <th style="width:64px">출발</th>
+        <th style="width:64px">도착</th>
         <th>출발지</th>
         <th>도착지</th>
-        <th>목적</th>
-        <th style="width:64px">거리</th>
-        <th>비고</th>
+        <th style="width:90px">목적</th>
+        <th style="width:56px">거리</th>
+        <th style="width:70px">운행시간</th>
+        <th style="width:80px">비고</th>
       </tr>
     </thead>
     <tbody>
-      ${rows || `<tr><td colspan="8" style="text-align:center;padding:16px">운행 구간 없음</td></tr>`}
+      ${
+        rows ||
+        `<tr><td colspan="9" style="text-align:center;padding:16px;color:#64748b">운행 구간 없음</td></tr>`
+      }
+      <tr class="total">
+        <td class="c">합계</td>
+        <td></td><td></td><td></td><td></td><td></td>
+        <td class="c">${escapeHtml(distTotal)}</td>
+        <td class="c">${escapeHtml(String(netDur === "—" ? "" : netDur))}</td>
+        <td></td>
+      </tr>
     </tbody>
   </table>
-  <div class="summary">
-    <strong>운행 요약</strong>
-    ${escapeHtml(String(log.summary || ""))}
-  </div>
-  <div class="sign">
-    <div>작성자<div class="line"></div></div>
-    <div>확인자<div class="line"></div></div>
-  </div>
+  <table class="sign">
+    <tr><th>작성자</th><th>확인자</th></tr>
+    <tr><td>(서명)</td><td>(서명)</td></tr>
+  </table>
   <div class="foot">용지: ${escapeHtml(paper)} · ${orient === "landscape" ? "가로" : "세로"}</div>
   <script>
     window.onload = function () {
