@@ -653,23 +653,39 @@ def _export_excel_built(log: dict) -> tuple[bytes, str]:
 # ────────────────────────────────────────────────────────
 
 
+def _pdf_esc(text: object) -> str:
+    """ReportLab Paragraph용 최소 이스케이프."""
+    s = str(text or "")
+    return (
+        s.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\n", "<br/>")
+    )
+
+
 def _export_field_pdf(log: dict) -> tuple[bytes, str]:
+    """외근·출장 일지 PDF — A4 제출용, 셀 자동 줄바꿈(겹침 방지)."""
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
     font_name = _register_korean_font()
+    page = A4
+    margin = 12 * mm
+    usable = page[0] - 2 * margin
+
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
-        pagesize=A4,
-        leftMargin=16 * mm,
-        rightMargin=16 * mm,
-        topMargin=16 * mm,
-        bottomMargin=16 * mm,
+        pagesize=page,
+        leftMargin=margin,
+        rightMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
         title="외근·출장 일지",
         author=str(log.get("author_name") or log.get("driver_name") or ""),
     )
@@ -678,68 +694,236 @@ def _export_field_pdf(log: dict) -> tuple[bytes, str]:
         "FieldTitle",
         parent=styles["Title"],
         fontName=font_name,
-        fontSize=18,
-        textColor=colors.HexColor("#0B1F3A"),
+        fontSize=15,
+        textColor=colors.white,
         alignment=TA_CENTER,
-        spaceAfter=12,
+        leading=19,
+        spaceBefore=0,
+        spaceAfter=0,
+    )
+    sub_style = ParagraphStyle(
+        "FieldSub",
+        parent=styles["Normal"],
+        fontName=font_name,
+        fontSize=8,
+        textColor=colors.HexColor("#CBD5E1"),
+        alignment=TA_CENTER,
+        leading=11,
     )
     body = ParagraphStyle(
         "FieldBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=10,
-        leading=14,
+        fontSize=9.5,
+        leading=13,
+        textColor=colors.HexColor("#0F172A"),
+        alignment=TA_LEFT,
+    )
+    label_s = ParagraphStyle(
+        "FieldLabel",
+        parent=body,
+        fontName=font_name,
+        fontSize=9,
+        textColor=colors.HexColor("#1E293B"),
+        alignment=TA_CENTER,
+    )
+    small = ParagraphStyle(
+        "FieldSmall",
+        parent=body,
+        fontName=font_name,
+        fontSize=8.5,
+        leading=12,
         textColor=colors.HexColor("#0F172A"),
     )
-    story: list[Any] = [Paragraph("외근·출장 일지", title_style), Spacer(1, 4 * mm)]
-    author = str(log.get("author_name") or log.get("driver_name") or "")
-    story.append(
-        Paragraph(
-            f"<b>작성일</b> {log.get('date') or ''} &nbsp;&nbsp; "
-            f"<b>작성자</b> {author} &nbsp;&nbsp; "
-            f"<b>부서</b> {log.get('department') or ''} &nbsp;&nbsp; "
-            f"<b>회사</b> {log.get('company_name') or ''}",
-            body,
-        )
+    head_s = ParagraphStyle(
+        "FieldHead",
+        parent=body,
+        fontName=font_name,
+        fontSize=9,
+        textColor=colors.white,
+        alignment=TA_CENTER,
+        leading=12,
     )
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(f"<b>업무 요약</b>  {log.get('summary') or ''}", body))
-    story.append(Spacer(1, 5 * mm))
+    cell_c = ParagraphStyle(
+        "FieldCellC",
+        parent=small,
+        alignment=TA_CENTER,
+    )
 
-    headers = ["순번", "시각", "방문처", "목적", "결과", "후속"]
-    data = [headers]
-    for i, v in enumerate(_field_visits(log), start=1):
-        data.append(
-            [
-                str(i),
-                str(v.get("time") or ""),
-                str(v.get("place") or ""),
-                str(v.get("purpose") or ""),
-                str(v.get("result") or ""),
-                str(v.get("next_action") or ""),
-            ]
-        )
-    if len(data) == 1:
-        data.append(["—", "—", "—", "—", "—", "—"])
+    author = str(log.get("author_name") or log.get("driver_name") or "—")
+    story: list[Any] = []
 
-    table = Table(data, colWidths=[12 * mm, 18 * mm, 32 * mm, 28 * mm, 40 * mm, 32 * mm])
-    table.setStyle(
+    # 제목 바
+    title_bar = Table(
+        [
+            [Paragraph("외근·출장 일지", title_style)],
+            [Paragraph("방문·업무 결과 기록 · 제출용 · A4", sub_style)],
+        ],
+        colWidths=[usable],
+    )
+    title_bar.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, -1), font_name),
-                ("FONTSIZE", (0, 0), (-1, -1), 8),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0B1F3A")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{_FORM_NAVY}")),
+                ("TOPPADDING", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
+                ("TOPPADDING", (0, 1), (-1, 1), 0),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+            ]
+        )
+    )
+    story.append(title_bar)
+    story.append(Spacer(1, 3 * mm))
+
+    # 메타 그리드 (라벨|값)
+    meta_data = [
+        [
+            Paragraph("작성일", label_s),
+            Paragraph(_pdf_esc(log.get("date") or "—"), body),
+            Paragraph("작성자", label_s),
+            Paragraph(_pdf_esc(author), body),
+        ],
+        [
+            Paragraph("부서", label_s),
+            Paragraph(_pdf_esc(log.get("department") or "—"), body),
+            Paragraph("회사명", label_s),
+            Paragraph(_pdf_esc(log.get("company_name") or "—"), body),
+        ],
+    ]
+    meta_tbl = Table(
+        meta_data,
+        colWidths=[usable * 0.14, usable * 0.36, usable * 0.14, usable * 0.36],
+        rowHeights=[24, 24],
+    )
+    meta_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BACKGROUND", (2, 0), (2, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#94A3B8")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
                 ("TOPPADDING", (0, 0), (-1, -1), 5),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ]
         )
     )
+    story.append(meta_tbl)
+    story.append(Spacer(1, 2.5 * mm))
+
+    sum_tbl = Table(
+        [
+            [
+                Paragraph("업무 요약", label_s),
+                Paragraph(_pdf_esc(log.get("summary") or "—"), body),
+            ]
+        ],
+        colWidths=[usable * 0.14, usable * 0.86],
+        rowHeights=[28],
+    )
+    sum_tbl.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (0, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 7),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]
+        )
+    )
+    story.append(sum_tbl)
+    story.append(Spacer(1, 3 * mm))
+
+    # 방문 표 — Paragraph로 자동 줄바꿈 (겹침 방지)
+    headers = ["순번", "시각", "방문처", "목적", "결과", "후속"]
+    data: list[list[Any]] = [[Paragraph(f"<b>{h}</b>", head_s) for h in headers]]
+    visits = _field_visits(log)
+    n_rows = max(len(visits), _FORM_MIN_VISIT_ROWS)
+    for i in range(n_rows):
+        if i < len(visits):
+            v = visits[i] or {}
+            data.append(
+                [
+                    Paragraph(str(i + 1), cell_c),
+                    Paragraph(_pdf_esc(v.get("time") or ""), cell_c),
+                    Paragraph(_pdf_esc(v.get("place") or ""), small),
+                    Paragraph(_pdf_esc(v.get("purpose") or ""), small),
+                    Paragraph(_pdf_esc(v.get("result") or ""), small),
+                    Paragraph(_pdf_esc(v.get("next_action") or ""), small),
+                ]
+            )
+        else:
+            data.append(
+                [
+                    Paragraph(str(i + 1), cell_c),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                ]
+            )
+
+    col_w = [
+        usable * 0.07,
+        usable * 0.10,
+        usable * 0.20,
+        usable * 0.18,
+        usable * 0.24,
+        usable * 0.21,
+    ]
+    table = Table(data, colWidths=col_w, repeatRows=1)
+    style_cmds = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_HEAD_BG}")),
+        ("FONTNAME", (0, 0), (-1, -1), font_name),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("ALIGN", (0, 0), (1, -1), "CENTER"),
+    ]
+    for i in range(1, len(data)):
+        if i % 2 == 0:
+            style_cmds.append(
+                ("BACKGROUND", (0, i), (-1, i), colors.HexColor(f"#{_FORM_ZEBRA}"))
+            )
+    table.setStyle(TableStyle(style_cmds))
     story.append(table)
+    story.append(Spacer(1, 6 * mm))
+
+    sig = Table(
+        [
+            [Paragraph("작성자", label_s), Paragraph("확인자", label_s)],
+            [
+                Paragraph("<font color='#94A3B8'>( 서 명 )</font>", cell_c),
+                Paragraph("<font color='#94A3B8'>( 서 명 )</font>", cell_c),
+            ],
+        ],
+        colWidths=[48 * mm, 48 * mm],
+        rowHeights=[14, 28],
+    )
+    sig.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
+                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor("#94A3B8")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#94A3B8")),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]
+        )
+    )
+    sig_wrap = Table([[sig]], colWidths=[usable])
+    sig_wrap.setStyle(TableStyle([("ALIGN", (0, 0), (-1, -1), "RIGHT")]))
+    story.append(sig_wrap)
+
     doc.build(story)
     return buf.getvalue(), f"{_filename_base(log)}.pdf"
 
@@ -1058,33 +1242,60 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     return buf.getvalue(), f"{_filename_base(log)}.pdf"
 
 
+_KR_FONT_REGISTERED: str | None = None
+
+
 def _register_korean_font() -> str:
-    """Windows/Mac/Linux 한글 폰트 등록. 실패 시 Helvetica."""
+    """Windows/Mac/Linux 한글 폰트 등록. 실패 시 Helvetica(한글 깨짐)."""
+    global _KR_FONT_REGISTERED
+    if _KR_FONT_REGISTERED:
+        return _KR_FONT_REGISTERED
+
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     import os
+    from pathlib import Path
 
+    root = Path(__file__).resolve().parents[1]
     candidates = [
+        # 앱 번들 (Docker/로컬 공통)
+        str(root / "assets" / "fonts" / "NanumGothic.ttf"),
+        str(root / "web" / "assets" / "fonts" / "NanumGothic.ttf"),
         # Windows
         r"C:\Windows\Fonts\malgun.ttf",
         r"C:\Windows\Fonts\malgunbd.ttf",
         r"C:\Windows\Fonts\NanumGothic.ttf",
+        r"C:\Windows\Fonts\NanumBarunGothic.ttf",
         # macOS
         "/System/Library/Fonts/AppleSDGothicNeo.ttc",
         "/Library/Fonts/AppleGothic.ttf",
-        # Linux
+        # Linux (apt fonts-nanum / fonts-noto-cjk)
         "/usr/share/fonts/truetype/nanum/NanumGothic.ttf",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/nanum/NanumBarunGothic.ttf",
+        "/usr/share/fonts/truetype/nanum/NanumGothicCoding.ttf",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansKR-Regular.otf",
+        "/usr/share/fonts/opentype/noto/NotoSansKR-Regular.otf",
     ]
     for path in candidates:
-        if os.path.exists(path):
-            try:
-                name = "KRFont"
-                pdfmetrics.registerFont(TTFont(name, path, subfontIndex=0))
+        if not os.path.exists(path):
+            continue
+        try:
+            name = "KRFont"
+            # 이미 등록된 경우 재사용
+            if name in pdfmetrics.getRegisteredFontNames():
+                _KR_FONT_REGISTERED = name
                 return name
-            except Exception:
-                continue
+            if path.lower().endswith(".ttc"):
+                pdfmetrics.registerFont(TTFont(name, path, subfontIndex=0))
+            else:
+                pdfmetrics.registerFont(TTFont(name, path))
+            _KR_FONT_REGISTERED = name
+            return name
+        except Exception:
+            continue
+    _KR_FONT_REGISTERED = "Helvetica"
     return "Helvetica"
 
 

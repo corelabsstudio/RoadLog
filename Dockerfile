@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libjpeg62-turbo-dev \
     zlib1g-dev \
+    fonts-nanum \
+    fontconfig \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.prod.txt .
@@ -20,6 +23,7 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 
 COPY modules ./modules
 COPY web ./web
+COPY assets ./assets
 COPY server.py ./
 COPY supabase_schema.sql ./
 
