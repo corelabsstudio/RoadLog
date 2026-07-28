@@ -347,12 +347,158 @@ def _export_field_excel(log: dict) -> tuple[bytes, str]:
 # ────────────────────────────────────────────────────────
 
 
+def _default_driving_template_path() -> "Path":
+    """기본 운행일지 엑셀 서식 경로 (칸 확대 A4 양식)."""
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    candidates = [
+        root / "web" / "assets" / "templates" / "default_driving_log.xlsx",
+        root / "assets" / "forms" / "default_driving_log.xlsx",
+    ]
+    for p in candidates:
+        if p.is_file():
+            return p
+    return candidates[0]
+
+
 def export_excel(log: dict) -> tuple[bytes, str]:
-    """openpyxl 기반 .xlsx — 회사 제출용 기본 서식 (가독·전문 톤)."""
+    """
+    기본 엑셀 내보내기.
+    고정 서식 템플릿(default_driving_log.xlsx)에 데이터만 채움 —
+    항상 칸 확대 A4 양식으로 동일하게 출력.
+    """
     log = _privacy_log(log)
     if _is_field_log(log):
         return _export_field_excel(log)
 
+    from openpyxl import load_workbook
+
+    tmpl = _default_driving_template_path()
+    if not tmpl.is_file():
+        # 템플릿 누락 시 코드 생성 폴백
+        return _export_excel_built(log)
+
+    wb = load_workbook(tmpl)
+    ws = wb.active
+
+    meta = _meta(log)
+    rows_meta = _meta_display_rows(log, meta)
+    # 템플릿 레이아웃 고정:
+    # A4/B4 작성일·값 | E4/F4 차량번호·값
+    # A5/B5 운전자 | E5/F5 회사명
+    # A6/B6 누적거리 | E6/F6 총 거리
+    # A7/B7 운행시간 | E7/F7 주유
+    # A9/B9 운행 요약
+    # A10 헤더, A11–A22 구간 12행, A23 합계, E25/G25 서명
+    meta_value_cells = [
+        ("B4", rows_meta[0][1]),
+        ("F4", rows_meta[0][3]),
+        ("B5", rows_meta[1][1]),
+        ("F5", rows_meta[1][3]),
+        ("B6", rows_meta[2][1]),
+        ("F6", rows_meta[2][3]),
+        ("B7", rows_meta[3][1]),
+        ("F7", rows_meta[3][3]),
+    ]
+    for coord, val in meta_value_cells:
+        ws[coord] = val if val not in (None, "") else None
+
+    # 라벨도 템플릿과 동기 (누적거리 등)
+    ws["A4"] = rows_meta[0][0]
+    ws["E4"] = rows_meta[0][2]
+    ws["A5"] = rows_meta[1][0]
+    ws["E5"] = rows_meta[1][2]
+    ws["A6"] = rows_meta[2][0]
+    ws["E6"] = rows_meta[2][2]
+    ws["A7"] = rows_meta[3][0]
+    ws["E7"] = rows_meta[3][2]
+    ws["B9"] = meta.get("요약") or None
+
+    trips = list(log.get("trips") or [])
+    n_slots = _FORM_MIN_TRIP_ROWS  # 템플릿 11–22행 = 12칸
+    trip_start = 11
+    for i in range(n_slots):
+        row = trip_start + i
+        ws.cell(row=row, column=1, value=i + 1)
+        if i < len(trips):
+            t = trips[i] or {}
+            ws.cell(row=row, column=2, value=t.get("depart_time") or None)
+            ws.cell(row=row, column=3, value=t.get("arrive_time") or None)
+            ws.cell(row=row, column=4, value=t.get("from") or None)
+            ws.cell(row=row, column=5, value=t.get("to") or None)
+            ws.cell(row=row, column=6, value=t.get("purpose") or None)
+            dist = t.get("distance_km")
+            ws.cell(row=row, column=7, value=dist if dist not in ("", None) else None)
+            ws.cell(row=row, column=8, value=t.get("duration_display") or None)
+            ws.cell(row=row, column=9, value=t.get("memo") or None)
+        else:
+            for col in range(2, 10):
+                ws.cell(row=row, column=col, value=None)
+
+    # 데이터가 12칸을 넘는 경우: 합계 행 앞에 추가 행 삽입
+    if len(trips) > n_slots:
+        extra = len(trips) - n_slots
+        # 합계 행(23) 앞에 삽입
+        ws.insert_rows(23, amount=extra)
+        for j in range(extra):
+            i = n_slots + j
+            row = 23 + j
+            t = trips[i] or {}
+            ws.cell(row=row, column=1, value=i + 1)
+            ws.cell(row=row, column=2, value=t.get("depart_time") or None)
+            ws.cell(row=row, column=3, value=t.get("arrive_time") or None)
+            ws.cell(row=row, column=4, value=t.get("from") or None)
+            ws.cell(row=row, column=5, value=t.get("to") or None)
+            ws.cell(row=row, column=6, value=t.get("purpose") or None)
+            dist = t.get("distance_km")
+            ws.cell(row=row, column=7, value=dist if dist not in ("", None) else None)
+            ws.cell(row=row, column=8, value=t.get("duration_display") or None)
+            ws.cell(row=row, column=9, value=t.get("memo") or None)
+            ws.row_dimensions[row].height = 30
+
+    # 합계 행 찾기
+    total_row = None
+    for r in range(11, ws.max_row + 1):
+        if ws.cell(row=r, column=1).value == "합계":
+            total_row = r
+            break
+    if total_row is None:
+        total_row = 23 + max(0, len(trips) - n_slots)
+
+    dist_val = log.get("total_distance_km", "")
+    if dist_val in ("", None) and trips:
+        try:
+            dist_val = round(
+                sum(float(t.get("distance_km") or 0) for t in trips if t.get("distance_km") not in ("", None)),
+                1,
+            )
+        except (TypeError, ValueError):
+            dist_val = None
+    ws.cell(row=total_row, column=7, value=dist_val if dist_val not in ("", None) else None)
+    ws.cell(row=total_row, column=8, value=meta.get("총 운행시간") or None)
+
+    # 인쇄 설정 유지·보정 (A4 세로 1장)
+    try:
+        ws.page_setup.paperSize = 9
+        ws.page_setup.orientation = "portrait"
+        ws.page_setup.fitToWidth = 1
+        ws.page_setup.fitToHeight = 1
+        if getattr(ws, "sheet_properties", None) is not None:
+            if getattr(ws.sheet_properties, "pageSetUpPr", None) is not None:
+                ws.sheet_properties.pageSetUpPr.fitToPage = True
+        ws.print_area = f"A1:I{ws.max_row}"
+    except Exception:
+        pass
+
+    # ⚠️ 워터마크/서비스명 없음
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue(), f"{_filename_base(log)}.xlsx"
+
+
+def _export_excel_built(log: dict) -> tuple[bytes, str]:
+    """템플릿 파일 없을 때만 사용하는 코드 생성 폴백 (동일 레이아웃)."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
@@ -361,25 +507,16 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws = wb.active
     ws.title = "운행일지"
     ws.sheet_view.showGridLines = False
-    # A4 세로 1장에 서식이 가로·세로 모두 꽉 차게
-    ws.page_setup.paperSize = 9  # A4
+    ws.page_setup.paperSize = 9
     ws.page_setup.orientation = "portrait"
     ws.page_setup.fitToPage = True
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 1
     ws.page_setup.horizontalCentered = True
-    ws.page_setup.verticalCentered = False
     ws.page_margins.left = 0.5
     ws.page_margins.right = 0.5
     ws.page_margins.top = 0.45
     ws.page_margins.bottom = 0.45
-    ws.page_margins.header = 0.15
-    ws.page_margins.footer = 0.15
-    ws.print_title_rows = "1:2"
-    try:
-        ws.sheet_properties.pageSetUpPr.fitToPage = True
-    except Exception:
-        pass
 
     thin = Border(
         left=Side(style="thin", color=_FORM_GRID),
@@ -387,20 +524,13 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         top=Side(style="thin", color=_FORM_GRID),
         bottom=Side(style="thin", color=_FORM_GRID),
     )
-    thick_bottom = Border(
-        left=Side(style="thin", color=_FORM_GRID),
-        right=Side(style="thin", color=_FORM_GRID),
-        top=Side(style="thin", color=_FORM_GRID),
-        bottom=Side(style="medium", color=_FORM_NAVY),
-    )
     head_fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
     label_fill = PatternFill("solid", fgColor=_FORM_LABEL_BG)
     zebra_fill = PatternFill("solid", fgColor=_FORM_ZEBRA)
     total_fill = PatternFill("solid", fgColor=_FORM_TOTAL_BG)
     white_fill = PatternFill("solid", fgColor="FFFFFF")
-
     title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=17)
-    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=9)
+    sub_font = Font(color="CBD5E1", name="맑은 고딕", size=9)
     header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
     label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=9)
     cell_font = Font(name="맑은 고딕", size=10, color=_FORM_NAVY)
@@ -408,99 +538,57 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     total_font = Font(bold=True, name="맑은 고딕", size=10, color=_FORM_NAVY)
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
-    right = Alignment(horizontal="right", vertical="center", wrap_text=True)
 
     n_cols = 9
-    # ── 제목 바 ──
-    ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=n_cols)
-    c = ws.cell(row=1, column=1, value=_FORM_TITLE)
+    ws.merge_cells("A1:I1")
+    c = ws["A1"]
+    c.value = _FORM_TITLE
     c.font = title_font
     c.fill = PatternFill("solid", fgColor=_FORM_NAVY)
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 34
-
-    ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
-    sub = ws.cell(row=2, column=1, value="업무용 차량 운행 기록 · 제출용 · A4")
-    sub.font = sub_font
-    sub.fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
-    sub.alignment = Alignment(horizontal="center", vertical="center")
+    ws.merge_cells("A2:I2")
+    ws["A2"] = "업무용 차량 운행 기록 · 제출용 · A4"
+    ws["A2"].font = sub_font
+    ws["A2"].fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
+    ws["A2"].alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[2].height = 18
 
     meta = _meta(log)
-    # ── 메타 정보 (라벨|값|라벨|값 × 2블록, 9열에 맞춤) ──
-    # A-B | C-D | E-F | G-I  구조로 가독성 확보
     meta_rows = _meta_display_rows(log, meta)
-    # 재배치: 2쌍씩 → 한 행에 2쌍 (4칸 의미), 실제 셀은 9열 사용
-    # 행 구조: [라벨][값 merge 2][라벨][값 merge 2][라벨][값 merge 2] — 너무 복잡
-    # 단순: 4열 의미 그리드를 9열에 펼침
-    # col map: 1=L1, 2-3=V1, 4=L2, 5-6=V2, 7=pad, 8-9 empty → better:
-    # 1=L1, 2-3=V1, 4=L2, 5-6=V2  and second block on cols for remaining...
-    # Use full width: each pair takes ~4.5 cols → 2 pairs per row
-    # L1: col1, V1: col2-3, L2: col4, V2: col5-6, L3: col7, V3: col8-9 — too many fields
-    # Stick to 2 pairs per row:
-    # L1 col1, V1 col2-3, L2 col4, V2 col5-9 (wider value for places later no)
-
     r = 4
     for lab1, val1, lab2, val2 in meta_rows:
-        # pair 1
-        c1 = ws.cell(row=r, column=1, value=lab1)
-        c1.font = label_font
-        c1.fill = label_fill
-        c1.border = thin
-        c1.alignment = center
+        ws.cell(row=r, column=1, value=lab1).font = label_font
+        ws.cell(row=r, column=1).fill = label_fill
+        ws.cell(row=r, column=1).border = thin
+        ws.cell(row=r, column=1).alignment = center
         ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=4)
-        v1 = ws.cell(row=r, column=2, value=val1)
-        v1.font = cell_font
-        v1.alignment = left
+        ws.cell(row=r, column=2, value=val1).font = cell_font
+        ws.cell(row=r, column=2).alignment = left
         for col in range(2, 5):
             ws.cell(row=r, column=col).border = thin
-            ws.cell(row=r, column=col).fill = white_fill
-        # pair 2
-        c2 = ws.cell(row=r, column=5, value=lab2)
-        c2.font = label_font
-        c2.fill = label_fill
-        c2.border = thin
-        c2.alignment = center
+        ws.cell(row=r, column=5, value=lab2).font = label_font
+        ws.cell(row=r, column=5).fill = label_fill
+        ws.cell(row=r, column=5).border = thin
+        ws.cell(row=r, column=5).alignment = center
         ws.merge_cells(start_row=r, start_column=6, end_row=r, end_column=9)
-        v2 = ws.cell(row=r, column=6, value=val2)
-        v2.font = cell_font
-        v2.alignment = left
+        ws.cell(row=r, column=6, value=val2).font = cell_font
         for col in range(6, 10):
             ws.cell(row=r, column=col).border = thin
-            ws.cell(row=r, column=col).fill = white_fill
-        ws.cell(row=r, column=5).border = thin
         ws.row_dimensions[r].height = 26
         r += 1
-
-    # ── 운행 요약 ──
     r += 1
-    sum_label = ws.cell(row=r, column=1, value="운행 요약")
-    sum_label.font = label_font
-    sum_label.fill = label_fill
-    sum_label.border = thin
-    sum_label.alignment = center
-    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=n_cols)
-    sum_val = ws.cell(row=r, column=2, value=meta.get("요약") or "")
-    sum_val.font = cell_font
-    sum_val.alignment = left
-    for col in range(2, n_cols + 1):
+    ws.cell(row=r, column=1, value="운행 요약").font = label_font
+    ws.cell(row=r, column=1).fill = label_fill
+    ws.cell(row=r, column=1).border = thin
+    ws.cell(row=r, column=1).alignment = center
+    ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=9)
+    ws.cell(row=r, column=2, value=meta.get("요약") or "").font = cell_font
+    for col in range(2, 10):
         ws.cell(row=r, column=col).border = thin
-        ws.cell(row=r, column=col).fill = white_fill
     ws.row_dimensions[r].height = 32
     r += 1
-
-    # ── 구간 표 ──
-    headers = [
-        "순번",
-        "출발시각",
-        "도착시각",
-        "출발지",
-        "도착지",
-        "운행목적",
-        "거리(km)",
-        "운행시간",
-        "비고",
-    ]
+    headers = ["순번", "출발시각", "도착시각", "출발지", "도착지", "운행목적", "거리(km)", "운행시간", "비고"]
     header_row = r
     for i, h in enumerate(headers, start=1):
         cell = ws.cell(row=header_row, column=i, value=h)
@@ -509,14 +597,8 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         cell.alignment = center
         cell.border = thin
     ws.row_dimensions[header_row].height = 26
-
-    df = _trips_dataframe(log)
-    raw_records = df.to_dict(orient="records") if not df.empty else []
-    # 데이터 행 수와 무관하게 최소 칸 확보 → A4 표가 비어 보이지 않음
-    records = _pad_trip_records(raw_records, _FORM_MIN_TRIP_ROWS)
-    center_cols = {1, 2, 3, 7, 8}
-    # 구간 행 높이: 칸을 넉넉히 · A4 채움
-    trip_row_h = 30
+    raw = _trips_dataframe(log).to_dict(orient="records")
+    records = _pad_trip_records(raw, _FORM_MIN_TRIP_ROWS)
     for r_idx, rec in enumerate(records, start=1):
         row = header_row + r_idx
         fill = zebra_fill if r_idx % 2 == 0 else white_fill
@@ -526,81 +608,41 @@ def export_excel(log: dict) -> tuple[bytes, str]:
             cell.font = cell_font_sm
             cell.border = thin
             cell.fill = fill
-            cell.alignment = center if c_idx in center_cols else left
-        ws.row_dimensions[row].height = trip_row_h
-
-    # 합계
+            cell.alignment = center if c_idx in (1, 2, 3, 7, 8) else left
+        ws.row_dimensions[row].height = 30
     total_row = header_row + len(records) + 1
-    for col in range(1, n_cols + 1):
-        cell = ws.cell(row=total_row, column=col, value="")
-        cell.fill = total_fill
-        cell.border = thick_bottom
+    for col in range(1, 10):
+        ws.cell(row=total_row, column=col).fill = total_fill
+        ws.cell(row=total_row, column=col).border = thin
     ws.cell(row=total_row, column=1, value="합계").font = total_font
     ws.cell(row=total_row, column=1).alignment = center
-    ws.cell(row=total_row, column=1).fill = total_fill
-    # 거리 합 — 실제 데이터만
-    dist_val = log.get("total_distance_km", "")
-    if dist_val in ("", None) and raw_records:
-        try:
-            dist_val = round(
-                sum(float(r.get("거리(km)") or 0) for r in raw_records if r.get("거리(km)") not in ("", None)),
-                1,
-            )
-        except (TypeError, ValueError):
-            dist_val = ""
-    tc = ws.cell(row=total_row, column=7, value=dist_val)
-    tc.font = total_font
-    tc.alignment = center
-    tc.fill = total_fill
-    time_total = meta.get("총 운행시간") or ""
-    tc2 = ws.cell(row=total_row, column=8, value=time_total)
-    tc2.font = total_font
-    tc2.alignment = center
-    tc2.fill = total_fill
-    ws.row_dimensions[total_row].height = 22
-
-    # ── 서명란 (박스형, 페이지 하단 채움) ──
+    ws.cell(row=total_row, column=7, value=log.get("total_distance_km")).font = total_font
+    ws.cell(row=total_row, column=7).alignment = center
+    ws.cell(row=total_row, column=8, value=meta.get("총 운행시간")).font = total_font
+    ws.cell(row=total_row, column=8).alignment = center
     sig_row = total_row + 2
     ws.merge_cells(start_row=sig_row, start_column=5, end_row=sig_row, end_column=6)
     ws.merge_cells(start_row=sig_row, start_column=7, end_row=sig_row, end_column=9)
     ws.merge_cells(start_row=sig_row + 1, start_column=5, end_row=sig_row + 3, end_column=6)
     ws.merge_cells(start_row=sig_row + 1, start_column=7, end_row=sig_row + 3, end_column=9)
-
-    for label, col_s, col_e in (("작성자", 5, 6), ("확인자", 7, 9)):
-        head = ws.cell(row=sig_row, column=col_s, value=label)
-        head.font = label_font
-        head.fill = label_fill
-        head.alignment = center
-        for col in range(col_s, col_e + 1):
+    for label, cs, ce in (("작성자", 5, 6), ("확인자", 7, 9)):
+        ws.cell(row=sig_row, column=cs, value=label).font = label_font
+        ws.cell(row=sig_row, column=cs).fill = label_fill
+        ws.cell(row=sig_row, column=cs).alignment = center
+        for col in range(cs, ce + 1):
             ws.cell(row=sig_row, column=col).border = thin
             ws.cell(row=sig_row, column=col).fill = label_fill
-        body = ws.cell(row=sig_row + 1, column=col_s, value="(서명)")
-        body.font = Font(name="맑은 고딕", size=9, color="94A3B8")
-        body.alignment = Alignment(horizontal="center", vertical="center")
+        ws.cell(row=sig_row + 1, column=cs, value="(서명)").font = Font(
+            name="맑은 고딕", size=9, color="94A3B8"
+        )
+        ws.cell(row=sig_row + 1, column=cs).alignment = center
         for rr in (sig_row + 1, sig_row + 2, sig_row + 3):
-            for col in range(col_s, col_e + 1):
+            for col in range(cs, ce + 1):
                 ws.cell(row=rr, column=col).border = thin
-                ws.cell(row=rr, column=col).fill = white_fill
-    ws.row_dimensions[sig_row].height = 18
-    ws.row_dimensions[sig_row + 1].height = 16
-    ws.row_dimensions[sig_row + 2].height = 16
-    ws.row_dimensions[sig_row + 3].height = 16
-
-    # 열 너비 — A4 세로, 라벨·장소 칸 여유
     widths = [5.5, 9.5, 9.5, 17, 17, 12, 8.5, 10.5, 12]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
-
-    # 인쇄 영역 — A4 1장 fit (가로·세로 모두)
-    last_data_row = max(total_row, sig_row + 3)
-    ws.print_area = f"A1:I{last_data_row}"
-    try:
-        # fitToPage 사용 시 scale 비움
-        ws.page_setup.scale = None
-    except Exception:
-        pass
-
-    # ⚠️ 워터마크/헤더서비스명/푸터 광고 문구 일절 넣지 않음
+    ws.print_area = f"A1:I{sig_row + 3}"
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue(), f"{_filename_base(log)}.xlsx"
