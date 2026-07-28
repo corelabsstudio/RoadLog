@@ -2810,6 +2810,23 @@
         toast(err.message || "수정 저장 실패");
       }
     });
+
+    // 결과 구간/방문 삭제 (이벤트 위임)
+    $("#trips")?.addEventListener("click", (e) => {
+      const delTrip = e.target.closest("[data-del-trip]");
+      if (delTrip) {
+        e.preventDefault();
+        const idx = Number(delTrip.getAttribute("data-del-trip"));
+        if (Number.isFinite(idx)) removeTripAt(idx);
+        return;
+      }
+      const delVisit = e.target.closest("[data-del-visit]");
+      if (delVisit) {
+        e.preventDefault();
+        const idx = Number(delVisit.getAttribute("data-del-visit"));
+        if (Number.isFinite(idx)) removeVisitAt(idx);
+      }
+    });
   }
 
   function logToPlainText(log) {
@@ -2904,10 +2921,104 @@
     return map[reason] || "규칙 기반 초안으로 작성되었습니다. 내용을 확인해 주세요.";
   }
 
+  /** 구간 거리 합으로 total_distance_km 재계산 */
+  function recomputeDrivingTotals(log) {
+    if (!log || typeof log !== "object") return log;
+    const trips = Array.isArray(log.trips) ? log.trips : [];
+    let dist = 0;
+    for (const t of trips) {
+      const d = Number(t?.distance_km);
+      if (Number.isFinite(d)) dist += d;
+    }
+    log.total_distance_km = Math.round(dist * 10) / 10;
+    return log;
+  }
+
+  /**
+   * 결과 패널 운행 구간 1건 삭제.
+   * Excel/PDF/인쇄·저장본에도 바로 반영.
+   */
+  async function removeTripAt(index) {
+    if (!state.lastLog) {
+      toast("먼저 일지를 생성해 주세요");
+      return;
+    }
+    const trips = Array.isArray(state.lastLog.trips) ? [...state.lastLog.trips] : [];
+    if (index < 0 || index >= trips.length) return;
+    const t = trips[index] || {};
+    const label = `${t.from || "—"} → ${t.to || "—"}`;
+    if (!window.confirm(`이 구간을 삭제할까요?\n${label}`)) return;
+
+    trips.splice(index, 1);
+    const log = { ...state.lastLog, trips };
+    recomputeDrivingTotals(log);
+    state.lastLog = log;
+    persistLastLog(log);
+
+    try {
+      await saveLogToServer(log, {
+        id: log._saved_id || null,
+        reportType:
+          String(log.report_type || "").toLowerCase() === "field"
+            ? "field"
+            : "driving",
+      });
+    } catch {
+      /* 로컬 반영은 완료 */
+    }
+    renderResult({
+      log: state.lastLog,
+      engine: "restored",
+      saved: state.lastLog._saved_id ? { id: state.lastLog._saved_id } : null,
+    });
+    loadLogHistory();
+    if (state.user) renderAppHome();
+    toast(trips.length ? "구간을 삭제했습니다" : "모든 구간을 삭제했습니다");
+  }
+
+  /** 결과 패널 외근 방문 1건 삭제 */
+  async function removeVisitAt(index) {
+    if (!state.lastLog) {
+      toast("먼저 일지를 생성해 주세요");
+      return;
+    }
+    const visits = Array.isArray(state.lastLog.visits)
+      ? [...state.lastLog.visits]
+      : [];
+    if (index < 0 || index >= visits.length) return;
+    const v = visits[index] || {};
+    const label = v.place || v.location || "방문";
+    if (!window.confirm(`이 방문을 삭제할까요?\n${label}`)) return;
+
+    visits.splice(index, 1);
+    const log = { ...state.lastLog, visits };
+    state.lastLog = log;
+    persistLastLog(log);
+
+    try {
+      await saveLogToServer(log, {
+        id: log._saved_id || null,
+        reportType: "field",
+      });
+    } catch {
+      /* ignore */
+    }
+    renderResult({
+      log: state.lastLog,
+      engine: "restored",
+      saved: state.lastLog._saved_id ? { id: state.lastLog._saved_id } : null,
+    });
+    loadLogHistory();
+    if (state.user) renderAppHome();
+    toast(visits.length ? "방문을 삭제했습니다" : "모든 방문을 삭제했습니다");
+  }
+
   function renderResult(data) {
     const log = data.log;
     const box = $("#resultBox");
     if (!box || !log) return;
+    // 결과 패널 편집·삭제 기준 소스는 항상 state.lastLog
+    state.lastLog = log;
     box.classList.add("show");
 
     const badge = $("#engineBadge");
@@ -3082,11 +3193,11 @@
             '<div class="trip"><div class="trip-route"><strong>방문 기록 없음</strong><span>방문처를 입력한 뒤 다시 생성해 주세요.</span></div></div>';
         } else if (visits.length) {
           $("#trips").innerHTML = visits
-            .map((v) => {
+            .map((v, i) => {
               const detail = [v.result && `결과: ${v.result}`, v.next_action && `후속: ${v.next_action}`, v.memo]
                 .filter(Boolean)
                 .join(" · ");
-              return `<div class="trip">
+              return `<div class="trip" data-visit-index="${i}">
           <div class="trip-time">${escapeHtml(v.time || "—")}</div>
           <div class="trip-route">
             <strong>${escapeHtml(v.place || "—")}</strong>
@@ -3094,13 +3205,14 @@
             ${detail ? `<span style="display:block;margin-top:0.25rem;color:#94a3b8">${escapeHtml(detail)}</span>` : ""}
           </div>
           <div class="trip-meta"><b>외근</b></div>
+          <button type="button" class="trip-del" data-del-visit="${i}" title="이 방문 삭제" aria-label="이 방문 삭제">삭제</button>
         </div>`;
             })
             .join("");
         } else {
           $("#trips").innerHTML = (log.trips || [])
-            .map((t) => {
-              return `<div class="trip">
+            .map((t, i) => {
+              return `<div class="trip" data-trip-index="${i}">
           <div class="trip-time">${escapeHtml(t.depart_time || "—")}</div>
           <div class="trip-route">
             <strong>${escapeHtml(t.to || "—")}</strong>
@@ -3108,6 +3220,7 @@
             ${t.memo ? `<span style="display:block;margin-top:0.25rem;color:#94a3b8">${escapeHtml(t.memo)}</span>` : ""}
           </div>
           <div class="trip-meta"><b>외근</b></div>
+          <button type="button" class="trip-del" data-del-trip="${i}" title="이 구간 삭제" aria-label="이 구간 삭제">삭제</button>
         </div>`;
             })
             .join("");
@@ -3119,8 +3232,8 @@
             '<div class="trip"><div class="trip-route"><strong>기록된 구간 없음</strong><span>오전 또는 오후 방문지를 추가한 뒤 다시 생성해 주세요.</span></div></div>';
         } else {
           $("#trips").innerHTML = trips
-            .map((t) => {
-              return `<div class="trip">
+            .map((t, i) => {
+              return `<div class="trip" data-trip-index="${i}">
           <div class="trip-time">${escapeHtml(t.depart_time || "—")}<small>→ ${escapeHtml(
                 t.arrive_time || "—"
               )}</small></div>
@@ -3131,6 +3244,7 @@
           <div class="trip-meta"><b>${escapeHtml(String(t.distance_km ?? "—"))} km</b>${escapeHtml(
                 t.duration_display || ""
               )}</div>
+          <button type="button" class="trip-del" data-del-trip="${i}" title="이 구간 삭제" aria-label="이 구간 삭제">삭제</button>
         </div>`;
             })
             .join("");

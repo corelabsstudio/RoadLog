@@ -254,7 +254,6 @@ def render_home() -> None:
                     "목적": t.get("purpose"),
                     "거리(km)": t.get("distance_km"),
                     "순수운행": t.get("duration_display"),
-                    "점심제외(분)": t.get("lunch_excluded_minutes", 0),
                     "비고": t.get("memo", ""),
                 }
                 for t in trips

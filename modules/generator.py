@@ -43,6 +43,11 @@ SYSTEM_PROMPT = """당신은 대한민국 기업의 공식 업무용 '차량 운
 10. 회사 제출용으로 신뢰 가능한 수준을 유지합니다.
 11. purpose, memo, summary 표현은 프로필의 어휘·호흡을 모방하세요. 일반적인 AI 문장투를 피하세요.
 12. summary에 식당명·점심 위치를 적지 마세요 (중식 시간 제외 언급만 가능).
+13. 출발지(from)·도착지(to) 표기 필수 규칙:
+    - 형식: "시설명/상호, 행정동" (예: 동네 슈퍼, 후평3동 / 본사, 후평3동).
+    - 입력·스탬프에 동(洞)·가·리·읍·면 정보가 있으면 절대 생략하지 마세요.
+    - 장소명만 쓰고 동을 빼는 것 금지. 동만 있고 시설명이 없으면 동 단독 허용.
+    - "장소, 동" 한 묶음을 두 장소로 나누지 마세요.
 
 JSON 스키마:
 {
@@ -56,8 +61,8 @@ JSON 스키마:
     {
       "depart_time": "HH:MM",
       "arrive_time": "HH:MM",
-      "from": "출발지",
-      "to": "도착지",
+      "from": "시설명, 행정동",
+      "to": "시설명, 행정동",
       "purpose": "운행 목적",
       "distance_km": 0.0,
       "memo": "비고"
@@ -168,12 +173,310 @@ def scrub_lunch_place_privacy(log: dict | None, settings: dict | None = None) ->
     return out
 
 
+# 행정동·리 등 (장소 뒤 위치 표기)
+_DONG_ONLY_RE = re.compile(r"^[가-힣A-Za-z0-9]+(?:동|가|리|읍|면)$")
+_DONG_TAIL_RE = re.compile(
+    r"^(?P<place>.+?)\s*[,，]\s*(?P<dong>[가-힣A-Za-z0-9]+(?:동|가|리|읍|면))$"
+)
+_DONG_PAREN_RE = re.compile(
+    r"^(?P<place>.+?)\s*[\(（]\s*(?P<dong>[가-힣A-Za-z0-9]+(?:동|가|리|읍|면))\s*[\)）]\s*$"
+)
+_DONG_IN_TEXT_RE = re.compile(r"([가-힣A-Za-z0-9]+(?:동|가|리|읍|면))")
+# 퀵 스탬프 한 줄: [오전] 09:15 · 시설명, 후평3동
+_STAMP_LINE_RE = re.compile(
+    r"^\[(?P<period>오전|오후|점심|기타)\]\s*"
+    r"(?:(?P<time>\d{1,2}:\d{2}(?::\d{2})?)\s*[·•.\-]\s*)?"
+    r"(?P<label>.+)$"
+)
+_HQ_NAMES = frozenset({"본사", "회사", "사무실", "사옥", "차고지", "본부"})
+
+
+def _format_place_dong(place: str, dong: str = "") -> str:
+    """시설명 + 행정동 표준 표기: '시설명, 동'."""
+    place = (place or "").strip(" ,，")
+    dong = (dong or "").strip(" ,，")
+    if place and dong and dong not in place:
+        return f"{place}, {dong}"
+    if place:
+        return place
+    return dong
+
+
+def _split_place_dong(label: str) -> tuple[str, str]:
+    """'시설명, 동' / '시설명 (동)' / '동' → (시설명, 동)."""
+    s = (label or "").strip()
+    if not s:
+        return "", ""
+    m = _DONG_TAIL_RE.match(s)
+    if m:
+        return m.group("place").strip(), m.group("dong").strip()
+    m = _DONG_PAREN_RE.match(s)
+    if m:
+        return m.group("place").strip(), m.group("dong").strip()
+    if _DONG_ONLY_RE.match(s):
+        return "", s
+    # 끝에 동이 붙어 있는 경우 (공백 구분)
+    m2 = re.match(
+        r"^(?P<place>.+?)\s+(?P<dong>[가-힣A-Za-z0-9]+(?:동|가|리|읍|면))$", s
+    )
+    if m2 and not _DONG_ONLY_RE.match(m2.group("place")):
+        return m2.group("place").strip(), m2.group("dong").strip()
+    return s, ""
+
+
+def _extract_dong(text: str) -> str:
+    """문자열에서 행정동·리 등 추출 (마지막 매칭 우선)."""
+    if not text:
+        return ""
+    place, dong = _split_place_dong(text)
+    if dong:
+        return dong
+    found = _DONG_IN_TEXT_RE.findall(str(text))
+    return found[-1] if found else ""
+
+
+def _normalize_place_label(label: str) -> str:
+    """장소 라벨을 '시설명, 동' 형식으로 정규화."""
+    place, dong = _split_place_dong((label or "").strip())
+    return _format_place_dong(place, dong)
+
+
 def _parse_places(text: str) -> list[str]:
-    """쉼표/줄바꿈/·/및 으로 구분된 장소 목록."""
+    """
+    장소 목록 파싱.
+    - 줄바꿈·세미콜론·화살표·'및' 으로 장소 구분
+    - '시설명, 행정동' 은 한 장소로 유지 (쉼표로 쪼개지 않음)
+    - 퀵 스탬프 접두어 [오전] 09:00 · 제거
+    """
     if not text or not str(text).strip():
         return []
-    parts = re.split(r"[\n,，、/·]| 및 | 그리고 |→|->", str(text))
-    return [p.strip() for p in parts if p and p.strip()]
+
+    raw_chunks = re.split(r"[\n;；]+|\s+및\s+|\s+그리고\s+|→|->", str(text))
+    result: list[str] = []
+
+    for chunk in raw_chunks:
+        line = (chunk or "").strip()
+        if not line:
+            continue
+
+        sm = _STAMP_LINE_RE.match(line)
+        if sm:
+            line = (sm.group("label") or "").strip()
+            if not line:
+                continue
+
+        # 장소 (동) 단독
+        if _DONG_PAREN_RE.match(line):
+            result.append(_normalize_place_label(line))
+            continue
+        if _DONG_ONLY_RE.match(line):
+            result.append(line)
+            continue
+
+        # '시설명, 동' 단독만 한 항목으로 처리 (쉼표 1개 + 끝이 동)
+        # 'A, 동, B, 동' 처럼 나열이면 아래 결합 루프로 넘김
+        comma_n = line.count(",") + line.count("，")
+        if comma_n == 1 and _DONG_TAIL_RE.match(line):
+            result.append(_normalize_place_label(line))
+            continue
+
+        # 쉼표 등으로 나열된 경우 — 바로 다음이 동이면 앞 장소와 결합
+        parts = [
+            p.strip()
+            for p in re.split(r"\s*[,，、/·]\s*", line)
+            if p and p.strip()
+        ]
+        if not parts:
+            continue
+        if len(parts) == 1:
+            result.append(_normalize_place_label(parts[0]))
+            continue
+
+        i = 0
+        while i < len(parts):
+            cur = parts[i]
+            nxt = parts[i + 1] if i + 1 < len(parts) else ""
+            if nxt and _DONG_ONLY_RE.match(nxt):
+                result.append(_format_place_dong(cur, nxt))
+                i += 2
+            else:
+                result.append(_normalize_place_label(cur))
+                i += 1
+
+    return result
+
+
+def _origin_label(settings: dict | None) -> str:
+    """기점(본사 등) 표기 — 주소에 동이 있으면 '본사, 후평3동'."""
+    settings = settings or {}
+    places = settings.get("frequent_places") or []
+    # 본사/회사 항목 우선
+    candidates: list[dict] = []
+    for p in places:
+        if not isinstance(p, dict):
+            continue
+        name = str(p.get("name") or "").strip()
+        if name in _HQ_NAMES:
+            candidates.insert(0, p)
+        elif name:
+            candidates.append(p)
+    if candidates:
+        p0 = candidates[0]
+        name = str(p0.get("name") or "본사").strip() or "본사"
+        dong = _extract_dong(str(p0.get("address") or "")) or _extract_dong(name)
+        base, _ = _split_place_dong(name)
+        base = base or name
+        if base in _HQ_NAMES or not base:
+            base = name if name in _HQ_NAMES else (base or "본사")
+        return _format_place_dong(base if base in _HQ_NAMES else name, dong)
+    return "본사"
+
+
+def _place_catalog(form: dict | None, settings: dict | None) -> list[str]:
+    """입력·설정에서 장소 라벨 카탈로그 수집 (동 포함 유지)."""
+    f = normalize_form(form) if form is not None else normalize_form({})
+    labels: list[str] = []
+    for p in f.get("morning_places") or []:
+        if p:
+            labels.append(_normalize_place_label(str(p)))
+    for p in f.get("afternoon_places") or []:
+        if p:
+            labels.append(_normalize_place_label(str(p)))
+    for p in (settings or {}).get("frequent_places") or []:
+        if not isinstance(p, dict):
+            continue
+        name = str(p.get("name") or "").strip()
+        addr = str(p.get("address") or "").strip()
+        if not name:
+            continue
+        dong = _extract_dong(addr) or _extract_dong(name)
+        base, d2 = _split_place_dong(name)
+        labels.append(_format_place_dong(base or name, dong or d2))
+    # 기점도 포함
+    origin = _origin_label(settings)
+    if origin:
+        labels.append(origin)
+    # 중복 제거 (순서 유지)
+    seen: set[str] = set()
+    out: list[str] = []
+    for lab in labels:
+        if lab and lab not in seen:
+            seen.add(lab)
+            out.append(lab)
+    return out
+
+
+def enrich_trip_place_labels(
+    log: dict | None,
+    form: dict | None = None,
+    settings: dict | None = None,
+) -> dict:
+    """
+    trips.from / trips.to 에 행정동(위치)이 빠졌으면 입력·설정에서 복원.
+    목표 표기: '시설명, 행정동' (어디서→어디까지 + 위치).
+    """
+    if not isinstance(log, dict):
+        return {}
+    out = dict(log)
+    catalog = _place_catalog(form, settings)
+    # base(시설명) → 동, base → 전체 라벨 (동이 있는 표기를 우선)
+    dong_by_base: dict[str, str] = {}
+    full_by_base: dict[str, str] = {}
+    dong_counts: dict[str, int] = {}
+    for lab in catalog:
+        place, dong = _split_place_dong(lab)
+        if dong:
+            dong_counts[dong] = dong_counts.get(dong, 0) + 1
+        if place:
+            key = place.strip().lower()
+            prev = full_by_base.get(key, "")
+            _, prev_dong = _split_place_dong(prev) if prev else ("", "")
+            # 기존에 동이 없고 새 라벨에 동이 있으면 교체 / 처음이면 등록
+            if key not in full_by_base or (dong and not prev_dong):
+                full_by_base[key] = lab
+            if dong:
+                dong_by_base[key] = dong
+        elif dong:
+            # 동만 있는 항목
+            full_by_base.setdefault(dong.lower(), dong)
+
+    # 하루 동선에서 가장 많이 나온 동 (본사 등 보완용)
+    dominant_dong = ""
+    if dong_counts:
+        dominant_dong = max(dong_counts.items(), key=lambda x: x[1])[0]
+
+    def _enrich_one(raw: str) -> str:
+        s = (raw or "").strip()
+        if not s:
+            return s
+        place, dong = _split_place_dong(s)
+        # 이미 동 있음 → 표기만 정규화
+        if place and dong:
+            return _format_place_dong(place, dong)
+        if not place and dong:
+            return dong
+        # 시설명만 있음 → 카탈로그에서 동 복원
+        base = place or s
+        key = base.strip().lower()
+        candidate = ""
+        if key in full_by_base:
+            candidate = full_by_base[key]
+        elif key in dong_by_base:
+            candidate = _format_place_dong(base, dong_by_base[key])
+        else:
+            # 부분 일치 (입력 "동네 슈퍼, 후평3동" vs AI "동네슈퍼")
+            for bk, full in full_by_base.items():
+                if not bk:
+                    continue
+                if bk in key or key in bk:
+                    candidate = full
+                    break
+        if candidate:
+            c_place, c_dong = _split_place_dong(candidate)
+            if c_dong:
+                return _format_place_dong(c_place or base, c_dong)
+            # 카탈로그에 동 없으면 우세 동으로 보완
+            if dominant_dong and (
+                base in _HQ_NAMES or len(dong_counts) == 1
+            ):
+                return _format_place_dong(c_place or base, dominant_dong)
+            return candidate
+        # 본사/회사 + 우세 동
+        if base in _HQ_NAMES and dominant_dong:
+            return _format_place_dong(base, dominant_dong)
+        # 시설명만 있고 우세 동이 하루 전체 동일하면 보완
+        if base and not dong and dominant_dong and len(dong_counts) == 1:
+            return _format_place_dong(base, dominant_dong)
+        return s
+
+    trips = out.get("trips")
+    if isinstance(trips, list):
+        new_trips = []
+        for t in trips:
+            if not isinstance(t, dict):
+                continue
+            tt = dict(t)
+            tt["from"] = _enrich_one(str(tt.get("from") or ""))
+            tt["to"] = _enrich_one(str(tt.get("to") or ""))
+            new_trips.append(tt)
+        out["trips"] = new_trips
+
+    # 외근 visits 장소도 동일 규칙
+    visits = out.get("visits")
+    if isinstance(visits, list):
+        new_visits = []
+        for v in visits:
+            if not isinstance(v, dict):
+                continue
+            vv = dict(v)
+            if vv.get("place"):
+                vv["place"] = _enrich_one(str(vv.get("place") or ""))
+            if vv.get("location"):
+                vv["location"] = _enrich_one(str(vv.get("location") or ""))
+            new_visits.append(vv)
+        out["visits"] = new_visits
+
+    return out
 
 
 def normalize_form(form: dict | None) -> dict[str, Any]:
@@ -286,6 +589,9 @@ def form_to_raw_text(form: dict, settings: dict | None = None) -> str:
         [
             f"- 오전 방문지: {morning}",
             f"- 오후 방문지: {afternoon}",
+            "- [장소 표기] trips.from / trips.to 는 반드시 "
+            "'시설명/상호, 행정동' 형식 (예: 동네 슈퍼, 후평3동). "
+            "입력에 동(洞)이 있으면 생략 금지. '장소, 동'을 두 구간으로 나누지 말 것.",
         ]
     )
     # 서식에 주유 칸이 있을 때만 프롬프트에 주유 정보 포함
@@ -562,13 +868,17 @@ def generate_fallback(raw_text: str, settings: dict, form: dict | None = None) -
     구조화 입력이 있으면 오전→점심→오후 구간을 구성합니다.
     """
     f = normalize_form(form)
-    origin = "본사"
+    # 기점: 본사(+행정동). 자주 가는 곳 첫 항목이 본사가 아니면 이름 사용
+    origin = _origin_label(settings)
     places = settings.get("frequent_places") or []
     if places and places[0].get("name"):
-        origin = places[0]["name"]
-    if settings.get("company_name"):
-        # 회사명이 있으면 기점 표기에 병기하지 않고 본사 유지, 설정 회사는 메타에만
-        pass
+        first = str(places[0].get("name") or "").strip()
+        if first and first not in _HQ_NAMES:
+            dong = _extract_dong(str(places[0].get("address") or "")) or _extract_dong(
+                first
+            )
+            base, d2 = _split_place_dong(first)
+            origin = _format_place_dong(base or first, dong or d2)
 
     vehicle = f.get("vehicle_number") or settings.get("vehicle_number") or ""
     purpose = settings.get("default_purpose", "업무 출장")
@@ -971,6 +1281,9 @@ def generate_driving_log(
         raw_log["date"] = date.today().isoformat()
     raw_log = _apply_odometer(raw_log, f)
 
+    # 출발/도착지에 행정동(위치) 복원·정규화 — '시설명, 동'
+    raw_log = enrich_trip_place_labels(raw_log, f, settings)
+
     # 생성 직후·검증 전 점심 장소 스크럽 (AI가 식당을 지어내도 제거)
     raw_log = scrub_lunch_place_privacy(raw_log, settings)
     if not allow_fuel:
@@ -989,6 +1302,9 @@ def generate_driving_log(
             "company_name"
         ):
             validated["enriched_log"]["company_name"] = settings["company_name"]
+        validated["enriched_log"] = enrich_trip_place_labels(
+            validated["enriched_log"], f, settings
+        )
         validated["enriched_log"] = scrub_lunch_place_privacy(
             validated["enriched_log"], settings
         )

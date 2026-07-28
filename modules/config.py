@@ -607,7 +607,7 @@ DEFAULT_USER_SETTINGS = {
 # ── Few-shot 예시 (OpenAI 폴백/프롬프트) ────────────────
 FEW_SHOT_EXAMPLES = [
     {
-        "input": "오늘 아침 9시에 본사 출발해서 강남 고객사 미팅 갔다가 오후 2시에 복귀. 차량 12가3456",
+        "input": "오늘 아침 9시에 본사(역삼동) 출발해서 강남 고객사, 역삼동 미팅 갔다가 오후 2시에 복귀. 차량 12가3456",
         "output": {
             "date": "자동",
             "vehicle": "12가3456",
@@ -615,8 +615,8 @@ FEW_SHOT_EXAMPLES = [
                 {
                     "depart_time": "09:00",
                     "arrive_time": "09:50",
-                    "from": "본사",
-                    "to": "강남 고객사",
+                    "from": "본사, 역삼동",
+                    "to": "강남 고객사, 역삼동",
                     "purpose": "고객 미팅",
                     "distance_km": 18.5,
                     "memo": "정기 미팅 참석",
@@ -624,8 +624,8 @@ FEW_SHOT_EXAMPLES = [
                 {
                     "depart_time": "13:10",
                     "arrive_time": "14:00",
-                    "from": "강남 고객사",
-                    "to": "본사",
+                    "from": "강남 고객사, 역삼동",
+                    "to": "본사, 역삼동",
                     "purpose": "업무 복귀",
                     "distance_km": 18.5,
                     "memo": "",

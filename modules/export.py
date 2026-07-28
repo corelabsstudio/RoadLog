@@ -20,6 +20,7 @@ from modules.validator import format_minutes_kr
 
 
 def _trips_dataframe(log: dict) -> pd.DataFrame:
+    """구간 표 — 회사 제출용. 점심제외(분) 칸은 넣지 않음(서식에 거의 없고 0만 반복)."""
     rows = []
     for i, t in enumerate(log.get("trips") or [], start=1):
         rows.append(
@@ -32,7 +33,6 @@ def _trips_dataframe(log: dict) -> pd.DataFrame:
                 "운행목적": t.get("purpose", ""),
                 "거리(km)": t.get("distance_km", ""),
                 "순수운행": t.get("duration_display", ""),
-                "점심제외(분)": t.get("lunch_excluded_minutes", 0),
                 "비고": t.get("memo", ""),
             }
         )
@@ -69,7 +69,7 @@ def _meta(log: dict) -> dict[str, str]:
         "종료 누적(km)": str(log.get("odometer_end") if log.get("odometer_end") is not None else ""),
         "총 거리(km)": str(log.get("total_distance_km") or ""),
         "총 운행시간": format_minutes_kr(int(log.get("total_net_minutes") or 0)),
-        "점심 제외시간": format_minutes_kr(int(log.get("total_lunch_excluded_minutes") or 0)),
+        # 점심 제외분은 내부 검증·순수운행 계산에만 사용 (제출 문서 칸으로는 노출하지 않음)
         "요약": str(log.get("summary") or ""),
     }
     if log.get("fuel_refueled"):
@@ -257,8 +257,8 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     cell_font = Font(name="맑은 고딕", size=10)
     accent_fill = PatternFill("solid", fgColor="F0FDFA")
 
-    # 제목
-    ws.merge_cells("A1:J1")
+    # 제목 (9열: 순번~비고, 점심제외 칸 없음)
+    ws.merge_cells("A1:I1")
     ws["A1"] = "차량 운행일지"
     ws["A1"].font = title_font
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
@@ -301,7 +301,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
     ws.cell(row=row, column=2, value=meta["요약"]).font = cell_font
 
-    # 테이블 헤더
+    # 테이블 헤더 (점심제외(분) 제외 — 회사 서식에 거의 없음)
     headers = [
         "순번",
         "출발시각",
@@ -311,7 +311,6 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         "운행목적",
         "거리(km)",
         "순수운행",
-        "점심제외(분)",
         "비고",
     ]
     header_row = 8
@@ -323,6 +322,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         cell.border = thin
 
     df = _trips_dataframe(log)
+    n_cols = len(headers)
     for r_idx, rec in enumerate(df.to_dict(orient="records"), start=1):
         for c_idx, h in enumerate(headers, start=1):
             val = rec.get(h, "")
@@ -330,7 +330,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
             cell.font = cell_font
             cell.border = thin
             cell.alignment = Alignment(
-                horizontal="center" if c_idx in (1, 2, 3, 7, 9) else "left",
+                horizontal="center" if c_idx in (1, 2, 3, 7) else "left",
                 vertical="center",
                 wrap_text=True,
             )
@@ -339,7 +339,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     total_row = header_row + len(df) + 1
     ws.cell(row=total_row, column=1, value="합계").font = label_font
     ws.cell(row=total_row, column=7, value=log.get("total_distance_km", "")).font = label_font
-    for c in range(1, 11):
+    for c in range(1, n_cols + 1):
         ws.cell(row=total_row, column=c).border = thin
         ws.cell(row=total_row, column=c).fill = accent_fill
 
@@ -348,7 +348,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.cell(row=sig_row, column=7, value="작성자: _______________").font = cell_font
     ws.cell(row=sig_row + 1, column=7, value="확인자: _______________").font = cell_font
 
-    widths = [6, 10, 10, 16, 16, 14, 10, 12, 12, 18]
+    widths = [6, 10, 10, 18, 18, 14, 10, 12, 18]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -537,7 +537,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         ],
         [
             Paragraph(f"<b>주유</b>  {fuel_label}", body),
-            Paragraph(f"<b>점심 제외</b>  {meta.get('점심 제외시간') or '—'}", body),
+            Paragraph("", body),
         ],
     ]
     meta_table = Table(meta_data, colWidths=[90 * mm, 90 * mm])
@@ -777,8 +777,8 @@ def export_docx(log: dict) -> tuple[bytes, str]:
         fuel_bits.append(meta["주유량"])
     fuel_txt = ("    " + " · ".join(fuel_bits)) if fuel_bits else ""
     ir2 = info2.add_run(
-        f"총 거리: {meta['총 거리(km)']} km    총 운행시간: {meta['총 운행시간']}    "
-        f"점심 제외: {meta['점심 제외시간']}{fuel_txt}"
+        f"총 거리: {meta['총 거리(km)']} km    총 운행시간: {meta['총 운행시간']}"
+        f"{fuel_txt}"
     )
     set_run_font(ir2, size=10)
 
