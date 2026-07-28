@@ -2958,17 +2958,18 @@ body.modal-open {
   letter-spacing: 0.02em;
 }
 
-/* Session boot — 자동 로그인 확인 중 깜빡임 완화 */
+/* Session boot — 자동 로그인 확인 중 깜빡임 완화
+   (너무 어둡게 하면 PWA에서 네트워크 지연 시 메인 화면이 꺼진 것처럼 보임) */
 body.session-checking #guestHome,
 body.session-checking #appHome {
-  opacity: 0.35;
+  opacity: 0.82;
   pointer-events: none;
 }
 body.session-ready #guestHome,
 body.session-ready #appHome {
   opacity: 1;
   pointer-events: auto;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.18s ease;
 }
 
 /* PWA install */

@@ -2031,7 +2031,10 @@
     }
   }
 
+  let _sessionReadyDone = false;
   function markSessionReady() {
+    if (_sessionReadyDone) return;
+    _sessionReadyDone = true;
     document.body.classList.remove("session-checking");
     document.body.classList.add("session-ready");
   }
@@ -6838,66 +6841,94 @@
 
   // ── Init ──
   async function init() {
-    // 1) i18n: state.lang 기준 사전 로드 후 DOM 텍스트 적용
-    await initLocales(state.lang || localStorage.getItem(LANG_KEY) || "ko");
+    // PWA/느린 네트워크에서 세션 확인이 길어져도 메인 화면이 어두워진 채 고정되지 않도록
+    const sessionFailsafe = window.setTimeout(() => markSessionReady(), 1800);
 
-    bindNav();
-    bindReportModeTabs();
-    bindHistoryNav();
-    bindAuth();
-    bindGenerate();
-    bindLogHistory();
-    setReportMode(state.reportMode || "driving");
-    bindCareModal();
-    bindQuickStamp();
-    bindSettings();
-    bindStyle();
-    bindPrint();
-    bindAdmin();
-    bindAdminViewAs();
-    bindPricing();
-    bindProClaim();
-    bindReports();
-    bindFeedbackForm();
-    bindDemoPlayer();
-    bindPwaInstall();
-
-    applyI18n(); // data-i18n 노드에 t() 결과 반영
-    syncLunchPrivacyUI();
-    syncFuelFieldsUI();
-    loadPublicReviews();
-    loadVisitorStats();
-
-    try {
-      state.meta = await api("/api/meta");
-      applyPricingFromMeta(state.meta);
-      if (state.meta?.free_limit) state.limit = state.meta.free_limit;
-    } catch {
-      /* offline meta ok */
-    }
-
-    // 자동 로그인: localStorage 토큰 → 서버 세션 검증
     let sessionOk = false;
-    if (state.token) {
-      sessionOk = await refreshMe();
-      if (sessionOk) {
-        prefillVehicleFromSettings();
-        // 자동 로그인 성공 — 조용히 메인 진입 (토스트 생략)
+    try {
+      // 1) i18n: state.lang 기준 사전 로드 후 DOM 텍스트 적용
+      try {
+        await initLocales(state.lang || localStorage.getItem(LANG_KEY) || "ko");
+      } catch (e) {
+        console.warn("[RoadLog] locales load failed", e);
       }
-    } else {
-      updateAuthUI();
+
+      bindNav();
+      bindReportModeTabs();
+      bindHistoryNav();
+      bindAuth();
+      bindGenerate();
+      bindLogHistory();
+      setReportMode(state.reportMode || "driving");
+      bindCareModal();
+      bindQuickStamp();
+      bindSettings();
+      bindStyle();
+      bindPrint();
+      bindAdmin();
+      bindAdminViewAs();
+      bindPricing();
+      bindProClaim();
+      bindReports();
+      bindFeedbackForm();
+      bindDemoPlayer();
+      bindPwaInstall();
+
+      applyI18n(); // data-i18n 노드에 t() 결과 반영
+      syncLunchPrivacyUI();
+      syncFuelFieldsUI();
+      loadPublicReviews();
+      loadVisitorStats();
+
+      try {
+        state.meta = await api("/api/meta");
+        applyPricingFromMeta(state.meta);
+        if (state.meta?.free_limit) state.limit = state.meta.free_limit;
+      } catch {
+        /* offline meta ok */
+      }
+
+      // 자동 로그인: localStorage 토큰 → 서버 세션 검증
+      if (state.token) {
+        try {
+          sessionOk = await refreshMe();
+          if (sessionOk) {
+            prefillVehicleFromSettings();
+          }
+        } catch (e) {
+          console.warn("[RoadLog] session refresh failed", e);
+          sessionOk = false;
+          updateAuthUI();
+        }
+      } else {
+        updateAuthUI();
+      }
+    } catch (e) {
+      console.error("[RoadLog] init error", e);
+      try {
+        updateAuthUI();
+      } catch {
+        /* ignore */
+      }
+    } finally {
+      window.clearTimeout(sessionFailsafe);
+      markSessionReady();
     }
-    markSessionReady();
 
     // PC·앱 공통: 빈 해시/홈 → 메인(home). 딥링크만 존중.
     // 관리자 운영 모드도 작업 홈(유형 선택·스탬프)을 기본으로 연다.
-    let initial = getViewFromLocation();
-    const h = (location.hash || "").replace(/^#/, "").trim();
-    if (!h || h === "home") {
-      initial = "home";
+    let initial = "home";
+    try {
+      initial = getViewFromLocation();
+      const h = (location.hash || "").replace(/^#/, "").trim();
+      if (!h || h === "home") {
+        initial = "home";
+      }
+      showView(initial, { replaceHistory: true, skipScroll: false });
+    } catch (e) {
+      console.warn("[RoadLog] showView failed", e);
     }
 
-    showView(initial, { replaceHistory: true, skipScroll: false });
     // 진입 시 스크롤 맨 위 — 유형 선택·큰 스탬프가 바로 보이도록
     try {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -6906,7 +6937,11 @@
     }
 
     if (sessionOk && currentViewName === "home") {
-      updateHomeMode();
+      try {
+        updateHomeMode();
+      } catch {
+        /* ignore */
+      }
     }
   }
 
