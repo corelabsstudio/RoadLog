@@ -331,15 +331,24 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws = wb.active
     ws.title = "운행일지"
     ws.sheet_view.showGridLines = False
-    ws.page_setup.orientation = "landscape"
+    # A4 세로 · 가로폭에 맞춤 (인쇄 시 용지 밖으로 안 나감)
+    ws.page_setup.paperSize = 9  # A4
+    ws.page_setup.orientation = "portrait"
     ws.page_setup.fitToPage = True
     ws.page_setup.fitToWidth = 1
     ws.page_setup.fitToHeight = 0
-    ws.page_margins.left = 0.5
-    ws.page_margins.right = 0.5
-    ws.page_margins.top = 0.5
-    ws.page_margins.bottom = 0.5
-    ws.print_title_rows = "1:1"
+    ws.page_setup.horizontalCentered = True
+    ws.page_margins.left = 0.4
+    ws.page_margins.right = 0.4
+    ws.page_margins.top = 0.4
+    ws.page_margins.bottom = 0.4
+    ws.page_margins.header = 0.2
+    ws.page_margins.footer = 0.2
+    ws.print_title_rows = "1:2"
+    try:
+        ws.sheet_properties.pageSetUpPr.fitToPage = True
+    except Exception:
+        pass
 
     thin = Border(
         left=Side(style="thin", color=_FORM_GRID),
@@ -359,13 +368,13 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     total_fill = PatternFill("solid", fgColor=_FORM_TOTAL_BG)
     white_fill = PatternFill("solid", fgColor="FFFFFF")
 
-    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=18)
-    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=9)
-    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
-    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=9)
-    cell_font = Font(name="맑은 고딕", size=10, color=_FORM_NAVY)
-    cell_font_sm = Font(name="맑은 고딕", size=9, color=_FORM_NAVY)
-    total_font = Font(bold=True, name="맑은 고딕", size=10, color=_FORM_NAVY)
+    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=15)
+    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=8)
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=9)
+    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=8)
+    cell_font = Font(name="맑은 고딕", size=9, color=_FORM_NAVY)
+    cell_font_sm = Font(name="맑은 고딕", size=8, color=_FORM_NAVY)
+    total_font = Font(bold=True, name="맑은 고딕", size=9, color=_FORM_NAVY)
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     right = Alignment(horizontal="right", vertical="center", wrap_text=True)
@@ -377,14 +386,14 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     c.font = title_font
     c.fill = PatternFill("solid", fgColor=_FORM_NAVY)
     c.alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[1].height = 36
+    ws.row_dimensions[1].height = 28
 
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
-    sub = ws.cell(row=2, column=1, value="업무용 차량 운행 기록 · 제출용")
+    sub = ws.cell(row=2, column=1, value="업무용 차량 운행 기록 · 제출용 · A4")
     sub.font = sub_font
     sub.fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
     sub.alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[2].height = 18
+    ws.row_dimensions[2].height = 16
 
     meta = _meta(log)
     # ── 메타 정보 (라벨|값|라벨|값 × 2블록, 9열에 맞춤) ──
@@ -429,7 +438,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
             ws.cell(row=r, column=col).border = thin
             ws.cell(row=r, column=col).fill = white_fill
         ws.cell(row=r, column=5).border = thin
-        ws.row_dimensions[r].height = 22
+        ws.row_dimensions[r].height = 18
         r += 1
 
     # ── 운행 요약 ──
@@ -446,8 +455,8 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     for col in range(2, n_cols + 1):
         ws.cell(row=r, column=col).border = thin
         ws.cell(row=r, column=col).fill = white_fill
-    ws.row_dimensions[r].height = 28
-    r += 2
+    ws.row_dimensions[r].height = 22
+    r += 1
 
     # ── 구간 표 ──
     headers = [
@@ -468,7 +477,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         cell.font = header_font
         cell.alignment = center
         cell.border = thin
-    ws.row_dimensions[header_row].height = 24
+    ws.row_dimensions[header_row].height = 20
 
     df = _trips_dataframe(log)
     records = df.to_dict(orient="records") if not df.empty else []
@@ -483,7 +492,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
             cell.border = thin
             cell.fill = fill
             cell.alignment = center if c_idx in center_cols else left
-        ws.row_dimensions[row].height = 22
+        ws.row_dimensions[row].height = 18
 
     # 합계
     total_row = header_row + max(len(records), 0) + 1
@@ -539,14 +548,18 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.row_dimensions[sig_row + 1].height = 18
     ws.row_dimensions[sig_row + 2].height = 22
 
-    # 열 너비 (가로 A4 기준 가독)
-    widths = [6, 10, 10, 20, 20, 14, 10, 12, 14]
+    # 열 너비 — A4 세로 인쇄 폭(~19cm)에 맞춤
+    widths = [5, 8.5, 8.5, 16, 16, 11, 8, 9.5, 11]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
     # 인쇄 영역
     last_data_row = max(total_row, sig_row + 2)
     ws.print_area = f"A1:I{last_data_row}"
+    try:
+        ws.page_setup.scale = None  # fitToWidth 우선
+    except Exception:
+        pass
 
     # ⚠️ 워터마크/헤더서비스명/푸터 광고 문구 일절 넣지 않음
     buf = io.BytesIO()
@@ -658,7 +671,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
 
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
-    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import mm
     from reportlab.platypus import (
@@ -670,16 +683,18 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     )
 
     font_name = _register_korean_font()
-    page = landscape(A4)
+    # A4 세로 (210×297mm) — 인쇄 기본 규격
+    page = A4
+    margin = 10 * mm
 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
         buf,
         pagesize=page,
-        leftMargin=12 * mm,
-        rightMargin=12 * mm,
-        topMargin=12 * mm,
-        bottomMargin=12 * mm,
+        leftMargin=margin,
+        rightMargin=margin,
+        topMargin=margin,
+        bottomMargin=margin,
         title=_FORM_TITLE,
         author=str(log.get("driver_name") or ""),
     )
@@ -689,79 +704,80 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         "KRTitle",
         parent=styles["Title"],
         fontName=font_name,
-        fontSize=16,
+        fontSize=14,
         textColor=colors.white,
         alignment=TA_CENTER,
         spaceBefore=0,
         spaceAfter=0,
-        leading=20,
+        leading=17,
     )
     subtitle_style = ParagraphStyle(
         "KRSub",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=8,
+        fontSize=7.5,
         textColor=colors.HexColor("#CBD5E1"),
         alignment=TA_CENTER,
-        leading=11,
+        leading=10,
     )
     body = ParagraphStyle(
         "KRBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=9,
-        leading=12,
+        fontSize=8,
+        leading=11,
         textColor=colors.HexColor("#0F172A"),
     )
     label_s = ParagraphStyle(
         "KRLabel",
         parent=body,
         fontName=font_name,
-        fontSize=8,
+        fontSize=7.5,
         textColor=colors.HexColor("#334155"),
         alignment=TA_CENTER,
     )
     small = ParagraphStyle(
         "KRSmall",
         parent=body,
-        fontSize=8,
-        leading=11,
+        fontSize=7.5,
+        leading=10,
         textColor=colors.HexColor("#0F172A"),
     )
     head_s = ParagraphStyle(
         "KRHead",
         parent=body,
-        fontSize=8,
+        fontSize=7.5,
         textColor=colors.white,
         alignment=TA_CENTER,
-        leading=11,
+        leading=10,
     )
 
     meta = _meta(log)
     story: list[Any] = []
+    usable_w = page[0] - 2 * margin
 
     # 제목 바
     title_bar = Table(
         [
             [Paragraph(_FORM_TITLE, title_style)],
-            [Paragraph("업무용 차량 운행 기록 · 제출용", subtitle_style)],
+            [Paragraph("업무용 차량 운행 기록 · 제출용 · A4", subtitle_style)],
         ],
-        colWidths=[page[0] - 24 * mm],
+        colWidths=[usable_w],
     )
     title_bar.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{_FORM_NAVY}")),
-                ("TOPPADDING", (0, 0), (-1, 0), 10),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
+                ("TOPPADDING", (0, 0), (-1, 0), 7),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
                 ("TOPPADDING", (0, 1), (-1, 1), 0),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 6),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ]
         )
     )
     story.append(title_bar)
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 3 * mm))
 
     # 메타 그리드 (라벨|값|라벨|값)
     meta_rows = _meta_display_rows(log, meta)
@@ -775,10 +791,10 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph(str(val2), body),
             ]
         )
-    usable = page[0] - 24 * mm
+    usable = page[0] - 2 * margin  # A4 폭 − 좌우 여백
     meta_table = Table(
         meta_table_data,
-        colWidths=[usable * 0.14, usable * 0.36, usable * 0.14, usable * 0.36],
+        colWidths=[usable * 0.15, usable * 0.35, usable * 0.15, usable * 0.35],
     )
     meta_table.setStyle(
         TableStyle(
@@ -788,15 +804,15 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
                 ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 5),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2.5 * mm))
 
     # 요약
     summary_tbl = Table(
@@ -806,7 +822,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph(str(meta.get("요약") or "—"), body),
             ]
         ],
-        colWidths=[usable * 0.14, usable * 0.86],
+        colWidths=[usable * 0.15, usable * 0.85],
     )
     summary_tbl.setStyle(
         TableStyle(
@@ -814,18 +830,18 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 ("BACKGROUND", (0, 0), (0, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
                 ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 4),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ]
         )
     )
     story.append(summary_tbl)
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 3 * mm))
 
     # 본문 테이블
-    headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "운행시간", "비고"]
+    headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "시간", "비고"]
     data = [[Paragraph(f"<b>{h}</b>", head_s) for h in headers]]
     for i, t in enumerate(log.get("trips") or [], start=1):
         data.append(
@@ -856,16 +872,17 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         ]
     )
 
+    # A4 세로 본문폭에 맞춘 열 비율 (합 1.0)
     col_w = [
         usable * 0.05,
-        usable * 0.07,
-        usable * 0.07,
-        usable * 0.16,
-        usable * 0.16,
+        usable * 0.08,
+        usable * 0.08,
+        usable * 0.17,
+        usable * 0.17,
         usable * 0.12,
         usable * 0.07,
         usable * 0.10,
-        usable * 0.20,
+        usable * 0.16,
     ]
     table = Table(data, colWidths=col_w, repeatRows=1)
     style_cmds = [
@@ -878,10 +895,10 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         ("ALIGN", (6, 1), (7, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
-        ("TOPPADDING", (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING", (0, 0), (-1, -1), 3),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
     ]
     # zebra (data rows only, not header/total)
     for i in range(1, len(data) - 1):
@@ -891,7 +908,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
             )
     table.setStyle(TableStyle(style_cmds))
     story.append(table)
-    story.append(Spacer(1, 8 * mm))
+    story.append(Spacer(1, 5 * mm))
 
     # 서명 박스
     sig = Table(
@@ -905,7 +922,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph("<font color='#94A3B8'>(서명)</font>", small),
             ],
         ],
-        colWidths=[50 * mm, 50 * mm],
+        colWidths=[42 * mm, 42 * mm],
     )
     sig.setStyle(
         TableStyle(
@@ -915,10 +932,10 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("TOPPADDING", (0, 0), (-1, 0), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 4),
-                ("TOPPADDING", (0, 1), (-1, 1), 14),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 14),
+                ("TOPPADDING", (0, 0), (-1, 0), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 3),
+                ("TOPPADDING", (0, 1), (-1, 1), 10),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
             ]
         )
     )
@@ -1065,15 +1082,16 @@ def export_docx(log: dict) -> tuple[bytes, str]:
         try:
             from docx.enum.section import WD_ORIENT
 
-            section.orientation = WD_ORIENT.LANDSCAPE
+            section.orientation = WD_ORIENT.PORTRAIT
         except Exception:
             pass
-        section.page_width = Cm(29.7)
-        section.page_height = Cm(21.0)
-        section.top_margin = Cm(1.2)
-        section.bottom_margin = Cm(1.2)
-        section.left_margin = Cm(1.4)
-        section.right_margin = Cm(1.4)
+        # A4 세로 210×297mm
+        section.page_width = Cm(21.0)
+        section.page_height = Cm(29.7)
+        section.top_margin = Cm(1.0)
+        section.bottom_margin = Cm(1.0)
+        section.left_margin = Cm(1.2)
+        section.right_margin = Cm(1.2)
 
     def set_run_font(run, size=10, bold=False, color=None, font="맑은 고딕"):
         run.bold = bold
