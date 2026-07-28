@@ -3860,21 +3860,26 @@
       ? String(log.total_distance_km)
       : "";
 
-    const rows = trips
-      .map((t, i) => {
-        return `<tr class="${i % 2 === 1 ? "zebra" : ""}">
+    // A4 양식이 빈칸이어도 꽉 차 보이도록 최소 구간 행 확보
+    const MIN_TRIP_ROWS = 12;
+    const nTripRows = Math.max(trips.length, MIN_TRIP_ROWS);
+    const rowParts = [];
+    for (let i = 0; i < nTripRows; i++) {
+      const t = trips[i] || {};
+      const empty = !trips[i];
+      rowParts.push(`<tr class="${i % 2 === 1 ? "zebra" : ""}${empty ? " blank" : ""}">
           <td class="c">${i + 1}</td>
           <td class="c">${escapeHtml(t.depart_time || "")}</td>
           <td class="c">${escapeHtml(t.arrive_time || "")}</td>
           <td>${escapeHtml(t.from || "")}</td>
           <td>${escapeHtml(t.to || "")}</td>
           <td>${escapeHtml(t.purpose || "")}</td>
-          <td class="c">${escapeHtml(String(t.distance_km ?? ""))}</td>
+          <td class="c">${escapeHtml(t.distance_km != null && t.distance_km !== "" ? String(t.distance_km) : "")}</td>
           <td class="c">${escapeHtml(t.duration_display || "")}</td>
           <td>${escapeHtml(t.memo || "")}</td>
-        </tr>`;
-      })
-      .join("");
+        </tr>`);
+    }
+    const rows = rowParts.join("");
 
     const page = paperCssSize(paper, orient);
     const isLand = orient === "landscape";
@@ -3907,6 +3912,38 @@
   .sheet {
     width: 100%;
     max-width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  .sheet-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .trips-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 120px;
+  }
+  table.trips {
+    flex: 1 1 auto;
+    height: 100%;
+  }
+  table.trips tbody {
+    height: 100%;
+  }
+  table.trips tbody tr {
+    height: calc(100% / var(--trip-rows, 12));
+  }
+  table.trips tr.blank td {
+    color: transparent;
+  }
+  .sheet-foot {
+    flex: 0 0 auto;
+    margin-top: 8px;
   }
   .title-bar {
     background: #0f172a;
@@ -4025,15 +4062,21 @@
   @media print {
     html, body {
       width: 100%;
-      height: auto;
+      height: 100%;
       margin: 0 !important;
       padding: 0 !important;
     }
     body {
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      height: 100%;
     }
-    .sheet { page-break-inside: auto; }
+    .sheet {
+      min-height: calc(100vh - 0.1px);
+      height: 100%;
+      page-break-inside: avoid;
+      box-sizing: border-box;
+    }
     table.trips tr { page-break-inside: avoid; }
     .no-print { display: none !important; }
   }
@@ -4045,17 +4088,19 @@
     .sheet {
       background: #fff;
       width: ${isLand ? "297mm" : "210mm"};
+      height: ${isLand ? "210mm" : "297mm"};
       min-height: ${isLand ? "210mm" : "297mm"};
       max-width: 100%;
       margin: 0 auto;
       padding: 8mm;
+      box-sizing: border-box;
       box-shadow: 0 4px 24px rgba(15, 23, 42, 0.12);
     }
   }
 </style>
 </head>
 <body>
-  <div class="sheet">
+  <div class="sheet" style="--trip-rows: ${nTripRows}">
   <div class="title-bar">
     <h1>${escapeHtml(formTitle)}</h1>
     <p>업무용 차량 운행 기록 · 제출용 · ${escapeHtml(paper || "A4")}</p>
@@ -4084,6 +4129,7 @@
       <td>${escapeHtml(String(log.summary || ""))}</td>
     </tr>
   </table>
+  <div class="sheet-body"><div class="trips-wrap">
   <table class="trips">
     <colgroup>
       <col style="width:5%" />
@@ -4123,11 +4169,14 @@
       </tr>
     </tbody>
   </table>
+  </div>
+  <div class="sheet-foot">
   <table class="sign">
     <tr><th>작성자</th><th>확인자</th></tr>
     <tr><td>(서명)</td><td>(서명)</td></tr>
   </table>
-  <div class="foot no-print">미리보기 · ${escapeHtml(paper)} ${isLand ? "가로" : "세로"} · 인쇄 시 여백 최소 권장</div>
+  <div class="foot no-print">미리보기 · ${escapeHtml(paper)} ${isLand ? "가로" : "세로"} · A4 꽉 채움</div>
+  </div></div>
   </div>
   <script>
     window.onload = function () {

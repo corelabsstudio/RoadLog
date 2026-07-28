@@ -29,6 +29,36 @@ _FORM_ZEBRA = "F8FAFC"
 _FORM_LABEL_BG = "F1F5F9"
 _FORM_TOTAL_BG = "EEF2FF"
 _FORM_TITLE = "차량 운행일지"
+# A4 한 장을 서식이 꽉 채우도록 구간 표 최소 행 수 (데이터 부족 시 빈칸 행)
+_FORM_MIN_TRIP_ROWS = 12
+_FORM_MIN_VISIT_ROWS = 10
+
+
+def _pad_trip_records(records: list[dict], min_rows: int = _FORM_MIN_TRIP_ROWS) -> list[dict]:
+    """구간 데이터가 적어도 A4 양식 칸이 비지 않도록 빈 행으로 채움."""
+    out = list(records or [])
+    empty = {
+        "순번": "",
+        "출발시각": "",
+        "도착시각": "",
+        "출발지": "",
+        "도착지": "",
+        "운행목적": "",
+        "거리(km)": "",
+        "운행시간": "",
+        "비고": "",
+    }
+    while len(out) < min_rows:
+        blank = dict(empty)
+        blank["순번"] = len(out) + 1
+        out.append(blank)
+    # 순번 재부여 (빈 행 포함)
+    for i, rec in enumerate(out, start=1):
+        if not rec.get("출발시각") and not rec.get("출발지") and not rec.get("도착지"):
+            rec["순번"] = i
+        else:
+            rec["순번"] = i
+    return out
 
 
 def _trips_dataframe(log: dict) -> pd.DataFrame:
@@ -331,19 +361,20 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws = wb.active
     ws.title = "운행일지"
     ws.sheet_view.showGridLines = False
-    # A4 세로 · 가로폭에 맞춤 (인쇄 시 용지 밖으로 안 나감)
+    # A4 세로 1장에 서식이 가로·세로 모두 꽉 차게
     ws.page_setup.paperSize = 9  # A4
     ws.page_setup.orientation = "portrait"
     ws.page_setup.fitToPage = True
     ws.page_setup.fitToWidth = 1
-    ws.page_setup.fitToHeight = 0
+    ws.page_setup.fitToHeight = 1
     ws.page_setup.horizontalCentered = True
-    ws.page_margins.left = 0.4
-    ws.page_margins.right = 0.4
-    ws.page_margins.top = 0.4
-    ws.page_margins.bottom = 0.4
-    ws.page_margins.header = 0.2
-    ws.page_margins.footer = 0.2
+    ws.page_setup.verticalCentered = False
+    ws.page_margins.left = 0.5
+    ws.page_margins.right = 0.5
+    ws.page_margins.top = 0.45
+    ws.page_margins.bottom = 0.45
+    ws.page_margins.header = 0.15
+    ws.page_margins.footer = 0.15
     ws.print_title_rows = "1:2"
     try:
         ws.sheet_properties.pageSetUpPr.fitToPage = True
@@ -480,22 +511,26 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.row_dimensions[header_row].height = 20
 
     df = _trips_dataframe(log)
-    records = df.to_dict(orient="records") if not df.empty else []
+    raw_records = df.to_dict(orient="records") if not df.empty else []
+    # 데이터 행 수와 무관하게 최소 칸 확보 → A4 표가 비어 보이지 않음
+    records = _pad_trip_records(raw_records, _FORM_MIN_TRIP_ROWS)
     center_cols = {1, 2, 3, 7, 8}
+    # 구간 행 높이: 빈 칸 포함 표가 페이지 중·하단을 채우도록 넉넉히
+    trip_row_h = 26
     for r_idx, rec in enumerate(records, start=1):
         row = header_row + r_idx
         fill = zebra_fill if r_idx % 2 == 0 else white_fill
         for c_idx, h in enumerate(headers, start=1):
             val = rec.get(h, "")
-            cell = ws.cell(row=row, column=c_idx, value=val)
+            cell = ws.cell(row=row, column=c_idx, value=val if val != "" else None)
             cell.font = cell_font_sm
             cell.border = thin
             cell.fill = fill
             cell.alignment = center if c_idx in center_cols else left
-        ws.row_dimensions[row].height = 18
+        ws.row_dimensions[row].height = trip_row_h
 
     # 합계
-    total_row = header_row + max(len(records), 0) + 1
+    total_row = header_row + len(records) + 1
     for col in range(1, n_cols + 1):
         cell = ws.cell(row=total_row, column=col, value="")
         cell.fill = total_fill
@@ -503,31 +538,33 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.cell(row=total_row, column=1, value="합계").font = total_font
     ws.cell(row=total_row, column=1).alignment = center
     ws.cell(row=total_row, column=1).fill = total_fill
-    # 거리 합
+    # 거리 합 — 실제 데이터만
     dist_val = log.get("total_distance_km", "")
-    if dist_val in ("", None) and records:
+    if dist_val in ("", None) and raw_records:
         try:
-            dist_val = round(sum(float(r.get("거리(km)") or 0) for r in records), 1)
+            dist_val = round(
+                sum(float(r.get("거리(km)") or 0) for r in raw_records if r.get("거리(km)") not in ("", None)),
+                1,
+            )
         except (TypeError, ValueError):
             dist_val = ""
     tc = ws.cell(row=total_row, column=7, value=dist_val)
     tc.font = total_font
     tc.alignment = center
     tc.fill = total_fill
-    # 운행시간 총합 표시
     time_total = meta.get("총 운행시간") or ""
     tc2 = ws.cell(row=total_row, column=8, value=time_total)
     tc2.font = total_font
     tc2.alignment = center
     tc2.fill = total_fill
-    ws.row_dimensions[total_row].height = 24
+    ws.row_dimensions[total_row].height = 22
 
-    # ── 서명란 (박스형) ──
+    # ── 서명란 (박스형, 페이지 하단 채움) ──
     sig_row = total_row + 2
     ws.merge_cells(start_row=sig_row, start_column=5, end_row=sig_row, end_column=6)
     ws.merge_cells(start_row=sig_row, start_column=7, end_row=sig_row, end_column=9)
-    ws.merge_cells(start_row=sig_row + 1, start_column=5, end_row=sig_row + 2, end_column=6)
-    ws.merge_cells(start_row=sig_row + 1, start_column=7, end_row=sig_row + 2, end_column=9)
+    ws.merge_cells(start_row=sig_row + 1, start_column=5, end_row=sig_row + 3, end_column=6)
+    ws.merge_cells(start_row=sig_row + 1, start_column=7, end_row=sig_row + 3, end_column=9)
 
     for label, col_s, col_e in (("작성자", 5, 6), ("확인자", 7, 9)):
         head = ws.cell(row=sig_row, column=col_s, value=label)
@@ -540,24 +577,26 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         body = ws.cell(row=sig_row + 1, column=col_s, value="(서명)")
         body.font = Font(name="맑은 고딕", size=9, color="94A3B8")
         body.alignment = Alignment(horizontal="center", vertical="center")
-        for rr in (sig_row + 1, sig_row + 2):
+        for rr in (sig_row + 1, sig_row + 2, sig_row + 3):
             for col in range(col_s, col_e + 1):
                 ws.cell(row=rr, column=col).border = thin
                 ws.cell(row=rr, column=col).fill = white_fill
     ws.row_dimensions[sig_row].height = 18
-    ws.row_dimensions[sig_row + 1].height = 18
-    ws.row_dimensions[sig_row + 2].height = 22
+    ws.row_dimensions[sig_row + 1].height = 16
+    ws.row_dimensions[sig_row + 2].height = 16
+    ws.row_dimensions[sig_row + 3].height = 16
 
     # 열 너비 — A4 세로 인쇄 폭(~19cm)에 맞춤
     widths = [5, 8.5, 8.5, 16, 16, 11, 8, 9.5, 11]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
-    # 인쇄 영역
-    last_data_row = max(total_row, sig_row + 2)
+    # 인쇄 영역 — A4 1장 fit (가로·세로 모두)
+    last_data_row = max(total_row, sig_row + 3)
     ws.print_area = f"A1:I{last_data_row}"
     try:
-        ws.page_setup.scale = None  # fitToWidth 우선
+        # fitToPage 사용 시 scale 비움
+        ws.page_setup.scale = None
     except Exception:
         pass
 
@@ -777,7 +816,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         )
     )
     story.append(title_bar)
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # 메타 그리드 (라벨|값|라벨|값)
     meta_rows = _meta_display_rows(log, meta)
@@ -812,7 +851,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 2.5 * mm))
+    story.append(Spacer(1, 2 * mm))
 
     # 요약
     summary_tbl = Table(
@@ -832,31 +871,49 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("LEFTPADDING", (0, 0), (-1, -1), 4),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
         )
     )
     story.append(summary_tbl)
-    story.append(Spacer(1, 3 * mm))
+    story.append(Spacer(1, 2 * mm))
 
-    # 본문 테이블
+    # 본문 테이블 — 최소 행 수만큼 빈칸 채워 A4 표를 꽉 채움
     headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "시간", "비고"]
     data = [[Paragraph(f"<b>{h}</b>", head_s) for h in headers]]
-    for i, t in enumerate(log.get("trips") or [], start=1):
-        data.append(
-            [
-                Paragraph(str(i), small),
-                Paragraph(str(t.get("depart_time", "")), small),
-                Paragraph(str(t.get("arrive_time", "")), small),
-                Paragraph(str(t.get("from", "")), small),
-                Paragraph(str(t.get("to", "")), small),
-                Paragraph(str(t.get("purpose", "")), small),
-                Paragraph(str(t.get("distance_km", "")), small),
-                Paragraph(str(t.get("duration_display", "")), small),
-                Paragraph(str(t.get("memo", "")), small),
-            ]
-        )
+    trips_src = list(log.get("trips") or [])
+    n_rows = max(len(trips_src), _FORM_MIN_TRIP_ROWS)
+    for i in range(n_rows):
+        if i < len(trips_src):
+            t = trips_src[i] or {}
+            data.append(
+                [
+                    Paragraph(str(i + 1), small),
+                    Paragraph(str(t.get("depart_time", "")), small),
+                    Paragraph(str(t.get("arrive_time", "")), small),
+                    Paragraph(str(t.get("from", "")), small),
+                    Paragraph(str(t.get("to", "")), small),
+                    Paragraph(str(t.get("purpose", "")), small),
+                    Paragraph(str(t.get("distance_km", "")), small),
+                    Paragraph(str(t.get("duration_display", "")), small),
+                    Paragraph(str(t.get("memo", "")), small),
+                ]
+            )
+        else:
+            data.append(
+                [
+                    Paragraph(str(i + 1), small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                    Paragraph(" ", small),
+                ]
+            )
     # 합계 행
     data.append(
         [
@@ -884,7 +941,17 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         usable * 0.10,
         usable * 0.16,
     ]
-    table = Table(data, colWidths=col_w, repeatRows=1)
+    # 남는 세로 공간을 구간 행 높이에 분배 → 빈칸이 있어도 A4 1장을 꽉 채움
+    usable_h = page[1] - 2 * margin
+    # 제목·메타·요약·스페이서·합계·서명 여유 (넘치면 2페이지 되므로 넉넉히)
+    header_block = 72 * mm
+    footer_block = 32 * mm
+    trip_area = max(usable_h - header_block - footer_block, 90 * mm)
+    row_h = float(trip_area) / max(n_rows, 1)
+    # 한 페이지 유지를 위해 상한
+    row_h = min(max(row_h, 11), 22)
+    row_heights = [13] + [row_h] * n_rows + [15]
+    table = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     style_cmds = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_HEAD_BG}")),
         ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor(f"#{_FORM_TOTAL_BG}")),
@@ -895,12 +962,11 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         ("ALIGN", (6, 1), (7, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ("LEFTPADDING", (0, 0), (-1, -1), 2),
         ("RIGHTPADDING", (0, 0), (-1, -1), 2),
     ]
-    # zebra (data rows only, not header/total)
     for i in range(1, len(data) - 1):
         if i % 2 == 0:
             style_cmds.append(
@@ -908,9 +974,9 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
             )
     table.setStyle(TableStyle(style_cmds))
     story.append(table)
-    story.append(Spacer(1, 5 * mm))
+    story.append(Spacer(1, 3 * mm))
 
-    # 서명 박스
+    # 서명 박스 (하단)
     sig = Table(
         [
             [
@@ -922,7 +988,8 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph("<font color='#94A3B8'>(서명)</font>", small),
             ],
         ],
-        colWidths=[42 * mm, 42 * mm],
+        colWidths=[48 * mm, 48 * mm],
+        rowHeights=[11, 18],
     )
     sig.setStyle(
         TableStyle(
@@ -934,8 +1001,8 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                 ("TOPPADDING", (0, 0), (-1, 0), 3),
                 ("BOTTOMPADDING", (0, 0), (-1, 0), 3),
-                ("TOPPADDING", (0, 1), (-1, 1), 10),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 10),
+                ("TOPPADDING", (0, 1), (-1, 1), 8),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
             ]
         )
     )
@@ -1169,15 +1236,17 @@ def export_docx(log: dict) -> tuple[bytes, str]:
         "운행시간",
         "비고",
     ]
-    trips = log.get("trips") or []
-    table = doc.add_table(rows=1 + len(trips) + 1, cols=len(headers))
+    trips = list(log.get("trips") or [])
+    n_rows = max(len(trips), _FORM_MIN_TRIP_ROWS)
+    table = doc.add_table(rows=1 + n_rows + 1, cols=len(headers))
     table.style = "Table Grid"
 
     for i, h in enumerate(headers):
         set_cell_text(table.rows[0].cells[i], h, size=8, bold=True, color=(255, 255, 255), align="center")
         _set_cell_shading(table.rows[0].cells[i], _FORM_HEAD_BG)
 
-    for r_idx, t in enumerate(trips):
+    for r_idx in range(n_rows):
+        t = trips[r_idx] if r_idx < len(trips) else {}
         vals = [
             str(r_idx + 1),
             str(t.get("depart_time", "")),
@@ -1185,7 +1254,7 @@ def export_docx(log: dict) -> tuple[bytes, str]:
             str(t.get("from", "")),
             str(t.get("to", "")),
             str(t.get("purpose", "")),
-            str(t.get("distance_km", "")),
+            str(t.get("distance_km", "") if t else ""),
             str(t.get("duration_display", "")),
             str(t.get("memo", "")),
         ]
@@ -1196,7 +1265,7 @@ def export_docx(log: dict) -> tuple[bytes, str]:
                 _set_cell_shading(table.rows[r_idx + 1].cells[c_idx], _FORM_ZEBRA)
 
     # 합계
-    total_row = table.rows[1 + len(trips)]
+    total_row = table.rows[1 + n_rows]
     set_cell_text(total_row.cells[0], "합계", size=9, bold=True, align="center")
     set_cell_text(total_row.cells[6], str(meta.get("총 거리(km)") or ""), size=9, bold=True, align="center")
     set_cell_text(total_row.cells[7], str(meta.get("총 운행시간") or ""), size=9, bold=True, align="center")
