@@ -94,7 +94,7 @@ def _fuel_label(meta: dict) -> str:
 
 
 def _meta_display_rows(log: dict, meta: dict | None = None) -> list[tuple[str, str, str, str]]:
-    """메타 2열×N행 (라벨,값,라벨,값) — 인쇄·엑셀·PDF 공통."""
+    """메타 2열×N행 (라벨,값,라벨,값) — 인쇄·엑셀·PDF 공통. 라벨은 칸에 안 잘리게 짧게."""
     meta = meta or _meta(log)
     odo_s = meta.get("최초 누적(km)") or ""
     odo_e = meta.get("종료 누적(km)") or ""
@@ -107,8 +107,8 @@ def _meta_display_rows(log: dict, meta: dict | None = None) -> list[tuple[str, s
     return [
         ("작성일", meta.get("작성일") or "—", "차량번호", meta.get("차량번호") or "—"),
         ("운전자", meta.get("운전자") or "—", "회사명", meta.get("회사명") or "—"),
-        ("누적 주행거리", odo_txt, "총 운행거리", dist_txt),
-        ("총 운행시간", meta.get("총 운행시간") or "—", "주유", _fuel_label(meta)),
+        ("누적거리", odo_txt, "총 거리", dist_txt),
+        ("운행시간", meta.get("총 운행시간") or "—", "주유", _fuel_label(meta)),
     ]
 
 
@@ -399,13 +399,13 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     total_fill = PatternFill("solid", fgColor=_FORM_TOTAL_BG)
     white_fill = PatternFill("solid", fgColor="FFFFFF")
 
-    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=15)
-    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=8)
-    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=9)
-    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=8)
-    cell_font = Font(name="맑은 고딕", size=9, color=_FORM_NAVY)
-    cell_font_sm = Font(name="맑은 고딕", size=8, color=_FORM_NAVY)
-    total_font = Font(bold=True, name="맑은 고딕", size=9, color=_FORM_NAVY)
+    title_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=17)
+    sub_font = Font(bold=False, color="CBD5E1", name="맑은 고딕", size=9)
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
+    label_font = Font(bold=True, color=_FORM_SLATE, name="맑은 고딕", size=9)
+    cell_font = Font(name="맑은 고딕", size=10, color=_FORM_NAVY)
+    cell_font_sm = Font(name="맑은 고딕", size=9, color=_FORM_NAVY)
+    total_font = Font(bold=True, name="맑은 고딕", size=10, color=_FORM_NAVY)
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
     left = Alignment(horizontal="left", vertical="center", wrap_text=True)
     right = Alignment(horizontal="right", vertical="center", wrap_text=True)
@@ -417,14 +417,14 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     c.font = title_font
     c.fill = PatternFill("solid", fgColor=_FORM_NAVY)
     c.alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[1].height = 28
+    ws.row_dimensions[1].height = 34
 
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=n_cols)
     sub = ws.cell(row=2, column=1, value="업무용 차량 운행 기록 · 제출용 · A4")
     sub.font = sub_font
     sub.fill = PatternFill("solid", fgColor=_FORM_HEAD_BG)
     sub.alignment = Alignment(horizontal="center", vertical="center")
-    ws.row_dimensions[2].height = 16
+    ws.row_dimensions[2].height = 18
 
     meta = _meta(log)
     # ── 메타 정보 (라벨|값|라벨|값 × 2블록, 9열에 맞춤) ──
@@ -469,7 +469,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
             ws.cell(row=r, column=col).border = thin
             ws.cell(row=r, column=col).fill = white_fill
         ws.cell(row=r, column=5).border = thin
-        ws.row_dimensions[r].height = 18
+        ws.row_dimensions[r].height = 26
         r += 1
 
     # ── 운행 요약 ──
@@ -486,7 +486,7 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     for col in range(2, n_cols + 1):
         ws.cell(row=r, column=col).border = thin
         ws.cell(row=r, column=col).fill = white_fill
-    ws.row_dimensions[r].height = 22
+    ws.row_dimensions[r].height = 32
     r += 1
 
     # ── 구간 표 ──
@@ -508,15 +508,15 @@ def export_excel(log: dict) -> tuple[bytes, str]:
         cell.font = header_font
         cell.alignment = center
         cell.border = thin
-    ws.row_dimensions[header_row].height = 20
+    ws.row_dimensions[header_row].height = 26
 
     df = _trips_dataframe(log)
     raw_records = df.to_dict(orient="records") if not df.empty else []
     # 데이터 행 수와 무관하게 최소 칸 확보 → A4 표가 비어 보이지 않음
     records = _pad_trip_records(raw_records, _FORM_MIN_TRIP_ROWS)
     center_cols = {1, 2, 3, 7, 8}
-    # 구간 행 높이: 빈 칸 포함 표가 페이지 중·하단을 채우도록 넉넉히
-    trip_row_h = 26
+    # 구간 행 높이: 칸을 넉넉히 · A4 채움
+    trip_row_h = 30
     for r_idx, rec in enumerate(records, start=1):
         row = header_row + r_idx
         fill = zebra_fill if r_idx % 2 == 0 else white_fill
@@ -586,8 +586,8 @@ def export_excel(log: dict) -> tuple[bytes, str]:
     ws.row_dimensions[sig_row + 2].height = 16
     ws.row_dimensions[sig_row + 3].height = 16
 
-    # 열 너비 — A4 세로 인쇄 폭(~19cm)에 맞춤
-    widths = [5, 8.5, 8.5, 16, 16, 11, 8, 9.5, 11]
+    # 열 너비 — A4 세로, 라벨·장소 칸 여유
+    widths = [5.5, 9.5, 9.5, 17, 17, 12, 8.5, 10.5, 12]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(i)].width = w
 
@@ -743,52 +743,52 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         "KRTitle",
         parent=styles["Title"],
         fontName=font_name,
-        fontSize=14,
+        fontSize=16,
         textColor=colors.white,
         alignment=TA_CENTER,
         spaceBefore=0,
         spaceAfter=0,
-        leading=17,
+        leading=20,
     )
     subtitle_style = ParagraphStyle(
         "KRSub",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=7.5,
+        fontSize=8.5,
         textColor=colors.HexColor("#CBD5E1"),
         alignment=TA_CENTER,
-        leading=10,
+        leading=11,
     )
     body = ParagraphStyle(
         "KRBody",
         parent=styles["Normal"],
         fontName=font_name,
-        fontSize=8,
-        leading=11,
+        fontSize=9.5,
+        leading=13,
         textColor=colors.HexColor("#0F172A"),
     )
     label_s = ParagraphStyle(
         "KRLabel",
         parent=body,
         fontName=font_name,
-        fontSize=7.5,
-        textColor=colors.HexColor("#334155"),
+        fontSize=9,
+        textColor=colors.HexColor("#1E293B"),
         alignment=TA_CENTER,
     )
     small = ParagraphStyle(
         "KRSmall",
         parent=body,
-        fontSize=7.5,
-        leading=10,
+        fontSize=9,
+        leading=12,
         textColor=colors.HexColor("#0F172A"),
     )
     head_s = ParagraphStyle(
         "KRHead",
         parent=body,
-        fontSize=7.5,
+        fontSize=9,
         textColor=colors.white,
         alignment=TA_CENTER,
-        leading=10,
+        leading=12,
     )
 
     meta = _meta(log)
@@ -807,18 +807,18 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(f"#{_FORM_NAVY}")),
-                ("TOPPADDING", (0, 0), (-1, 0), 7),
-                ("BOTTOMPADDING", (0, 0), (-1, 0), 1),
+                ("TOPPADDING", (0, 0), (-1, 0), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 2),
                 ("TOPPADDING", (0, 1), (-1, 1), 0),
-                ("BOTTOMPADDING", (0, 1), (-1, 1), 6),
+                ("BOTTOMPADDING", (0, 1), (-1, 1), 8),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ]
         )
     )
     story.append(title_bar)
-    story.append(Spacer(1, 2 * mm))
+    story.append(Spacer(1, 3 * mm))
 
-    # 메타 그리드 (라벨|값|라벨|값)
+    # 메타 그리드 (라벨|값|라벨|값) — 라벨 칸 넓게
     meta_rows = _meta_display_rows(log, meta)
     meta_table_data = []
     for lab1, val1, lab2, val2 in meta_rows:
@@ -833,25 +833,26 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     usable = page[0] - 2 * margin  # A4 폭 − 좌우 여백
     meta_table = Table(
         meta_table_data,
-        colWidths=[usable * 0.15, usable * 0.35, usable * 0.15, usable * 0.35],
+        colWidths=[usable * 0.18, usable * 0.32, usable * 0.18, usable * 0.32],
+        rowHeights=[22] * len(meta_table_data),
     )
     meta_table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
                 ("BACKGROUND", (2, 0), (2, -1), colors.HexColor(f"#{_FORM_LABEL_BG}")),
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
-                ("INNERGRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#94A3B8")),
+                ("INNERGRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
     story.append(meta_table)
-    story.append(Spacer(1, 2 * mm))
+    story.append(Spacer(1, 2.5 * mm))
 
     # 요약
     summary_tbl = Table(
@@ -861,18 +862,19 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
                 Paragraph(str(meta.get("요약") or "—"), body),
             ]
         ],
-        colWidths=[usable * 0.15, usable * 0.85],
+        colWidths=[usable * 0.18, usable * 0.82],
+        rowHeights=[28],
     )
     summary_tbl.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (0, 0), colors.HexColor(f"#{_FORM_LABEL_BG}")),
-                ("BOX", (0, 0), (-1, -1), 0.6, colors.HexColor(f"#{_FORM_GRID}")),
+                ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#94A3B8")),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-                ("TOPPADDING", (0, 0), (-1, -1), 3),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
             ]
         )
     )
@@ -880,7 +882,7 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     story.append(Spacer(1, 2 * mm))
 
     # 본문 테이블 — 최소 행 수만큼 빈칸 채워 A4 표를 꽉 채움
-    headers = ["순번", "출발", "도착", "출발지", "도착지", "목적", "km", "시간", "비고"]
+    headers = ["순번", "출발시각", "도착시각", "출발지", "도착지", "목적", "km", "운행시간", "비고"]
     data = [[Paragraph(f"<b>{h}</b>", head_s) for h in headers]]
     trips_src = list(log.get("trips") or [])
     n_rows = max(len(trips_src), _FORM_MIN_TRIP_ROWS)
@@ -943,14 +945,12 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
     ]
     # 남는 세로 공간을 구간 행 높이에 분배 → 빈칸이 있어도 A4 1장을 꽉 채움
     usable_h = page[1] - 2 * margin
-    # 제목·메타·요약·스페이서·합계·서명 여유 (넘치면 2페이지 되므로 넉넉히)
-    header_block = 72 * mm
-    footer_block = 32 * mm
+    header_block = 78 * mm
+    footer_block = 34 * mm
     trip_area = max(usable_h - header_block - footer_block, 90 * mm)
     row_h = float(trip_area) / max(n_rows, 1)
-    # 한 페이지 유지를 위해 상한
-    row_h = min(max(row_h, 11), 22)
-    row_heights = [13] + [row_h] * n_rows + [15]
+    row_h = min(max(row_h, 14), 24)
+    row_heights = [18] + [row_h] * n_rows + [18]
     table = Table(data, colWidths=col_w, rowHeights=row_heights, repeatRows=1)
     style_cmds = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_FORM_HEAD_BG}")),
@@ -961,11 +961,11 @@ def export_pdf(log: dict) -> tuple[bytes, str]:
         ("ALIGN", (1, 1), (2, -1), "CENTER"),
         ("ALIGN", (6, 1), (7, -1), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(f"#{_FORM_GRID}")),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-        ("LEFTPADDING", (0, 0), (-1, -1), 2),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 2),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#94A3B8")),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 4),
     ]
     for i in range(1, len(data) - 1):
         if i % 2 == 0:
