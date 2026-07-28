@@ -23,9 +23,10 @@ RUN python -m pip install --upgrade pip setuptools wheel \
 
 COPY modules ./modules
 COPY web ./web
-COPY assets ./assets
 COPY server.py ./
 COPY supabase_schema.sql ./
+# 한글 PDF용 시스템 폰트는 위 fonts-nanum 설치로 제공
+# (repo assets/ 는 gitignore 등으로 빌드 컨텍스트에 없을 수 있어 COPY 하지 않음)
 
 # 영속 데이터 기본 경로 (Volume 연결 시 /data, 없으면 /app/data)
 ENV DATA_DIR=/app/data
