@@ -1789,18 +1789,13 @@
     const eu = getEffectiveUser();
     // 설정(근무 시간)은 로그인 없이 사용 가능
     navSettings?.classList.remove("hidden");
-    // 관리자 보기 모드: 운영 화면에 일지 작성·회사 서식 메뉴 비노출
     const adminOnlyUi = isAdminMainMode();
     if (eu) {
-      if (adminOnlyUi) {
-        navCreate?.classList.add("hidden");
-        navStyle?.classList.add("hidden");
-        navReports?.classList.add("hidden");
-      } else {
-        navCreate?.classList.remove("hidden");
-        navStyle?.classList.remove("hidden");
-        navReports?.classList.remove("hidden");
-      }
+      // 관리자 운영 모드에서도 일지 작성·서식·요약 메뉴는 노출
+      // (숨기면 버튼이 안 먹히는 것처럼 보임 — 검수·실사용 모두 필요)
+      navCreate?.classList.remove("hidden");
+      navStyle?.classList.remove("hidden");
+      navReports?.classList.remove("hidden");
       // 관리자 메뉴: 실제 관리자 + 관리자 보기 모드일 때만
       if (adminOnlyUi) navAdmin?.classList.remove("hidden");
       else navAdmin?.classList.add("hidden");
