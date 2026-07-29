@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════
-   RoadLog — Cream field paper UI (field log / stamp / documents)
+   RoadLog — Cream field paper UI · semantic tokens (paper/ink/stamp)
    ═══════════════════════════════════════════════════ */
 
 /* 제목용: Paperlogy — 세련된 한글 디스플레이 */
@@ -29,26 +29,54 @@
 }
 
 :root {
-  /* Cream field paper — sitewide (was dark neon) */
-  --bg: #f7f1e6;
-  --bg-2: #efe6d6;
-  --panel: #fffaf2;
-  --panel-solid: #fffaf2;
-  --line: #e0d4c0;
-  --line-strong: #c9b89a;
-  --cyan: #b42318;
-  --cyan-2: #8f1c14;
-  --cyan-soft: rgba(180, 35, 24, 0.1);
-  --yellow: #c4a035;
-  --text: #2a241c;
+  /* ── Semantic cream field tokens (single source of truth) ── */
+  --paper: #f7f1e6;
+  --paper-2: #efe6d6;
+  --card: #fffaf2;
+  --ink: #2a241c;
+  --ink-soft: #4a4034;
   --muted: #6b6052;
   --muted-2: #8a7d6c;
+  --line: #e0d4c0;
+  --line-strong: #c9b89a;
+  --stamp: #b42318;
+  --stamp-2: #8f1c14;
+  --stamp-soft: rgba(180, 35, 24, 0.1);
+  --mark: #c4a035;
   --success: #2f6b4f;
   --danger: #b42318;
+  --navy: #3d3428;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 0 rgba(42, 36, 28, 0.06), 0 12px 32px rgba(42, 36, 28, 0.08);
   --glow: none;
+
+  /* Field aliases (guest landing / paper UI) */
+  --field-paper: var(--paper);
+  --field-paper-2: var(--paper-2);
+  --field-card: var(--card);
+  --field-ink: var(--ink);
+  --field-ink-soft: var(--ink-soft);
+  --field-muted: var(--muted);
+  --field-line: var(--line);
+  --field-line-soft: #ebe2d2;
+  --field-stamp: var(--stamp);
+  --field-stamp-soft: var(--stamp-soft);
+  --field-mark: var(--mark);
+  --field-navy: var(--navy);
+  --field-navy-deep: var(--ink);
+  --field-radius: var(--radius-sm);
+
+  /* Legacy aliases — keep old names working */
+  --bg: var(--paper);
+  --bg-2: var(--paper-2);
+  --panel: var(--card);
+  --panel-solid: var(--card);
+  --text: var(--ink);
+  --cyan: var(--stamp);
+  --cyan-2: var(--stamp-2);
+  --cyan-soft: var(--stamp-soft);
+  --yellow: var(--mark);
   /* 본문: SUIT — 현대적·단정한 한글 UI */
   --font: "SUIT Variable", SUIT, "Malgun Gothic", "맑은 고딕",
     -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR",
@@ -8414,4 +8442,10 @@ header.nav,
    Cleanup note (v=20260729-cleanup)
    Removed superseded nav-gap / nav-wide / nav-freetpl stacks.
    Authority: photo-atm + free-fab + nav-fix.
+   ═══════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════
+   Token consolidation (v=20260729-tokens)
+   Prefer: --paper --ink --stamp --card --navy
+   Legacy --cyan / --bg / --text still alias to stamp/paper/ink.
    ═══════════════════════════════════════════════════ */
