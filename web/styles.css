@@ -445,7 +445,7 @@ img {
 .app-tile:hover .app-tile-icon {
   border-color: rgba(180, 35, 24, 0.35);
   background: rgba(180, 35, 24, 0.12);
-  color: #5eead4;
+  color: #b42318;
 }
 
 /* 타일 전체에 희미한 대형 아이콘 */
@@ -535,7 +535,7 @@ img {
 }
 .app-checklist li.is-done .ck {
   background: rgba(180, 35, 24, 0.18);
-  color: #5eead4;
+  color: #b42318;
 }
 .app-checklist li.is-warn .ck {
   background: rgba(250, 204, 21, 0.15);
@@ -997,9 +997,9 @@ img {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(720px 320px at 12% -10%, rgba(180, 35, 24, 0.12), transparent 58%),
-    radial-gradient(520px 260px at 92% 10%, rgba(14, 116, 144, 0.14), transparent 52%),
-    linear-gradient(180deg, rgba(8, 15, 30, 0.5), transparent 70%);
+    radial-gradient(720px 320px at 12% -10%, rgba(180, 35, 24, 0.1), transparent 58%),
+    radial-gradient(520px 260px at 92% 10%, rgba(196, 160, 53, 0.1), transparent 52%),
+    linear-gradient(180deg, rgba(247, 241, 230, 0.55), transparent 70%);
   pointer-events: none;
 }
 .landing-hero-inner {
@@ -1723,7 +1723,7 @@ img {
   box-shadow: 0 0 24px rgba(180, 35, 24, 0.12);
 }
 .hero-value-item.is-accent span {
-  color: #5eead4;
+  color: #b42318;
 }
 .hero-value-arrow {
   color: var(--muted-2);
@@ -1783,8 +1783,8 @@ img {
   color: #fde68a;
 }
 .engine-notice.is-ok {
-  border: 1px solid rgba(45, 212, 191, 0.25);
-  background: rgba(45, 212, 191, 0.07);
+  border: 1px solid rgba(180, 35, 24, 0.22);
+  background: rgba(180, 35, 24, 0.07);
   color: #99f6e4;
 }
 .engine-notice-detail {
@@ -4273,7 +4273,7 @@ body.session-ready #appHome {
 }
 .demo-learn-badge {
   margin-top: 0.35rem;
-  color: #5eead4;
+  color: #b42318;
   font-weight: 750;
   font-size: 0.9rem;
   opacity: 0;
@@ -4479,8 +4479,8 @@ body.session-ready #appHome {
   background: rgba(250, 204, 21, 0.1);
 }
 .learn-status-badge[data-state="ready"] {
-  color: #5eead4;
-  border-color: rgba(45, 212, 191, 0.4);
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.35);
   background: rgba(13, 148, 136, 0.15);
   box-shadow: 0 0 16px rgba(13, 148, 136, 0.2);
 }
@@ -4645,12 +4645,12 @@ body.session-ready #appHome {
   color: #94a3b8;
 }
 .learn-step.is-done {
-  border-color: rgba(45, 212, 191, 0.28);
+  border-color: rgba(180, 35, 24, 0.28);
   background: rgba(13, 148, 136, 0.1);
 }
 .learn-step.is-done .learn-step-num {
-  background: rgba(45, 212, 191, 0.2);
-  color: #5eead4;
+  background: rgba(180, 35, 24, 0.18);
+  color: #b42318;
 }
 .learn-step.is-active {
   border-color: rgba(250, 204, 21, 0.35);
@@ -4721,7 +4721,7 @@ body.session-ready #appHome {
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #5eead4;
+  color: #b42318;
   margin-bottom: 0.55rem;
 }
 .learn-insight-dot {
@@ -4729,7 +4729,7 @@ body.session-ready #appHome {
   height: 7px;
   border-radius: 50%;
   background: #a89060;
-  box-shadow: 0 0 10px rgba(45, 212, 191, 0.7);
+  box-shadow: 0 0 10px rgba(180, 35, 24, 0.35);
 }
 .learn-insight-body {
   font-size: 0.9rem;
@@ -5080,8 +5080,8 @@ body.admin-view-as .site-header {
 }
 
 .uil-badge-ent {
-  background: rgba(167, 139, 250, 0.2);
-  color: #c4b5fd;
+  background: rgba(196, 160, 53, 0.2);
+  color: #c4a035;
 }
 
 .uil-badge-free {
@@ -5444,7 +5444,7 @@ label.field-label {
 }
 .report-metric .rm-unit {
   font-size: 0.8rem;
-  color: #5eead4;
+  color: #b42318;
 }
 .report-top-places {
   margin: 0;
@@ -5506,7 +5506,7 @@ label.field-label {
   margin-top: 0.2rem;
 }
 .report-log-item .rl-km {
-  color: #5eead4;
+  color: #b42318;
   font-weight: 700;
   white-space: nowrap;
 }

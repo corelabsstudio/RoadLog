@@ -4,29 +4,31 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#F4F1EA" />
   <title>RoadLog 최신 버전으로 업데이트</title>
   <style>
-    :root { color-scheme: dark; }
+    :root { color-scheme: light; }
     body {
       margin: 0; min-height: 100vh; display: grid; place-items: center;
-      font-family: "Segoe UI", "Apple SD Gothic Neo", sans-serif;
-      background: #030712; color: #e2e8f0;
+      font-family: "SUIT", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+      background: #f7f1e6; color: #2a241c;
     }
     .card {
       width: min(92vw, 420px); padding: 1.75rem 1.5rem;
-      border-radius: 18px; border: 1px solid rgba(34, 211, 238, 0.22);
-      background: rgba(12, 20, 40, 0.95); box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      border-radius: 18px; border: 1.5px solid #e0d4c0;
+      background: #fffaf2; box-shadow: 0 12px 36px rgba(42, 36, 28, 0.1);
       text-align: center;
     }
-    h1 { margin: 0 0 .75rem; font-size: 1.25rem; letter-spacing: -0.02em; }
-    p { margin: 0 0 1rem; color: #94a3b8; line-height: 1.55; font-size: .95rem; }
-    .status { min-height: 1.4em; color: #67e8f9; font-size: .9rem; font-weight: 650; }
+    h1 { margin: 0 0 .75rem; font-size: 1.25rem; letter-spacing: -0.02em; color: #2a241c; }
+    p { margin: 0 0 1rem; color: #6b6052; line-height: 1.55; font-size: .95rem; }
+    .status { min-height: 1.4em; color: #b42318; font-size: .9rem; font-weight: 650; }
     .btn {
       display: inline-block; margin-top: .5rem; padding: .7rem 1.1rem;
-      border-radius: 999px; border: none; cursor: pointer;
-      background: linear-gradient(135deg, #22d3ee, #0891b2); color: #041016;
+      border-radius: 999px; border: 1px solid #2a241c; cursor: pointer;
+      background: #3d3428; color: #fffaf2;
       font-weight: 750; font-size: .95rem;
     }
+    .btn:hover { background: #2a241c; }
   </style>
 </head>
 <body>
@@ -40,7 +42,7 @@
     (async function () {
       const status = document.getElementById("status");
       const btn = document.getElementById("btn");
-      const BUILD = "20260728-stamp-reflect";
+      const BUILD = "20260729-deep-qa";
       function set(t) { status.textContent = t; }
 
       try {
