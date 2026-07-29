@@ -6752,10 +6752,12 @@ body.is-guest-landing .landing-hero-photo {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  overflow: hidden; /* clip scaled hero photo — no mobile X-scroll */
 }
 body.is-guest-landing .landing-hero-photo img {
   width: 100%;
   height: 100%;
+  max-width: none;
   object-fit: cover;
   object-position: 55% 42%;
   display: block;
@@ -7789,9 +7791,13 @@ body.is-guest-landing .landing-hero--photo {
   padding: 2.75rem 0 3.5rem !important;
   margin-bottom: 0 !important;
 }
+body.is-guest-landing .landing-hero-photo {
+  overflow: hidden !important;
+}
 body.is-guest-landing .landing-hero-photo img {
   object-position: 58% 40% !important;
   transform: scale(1.04);
+  transform-origin: center center;
   filter: saturate(0.95) contrast(1.04) brightness(1.02) !important;
 }
 body.is-guest-landing .landing-hero-scrim {
@@ -8108,6 +8114,13 @@ body.has-sticky-cta .free-fab {
   bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* App/logged-in views: free templates chip is landing-only (avoid covering stamps/CTAs) */
+body:not(.is-guest-landing) .free-fab {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
 
 /* ═══════════════════════════════════════════════════
    NAV HARD RESET — fix broken top bar (v=20260729-nav-fix)
@@ -8324,11 +8337,41 @@ header.nav,
   border: none !important;
   background: transparent !important;
   padding: 0.15rem 0.25rem !important;
+  max-width: 4.5rem !important;
+  box-sizing: border-box !important;
 }
 .nav-lang select {
   color: #4a4034 !important;
   font-size: 0.75rem !important;
   min-height: 32px !important;
+  max-width: 100% !important;
+}
+/* Mobile: language control must stay inside viewport */
+@media (max-width: 900px) {
+  .nav-inner {
+    overflow: hidden !important;
+    max-width: 100% !important;
+    width: min(100% - 0.75rem, 1200px) !important;
+    padding-right: 0.25rem !important;
+  }
+  .nav-lang.nav-lang--edge,
+  .nav-lang {
+    flex-shrink: 1 !important;
+    min-width: 0 !important;
+    max-width: 3.1rem !important;
+    margin-left: 0 !important;
+    padding: 0.1rem 0.1rem !important;
+    opacity: 0.75 !important;
+  }
+  .nav-lang--edge .nav-lang-icon,
+  .nav-lang .nav-lang-icon {
+    display: none !important;
+  }
+  .nav-lang select {
+    font-size: 0.68rem !important;
+    min-height: 28px !important;
+    max-width: 2.9rem !important;
+  }
 }
 
 /* Floating free templates chip — clear of broken bar */

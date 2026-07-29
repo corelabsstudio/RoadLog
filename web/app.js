@@ -4907,10 +4907,24 @@
       });
     });
 
-    // real mp4 detection (SPA fallback이 HTML을 줄 수 있어 content-type 확인)
+    // real mp4 only when file is actually shipped (probe causes console 404 noise)
+    // Drop web/assets/demo.mp4 and set meta[name=rl-demo-video] content="1" to enable.
     async function tryRealVideo() {
+      const enabled =
+        document.querySelector('meta[name="rl-demo-video"]')?.getAttribute("content") === "1" ||
+        window.__ROADLOG_DEMO_MP4 === true;
+      if (!enabled) {
+        videoWrap?.classList.add("hidden");
+        player?.classList.remove("hidden");
+        setScene(0);
+        play();
+        return false;
+      }
       try {
-        const res = await fetch("/assets/demo.mp4", { method: "GET", headers: { Range: "bytes=0-0" } });
+        const res = await fetch("/assets/demo.mp4", {
+          method: "GET",
+          headers: { Range: "bytes=0-0" },
+        });
         const ct = (res.headers.get("content-type") || "").toLowerCase();
         if (res.ok && (ct.includes("video") || ct.includes("mp4") || ct.includes("octet-stream"))) {
           videoWrap?.classList.remove("hidden");
@@ -6183,7 +6197,7 @@
         note.innerHTML =
           "표시 금액은 <strong style=\"color:#e2e8f0\">VAT(부가세) 별도</strong>입니다. " +
           "Enterprise 연 결제는 <strong style=\"color:#e2e8f0\">₩890,000 · 2개월 무료</strong>(월 89,000×10)를 권장합니다. " +
-          '결제 후 <a href="#pro-claim" data-nav="pro-claim" style="color:#5eead4;font-weight:700">결제 확인 신청</a>을 남겨 주세요. 세금계산서·도입 문의 가능.';
+          '결제 후 <a href="#pro-claim" data-nav="pro-claim" style="color:#b42318;font-weight:700">결제 확인 신청</a>을 남겨 주세요. 세금계산서·도입 문의 가능.';
       }
     } else {
       // 결제 미연결: 문의 기반 수동 등록 (부끄럽지 않은 명시)
@@ -6529,29 +6543,28 @@
       toast("이미지 생성을 지원하지 않는 환경입니다");
       return;
     }
-    // background
-    ctx.fillStyle = "#0b1220";
+    // cream paper share card (not neon SaaS)
+    ctx.fillStyle = "#efe6d6";
     ctx.fillRect(0, 0, W, H);
-    // card
     const pad = 48;
-    ctx.fillStyle = "#0f172a";
+    ctx.fillStyle = "#fffaf2";
     roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 28);
     ctx.fill();
-    ctx.strokeStyle = "rgba(34,211,238,0.45)";
+    ctx.strokeStyle = "rgba(180,35,24,0.35)";
     ctx.lineWidth = 2;
     roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 28);
     ctx.stroke();
 
     let y = pad + 64;
-    ctx.fillStyle = "#67e8f9";
+    ctx.fillStyle = "#b42318";
     ctx.font = "700 22px Malgun Gothic, sans-serif";
     ctx.fillText("RoadLog · 업무 요약", pad + 48, y);
     y += 48;
-    ctx.fillStyle = "#f8fafc";
+    ctx.fillStyle = "#2a241c";
     ctx.font = "800 40px Malgun Gothic, sans-serif";
     ctx.fillText(String(data.period_label || "업무 요약"), pad + 48, y);
     y += 36;
-    ctx.fillStyle = "#94a3b8";
+    ctx.fillStyle = "#6b6052";
     ctx.font = "500 22px Malgun Gothic, sans-serif";
     ctx.fillText(
       `${data.date_from || ""} ~ ${data.date_to || ""}`,
@@ -6573,55 +6586,59 @@
       const row = Math.floor(i / 2);
       const x = pad + 48 + col * (boxW + 24);
       const by = y + row * (boxH + 16);
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#f7f1e6";
       roundRect(ctx, x, by, boxW, boxH, 16);
       ctx.fill();
-      ctx.fillStyle = "#94a3b8";
+      ctx.strokeStyle = "#e0d4c0";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, x, by, boxW, boxH, 16);
+      ctx.stroke();
+      ctx.fillStyle = "#6b6052";
       ctx.font = "600 18px Malgun Gothic, sans-serif";
       ctx.fillText(m[0], x + 20, by + 36);
-      ctx.fillStyle = "#5eead4";
+      ctx.fillStyle = "#b42318";
       ctx.font = "800 34px Malgun Gothic, sans-serif";
       ctx.fillText(m[1], x + 20, by + 80);
     });
     y += boxH * 2 + 48;
 
-    ctx.fillStyle = "#e2e8f0";
+    ctx.fillStyle = "#2a241c";
     ctx.font = "700 24px Malgun Gothic, sans-serif";
     ctx.fillText("주요 방문지 Top 3", pad + 48, y);
     y += 40;
     const tops = data.top_places || [];
     if (!tops.length) {
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = "#8a7d6c";
       ctx.font = "500 20px Malgun Gothic, sans-serif";
       ctx.fillText("기록 없음", pad + 48, y);
       y += 36;
     } else {
       tops.slice(0, 3).forEach((tp, i) => {
-        ctx.fillStyle = "#f8fafc";
+        ctx.fillStyle = "#2a241c";
         ctx.font = "600 22px Malgun Gothic, sans-serif";
         const line = `${i + 1}. ${tp.place || ""}`;
         ctx.fillText(line.slice(0, 28), pad + 48, y);
-        ctx.fillStyle = "#94a3b8";
+        ctx.fillStyle = "#6b6052";
         ctx.fillText(`${tp.count || 0}회`, W - pad - 120, y);
         y += 40;
       });
     }
 
     y += 24;
-    ctx.fillStyle = "#e2e8f0";
+    ctx.fillStyle = "#2a241c";
     ctx.font = "700 22px Malgun Gothic, sans-serif";
     ctx.fillText("일지 목록", pad + 48, y);
     y += 36;
     const logs = (data.logs || []).slice(0, 8);
     if (!logs.length) {
-      ctx.fillStyle = "#64748b";
+      ctx.fillStyle = "#8a7d6c";
       ctx.font = "500 18px Malgun Gothic, sans-serif";
       ctx.fillText("이 기간 일지 없음", pad + 48, y);
     } else {
       logs.forEach((row) => {
         const kind = row.report_type === "field" ? "외근" : "운행";
         const sum = String(row.summary || row.title || "").slice(0, 32);
-        ctx.fillStyle = "#cbd5e1";
+        ctx.fillStyle = "#4a4034";
         ctx.font = "500 18px Malgun Gothic, sans-serif";
         ctx.fillText(
           `· ${row.date || "—"} [${kind}] ${sum}`,
@@ -6632,7 +6649,7 @@
       });
     }
 
-    ctx.fillStyle = "#64748b";
+    ctx.fillStyle = "#8a7d6c";
     ctx.font = "500 16px Malgun Gothic, sans-serif";
     ctx.fillText("roadlog.co.kr · CoreLabs", pad + 48, H - pad - 36);
 
