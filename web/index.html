@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-nav-freetpl" />
+  <meta name="rl-build" content="20260729-photo-atm" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-nav-freetpl";
+      var BUILD = "20260729-photo-atm";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -130,7 +130,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-nav-freetpl" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-photo-atm" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
@@ -199,7 +199,7 @@
         <section class="landing-hero landing-hero--photo" aria-label="소개">
           <div class="landing-hero-photo" aria-hidden="true">
             <img
-              src="/assets/photo/hero-car-clipboard.jpg?v=1"
+              src="/assets/photo/hero-car-clipboard.jpg?v=2"
               width="1600"
               height="900"
               alt=""
@@ -244,33 +244,33 @@
           </div>
         </section>
 
-        <!-- Field stills — real texture under short product hub -->
-        <section class="rl-photo-band" aria-label="현장 장면">
-          <div class="container">
-            <div class="rl-photo-band-grid">
-              <figure class="rl-photo-card">
-                <img
-                  src="/assets/photo/band-stamp-desk.jpg?v=1"
-                  width="960"
-                  height="540"
-                  alt="책상 위 제출 서류와 스탬프"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <figcaption>제출 · 스탬프</figcaption>
-              </figure>
-              <figure class="rl-photo-card">
-                <img
-                  src="/assets/photo/still-parking-lot.jpg?v=1"
-                  width="960"
-                  height="540"
-                  alt="외근 현장 주차장"
-                  loading="lazy"
-                  decoding="async"
-                />
-                <figcaption>외근 · 현장</figcaption>
-              </figure>
-            </div>
+        <!-- Field atmosphere — photos blend into page (WakeAgain-style) -->
+        <section class="rl-atm" aria-label="현장 장면">
+          <div class="rl-atm-photos" aria-hidden="true">
+            <img
+              class="rl-atm-img rl-atm-img--a"
+              src="/assets/photo/band-stamp-desk.jpg?v=2"
+              width="960"
+              height="540"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+            <img
+              class="rl-atm-img rl-atm-img--b"
+              src="/assets/photo/still-parking-lot.jpg?v=2"
+              width="960"
+              height="540"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div class="rl-atm-scrim" aria-hidden="true"></div>
+          <div class="rl-atm-fade" aria-hidden="true"></div>
+          <div class="container rl-atm-labels">
+            <span class="rl-atm-label">제출 · 스탬프</span>
+            <span class="rl-atm-label">외근 · 현장</span>
           </div>
         </section>
 
@@ -1861,7 +1861,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-nav-freetpl"></script>
+  <script src="/app.js?v=20260729-photo-atm"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

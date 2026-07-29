@@ -8056,3 +8056,235 @@ p.pricing-note,
   flex-shrink: 0 !important;
   overflow: visible !important;
 }
+
+
+/* ═══════════════════════════════════════════════════
+   Photo atmosphere — blend into cream (WakeAgain-style)
+   v=20260729-photo-atm
+   ═══════════════════════════════════════════════════ */
+
+/* Hero: photo readable, soft dissolve into paper (not heavy cream card) */
+body.is-guest-landing .landing-hero--photo {
+  min-height: min(78vh, 620px) !important;
+  padding: 2.75rem 0 3.5rem !important;
+  margin-bottom: 0 !important;
+}
+body.is-guest-landing .landing-hero-photo img {
+  object-position: 58% 40% !important;
+  transform: scale(1.04);
+  filter: saturate(0.95) contrast(1.04) brightness(1.02) !important;
+}
+body.is-guest-landing .landing-hero-scrim {
+  background:
+    /* left: copy legibility */
+    linear-gradient(
+      100deg,
+      rgba(247, 241, 230, 0.88) 0%,
+      rgba(247, 241, 230, 0.62) 34%,
+      rgba(247, 241, 230, 0.22) 58%,
+      rgba(42, 36, 28, 0.12) 100%
+    ),
+    /* bottom: dissolve into page cream */
+    linear-gradient(
+      180deg,
+      rgba(247, 241, 230, 0.18) 0%,
+      transparent 28%,
+      transparent 52%,
+      rgba(247, 241, 230, 0.45) 78%,
+      rgba(247, 241, 230, 0.92) 92%,
+      var(--field-paper, #f7f1e6) 100%
+    ) !important;
+}
+/* Soft bottom veil on hero */
+body.is-guest-landing .landing-hero--photo::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(5rem, 16vh, 10rem);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(247, 241, 230, 0.4) 45%,
+    var(--field-paper, #f7f1e6) 100%
+  );
+}
+body.is-guest-landing .landing-hero--photo .landing-hero-inner {
+  z-index: 3 !important;
+  padding-bottom: 0.5rem;
+}
+/* Copy sits on photo — light glass, not opaque white card */
+body.is-guest-landing .landing-hero--photo .landing-hero-copy {
+  max-width: 36rem !important;
+  padding: 0.15rem 0.25rem !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+body.is-guest-landing .landing-hero--photo .landing-hero-copy h1 {
+  text-shadow: 0 1px 0 rgba(255, 250, 242, 0.65);
+}
+body.is-guest-landing .landing-hero--photo .hero-badge {
+  background: rgba(255, 250, 242, 0.82) !important;
+  backdrop-filter: blur(4px);
+}
+body.is-guest-landing .landing-hero--photo .landing-sub {
+  color: #3d3428 !important;
+  text-shadow: 0 1px 0 rgba(255, 250, 242, 0.5);
+}
+body.is-guest-landing .landing-hero--photo .landing-trust {
+  color: #4a4034 !important;
+}
+body.is-guest-landing .landing-hero--photo .btn-ghost {
+  background: rgba(255, 250, 242, 0.88) !important;
+  backdrop-filter: blur(4px);
+}
+/* Doc mock floats lightly over photo */
+body.is-guest-landing .landing-hero--photo .landing-sheet {
+  box-shadow:
+    0 22px 50px rgba(42, 36, 28, 0.22),
+    0 1px 0 rgba(255, 250, 242, 0.5) !important;
+}
+
+/* Full-bleed atmosphere band (not framed cards) */
+body.is-guest-landing .rl-atm {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: clamp(200px, 32vw, 300px);
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: var(--field-paper, #f7f1e6);
+}
+body.is-guest-landing .rl-atm-photos {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  pointer-events: none;
+}
+body.is-guest-landing .rl-atm-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.92) contrast(1.03);
+}
+body.is-guest-landing .rl-atm-img--a {
+  object-position: 50% 40%;
+}
+body.is-guest-landing .rl-atm-img--b {
+  object-position: 45% 55%;
+}
+/* Soft split + cream dissolve */
+body.is-guest-landing .rl-atm-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      transparent 46%,
+      rgba(247, 241, 230, 0.35) 50%,
+      transparent 54%,
+      transparent 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(247, 241, 230, 0.55) 0%,
+      transparent 22%,
+      transparent 58%,
+      rgba(247, 241, 230, 0.5) 82%,
+      var(--field-paper, #f7f1e6) 100%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 0%,
+      transparent 70%,
+      rgba(247, 241, 230, 0.35) 100%
+    );
+}
+body.is-guest-landing .rl-atm-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: clamp(3.5rem, 12vw, 6rem);
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(247, 241, 230, 0.55) 50%,
+    var(--field-paper, #f7f1e6) 100%
+  );
+}
+body.is-guest-landing .rl-atm-labels {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 1.12fr 1fr;
+  align-items: end;
+  min-height: clamp(200px, 32vw, 300px);
+  padding-bottom: 1.35rem;
+  pointer-events: none;
+}
+body.is-guest-landing .rl-atm-label {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0.25rem;
+  padding: 0.28rem 0.7rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: #fffaf2;
+  background: rgba(42, 36, 28, 0.48);
+  border: 1px solid rgba(255, 250, 242, 0.18);
+  backdrop-filter: blur(4px);
+}
+
+/* Hub sits on cream continuation */
+body.is-guest-landing .rl-hub {
+  padding-top: 0.75rem !important;
+}
+
+@media (max-width: 900px) {
+  body.is-guest-landing .landing-hero--photo {
+    min-height: min(70vh, 520px) !important;
+  }
+  body.is-guest-landing .landing-hero-scrim {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(247, 241, 230, 0.55) 0%,
+        rgba(247, 241, 230, 0.35) 35%,
+        rgba(247, 241, 230, 0.55) 70%,
+        var(--field-paper, #f7f1e6) 100%
+      ) !important;
+  }
+  body.is-guest-landing .rl-atm-photos {
+    grid-template-columns: 1fr;
+  }
+  body.is-guest-landing .rl-atm-img--b {
+    display: none;
+  }
+  body.is-guest-landing .rl-atm-labels {
+    grid-template-columns: 1fr;
+  }
+  body.is-guest-landing .rl-atm-label:last-child {
+    display: none;
+  }
+  body.is-guest-landing .rl-atm {
+    min-height: 200px;
+  }
+}
