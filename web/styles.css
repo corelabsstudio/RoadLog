@@ -7582,3 +7582,131 @@ body.is-guest-landing .rl-hub-card:hover .rl-hub-thumb--illust img {
     aspect-ratio: 4 / 3;
   }
 }
+
+
+/* ═══════════════════════════════════════════════════
+   Pricing contrast fix on cream (v=20260729-price-contrast)
+   ═══════════════════════════════════════════════════ */
+.price-card {
+  background: #fffaf2 !important;
+  border: 1px solid #d4c4a8 !important;
+  color: #2a241c !important;
+}
+.price-card.featured {
+  border-color: #b42318 !important;
+  border-width: 1.5px !important;
+  background: #fff8f0 !important;
+  box-shadow: 0 10px 28px rgba(42, 36, 28, 0.08) !important;
+}
+/* 팀 추천: 진한 스탬프 배지 + 흰 글자 */
+.price-card.featured::after {
+  background: #b42318 !important;
+  color: #fffaf2 !important;
+  border: 1px solid #8f1c14 !important;
+  box-shadow: 0 2px 8px rgba(180, 35, 24, 0.25) !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.02em !important;
+}
+.price-card .badge {
+  background: #f3ebe0 !important;
+  color: #3d3428 !important;
+  border: 1px solid #d4c4a8 !important;
+  font-weight: 800 !important;
+}
+.price-card.featured .badge {
+  background: rgba(180, 35, 24, 0.12) !important;
+  color: #8f1c14 !important;
+  border-color: rgba(180, 35, 24, 0.35) !important;
+}
+.price-from {
+  color: #8f1c14 !important;
+  font-weight: 750 !important;
+}
+.price-card h3 {
+  color: #2a241c !important;
+  -webkit-text-fill-color: #2a241c !important;
+}
+.price-card h3 small {
+  color: #6b6052 !important;
+}
+/* 연결제 힌트 — 밝고 흐린 시안/민트 제거 → 잉크 */
+.price-annual-hint {
+  color: #4a4034 !important;
+  font-weight: 600 !important;
+}
+.price-annual-hint strong {
+  color: #2a241c !important;
+  font-weight: 800 !important;
+}
+.price-annual-sub {
+  color: #5c5348 !important;
+  font-weight: 600 !important;
+}
+/* VAT 별도 — 노란 연한 글자 제거 → 스탬프 배지 */
+.price-vat,
+.price-card .price-vat,
+strong.price-vat {
+  color: #8f1c14 !important;
+  background: rgba(180, 35, 24, 0.12) !important;
+  border: 1px solid rgba(180, 35, 24, 0.4) !important;
+  font-weight: 800 !important;
+}
+.price-vat-inline {
+  color: #8f1c14 !important;
+  font-weight: 800 !important;
+  background: rgba(180, 35, 24, 0.1) !important;
+  border: 1px solid rgba(180, 35, 24, 0.28) !important;
+  border-radius: 999px !important;
+  padding: 0.1rem 0.4rem !important;
+  display: inline-block !important;
+}
+.price-seat {
+  color: #4a4034 !important;
+}
+.price-seat strong {
+  color: #2a241c !important;
+}
+.price-desc {
+  color: #5c5348 !important;
+  font-weight: 600 !important;
+}
+.price-card li {
+  color: #3d3428 !important;
+  font-weight: 550 !important;
+}
+.price-card li::before {
+  color: #b42318 !important;
+  font-weight: 900 !important;
+}
+.trust-badge {
+  color: #3d3428 !important;
+  background: #f3ebe0 !important;
+  border: 1px solid #d4c4a8 !important;
+  font-weight: 700 !important;
+}
+.billing-chip {
+  color: #5c5348 !important;
+  background: transparent !important;
+}
+.billing-chip:hover {
+  color: #2a241c !important;
+}
+.billing-chip.is-active {
+  background: #3d3428 !important;
+  color: #fffaf2 !important;
+  box-shadow: none !important;
+}
+.trial-hint {
+  color: #6b6052 !important;
+}
+.price-link {
+  color: #8f1c14 !important;
+  font-weight: 650 !important;
+}
+.pricing-note {
+  color: #5c5348 !important;
+}
+.pro-billing-toggle {
+  background: #f3ebe0 !important;
+  border-color: #d4c4a8 !important;
+}
