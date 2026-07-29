@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-lang-ink" />
+  <meta name="rl-build" content="20260729-field-photo" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-lang-ink";
+      var BUILD = "20260729-field-photo";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -130,7 +130,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-lang-ink" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-field-photo" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
@@ -187,8 +187,19 @@
   <main>
     <section class="view active" id="view-home">
       <div id="guestHome" class="landing landing-pro landing-field landing-cream">
-        <!-- Hero: short product entry (WakeAgain-style, cream field) -->
-        <section class="landing-hero" aria-label="소개">
+        <!-- Hero: field photo + short product entry (anti empty-cream AI look) -->
+        <section class="landing-hero landing-hero--photo" aria-label="소개">
+          <div class="landing-hero-photo" aria-hidden="true">
+            <img
+              src="/assets/photo/hero-car-clipboard.jpg?v=1"
+              width="1600"
+              height="900"
+              alt=""
+              decoding="async"
+              fetchpriority="high"
+            />
+          </div>
+          <div class="landing-hero-scrim" aria-hidden="true"></div>
           <div class="container landing-hero-inner">
             <div class="landing-hero-copy">
               <div class="hero-badge" data-i18n="landing.badge">운행 · 외근 일지</div>
@@ -225,30 +236,68 @@
           </div>
         </section>
 
+        <!-- Field stills — real texture under short product hub -->
+        <section class="rl-photo-band" aria-label="현장 장면">
+          <div class="container">
+            <div class="rl-photo-band-grid">
+              <figure class="rl-photo-card">
+                <img
+                  src="/assets/photo/band-stamp-desk.jpg?v=1"
+                  width="960"
+                  height="540"
+                  alt="책상 위 제출 서류와 스탬프"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>제출 · 스탬프</figcaption>
+              </figure>
+              <figure class="rl-photo-card">
+                <img
+                  src="/assets/photo/still-parking-lot.jpg?v=1"
+                  width="960"
+                  height="540"
+                  alt="외근 현장 주차장"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>외근 · 현장</figcaption>
+              </figure>
+            </div>
+          </div>
+        </section>
+
         <!-- Destination hub — no meta essay -->
         <section class="rl-hub" aria-label="바로 가기">
           <div class="container">
             <div class="rl-hub-grid">
               <button type="button" class="rl-hub-card rl-hub-card--accent" data-nav="create">
-                <span class="rl-hub-ico" aria-hidden="true">✎</span>
+                <span class="rl-hub-thumb" aria-hidden="true">
+                  <img src="/assets/photo/hero-car-clipboard.jpg?v=1" width="320" height="180" alt="" loading="lazy" decoding="async" />
+                </span>
                 <span class="rl-hub-kicker">시작</span>
                 <strong data-i18n="landing.hub_start_t">일지 작성</strong>
                 <span data-i18n="landing.hub_start_d">스탬프 · 메모 · 제출 문서</span>
               </button>
               <a class="rl-hub-card" href="/resources/">
-                <span class="rl-hub-ico" aria-hidden="true">▤</span>
+                <span class="rl-hub-thumb" aria-hidden="true">
+                  <img src="/assets/photo/band-stamp-desk.jpg?v=1" width="320" height="180" alt="" loading="lazy" decoding="async" />
+                </span>
                 <span class="rl-hub-kicker">무료</span>
                 <strong data-i18n="landing.hub_tpl_t">엑셀 서식</strong>
                 <span data-i18n="landing.hub_tpl_d">가입 없이 · 3종 팩</span>
               </a>
               <button type="button" class="rl-hub-card" data-nav="pricing">
-                <span class="rl-hub-ico" aria-hidden="true">₩</span>
+                <span class="rl-hub-thumb" aria-hidden="true">
+                  <img src="/assets/photo/still-parking-lot.jpg?v=1" width="320" height="180" alt="" loading="lazy" decoding="async" />
+                </span>
                 <span class="rl-hub-kicker">요금</span>
                 <strong data-i18n="landing.hub_price_t">요금제</strong>
                 <span data-i18n="landing.hub_price_d">Free · Pro · Enterprise</span>
               </button>
               <a class="rl-hub-card" href="/blog/">
-                <span class="rl-hub-ico" aria-hidden="true">☰</span>
+                <span class="rl-hub-thumb rl-hub-thumb--soft" aria-hidden="true">
+                  <img src="/assets/photo/band-stamp-desk.jpg?v=1" width="320" height="180" alt="" loading="lazy" decoding="async" />
+                </span>
                 <span class="rl-hub-kicker">안내</span>
                 <strong data-i18n="landing.hub_guide_t">가이드 · 뉴스</strong>
                 <span data-i18n="landing.hub_guide_d">운행일지 · 실무 팁</span>
@@ -1804,7 +1853,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-lang-ink"></script>
+  <script src="/app.js?v=20260729-field-photo"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
