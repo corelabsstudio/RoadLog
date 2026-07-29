@@ -7254,3 +7254,243 @@ input[type="radio"] {
   color: #8f1c14 !important;
   border-color: rgba(180, 35, 24, 0.28) !important;
 }
+
+
+/* ═══════════════════════════════════════════════════
+   Nav icons + language edge (v=20260729-nav-icons)
+   ═══════════════════════════════════════════════════ */
+
+.nav-inner {
+  width: min(100% - 1.5rem, calc(var(--max) + 4rem));
+  gap: 0.65rem;
+}
+
+/* Icon + label links */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.1rem;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.nav-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.42rem 0.62rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: #4a4034 !important;
+  background: transparent !important;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav-links a .nav-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  color: #8a7d6c;
+  opacity: 0.95;
+}
+
+.nav-links a .nav-ico svg {
+  display: block;
+  width: 15px;
+  height: 15px;
+}
+
+.nav-links a:hover {
+  color: #2a241c !important;
+  background: rgba(42, 36, 28, 0.05) !important;
+}
+
+.nav-links a:hover .nav-ico {
+  color: #3d3428;
+}
+
+.nav-links a.active {
+  color: #2a241c !important;
+  background: rgba(42, 36, 28, 0.07) !important;
+  font-weight: 750;
+}
+
+.nav-links a.active .nav-ico {
+  color: #b42318;
+}
+
+/* 무료 서식 — 은은한 강조 (빨간 원테 제거) */
+.nav-links a.nav-highlight {
+  color: #8f1c14 !important;
+  border-color: transparent !important;
+  background: rgba(180, 35, 24, 0.07) !important;
+  font-weight: 750;
+}
+.nav-links a.nav-highlight .nav-ico {
+  color: #b42318;
+}
+.nav-links a.nav-highlight:hover {
+  background: rgba(180, 35, 24, 0.12) !important;
+  border-color: transparent !important;
+  color: #8f1c14 !important;
+}
+
+/* 데스크톱: 설정은 액션 아이콘 버튼만 (링크 목록 중복 숨김) */
+@media (min-width: 901px) {
+  .nav-links a.nav-link-settings {
+    display: none !important;
+  }
+}
+
+/* Actions row */
+.nav-actions {
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+/* Icon-only settings */
+.btn-settings.btn-icon,
+.btn.btn-icon.btn-settings {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  color: #3d3428 !important;
+  border: 1px solid #e0d4c0 !important;
+  background: #fffaf2 !important;
+  box-shadow: none !important;
+}
+.btn-settings.btn-icon:hover {
+  background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
+.btn-settings .nav-ico,
+.btn-settings .nav-ico svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  color: inherit;
+}
+
+/* Language — site far right edge, quiet utility */
+.nav-lang--edge,
+.nav-lang.nav-lang--edge {
+  order: 99;
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+  padding: 0.15rem 0.28rem 0.15rem 0.4rem !important;
+  border-radius: 6px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.nav-lang--edge:hover,
+.nav-lang--edge:focus-within {
+  opacity: 1;
+  background: rgba(42, 36, 28, 0.04) !important;
+  border-color: #e0d4c0 !important;
+}
+.nav-lang--edge .nav-lang-icon {
+  font-size: 0.62rem !important;
+  color: #8a7d6c !important;
+  font-weight: 700;
+}
+.nav-lang--edge select {
+  font-size: 0.72rem !important;
+  font-weight: 650 !important;
+  color: #6b6052 !important;
+  min-height: 28px !important;
+  padding: 0.1rem 0 !important;
+}
+
+/* Soften brand mark glow (less neon) */
+.brand-logo {
+  box-shadow: 0 1px 0 rgba(42, 36, 28, 0.06) !important;
+  border-radius: 10px !important;
+  border: 1px solid #e0d4c0;
+}
+.brand-en {
+  color: #8a7d6c !important;
+}
+
+/* Install button slightly quieter in nav */
+.nav-actions .btn-install {
+  border-radius: 10px !important;
+  font-size: 0.84rem !important;
+}
+.nav-actions #btnAuth,
+.nav-actions #btnStart {
+  border-radius: 10px !important;
+  font-size: 0.88rem !important;
+}
+
+/* Mobile drawer: icons + labels full width */
+@media (max-width: 900px) {
+  .nav-inner {
+    width: min(100% - 1rem, var(--max));
+  }
+  .nav-links {
+    justify-content: stretch;
+  }
+  .nav-links.open a {
+    gap: 0.7rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+  .nav-links.open a .nav-ico {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+  .nav-links.open a .nav-ico svg {
+    width: 18px;
+    height: 18px;
+  }
+  .nav-links a.nav-link-settings {
+    display: flex !important;
+  }
+  /* language still at far right of top bar on mobile */
+  .nav-lang--edge {
+    order: 0;
+    margin-left: 0;
+    opacity: 0.7;
+  }
+  .nav-actions {
+    margin-left: 0;
+  }
+  /* Keep edge lang after actions on mobile via flex order on parent */
+  .nav-inner {
+    flex-wrap: nowrap;
+  }
+  .nav-lang.nav-lang--edge {
+    order: 5;
+  }
+  .menu-toggle {
+    order: 4;
+  }
+  .nav-actions {
+    order: 3;
+  }
+}
+
+/* Wider desktop: slightly more breathing room */
+@media (min-width: 1100px) {
+  .nav-links a {
+    padding: 0.45rem 0.72rem;
+    font-size: 0.86rem;
+  }
+}
