@@ -2918,17 +2918,23 @@ body.modal-open {
 }
 .footer-biz-line {
   margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem 0.55rem;
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  column-gap: 0.55rem;
+  align-items: start;
+  gap: 0.15rem 0.55rem;
 }
 .footer-biz-line span {
   opacity: 0.75;
-  min-width: 4.5rem;
+  min-width: 0;
 }
 .footer-biz-line strong {
   font-weight: 600;
   color: #6b6052;
+  min-width: 0;
+}
+.footer-biz-line.footer-biz-addr strong {
+  line-height: 1.45;
 }
 .footer-biz-hint {
   margin: 0.3rem 0 0;

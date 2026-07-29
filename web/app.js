@@ -5055,7 +5055,21 @@
     setText("bizOwner", biz.owner || "");
     setText("bizRegNo", biz.reg_no || "");
     setText("bizMailOrder", biz.mail_order_no || "");
-    setText("bizAddress", biz.address || "");
+    // address: allow multi-line so street + unit align under the value column
+    const addrEl = document.getElementById("bizAddress");
+    if (addrEl) {
+      const addr = (biz.address || "").trim();
+      const lines = addr
+        ? addr.split(/\n|,\s*(?=1층)/).map((s) => s.trim()).filter(Boolean)
+        : [];
+      if (lines.length >= 2) {
+        addrEl.innerHTML = lines
+          .map((l) => l.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+          .join("<br />");
+      } else {
+        addrEl.textContent = addr;
+      }
+    }
     // phones: keep clickable tel: links
     const tel = (biz.tel || "033-818-2021").trim();
     const hp = (biz.hp || "010-5583-2021").trim();

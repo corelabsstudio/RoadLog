@@ -204,7 +204,7 @@ BUSINESS_OWNER = _get_secret("BUSINESS_OWNER", "호현수")
 BUSINESS_REG_NO = _get_secret("BUSINESS_REG_NO", "705-04-02867")
 BUSINESS_ADDRESS = _get_secret(
     "BUSINESS_ADDRESS",
-    "강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동)",
+    "강원특별자치도 춘천시 세실로192번길 8-3\n1층 왼쪽 상가(후평동)",
 )
 MAIL_ORDER_REG_NO = _get_secret("MAIL_ORDER_REG_NO", "")
 
