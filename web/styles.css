@@ -7379,32 +7379,34 @@ input[type="radio"] {
   }
 }
 
-/* Actions row */
+/* Actions row — air from menu cluster */
 .nav-actions {
-  gap: 0.4rem;
+  gap: 0.5rem;
   margin-left: auto;
+  padding-left: 0.65rem;
 }
 
-/* Icon-only settings */
+/* Icon-only settings — same cream chip language */
 .btn-settings.btn-icon,
 .btn.btn-icon.btn-settings {
-  width: 40px;
-  min-width: 40px;
-  height: 40px;
-  min-height: 40px !important;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px !important;
   padding: 0 !important;
   border-radius: 10px !important;
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  color: #3d3428 !important;
+  color: #5c4a38 !important;
   border: 1px solid #e0d4c0 !important;
-  background: #fffaf2 !important;
-  box-shadow: none !important;
+  background: #f3ebe0 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 250, 242, 0.85) !important;
 }
 .btn-settings.btn-icon:hover {
-  background: #f3ebe0 !important;
+  background: #efe6d6 !important;
   color: #2a241c !important;
+  border-color: #d4c4a8 !important;
 }
 .btn-settings .nav-ico,
 .btn-settings .nav-ico svg {
@@ -7412,6 +7414,9 @@ input[type="radio"] {
   width: 16px;
   height: 16px;
   color: inherit;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Language — site far right edge, quiet utility */
@@ -7446,53 +7451,66 @@ input[type="radio"] {
   padding: 0.1rem 0 !important;
 }
 
-/* Soften brand mark glow (less neon) */
+/* Brand: less neon cyan, cream field */
 .brand-logo {
   box-shadow: 0 1px 0 rgba(42, 36, 28, 0.06) !important;
   border-radius: 10px !important;
-  border: 1px solid #e0d4c0;
+  border: 1px solid #e0d4c0 !important;
+  /* cream field logo.svg — no cyan filter */
+  filter: none;
+  background: #fffaf2;
 }
 .brand-en {
   color: #8a7d6c !important;
 }
+.brand-name {
+  letter-spacing: -0.02em;
+}
 
-/* Install button slightly quieter in nav */
+/* Install / auth — match radius, keep space */
 .nav-actions .btn-install {
   border-radius: 10px !important;
   font-size: 0.84rem !important;
+  padding-inline: 0.85rem !important;
 }
 .nav-actions #btnAuth,
 .nav-actions #btnStart {
   border-radius: 10px !important;
   font-size: 0.88rem !important;
+  padding-inline: 0.95rem !important;
 }
 
 /* Mobile drawer: icons + labels full width */
 @media (max-width: 900px) {
   .nav-inner {
     width: min(100% - 1rem, var(--max));
+    gap: 0.55rem;
   }
   .nav-links {
     justify-content: stretch;
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+    gap: 0.25rem;
   }
   .nav-links.open a {
-    gap: 0.7rem;
-    padding: 0.85rem 1rem;
-    border-radius: 10px;
-    font-size: 1rem;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+    border-radius: 12px;
+    font-size: 1.02rem;
   }
   .nav-links.open a .nav-ico {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 9px;
   }
   .nav-links.open a .nav-ico svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
   }
   .nav-links a.nav-link-settings {
     display: flex !important;
   }
-  /* language still at far right of top bar on mobile */
   .nav-lang--edge {
     order: 0;
     margin-left: 0;
@@ -7500,8 +7518,8 @@ input[type="radio"] {
   }
   .nav-actions {
     margin-left: 0;
+    padding-left: 0;
   }
-  /* Keep edge lang after actions on mobile via flex order on parent */
   .nav-inner {
     flex-wrap: nowrap;
   }
@@ -7516,10 +7534,26 @@ input[type="radio"] {
   }
 }
 
-/* Wider desktop: slightly more breathing room */
+/* Wide desktop: more gap between menu items */
 @media (min-width: 1100px) {
+  .nav-links {
+    gap: 0.5rem;
+  }
   .nav-links a {
-    padding: 0.45rem 0.72rem;
-    font-size: 0.86rem;
+    padding: 0.42rem 0.8rem 0.42rem 0.45rem;
+    font-size: 0.88rem;
+    gap: 0.52rem;
+  }
+  .nav-links a .nav-ico {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+}
+@media (min-width: 1280px) {
+  .nav-links {
+    gap: 0.55rem;
+  }
+  .nav-inner {
+    gap: 1.35rem;
   }
 }

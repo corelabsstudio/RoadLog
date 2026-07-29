@@ -1,37 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RoadLog">
   <defs>
-    <linearGradient id="rlGrad" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#67E8F9"/>
-      <stop offset="0.45" stop-color="#22D3EE"/>
-      <stop offset="1" stop-color="#0891B2"/>
+    <linearGradient id="rlPaper" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFAF2"/>
+      <stop offset="0.55" stop-color="#F3EBE0"/>
+      <stop offset="1" stop-color="#E8DFD0"/>
+    </linearGradient>
+    <linearGradient id="rlInk" x1="12" y1="20" x2="52" y2="50" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3D3428"/>
+      <stop offset="1" stop-color="#2A241C"/>
     </linearGradient>
   </defs>
-  <!-- rounded app tile -->
-  <rect width="64" height="64" rx="16" fill="url(#rlGrad)"/>
-  <!-- soft inner shine -->
-  <rect x="3" y="3" width="58" height="28" rx="13" fill="#FFFFFF" fill-opacity="0.12"/>
-  <!-- route path -->
+  <!-- cream field tile -->
+  <rect width="64" height="64" rx="14" fill="url(#rlPaper)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" fill="none" stroke="#D4C4A8" stroke-width="1.5"/>
+  <!-- soft top wash -->
+  <rect x="4" y="4" width="56" height="26" rx="11" fill="#FFFFFF" fill-opacity="0.35"/>
+  <!-- route path (ink) -->
   <path
     d="M13 46c7.5-15 15.5-22.5 26.5-22.5 4.2 0 7.4 1.6 9.5 4.2"
-    stroke="#041016"
+    stroke="url(#rlInk)"
     stroke-width="4.2"
     stroke-linecap="round"
     fill="none"
   />
-  <!-- destination pin head -->
-  <circle cx="48.5" cy="25" r="5.2" fill="#041016"/>
-  <circle cx="48.5" cy="25" r="2.1" fill="#67E8F9"/>
+  <!-- destination pin -->
+  <circle cx="48.5" cy="25" r="5.4" fill="#B42318"/>
+  <circle cx="48.5" cy="25" r="2.15" fill="#FFFAF2"/>
   <!-- road baseline -->
   <path
     d="M13 46h28"
-    stroke="#041016"
-    stroke-opacity="0.4"
+    stroke="#2A241C"
+    stroke-opacity="0.28"
     stroke-width="3.2"
     stroke-linecap="round"
   />
   <!-- wheels -->
-  <circle cx="18" cy="46" r="3.6" fill="#041016"/>
-  <circle cx="37" cy="46" r="3.6" fill="#041016"/>
-  <circle cx="18" cy="46" r="1.3" fill="#67E8F9" fill-opacity="0.85"/>
-  <circle cx="37" cy="46" r="1.3" fill="#67E8F9" fill-opacity="0.85"/>
+  <circle cx="18" cy="46" r="3.6" fill="#2A241C"/>
+  <circle cx="37" cy="46" r="3.6" fill="#2A241C"/>
+  <circle cx="18" cy="46" r="1.35" fill="#F3EBE0"/>
+  <circle cx="37" cy="46" r="1.35" fill="#F3EBE0"/>
 </svg>

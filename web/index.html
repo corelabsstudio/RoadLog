@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-nav-space" />
+  <meta name="rl-build" content="20260729-logo-cream" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-nav-space";
+      var BUILD = "20260729-logo-cream";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -121,23 +121,23 @@
   <meta name="twitter:image" content="https://roadlog.co.kr/icons/og-image.jpg" />
 
   <link rel="manifest" href="/manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-  <link rel="icon" type="image/svg+xml" href="/icons/logo.svg" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png?v=cream1" />
+  <link rel="icon" type="image/svg+xml" href="/icons/logo.svg?v=cream1" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png?v=cream1" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <!-- 본문: SUIT (단정한 한글 UI 폰트) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-nav-space" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-logo-cream" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
   <header class="nav">
     <div class="nav-inner">
       <div class="brand" data-nav="home">
-        <img class="brand-logo" src="/icons/logo.svg" width="36" height="36" alt="RoadLog" />
+        <img class="brand-logo" src="/icons/logo.svg?v=cream1" width="36" height="36" alt="RoadLog" />
         <div class="brand-text">
           <span class="brand-name">로드로그</span>
           <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
@@ -1726,7 +1726,7 @@
     <div class="container footer-inner">
       <div class="footer-brand-block">
         <div class="brand footer-brand">
-          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg" width="32" height="32" alt="로드로그" />
+          <img class="brand-logo brand-logo-sm" src="/icons/logo.svg?v=cream1" width="32" height="32" alt="로드로그" />
           <div class="brand-text">
             <span class="brand-name">로드로그</span>
             <span class="brand-en" data-i18n="brand.tagline">AI 운행·외근 일지</span>
@@ -1855,7 +1855,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-nav-space"></script>
+  <script src="/app.js?v=20260729-logo-cream"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
