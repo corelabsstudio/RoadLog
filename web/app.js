@@ -1041,6 +1041,7 @@
       // 로그인 상태에서도 해당 섹션이 보이도록 랜딩을 잠시 노출한다.
       $("#guestHome")?.classList.remove("hidden");
       $("#appHome")?.classList.add("hidden");
+      syncGuestLandingChrome();
       if (!opts.skipScroll) {
         setTimeout(() => {
           if (name === "features") {
@@ -1056,6 +1057,8 @@
       }
       return;
     }
+
+    syncGuestLandingChrome();
 
     if (!opts.skipScroll) {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1819,6 +1822,20 @@
     if (guest) guest.classList.toggle("hidden", loggedIn);
     if (app) app.classList.toggle("hidden", !loggedIn);
     if (loggedIn) renderAppHome();
+    syncGuestLandingChrome();
+  }
+
+  /** 게스트 랜딩(서류 톤) vs 앱 다크 UI — body/theme-color 동기화 */
+  function syncGuestLandingChrome() {
+    const guest = $("#guestHome");
+    const homeActive = document.getElementById("view-home")?.classList.contains("active");
+    const showLanding =
+      !!guest &&
+      !guest.classList.contains("hidden") &&
+      !!homeActive;
+    document.body.classList.toggle("is-guest-landing", showLanding);
+    const meta = document.getElementById("metaThemeColor");
+    if (meta) meta.setAttribute("content", showLanding ? "#F4F1EA" : "#030712");
   }
 
   function renderAppHome() {
