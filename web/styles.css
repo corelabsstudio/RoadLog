@@ -6526,4 +6526,53 @@ body.session-ready:not(.is-guest-landing) .app-home-stamp-btn {
   border: 1px solid #d4c4a8 !important;
   box-shadow: 0 2px 0 rgba(42, 36, 28, 0.06) !important;
 }
-body.session-ready:not(.is-guest-landing) .app-home-stamp-btn:hover
+body.session-ready:not(.is-guest-landing) .app-home-stamp-btn:hover {
+  background: #ebe0ce !important;
+  filter: none !important;
+  box-shadow: 0 3px 0 rgba(42, 36, 28, 0.08) !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-stamp-icon {
+  background: rgba(42, 36, 28, 0.08) !important;
+  color: #3d3428 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-stamp-text strong,
+body.session-ready:not(.is-guest-landing) .app-home-stamp-text small {
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-stamp-text small {
+  opacity: 0.75 !important;
+}
+
+body.session-ready:not(.is-guest-landing) .app-tile-watermark {
+  color: #3d3428 !important;
+  opacity: 0.08 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-tile-icon {
+  color: #3d3428 !important;
+  background: rgba(61, 52, 40, 0.06) !important;
+  border-color: #e0d4c0 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-tile strong {
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .app-tile-desc {
+  color: #6b6052 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-tile:hover .app-tile-icon {
+  border-color: rgba(180, 35, 24, 0.35) !important;
+  background: rgba(180, 35, 24, 0.08) !important;
+  color: #b42318 !important;
+}
+body.session-ready:not(.is-guest-landing) .nav-lang {
+  border-color: #e0d4c0;
+  background: #fffaf2;
+  color: #4a4034;
+}
+body.session-ready:not(.is-guest-landing) .nav-lang select {
+  color: #2a241c;
+}
+body.session-ready:not(.is-guest-landing) .menu-toggle {
+  border-color: #e0d4c0;
+  background: #fffaf2;
+  color: #2a241c;
+}
