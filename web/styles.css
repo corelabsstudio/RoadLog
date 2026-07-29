@@ -6576,3 +6576,57 @@ body.session-ready:not(.is-guest-landing) .menu-toggle {
   background: #fffaf2;
   color: #2a241c;
 }
+
+/* Cream session: readable nav + VIP (no cyan on paper) */
+body.session-ready:not(.is-guest-landing) .btn-settings {
+  color: #3d3428 !important;
+  border-color: #d4c4a8 !important;
+  background: #fffaf2 !important;
+}
+body.session-ready:not(.is-guest-landing) .btn-settings:hover {
+  background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .btn-install,
+body.session-ready:not(.is-guest-landing) .btn-install.install-action,
+body.session-ready:not(.is-guest-landing) #btnInstallApp {
+  color: #3d3428 !important;
+  border-color: #d4c4a8 !important;
+  background: #fffaf2 !important;
+}
+body.session-ready:not(.is-guest-landing) .btn-install:hover,
+body.session-ready:not(.is-guest-landing) #btnInstallApp:hover {
+  background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .btn-install svg,
+body.session-ready:not(.is-guest-landing) #btnInstallApp svg {
+  color: #3d3428 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-usage {
+  border: 1px solid #e0d4c0 !important;
+  background: #fffaf2 !important;
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-usage .uil-badge-pro,
+body.session-ready:not(.is-guest-landing) .uil-badge-pro {
+  background: rgba(180, 35, 24, 0.12) !important;
+  color: #8f1c14 !important;
+  border: 1px solid rgba(180, 35, 24, 0.28);
+}
+body.session-ready:not(.is-guest-landing) .uil-badge-free {
+  background: rgba(61, 52, 40, 0.08) !important;
+  color: #4a4034 !important;
+}
+body.session-ready:not(.is-guest-landing) .uil-badge-ent {
+  background: rgba(61, 52, 40, 0.1) !important;
+  color: #3d3428 !important;
+}
+body.session-ready:not(.is-guest-landing) .nav-actions .btn-ghost {
+  color: #3d3428 !important;
+  border-color: #d4c4a8 !important;
+}
+body.session-ready:not(.is-guest-landing) .nav-actions .btn-ghost:hover {
+  background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
