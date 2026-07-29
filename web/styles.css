@@ -7968,3 +7968,91 @@ p.pricing-note,
 .nav .nav-links {
   overflow: visible !important;
 }
+
+
+/* ═══════════════════════════════════════════════════
+   Free templates in actions — never clipped (v=20260729-nav-freetpl)
+   ═══════════════════════════════════════════════════ */
+.nav-free-tpl {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  max-width: none !important;
+  min-width: max-content !important;
+  height: 42px;
+  padding: 0 0.85rem 0 0.5rem !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(180, 35, 24, 0.28) !important;
+  background: rgba(180, 35, 24, 0.08) !important;
+  color: #8f1c14 !important;
+  font-size: 0.88rem !important;
+  font-weight: 750 !important;
+  text-decoration: none !important;
+  box-sizing: border-box;
+}
+.nav-free-tpl:hover {
+  background: rgba(180, 35, 24, 0.14) !important;
+  border-color: rgba(180, 35, 24, 0.4) !important;
+  color: #6b1a12 !important;
+}
+.nav-free-tpl .nav-ico {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border-radius: 7px;
+  background: #fffaf2;
+  border: 1px solid rgba(180, 35, 24, 0.22);
+  color: #b42318;
+  flex-shrink: 0;
+}
+.nav-free-tpl .nav-ico svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.nav-free-tpl-label {
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  max-width: none !important;
+  flex-shrink: 0 !important;
+  letter-spacing: -0.02em;
+}
+
+/* Mobile drawer: show free templates in menu; hide action chip if needed */
+.nav-free-tpl-mobile {
+  display: none !important;
+}
+@media (max-width: 900px) {
+  .nav-free-tpl {
+    /* keep visible in top bar on mobile too — short height ok */
+    height: 40px;
+    padding: 0 0.7rem 0 0.4rem !important;
+    font-size: 0.84rem !important;
+  }
+  .nav-links.open .nav-free-tpl-mobile {
+    display: flex !important;
+  }
+  /* avoid double free-templates when drawer open */
+  body.nav-open .nav-free-tpl,
+  .nav-links.open ~ .nav-actions .nav-free-tpl {
+    /* keep both ok — or hide top chip when drawer has it */
+  }
+}
+
+/* Wider bar still */
+.nav-inner {
+  width: min(100% - 2rem, 1520px) !important;
+  max-width: 1520px !important;
+}
+.nav-actions {
+  gap: 0.55rem !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+}
