@@ -832,34 +832,36 @@ img {
   max-width: none;
 }
 
-/* 상단 언어 스위처 — 항상 노출 */
+/* 상단 언어 스위처 — 항상 노출 (cyan 하드코딩 금지 → 크림/잉크) */
 .nav-lang {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.35rem 0.2rem 0.5rem;
   border-radius: 999px;
-  border: 1px solid rgba(34, 211, 238, 0.28);
-  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--text, #e2e8f0);
   cursor: pointer;
 }
 .nav-lang-icon {
   font-size: 0.68rem;
   font-weight: 800;
-  color: #67e8f9;
+  color: var(--muted, #94a3b8);
   letter-spacing: -0.04em;
   line-height: 1;
 }
 .nav-lang select {
   border: none;
   background: transparent;
-  color: #e2e8f0;
+  color: inherit;
   font-size: 0.78rem;
   font-weight: 700;
   padding: 0.25rem 0.15rem;
   cursor: pointer;
   outline: none;
   min-height: 32px;
+  accent-color: #3d3428;
 }
 .nav-lang select option {
   background: #0f172a;
@@ -5589,12 +5591,20 @@ body.is-guest-landing .nav-links a.active {
   background: rgba(26, 35, 50, 0.06);
 }
 body.is-guest-landing .nav-lang {
-  color: var(--field-ink-soft);
-  border-color: var(--field-line);
-  background: var(--field-card);
+  color: var(--field-ink) !important;
+  border-color: var(--field-line) !important;
+  background: var(--field-card) !important;
+}
+body.is-guest-landing .nav-lang-icon {
+  color: var(--field-muted) !important;
 }
 body.is-guest-landing .nav-lang select {
-  color: var(--field-ink);
+  color: var(--field-ink) !important;
+  accent-color: var(--field-navy, #1a2332);
+}
+body.is-guest-landing .nav-lang select option {
+  background: #fffaf2;
+  color: #2a241c;
 }
 body.is-guest-landing .menu-toggle {
   color: var(--field-ink);
@@ -6574,11 +6584,19 @@ body.session-ready:not(.is-guest-landing) .app-tile:hover .app-tile-icon {
   color: #b42318 !important;
 }
 body.session-ready:not(.is-guest-landing) .nav-lang {
-  border-color: #e0d4c0;
-  background: #fffaf2;
-  color: #4a4034;
+  border-color: #e0d4c0 !important;
+  background: #fffaf2 !important;
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .nav-lang-icon {
+  color: #6b5e4e !important;
 }
 body.session-ready:not(.is-guest-landing) .nav-lang select {
+  color: #2a241c !important;
+  accent-color: #3d3428;
+}
+body.session-ready:not(.is-guest-landing) .nav-lang select option {
+  background: #fffaf2;
   color: #2a241c;
 }
 body.session-ready:not(.is-guest-landing) .menu-toggle {
