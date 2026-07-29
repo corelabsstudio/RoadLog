@@ -2,16 +2,16 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260728-stamp-reflect" />
+  <meta name="rl-build" content="20260729-field-landing" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
-  <meta name="theme-color" content="#030712" />
+  <meta name="theme-color" content="#F4F1EA" id="metaThemeColor" />
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260728-stamp-reflect";
+      var BUILD = "20260729-field-landing";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -130,9 +130,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260728-stamp-reflect" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-cream-hub" />
 </head>
-<body class="session-checking">
+<body class="session-checking is-guest-landing">
   <!-- NAV -->
   <header class="nav">
     <div class="nav-inner">
@@ -186,202 +186,118 @@
   <!-- HOME: 비로그인 랜딩 / 로그인 대시보드 -->
   <main>
     <section class="view active" id="view-home">
-      <div id="guestHome" class="landing landing-pro">
-        <!-- 1. Hero -->
+      <div id="guestHome" class="landing landing-pro landing-field landing-cream">
+        <!-- Hero: short product entry (WakeAgain-style, cream field) -->
         <section class="landing-hero" aria-label="소개">
           <div class="container landing-hero-inner">
             <div class="landing-hero-copy">
-              <div class="hero-badge" data-i18n="landing.badge">CoreLabs · 제출용 AI 일지</div>
+              <div class="hero-badge" data-i18n="landing.badge">운행 · 외근 일지</div>
               <h1>
                 <span data-i18n="landing.headline_1">오늘 현장 기록,</span><br />
-                <span data-i18n="landing.headline_2">제출까지 한 번에.</span><br />
-                <span class="grad" data-i18n="landing.headline_3">RoadLog</span>
+                <span class="grad" data-i18n="landing.headline_2">제출까지 한 번에.</span>
               </h1>
               <p class="hero-sub landing-sub">
-                <span data-i18n="landing.sub">운행·외근 메모를 회사 제출용 문서로 정리합니다. Excel · PDF · DOCX로 받고, 필요할 때 다시 열어 수정할 수 있습니다.</span>
-                <strong data-i18n="landing.sub_strong">일과 마무리를 조금 더 가볍게.</strong>
+                <span data-i18n="landing.sub">메모 → 제출용 문서. Excel · PDF · DOCX.</span>
               </p>
-              <ul class="landing-proof" aria-label="핵심 지표">
-                <li><strong>Free</strong><span data-i18n="landing.proof_1">가입 후 총 10회</span></li>
-                <li><strong>Pro</strong><span data-i18n="landing.proof_2">월 4,900원</span></li>
-                <li><strong>Export</strong><span data-i18n="landing.proof_3">Excel · PDF · DOCX</span></li>
-              </ul>
-              <div class="hero-cta landing-cta">
+              <div class="hero-cta landing-cta landing-cta--tight">
                 <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">무료로 시작하기</button>
-                <a class="btn btn-ghost btn-lg" href="/resources/">무료 엑셀 서식</a>
-                <button type="button" class="btn btn-ghost btn-lg" data-nav="pricing" data-i18n="landing.cta_pricing">요금제 보기</button>
-                <button type="button" class="btn btn-ghost btn-lg btn-install-cta install-action" data-install-app data-install-primary data-i18n-keep-html>
-                  <span class="install-cta-icon" aria-hidden="true">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 4v10m0 0 4-4m-4 4-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    </svg>
-                  </span>
-                  <span data-i18n-text data-i18n="landing.install">앱으로 설치</span>
-                </button>
+                <a class="btn btn-ghost btn-lg" href="/resources/" data-i18n="landing.cta_templates">무료 엑셀 서식</a>
               </div>
-              <p class="landing-trust" data-i18n="landing.trust">로그인 유지 · 계정별 저장 · 근무시간 맞춤 진입 · 집에서 이어쓰기</p>
+              <p class="landing-trust" data-i18n="landing.trust">Free 10회 · Pro 월 4,900원 · 로그인 유지</p>
             </div>
 
-            <div class="landing-phone" aria-hidden="true">
-              <div class="landing-phone-frame landing-doc-frame">
+            <div class="landing-phone landing-sheet-wrap" aria-hidden="true">
+              <div class="landing-phone-frame landing-doc-frame landing-sheet">
+                <div class="landing-sheet-clip" aria-hidden="true"></div>
+                <div class="landing-stamp" aria-hidden="true">제출<br />완료</div>
                 <div class="landing-phone-screen landing-doc-screen">
-                  <div class="lp-kicker">오늘 일지 미리보기</div>
+                  <div class="lp-kicker">양식 · 미리보기</div>
                   <div class="lp-doc-title">차량 운행일지</div>
+                  <div class="lp-doc-meta">서식번호 RL-DRV · 개인 제출용</div>
                   <div class="lp-doc-row"><span>일자</span><b>2026-07-11</b></div>
                   <div class="lp-doc-row"><span>차량</span><b>12가 3456</b></div>
                   <div class="lp-doc-row"><span>구간</span><b>본사 → 강남 고객사</b></div>
                   <div class="lp-doc-row"><span>형식</span><b>Excel · PDF · DOCX</b></div>
                   <div class="lp-chip">정리 완료 · 저장됨</div>
-                  <div class="lp-care lp-doc-note">
-                    제출은 단정하게 · 입력은 편하게<br />요약·차량번호는 제출 전에 고칠 수 있어요
-                  </div>
                 </div>
               </div>
-              <div class="landing-phone-glow"></div>
             </div>
           </div>
         </section>
 
-        <!-- Free templates lead magnet -->
-        <section class="landing-free-tpl" id="freeTemplates" aria-label="무료 운행일지 엑셀 서식">
+        <!-- Destination hub — no meta essay -->
+        <section class="rl-hub" aria-label="바로 가기">
           <div class="container">
-            <div class="landing-free-tpl-card">
-              <div class="landing-free-tpl-copy">
-                <div class="landing-free-tpl-badge">Free · 가입 없이</div>
-                <h2>운행일지 엑셀 서식 무료 받기</h2>
-                <p>
-                  개인·업무용 일일 일지 · 법인·공용 차량 · 월간 요약 시트 3종을
-                  한 파일로 드립니다. 세무 판단용이 아니라 <strong>업무 기록·정리용</strong> 템플릿입니다.
-                </p>
-                <ul class="landing-free-tpl-list">
-                  <li>엑셀 3종 + 이용안내</li>
-                  <li>사이트 즉시 다운로드 · 구글 시트 열기</li>
-                  <li>현장 입력이 번거로우면 로드로그 스탬프로 이어가기</li>
-                </ul>
+            <div class="rl-hub-grid">
+              <button type="button" class="rl-hub-card rl-hub-card--accent" data-nav="create">
+                <span class="rl-hub-ico" aria-hidden="true">✎</span>
+                <span class="rl-hub-kicker">시작</span>
+                <strong data-i18n="landing.hub_start_t">일지 작성</strong>
+                <span data-i18n="landing.hub_start_d">스탬프 · 메모 · 제출 문서</span>
+              </button>
+              <a class="rl-hub-card" href="/resources/">
+                <span class="rl-hub-ico" aria-hidden="true">▤</span>
+                <span class="rl-hub-kicker">무료</span>
+                <strong data-i18n="landing.hub_tpl_t">엑셀 서식</strong>
+                <span data-i18n="landing.hub_tpl_d">가입 없이 · 3종 팩</span>
+              </a>
+              <button type="button" class="rl-hub-card" data-nav="pricing">
+                <span class="rl-hub-ico" aria-hidden="true">₩</span>
+                <span class="rl-hub-kicker">요금</span>
+                <strong data-i18n="landing.hub_price_t">요금제</strong>
+                <span data-i18n="landing.hub_price_d">Free · Pro · Enterprise</span>
+              </button>
+              <a class="rl-hub-card" href="/blog/">
+                <span class="rl-hub-ico" aria-hidden="true">☰</span>
+                <span class="rl-hub-kicker">안내</span>
+                <strong data-i18n="landing.hub_guide_t">가이드 · 뉴스</strong>
+                <span data-i18n="landing.hub_guide_d">운행일지 · 실무 팁</span>
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <!-- One compact free pack strip -->
+        <section class="rl-strip" id="freeTemplates" aria-label="무료 서식">
+          <div class="container">
+            <div class="rl-strip-inner">
+              <div>
+                <strong data-i18n="landing.strip_title">운행일지 엑셀 서식 무료</strong>
+                <p data-i18n="landing.strip_body">일일 · 법인 · 월간 요약 3종 · 가입 없이 다운로드</p>
               </div>
-              <div class="landing-free-tpl-actions">
-                <a class="btn btn-primary btn-lg" href="/resources/">서식 페이지 열기</a>
+              <div class="rl-strip-actions">
+                <a class="btn btn-primary" href="/resources/">서식 받기</a>
                 <a class="btn btn-ghost" href="/assets/templates/roadlog-driving-log-templates.xlsx" download="로드로그_무료_운행일지_서식팩.xlsx">엑셀 바로 받기</a>
-                <a class="btn btn-ghost" href="https://docs.google.com/spreadsheets/d/1LtmoSJO_-a5KbNEWwGAn8EV2E7Oo3b4G/edit?usp=sharing" rel="noopener noreferrer" target="_blank">구글에서 보기</a>
-                <p class="landing-free-tpl-note">카드 결제 없음 · 이메일 수집 없음</p>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- 2. Capabilities -->
-        <section class="landing-values" id="features" aria-label="핵심 기능">
+        <!-- How it works — chips only -->
+        <section class="rl-flow" id="features" aria-label="이용 방법">
           <div class="container">
-            <div class="section-head landing-section-head">
-              <div class="eyebrow" data-i18n="landing.values_eyebrow">What you get</div>
-              <h2 data-i18n="landing.values_title">현장에서 남기고, 퇴근 전에 끝냅니다</h2>
-              <p data-i18n="landing.values_sub">복잡한 일지 도구 대신, 매일 쓰는 사람에게 맞춰 설계했습니다.</p>
-            </div>
-            <div class="landing-value-grid">
-              <article class="landing-value-card">
-                <div class="lv-icon lv-icon-svg" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="11" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M12 21s7-5.2 7-10.2A7 7 0 1 0 5 10.8C5 15.8 12 21 12 21z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-                </div>
-                <h3 data-i18n="landing.v1_title">현장 위치 스탬프</h3>
-                <p data-i18n="landing.v1_body">도착·출발 때 버튼 한 번으로 시각과 위치를 남깁니다. 방문지 입력이 훨씬 수월해집니다.</p>
-              </article>
-              <article class="landing-value-card is-accent">
-                <div class="lv-icon lv-icon-svg" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 4h10l4 4v12a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.7"/><path d="M14 4v5h5M8 13h8M8 17h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                </div>
-                <h3 data-i18n="landing.v2_title">AI 제출용 정리</h3>
-                <p data-i18n="landing.v2_body">메모를 회사 톤의 운행·외근 일지로 정리합니다. Excel · PDF · DOCX로 바로 제출할 수 있습니다.</p>
-              </article>
-              <article class="landing-value-card">
-                <div class="lv-icon lv-icon-svg" aria-hidden="true">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 10h18M8 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                </div>
-                <h3 data-i18n="landing.v3_title">주간·월간 업무 요약</h3>
-                <p data-i18n="landing.v3_body">총 외근 건수·방문 Top3·이동거리를 한눈에. PDF·Excel로 받아 월말 보고·팀 공유에 바로 쓰세요.</p>
-              </article>
-            </div>
+            <ol class="rl-flow-list">
+              <li><strong data-i18n="landing.step1_t">스탬프</strong><span data-i18n="landing.step1_d">도착·출발 위치</span></li>
+              <li><strong data-i18n="landing.step2_t">정리</strong><span data-i18n="landing.step2_d">메모 → 제출 문서</span></li>
+              <li><strong data-i18n="landing.step3_t">내보내기</strong><span data-i18n="landing.step3_d">Excel · PDF · DOCX</span></li>
+              <li><strong data-i18n="landing.step4_t">요약</strong><span data-i18n="landing.step4_d">주간·월간 보고</span></li>
+            </ol>
           </div>
         </section>
 
-        <!-- B2B dashboard pitch -->
-        <section class="landing-emotion landing-report-pitch" id="reportPitch" aria-label="업무 요약 소개">
-          <div class="container landing-emotion-inner">
-            <div class="eyebrow">For teams · Enterprise</div>
-            <p class="landing-emotion-quote">
-              월말 성과 보고서 쓰느라 밤새지 마세요.
-            </p>
-            <p class="landing-emotion-body">
-              이번 달 외근·운행 실적, <strong style="color:#e2e8f0">버튼 한 번에 요약 리포트</strong>로 뽑습니다.
-              팀장은 엑셀을 일일이 열지 않고 <strong style="color:#e2e8f0">주간/월간 대시보드</strong>로 활동량을 파악하세요.
-            </p>
-            <ul class="landing-report-bullets">
-              <li>총 운행거리 · 외근 건수 · 방문 지역 Top 3</li>
-              <li>PDF · Excel · 이미지 다운로드 → 결재판·메일 첨부</li>
-              <li>개인 Pro부터 팀 Enterprise까지 같은 흐름</li>
-            </ul>
-            <div class="landing-emotion-tags">
-              <span>업무 요약</span>
-              <span>주간 · 월간</span>
-              <span>PDF · Excel</span>
-              <span>Enterprise 명분</span>
-            </div>
-            <div class="landing-report-actions">
-              <button type="button" class="btn btn-primary" data-nav="reports">업무 요약 보기</button>
-              <button type="button" class="btn btn-ghost" data-nav="pricing">Enterprise 요금 보기</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. Use cases / trust -->
-        <section class="landing-emotion landing-usecase" id="demo" aria-label="도입 대상">
-          <div class="container landing-emotion-inner">
-            <div class="eyebrow" data-i18n="landing.use_eyebrow">For whom</div>
-            <p class="landing-emotion-quote" data-i18n="landing.quote">
-              영업 · 외근 · 법인차, 매일 기록하는 분들을 위해
-            </p>
-            <p class="landing-emotion-body">
-              <span data-i18n="landing.emotion_body">RoadLog는 딱딱한 양식만 강요하지 않습니다.</span>
-              <strong data-i18n="landing.emotion_strong">제출은 단정하게, 입력은 편하게</strong>
-              <span data-i18n="landing.emotion_body2">— 그 균형을 맞춥니다. Free로 부담 없이 시작할 수 있습니다.</span>
-            </p>
-            <div class="landing-emotion-tags">
-              <span data-i18n="landing.tag_stamp">퀵 스탬프</span>
-              <span data-i18n="landing.tag_route">운행 · 외근</span>
-              <span data-i18n="landing.tag_care">회사 서식 학습</span>
-              <span data-i18n="landing.tag_pwa">주간·월간 요약</span>
-            </div>
-          </div>
-        </section>
-
-        <!-- 4. Social proof / reviews -->
-        <section class="landing-reviews" id="reviews" aria-label="사용자 후기">
-          <div class="container">
-            <div class="section-head landing-section-head">
-              <div class="eyebrow" data-i18n="landing.reviews_eyebrow">Reviews</div>
-              <h2 data-i18n="landing.reviews_title">베타 피드백</h2>
-              <p data-i18n="landing.reviews_sub">초기 베타·지인 테스트에서 받은 의견입니다. 실제 후기가 쌓이면 이 영역에 공개됩니다.</p>
-            </div>
-            <div class="landing-review-grid" id="landingReviewGrid" aria-live="polite">
-              <!-- 공개 후기는 /api/reviews 로 채웁니다 -->
-            </div>
-          </div>
-        </section>
-
-        <!-- 5. Final CTA -->
-        <section class="landing-final" aria-label="마무리">
+        <!-- Exit -->
+        <section class="landing-final rl-exit" aria-label="마무리">
           <div class="container landing-final-inner">
             <h2 data-i18n="landing.final_title">일지 때문에 하루가 길어지지 않게.</h2>
-            <p data-i18n="landing.final_sub">Free로 바로 써 보고, 필요할 때 Pro·Enterprise로 키우면 됩니다.</p>
             <div class="landing-final-actions">
               <button type="button" class="btn btn-primary btn-lg" data-nav="create" data-i18n="landing.try">무료로 시작하기</button>
-              <a class="btn btn-ghost btn-lg" href="/resources/">무료 엑셀 서식 받기</a>
+              <a class="btn btn-ghost btn-lg" href="/resources/">무료 엑셀 서식</a>
             </div>
             <button type="button" class="btn btn-ghost landing-login-link" id="btnLandingLogin" data-i18n="landing.login_link">이미 계정이 있다면 로그인</button>
           </div>
         </section>
 
-        <!-- 숨김 데모 노드: 기존 JS 호환 (에러 방지) -->
+        <!-- Hidden demo nodes for JS compat -->
         <div class="hidden" aria-hidden="true">
           <div id="demoStage"></div>
           <div id="demoVideoWrap" class="hidden"><video id="demoVideo"></video></div>
@@ -389,6 +305,7 @@
           <button type="button" id="demoPlayBtn"></button>
           <div id="demoProgress"></div>
           <div id="demoSteps"></div>
+          <div id="landingReviewGrid"></div>
         </div>
       </div><!-- /guestHome -->
 
@@ -1887,7 +1804,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260728-stamp-reflect"></script>
+  <script src="/app.js?v=20260729-field-landing"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
