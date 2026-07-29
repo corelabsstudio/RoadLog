@@ -196,11 +196,14 @@ CONTACT_FORM_URL = _get_secret(
     "CONTACT_FORM_URL",
     "https://docs.google.com/forms/d/e/1FAIpQLScl9ZJD_crv1d6JPDzdNaYTDzUQXKkLNx_X6pmyEwsg_1DnGg/viewform?usp=sf_link",
 )
-# 푸터·사업자 고지 (비우면 UI에서 해당 줄 숨김)
+# 푸터·사업자 고지 (2026-07-29 사업자등록 반영 · env로 덮어쓰기 가능)
 BUSINESS_NAME = _get_secret("BUSINESS_NAME", STUDIO_NAME)
-BUSINESS_OWNER = _get_secret("BUSINESS_OWNER", "")
-BUSINESS_REG_NO = _get_secret("BUSINESS_REG_NO", "")
-BUSINESS_ADDRESS = _get_secret("BUSINESS_ADDRESS", "")
+BUSINESS_OWNER = _get_secret("BUSINESS_OWNER", "호현수")
+BUSINESS_REG_NO = _get_secret("BUSINESS_REG_NO", "705-04-02867")
+BUSINESS_ADDRESS = _get_secret(
+    "BUSINESS_ADDRESS",
+    "강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동)",
+)
 MAIL_ORDER_REG_NO = _get_secret("MAIL_ORDER_REG_NO", "")
 
 # 색상 팔레트

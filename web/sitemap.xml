@@ -30,6 +30,12 @@
     <priority>0.88</priority>
   </url>
   <url>
+    <loc>https://roadlog.co.kr/legal/business.html</loc>
+    <lastmod>2026-07-29</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.55</priority>
+  </url>
+  <url>
     <loc>https://roadlog.co.kr/assets/templates/roadlog-driving-log-templates.xlsx</loc>
     <lastmod>2026-07-27</lastmod>
     <changefreq>monthly</changefreq>

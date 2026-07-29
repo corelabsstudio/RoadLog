@@ -208,9 +208,13 @@
 | 구분 | 내용 |
 |------|------|
 | 운영 주체 | 코어랩스(CoreLabs) |
+| 대표자 | 호현수 |
+| 사업자등록번호 | 705-04-02867 |
+| 사업장 소재지 | 강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) |
 | 서비스 | 로드로그(RoadLog) |
-| 개인정보 보호 책임자 | 코어랩스(CoreLabs) 운영팀 |
+| 개인정보 보호 책임자 | 호현수 (코어랩스) |
 | 문의 사항 | [corelabs.studio@gmail.com](mailto:corelabs.studio@gmail.com) |
+| 사업자 정보 페이지 | [roadlog.co.kr/legal/business.html](https://roadlog.co.kr/legal/business.html) |
 
 서비스 및 이용약관 관련 문의는 위 이메일 또는 로드로그(RoadLog) 서비스 내 안내 채널을 이용해 주시기 바랍니다.
 

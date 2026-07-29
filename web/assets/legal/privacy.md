@@ -177,11 +177,16 @@
 
 | 구분 | 내용 |
 |------|------|
-| 개인정보 보호책임자 | 코어랩스(CoreLabs) 운영팀 |
+| 운영 주체 | 코어랩스(CoreLabs) |
+| 대표자 | 호현수 |
+| 사업자등록번호 | 705-04-02867 |
+| 사업장 소재지 | 강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) |
+| 개인정보 보호책임자 | 호현수 (코어랩스) |
 | 직위/역할 | 개인정보 보호 및 로드로그(RoadLog) 서비스 운영 총괄 |
 | 연락처(이메일) | [corelabs.studio@gmail.com](mailto:corelabs.studio@gmail.com) |
 | 문의 사항 | corelabs.studio@gmail.com |
 | 담당 업무 | 개인정보 보호 계획 수립, 개인정보 처리 실태 점검, 정보주체 고충 처리 |
+| 사업자 정보 | [roadlog.co.kr/legal/business.html](https://roadlog.co.kr/legal/business.html) |
 
 2. 정보주체께서는 서비스 이용 중 발생한 모든 개인정보 보호 관련 문의, 불만 처리, 피해 구제 등에 관한 사항을 코어랩스(CoreLabs) 운영팀(개인정보 보호책임자)에게 **corelabs.studio@gmail.com**으로 문의하실 수 있습니다. 회사는 정보주체의 문의에 대해 지체 없이 답변 및 처리해 드릴 것입니다.
 

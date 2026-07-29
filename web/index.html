@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-deep-qa3" />
+  <meta name="rl-build" content="20260729-biz" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-deep-qa3";
+      var BUILD = "20260729-biz";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -137,7 +137,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-deep-qa3" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-biz" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
@@ -1741,11 +1741,15 @@
         </div>
         <p class="footer-copy">© 2026 CoreLabs. All rights reserved.</p>
         <div class="footer-biz" id="footerBiz" aria-label="사업자 정보">
-          <p class="footer-biz-line"><span>상호</span> <strong id="bizName">코어랩스</strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizOwnerRow"><span>대표</span> <strong id="bizOwner"></strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizRegRow"><span>사업자등록번호</span> <strong id="bizRegNo"></strong></p>
+          <p class="footer-biz-line"><span>상호</span> <strong id="bizName">코어랩스(CoreLabs)</strong></p>
+          <p class="footer-biz-line" id="bizOwnerRow"><span>대표</span> <strong id="bizOwner">호현수</strong></p>
+          <p class="footer-biz-line" id="bizRegRow"><span>사업자등록번호</span> <strong id="bizRegNo">705-04-02867</strong></p>
           <p class="footer-biz-line footer-biz-optional hidden" id="bizMailOrderRow"><span>통신판매업</span> <strong id="bizMailOrder"></strong></p>
-          <p class="footer-biz-line footer-biz-optional hidden" id="bizAddrRow"><span>주소</span> <strong id="bizAddress"></strong></p>
+          <p class="footer-biz-line" id="bizAddrRow"><span>주소</span> <strong id="bizAddress">강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동)</strong></p>
+          <p class="footer-biz-links">
+            <a href="/legal/business.html">사업자 정보 · 등록증</a>
+            <a href="/assets/legal/corelabs-business-registration.png" target="_blank" rel="noopener">등록증 원본</a>
+          </p>
           <p class="footer-biz-hint" id="bizHint">유료 결제·세금계산서는 문의 후 안내드립니다.</p>
         </div>
         <a class="footer-contact" id="footerContactMail" href="mailto:corelabs.studio@gmail.com">
@@ -1766,6 +1770,7 @@
         <a href="#contact" data-nav="contact" data-i18n="footer.contact">문의</a>
         <a href="#terms" data-nav="terms" data-i18n="footer.terms">이용약관</a>
         <a href="#privacy" data-nav="privacy" data-i18n="footer.privacy">개인정보처리방침</a>
+        <a href="/legal/business.html">사업자 정보</a>
         <span class="footer-dot" aria-hidden="true">·</span>
         <a href="#pricing" data-nav="pricing" data-i18n="footer.pricing">요금제</a>
         <a href="/blog/">가이드</a>
@@ -1879,7 +1884,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-deep-qa3"></script>
+  <script src="/app.js?v=20260729-biz"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

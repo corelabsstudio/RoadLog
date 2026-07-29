@@ -2936,6 +2936,24 @@ body.modal-open {
   opacity: 0.88;
   max-width: 38ch;
 }
+.footer-biz-links {
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.74rem;
+}
+.footer-biz-links a {
+  color: var(--stamp, #b42318);
+  font-weight: 650;
+  text-decoration: none;
+}
+.footer-biz-links a:hover {
+  text-decoration: underline;
+}
+body.is-guest-landing .footer-biz-links a {
+  color: #8f1c14;
+}
 
 .footer-copy {
   margin: 0;
