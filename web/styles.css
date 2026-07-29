@@ -8387,3 +8387,333 @@ body.is-guest-landing .rl-hub {
 body.has-sticky-cta .free-fab {
   bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
 }
+
+
+/* ═══════════════════════════════════════════════════
+   NAV HARD RESET — fix broken top bar (v=20260729-nav-fix)
+   Clears stacked flex/overflow conflicts from earlier patches.
+   ═══════════════════════════════════════════════════ */
+
+header.nav,
+.nav {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1100 !important;
+  height: auto !important;
+  min-height: 64px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  background: rgba(255, 250, 242, 0.96) !important;
+  border-bottom: 1px solid #e0d4c0 !important;
+  backdrop-filter: blur(12px);
+  box-sizing: border-box !important;
+}
+
+.nav-inner {
+  width: min(100% - 1.5rem, 1200px) !important;
+  max-width: 1200px !important;
+  margin-inline: auto !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.65rem !important;
+  min-height: 64px !important;
+  box-sizing: border-box !important;
+}
+
+.brand {
+  flex: 0 0 auto !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  gap: 0.55rem !important;
+}
+.brand-logo {
+  width: 34px !important;
+  height: 34px !important;
+  box-shadow: none !important;
+  border: 1px solid #e0d4c0 !important;
+  border-radius: 9px !important;
+  filter: none !important;
+}
+.brand-name {
+  font-size: 1.02rem !important;
+  color: #2a241c !important;
+  line-height: 1.15 !important;
+}
+.brand-en {
+  font-size: 0.68rem !important;
+  color: #8a7d6c !important;
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Center menu: scroll if needed, never shove actions off-screen */
+.nav-links {
+  flex: 1 1 auto !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.2rem !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 0.35rem !important;
+  border: none !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.nav-links::-webkit-scrollbar {
+  display: none !important;
+}
+
+.nav-links a {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.35rem !important;
+  padding: 0.4rem 0.55rem !important;
+  border-radius: 8px !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #3d3428 !important;
+  font-size: 0.86rem !important;
+  font-weight: 650 !important;
+  white-space: nowrap !important;
+  text-decoration: none !important;
+  max-width: none !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+.nav-links a .nav-ico {
+  width: 1.35rem !important;
+  height: 1.35rem !important;
+  border-radius: 6px !important;
+  background: #f3ebe0 !important;
+  border: 1px solid #e8dfd0 !important;
+  color: #5c4a38 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  box-shadow: none !important;
+}
+.nav-links a .nav-ico svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+.nav-links a:hover,
+.nav-links a.active {
+  background: rgba(42, 36, 28, 0.06) !important;
+  color: #2a241c !important;
+  border-color: #e8dfd0 !important;
+}
+.nav-links a.active .nav-ico {
+  color: #b42318 !important;
+  border-color: rgba(180, 35, 24, 0.28) !important;
+  background: rgba(180, 35, 24, 0.1) !important;
+}
+
+/* Desktop: only primary links — prevent overcrowding/break */
+@media (min-width: 901px) {
+  .menu-toggle {
+    display: none !important;
+  }
+  .nav-links a#navNews,
+  .nav-links a[href="/blog/news/"],
+  .nav-links a[data-nav="contact"],
+  .nav-links a.nav-link-settings,
+  .nav-links a#navSettings,
+  .nav-links a.nav-free-tpl-mobile,
+  .nav-links a#navResourcesMobile,
+  .nav-links a.nav-highlight {
+    display: none !important;
+  }
+}
+
+/* Actions always visible on the right */
+.nav-actions {
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  margin-left: 0.25rem !important;
+  padding-left: 0 !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  z-index: 5 !important;
+  position: relative !important;
+}
+.nav-actions .btn {
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+.nav-actions .btn-settings.btn-icon,
+.btn.btn-icon.btn-settings {
+  width: 40px !important;
+  min-width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 !important;
+  border-radius: 10px !important;
+  border: 1px solid #e0d4c0 !important;
+  background: #fffaf2 !important;
+  color: #3d3428 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+.nav-actions .btn-settings .nav-ico {
+  background: transparent !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+  color: inherit !important;
+}
+.nav-actions .btn-ghost {
+  border: 1px solid #e0d4c0 !important;
+  background: #fffaf2 !important;
+  color: #3d3428 !important;
+  min-height: 40px !important;
+  padding: 0.4rem 0.75rem !important;
+  border-radius: 10px !important;
+}
+.nav-actions .btn-primary {
+  min-height: 40px !important;
+  padding: 0.4rem 0.9rem !important;
+  border-radius: 10px !important;
+  background: #3d3428 !important;
+  color: #fffaf2 !important;
+  border: 1px solid #2a241c !important;
+}
+
+.nav-lang.nav-lang--edge,
+.nav-lang {
+  flex: 0 0 auto !important;
+  flex-shrink: 0 !important;
+  margin-left: 0.15rem !important;
+  opacity: 0.65 !important;
+  border: none !important;
+  background: transparent !important;
+  padding: 0.15rem 0.25rem !important;
+}
+.nav-lang select {
+  color: #4a4034 !important;
+  font-size: 0.75rem !important;
+  min-height: 32px !important;
+}
+
+/* Floating free templates chip — clear of broken bar */
+.free-fab {
+  position: fixed !important;
+  top: auto !important;
+  bottom: max(1.15rem, env(safe-area-inset-bottom, 0px)) !important;
+  right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+  left: auto !important;
+  z-index: 1000 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  min-width: max-content !important;
+  max-width: none !important;
+  padding: 0.55rem 1rem 0.55rem 0.55rem !important;
+  border-radius: 999px !important;
+  background: #fffaf2 !important;
+  border: 1.5px solid rgba(180, 35, 24, 0.4) !important;
+  box-shadow: 0 12px 30px rgba(42, 36, 28, 0.16) !important;
+  text-decoration: none !important;
+  color: #2a241c !important;
+  overflow: visible !important;
+}
+.free-fab-text strong {
+  display: block !important;
+  white-space: nowrap !important;
+  font-size: 0.95rem !important;
+  color: #2a241c !important;
+}
+.free-fab-text small {
+  display: block !important;
+  white-space: nowrap !important;
+  color: #8f1c14 !important;
+}
+
+/* Mobile nav */
+@media (max-width: 900px) {
+  .nav-inner {
+    width: min(100% - 1rem, 1200px) !important;
+    gap: 0.4rem !important;
+  }
+  .nav-links {
+    display: none !important;
+  }
+  .nav-links.open {
+    display: flex !important;
+    position: absolute !important;
+    top: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    background: #fffaf2 !important;
+    border-bottom: 1px solid #e0d4c0 !important;
+    padding: 0.5rem !important;
+    gap: 0.15rem !important;
+    max-height: calc(100vh - 64px) !important;
+    overflow-y: auto !important;
+    z-index: 120 !important;
+  }
+  .nav-links.open a {
+    display: flex !important;
+    min-height: 48px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 1rem !important;
+  }
+  .nav-links.open a.nav-free-tpl-mobile,
+  .nav-links.open a#navResourcesMobile {
+    display: flex !important;
+  }
+  .menu-toggle {
+    display: grid !important;
+    place-items: center !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    border: 1px solid #e0d4c0 !important;
+    background: #fffaf2 !important;
+    color: #3d3428 !important;
+  }
+  .brand-en {
+    display: none !important;
+  }
+  .nav-actions #btnStart {
+    display: none !important;
+  }
+  .nav-actions .btn-install span {
+    display: none !important;
+  }
+  .free-fab {
+    bottom: max(1rem, env(safe-area-inset-bottom, 0px)) !important;
+  }
+}
+
+/* Medium desktop: shorten labels, not clip */
+@media (max-width: 1100px) and (min-width: 901px) {
+  .nav-links a[data-nav="create"] > span:not(.nav-ico) {
+    font-size: 0 !important;
+  }
+  .nav-links a[data-nav="create"] > span:not(.nav-ico)::after {
+    content: "일지";
+    font-size: 0.86rem !important;
+    font-weight: 650;
+  }
+  .brand-en {
+    display: none !important;
+  }
+}
