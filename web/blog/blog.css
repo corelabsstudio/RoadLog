@@ -459,3 +459,27 @@
 .blog-section-head {
   margin-top: 0.5rem;
 }
+
+
+/* Force cream nav on all blog/resources pages (v=20260729-blog-nav-force) */
+.blog-page .blog-nav {
+  background: rgba(255, 250, 242, 0.97) !important;
+  border-bottom: 1px solid #e0d4c0 !important;
+  backdrop-filter: blur(12px);
+}
+.blog-page .blog-brand,
+.blog-page .blog-brand span {
+  color: #2a241c !important;
+}
+.blog-page .blog-brand small {
+  color: #8a7d6c !important;
+}
+.blog-page .blog-nav-links a {
+  color: #4a4034 !important;
+}
+.blog-page .blog-nav-links a:hover,
+.blog-page .blog-nav-links a.is-active {
+  color: #2a241c !important;
+  background: #f3ebe0 !important;
+  border-color: #d4c4a8 !important;
+}
