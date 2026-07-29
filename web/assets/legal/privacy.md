@@ -184,6 +184,8 @@
 | 개인정보 보호책임자 | 호현수 (코어랩스) |
 | 직위/역할 | 개인정보 보호 및 로드로그(RoadLog) 서비스 운영 총괄 |
 | 연락처(이메일) | [corelabs.studio@gmail.com](mailto:corelabs.studio@gmail.com) |
+| TEL | 033-818-2021 |
+| HP | 010-5583-2021 |
 | 문의 사항 | corelabs.studio@gmail.com |
 | 담당 업무 | 개인정보 보호 계획 수립, 개인정보 처리 실태 점검, 정보주체 고충 처리 |
 | 사업자 정보 | [roadlog.co.kr/legal/business.html](https://roadlog.co.kr/legal/business.html) |

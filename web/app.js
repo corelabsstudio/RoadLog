@@ -5056,10 +5056,23 @@
     setText("bizRegNo", biz.reg_no || "");
     setText("bizMailOrder", biz.mail_order_no || "");
     setText("bizAddress", biz.address || "");
+    // phones: keep clickable tel: links
+    const tel = (biz.tel || "033-818-2021").trim();
+    const hp = (biz.hp || "010-5583-2021").trim();
+    const telEl = document.getElementById("bizTel");
+    const hpEl = document.getElementById("bizHp");
+    if (telEl) {
+      telEl.innerHTML = `<a class="footer-tel-link" href="tel:${tel.replace(/[^0-9+]/g, "")}">${tel}</a>`;
+    }
+    if (hpEl) {
+      hpEl.innerHTML = `<a class="footer-tel-link" href="tel:${hp.replace(/[^0-9+]/g, "")}">${hp}</a>`;
+    }
     showRow("bizOwnerRow", biz.owner);
     showRow("bizRegRow", biz.reg_no);
     showRow("bizMailOrderRow", biz.mail_order_no);
     showRow("bizAddrRow", biz.address);
+    showRow("bizTelRow", tel);
+    showRow("bizHpRow", hp);
     const hint = document.getElementById("bizHint");
     if (hint) {
       const ready = Boolean(meta?.payment_ready);

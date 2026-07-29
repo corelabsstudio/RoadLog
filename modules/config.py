@@ -192,6 +192,8 @@ APP_FULL = f"{APP_TITLE} · RoadLog"
 STUDIO_NAME = "코어랩스"
 STUDIO_NAME_EN = "CoreLabs"
 CONTACT_EMAIL = _get_secret("CONTACT_EMAIL", "corelabs.studio@gmail.com")
+CONTACT_TEL = _get_secret("CONTACT_TEL", "033-818-2021")
+CONTACT_HP = _get_secret("CONTACT_HP", "010-5583-2021")
 CONTACT_FORM_URL = _get_secret(
     "CONTACT_FORM_URL",
     "https://docs.google.com/forms/d/e/1FAIpQLScl9ZJD_crv1d6JPDzdNaYTDzUQXKkLNx_X6pmyEwsg_1DnGg/viewform?usp=sf_link",

@@ -40,6 +40,8 @@ from modules.config import (
     BUSINESS_REG_NO,
     CONTACT_EMAIL,
     CONTACT_FORM_URL,
+    CONTACT_HP,
+    CONTACT_TEL,
     DATA_DIR,
     DEFAULT_USER_SETTINGS,
     ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW,
@@ -407,6 +409,8 @@ def meta():
             "address": BUSINESS_ADDRESS or "",
             "mail_order_no": MAIL_ORDER_REG_NO or "",
             "contact_email": CONTACT_EMAIL,
+            "tel": CONTACT_TEL,
+            "hp": CONTACT_HP,
         },
     }
 
