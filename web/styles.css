@@ -867,9 +867,14 @@ img {
 }
 .btn-settings {
   font-weight: 700 !important;
-  color: #a5f3fc !important;
-  border: 1px solid rgba(34, 211, 238, 0.25) !important;
+  /* use theme text — never hard-code cyan (unreadable on cream) */
+  color: var(--text, #2a241c) !important;
+  border: 1px solid var(--line, #d4c4a8) !important;
+  background: var(--panel-solid, #fffaf2) !important;
   white-space: nowrap;
+}
+.btn-settings:hover {
+  filter: brightness(0.97);
 }
 
 /* ── BUTTONS ── */
@@ -2980,19 +2985,24 @@ body.session-ready #appHome {
   transition: opacity 0.18s ease;
 }
 
-/* PWA install */
+/* PWA install — theme text, not cyan */
 .btn-install {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  border-color: rgba(34, 211, 238, 0.35) !important;
-  color: #a5f3fc !important;
+  border-color: var(--line, #d4c4a8) !important;
+  color: var(--text, #2a241c) !important;
+  background: var(--panel-solid, #fffaf2) !important;
   font-weight: 700;
   font-size: 0.82rem;
   padding: 0.45rem 0.75rem;
 }
 .btn-install:hover {
-  background: rgba(34, 211, 238, 0.1) !important;
+  background: var(--bg-2, #f3ebe0) !important;
+  filter: none !important;
+}
+.btn-install svg {
+  color: inherit !important;
 }
 .btn-install[hidden] {
   display: none !important;
@@ -6628,5 +6638,40 @@ body.session-ready:not(.is-guest-landing) .nav-actions .btn-ghost {
 }
 body.session-ready:not(.is-guest-landing) .nav-actions .btn-ghost:hover {
   background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
+
+/* Hard fix: cream paper nav ink (settings / install / VIP) */
+body.is-guest-landing .btn-settings,
+body.is-guest-landing .btn-install,
+body.is-guest-landing #btnInstallApp,
+body.session-ready .btn-settings,
+body.session-ready .btn-install,
+body.session-ready #btnInstallApp {
+  color: #3d3428 !important;
+  border-color: #d4c4a8 !important;
+  background: #fffaf2 !important;
+}
+body.is-guest-landing .btn-settings:hover,
+body.is-guest-landing .btn-install:hover,
+body.session-ready .btn-settings:hover,
+body.session-ready .btn-install:hover {
+  background: #f3ebe0 !important;
+  color: #2a241c !important;
+}
+body.is-guest-landing .btn-install svg,
+body.session-ready .btn-install svg,
+body.is-guest-landing #btnInstallApp svg,
+body.session-ready #btnInstallApp svg {
+  color: #3d3428 !important;
+  stroke: currentColor;
+}
+body.is-guest-landing .uil-badge-pro,
+body.session-ready .uil-badge-pro {
+  background: rgba(180, 35, 24, 0.12) !important;
+  color: #8f1c14 !important;
+}
+body.is-guest-landing .app-home-usage,
+body.session-ready .app-home-usage {
   color: #2a241c !important;
 }
