@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-price-contrast" />
+  <meta name="rl-build" content="20260729-price-note" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-price-contrast";
+      var BUILD = "20260729-price-note";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -130,7 +130,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-price-contrast" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-price-note" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
@@ -961,10 +961,10 @@
           </div>
         </div>
         <p class="pricing-note" id="pricingNote">
-          표시 금액은 <strong style="color:#e2e8f0">VAT(부가세) 별도</strong>입니다.
-          Enterprise 연 결제는 <strong style="color:#e2e8f0">₩890,000 (2개월 무료)</strong>를 권장합니다.
+          표시 금액은 <strong>VAT(부가세) 별도</strong>입니다.
+          Enterprise 연 결제는 <strong>₩890,000 (2개월 무료)</strong>를 권장합니다.
           결제 후
-          <a href="#pro-claim" data-nav="pro-claim" style="color:#5eead4;font-weight:700">결제 확인 신청</a>을 남겨 주시면
+          <a href="#pro-claim" data-nav="pro-claim" class="pricing-note-link">결제 확인 신청</a>을 남겨 주시면
           관리자가 반영합니다. 세금계산서·도입 문의 지원.
         </p>
       </div>
@@ -1855,7 +1855,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-price-contrast"></script>
+  <script src="/app.js?v=20260729-price-note"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",

@@ -7710,3 +7710,40 @@ strong.price-vat {
   background: #f3ebe0 !important;
   border-color: #d4c4a8 !important;
 }
+
+
+/* Pricing footer note — readable on cream (v=20260729-price-note) */
+.pricing-note,
+p.pricing-note,
+#pricingNote {
+  color: #3d3428 !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  line-height: 1.65 !important;
+  max-width: 52ch !important;
+  margin: 1.5rem auto 0 !important;
+  padding: 0.95rem 1.15rem !important;
+  background: #fffaf2 !important;
+  border: 1px solid #d4c4a8 !important;
+  border-radius: 12px !important;
+  text-align: center !important;
+  box-shadow: 0 1px 0 rgba(42, 36, 28, 0.04) !important;
+}
+.pricing-note strong,
+.pricing-note .pricing-note-em,
+#pricingNote strong {
+  color: #2a241c !important;
+  font-weight: 800 !important;
+}
+.pricing-note a,
+.pricing-note .pricing-note-link,
+#pricingNote a {
+  color: #b42318 !important;
+  font-weight: 800 !important;
+  text-decoration: underline !important;
+  text-underline-offset: 2px !important;
+}
+.pricing-note a:hover,
+#pricingNote a:hover {
+  color: #8f1c14 !important;
+}
