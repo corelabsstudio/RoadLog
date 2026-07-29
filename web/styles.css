@@ -6482,3 +6482,48 @@ body.session-ready:not(.is-guest-landing) .nav-highlight {
   background: #fffaf2 !important;
   color: #2a241c !important;
 }
+/* Mode tabs + stamp — soft cream (no cyan / no loud dark bar) */
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tabs {
+  gap: 0.5rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  border: 1px solid #ebe2d2 !important;
+  background: #f3ebe0 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #5c5348 !important;
+  box-shadow: none !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab:hover {
+  background: rgba(255, 250, 242, 0.7) !important;
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab .report-mode-label {
+  color: inherit !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab .report-mode-hint {
+  color: #8a7d6c !important;
+  opacity: 1 !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab.is-active {
+  border-color: #e0d4c0 !important;
+  background: #fffaf2 !important;
+  color: #2a241c !important;
+  box-shadow: 0 1px 0 rgba(42, 36, 28, 0.05) !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab.is-active .report-mode-label {
+  color: #2a241c !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-work .report-mode-tab.is-active .report-mode-hint {
+  color: #6b6052 !important;
+}
+/* Stamp: soft paper ink bar, not black/cyan gradient */
+body.session-ready:not(.is-guest-landing) .app-home-stamp-btn {
+  color: #2a241c !important;
+  background: #f0e6d6 !important;
+  border: 1px solid #d4c4a8 !important;
+  box-shadow: 0 2px 0 rgba(42, 36, 28, 0.06) !important;
+}
+body.session-ready:not(.is-guest-landing) .app-home-stamp-btn:hover
