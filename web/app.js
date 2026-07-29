@@ -1825,17 +1825,21 @@
     syncGuestLandingChrome();
   }
 
-  /** 게스트 랜딩(서류 톤) vs 앱 다크 UI — body/theme-color 동기화 */
+  /** 게스트 랜딩(서류 톤) vs 앱 UI — body/theme-color 동기화 */
   function syncGuestLandingChrome() {
     const guest = $("#guestHome");
     const homeActive = document.getElementById("view-home")?.classList.contains("active");
+    // only marketing home (and in-landing features/demo) keep guest cream chrome + free-fab
+    const landingViews = currentViewName === "home" || currentViewName === "features" || currentViewName === "demo";
     const showLanding =
       !!guest &&
       !guest.classList.contains("hidden") &&
-      !!homeActive;
+      !!homeActive &&
+      landingViews;
     document.body.classList.toggle("is-guest-landing", showLanding);
     const meta = document.getElementById("metaThemeColor");
-    if (meta) meta.setAttribute("content", showLanding ? "#F4F1EA" : "#030712");
+    // cream sitewide tokens — keep paper theme-color even in app views
+    if (meta) meta.setAttribute("content", showLanding ? "#F4F1EA" : "#F4F1EA");
   }
 
   function renderAppHome() {

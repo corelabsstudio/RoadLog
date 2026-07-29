@@ -989,8 +989,11 @@ img {
 .landing-hero {
   padding: 2.75rem 0 3rem;
   position: relative;
-  overflow: hidden;
+  overflow: hidden; /* clip photo scale / decorative bleed */
   border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+.landing-hero img {
+  max-width: 100%;
 }
 .landing-hero::before {
   content: "";
@@ -8115,7 +8118,8 @@ body.has-sticky-cta .free-fab {
 }
 
 /* App/logged-in views: free templates chip is landing-only (avoid covering stamps/CTAs) */
-body:not(.is-guest-landing) .free-fab {
+body:not(.is-guest-landing) .free-fab,
+body:has(.view.active:not(#view-home)) .free-fab {
   display: none !important;
   pointer-events: none !important;
   visibility: hidden !important;
