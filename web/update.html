@@ -42,7 +42,7 @@
     (async function () {
       const status = document.getElementById("status");
       const btn = document.getElementById("btn");
-      const BUILD = "20260729-deep-qa2";
+      const BUILD = "20260729-deep-qa3";
       function set(t) { status.textContent = t; }
 
       try {
@@ -63,12 +63,15 @@
 
         set("완료! 최신 화면으로 이동합니다…");
         setTimeout(function () {
-          location.replace("/?fresh=" + encodeURIComponent(BUILD));
+          var hash = location.hash || "";
+          location.replace("/?fresh=" + encodeURIComponent(BUILD) + hash);
         }, 600);
       } catch (err) {
         set("자동 정리에 실패했습니다. 아래 버튼으로 이동해 주세요.");
         btn.hidden = false;
-        btn.onclick = function () { location.href = "/?fresh=" + BUILD; };
+        btn.onclick = function () {
+          location.href = "/?fresh=" + BUILD + (location.hash || "");
+        };
       }
     })();
   </script>

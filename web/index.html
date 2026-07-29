@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <meta name="rl-build" content="20260729-deep-qa2" />
+  <meta name="rl-build" content="20260729-deep-qa3" />
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
@@ -11,7 +11,7 @@
   <!-- 옛 Service Worker 캐시에 묶인 경우: 빌드 번호이 바뀌면 캐시·SW 정리 후 1회 새로고침 -->
   <script>
     (function () {
-      var BUILD = "20260729-deep-qa2";
+      var BUILD = "20260729-deep-qa3";
       try {
         // 이 HTML 셸이 진실 — 이미 이 BUILD로 정착했으면 재시작 금지
         if (sessionStorage.getItem("rl_build_reloaded") === BUILD) {
@@ -39,12 +39,19 @@
           if (sessionStorage.getItem("rl_build_reloaded") === BUILD) return;
           sessionStorage.setItem("rl_build_reloaded", BUILD);
           var url = location.pathname + location.search;
+          // Keep deep-link hash (#create, #pricing, …) across cache bust reload
+          var hash = location.hash || "";
           if (url.indexOf("fresh=") === -1) {
             location.replace(
-              "/?fresh=" + encodeURIComponent(BUILD) + "&t=" + Date.now()
+              "/?fresh=" +
+                encodeURIComponent(BUILD) +
+                "&t=" +
+                Date.now() +
+                hash
             );
           } else {
             // fresh 파라미터가 있는데 BUILD가 안 맞으면 무한 reload 대신 정착
+            // still restore hash if present on this URL
             return;
           }
         };
@@ -130,7 +137,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sun-typeface/SUIT@2/fonts/variable/woff2/SUIT-Variable.css" />
   <!-- 영문 포인트 -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" />
-  <link rel="stylesheet" href="/styles.css?v=20260729-deep-qa2" />
+  <link rel="stylesheet" href="/styles.css?v=20260729-deep-qa3" />
 </head>
 <body class="session-checking is-guest-landing">
   <!-- NAV -->
@@ -1872,7 +1879,7 @@
   </div>
 
   <script src="/ui-sound.js?v=20260728-stamp-reflect"></script>
-  <script src="/app.js?v=20260729-deep-qa2"></script>
+  <script src="/app.js?v=20260729-deep-qa3"></script>
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
