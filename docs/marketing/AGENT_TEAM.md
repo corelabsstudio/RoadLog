@@ -1,7 +1,8 @@
 # RoadLog 마케팅 에이전트 팀 (Harness)
 
 > 빌더 조쉬형 구조: **Context → Template → SOP → 역할 분리 → 사람 승인 후 발행**  
-> 세팅이 품질을 결정한다. 한 요청 = **RoadLog only**.
+> 세팅이 품질을 결정한다. **한 글 = 한 브랜드** (로드로그 페이지에 WA 금지).  
+> **한 요청 = 한 제품 제한은 폐지** — 사용자가 둘 다 / 뉴스 올리면 제품별 파이프를 순서 실행.
 
 ---
 
@@ -10,7 +11,9 @@
 사용자가 아래처럼 말하면 이 하네스를 실행한다.
 
 - **「로드로그 마케팅」** / **「로드로그 SEO」** / **「로드로그 일일 마케팅」**
+- **「뉴스 올려」** (제품 미지정) → RoadLog 파이프 후 **WakeAgain SEO도 이어서** (별도 레포)
 - 스케줄: `news_digest/DAILY_SEO_PROMPT.md` 일일 발화
+
 
 ### 시작 시 읽을 파일 (순서)
 
@@ -42,8 +45,9 @@
 | 일일 SEO / 뉴스 | Research → SEO Writer → Review → (승인) Publisher |
 | 짧은 홍보 문구 3종 | Writer(카피) → Review → 사람에게 복붙용 출력 (자동 게시 안 함) |
 | 무료 서식 홍보 | CONTENT_PACK + resources CTA · 커뮤니티 장문 도배 금지 |
+| **X 일일 팩** | `docs/marketing/x/DAILY_X_PROMPT.md` — 생성만 · 이미지 포함 · 자동 게시 없음 |
 | ReachKit / 홍보 툴 | **이 팀 밖** → `tools/community_poster` 트리거로 분리 |
-| WakeAgain | **거절·전환** → WakeAgain 마케팅 하네스 |
+| WakeAgain SEO/풀홍보 | 사이트 SEO는 WA 하네스 · **X는 소프트만** (`x/STRATEGY.md`) |
 
 ---
 

@@ -65,6 +65,9 @@
 | 목록·sitemap | `web/blog/index.html`, `web/sitemap.xml` |
 | 짧은 홍보 | `CONTENT_PACK.md` 톤 / `Templates/short-social.md` |
 
-## 한 요청 = 한 제품
+## 브랜드 분리 (한 글 = 한 제품)
 
-이 Context로 작업할 때 **WakeAgain 콘텐츠를 만들지 않는다.**
+- **한 HTML·한 카피·한 SNS 캡션 안에는 RoadLog만.** WakeAgain 이름·링크를 섞지 않는다.
+- 사용자가 **둘 다 / 뉴스 올려**라고 하면 **요청 단위로는 두 제품 모두** 처리한다.  
+  이때는 RoadLog 작업 완료 후 WakeAgain 레포 파이프로 **이어서** 간다 (이 파일 Context를 WA 글에 재사용하지 말 것).
+- 로드로그만 명시되면 WakeAgain은 건드리지 않는다.
