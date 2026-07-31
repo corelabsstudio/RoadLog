@@ -28,6 +28,15 @@
 5. Review PASS 전 `git push` / 배포 금지
 6. ReachKit·WakeAgain 과 **섞지 말 것**
 
+### X 일일 자동 게시
+사용자가 **「X 마케팅」** / **「로드로그 X」** / **「일일 X 팩」** / **「X 자동 게시」** 라고 하면:
+
+1. 읽기: `docs/marketing/x/STRATEGY.md` · `AUTO_POST_SETUP.md`
+2. 실행: `scripts/x_auto_daily.py` (키: `.launch/x.env`)
+3. **RoadLog 풀** + **WakeAgain 소프트** (결제·성사 보장 금지)
+4. 키 없으면 게시 중단 + 세팅 안내 (비밀번호로 대신 로그인 금지)
+5. 성공 시 tweet id / META.json 보고
+
 ## 제품 요약
 
 - **로드로그 / RoadLog** — AI 운행·외근 일지 SaaS  

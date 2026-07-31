@@ -281,7 +281,8 @@ class SettingsBody(BaseModel):
 
 class ExportBody(BaseModel):
     log: dict[str, Any]
-    format: str  # excel | pdf | docx
+    # validate reuses this model; format only required for /api/export
+    format: str = "excel"  # excel | pdf | docx
 
 
 class StyleTextBody(BaseModel):
