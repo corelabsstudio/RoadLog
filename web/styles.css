@@ -6832,7 +6832,6 @@ body.is-guest-landing .landing-hero-scrim {
 body.is-guest-landing .landing-hero--photo .landing-hero-inner {
   position: relative;
   z-index: 2;
-  width: 100%;
 }
 body.is-guest-landing .landing-hero--photo .landing-hero-copy {
   max-width: 34rem;
