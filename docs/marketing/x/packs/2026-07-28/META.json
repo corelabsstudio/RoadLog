@@ -1,0 +1,27 @@
+{
+  "date": "2026-07-28",
+  "status": "posted",
+  "roadlog": true,
+  "wakeagain_soft": true,
+  "images": {
+    "roadlog": "images/roadlog.png",
+    "wakeagain_soft": "images/wakeagain_soft.png"
+  },
+  "posted": {
+    "roadlog": false,
+    "wakeagain": false
+  },
+  "notes": "User policy: WA soft only; generate-only automation",
+  "auto_post": {
+    "ok": true,
+    "date": "2026-07-28",
+    "roadlog": {
+      "dry": true,
+      "chars": 106
+    },
+    "wakeagain": {
+      "dry": true,
+      "chars": 111
+    }
+  }
+}

@@ -1,0 +1,1992 @@
+{
+  "results": [
+    {
+      "label": "RL",
+      "page": "home",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/?qa=deep",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -26,
+            "right": 1306,
+            "w": 1331,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 1087,
+            "y": 720,
+            "w": 176,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 1280,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 785,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 780,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "home",
+      "viewport": "laptop",
+      "url": "https://roadlog.co.kr/?qa=deep",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 1024,
+        "clientW": 1024,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -20,
+            "right": 1044,
+            "w": 1065,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 831,
+            "y": 620,
+            "w": 176,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 1024,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 685,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 680,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "home",
+      "viewport": "tablet",
+      "url": "https://roadlog.co.kr/?qa=deep",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 768,
+        "clientW": 768,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -15,
+            "right": 783,
+            "w": 799,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 580,
+            "y": 946,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 768,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 945,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 1007,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "home",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/?qa=deep",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -8,
+            "right": 398,
+            "w": 406,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 202,
+            "y": 766,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 390,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 765,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 827,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "home",
+      "viewport": "mobile-sm",
+      "url": "https://roadlog.co.kr/?qa=deep",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 360,
+        "clientW": 360,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -7,
+            "right": 367,
+            "w": 374,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 172,
+            "y": 662,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 360,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 661,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 723,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "resources",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/resources/",
+      "info": {
+        "title": "무료 운행일지 엑셀 서식 다운로드 | 로드로그",
+        "bodyClass": "blog-page",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 43,
+          "w": 238,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "resources",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/resources/",
+      "info": {
+        "title": "무료 운행일지 엑셀 서식 다운로드 | 로드로그",
+        "bodyClass": "blog-page",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 93,
+          "w": 227,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "blog",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/blog/",
+      "info": {
+        "title": "로드로그 가이드 · 운행일지 실무 작성법 | RoadLog",
+        "bodyClass": "blog-page blog-page--guide",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 43,
+          "w": 296,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "blog",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/blog/",
+      "info": {
+        "title": "로드로그 가이드 · 운행일지 실무 작성법 | RoadLog",
+        "bodyClass": "blog-page blog-page--guide",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 93,
+          "w": 243,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "news",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/blog/news/",
+      "info": {
+        "title": "로드로그 뉴스 브리핑 · 법인차·운행일지·세무 이슈",
+        "bodyClass": "blog-page blog-page--news",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 43,
+          "w": 296,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "news",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/blog/news/",
+      "info": {
+        "title": "로드로그 뉴스 브리핑 · 법인차·운행일지·세무 이슈",
+        "bodyClass": "blog-page blog-page--news",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 93,
+          "w": 243,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "guide-article",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/blog/corporate-vehicle-log.html",
+      "info": {
+        "title": "법인차 운행기록부, 일별로 끊기지 않게 쓰는 법 | 로드로그 가이드",
+        "bodyClass": "blog-page blog-page--guide",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 43,
+          "w": 296,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "guide-article",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/blog/corporate-vehicle-log.html",
+      "info": {
+        "title": "법인차 운행기록부, 일별로 끊기지 않게 쓰는 법 | 로드로그 가이드",
+        "bodyClass": "blog-page blog-page--guide",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "blog-nav-links",
+          "h": 93,
+          "w": 243,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "hash-create",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/#create",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -26,
+            "right": 1306,
+            "w": 1331,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 1087,
+            "y": 720,
+            "w": 176,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 1280,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 785,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 780,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "hash-create",
+      "viewport": "laptop",
+      "url": "https://roadlog.co.kr/#create",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 1024,
+        "clientW": 1024,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -20,
+            "right": 1044,
+            "w": 1065,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 831,
+            "y": 620,
+            "w": 176,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 1024,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 685,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 680,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "hash-create",
+      "viewport": "tablet",
+      "url": "https://roadlog.co.kr/#create",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 768,
+        "clientW": 768,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -15,
+            "right": 783,
+            "w": 799,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 580,
+            "y": 946,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 768,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 945,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 1007,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "hash-create",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/#create",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -8,
+            "right": 398,
+            "w": 406,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 202,
+            "y": 766,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 390,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 765,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 827,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "hash-create",
+      "viewport": "mobile-sm",
+      "url": "https://roadlog.co.kr/#create",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 360,
+        "clientW": 360,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -7,
+            "right": 367,
+            "w": 374,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 172,
+            "y": 662,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 360,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 661,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 723,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "RL",
+      "page": "hash-pricing",
+      "viewport": "desktop",
+      "url": "https://roadlog.co.kr/#pricing",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -26,
+            "right": 1306,
+            "w": 1331,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 1087,
+            "y": 720,
+            "w": 176,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 1280,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 785,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 780,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "RL",
+      "page": "hash-pricing",
+      "viewport": "mobile",
+      "url": "https://roadlog.co.kr/#pricing",
+      "info": {
+        "title": "로드로그 — AI 운행·외근 일지 | 회사 제출용 Excel·PDF·DOCX",
+        "bodyClass": "is-guest-landing session-ready",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -8,
+            "right": 398,
+            "w": 406,
+            "pos": "static"
+          }
+        ],
+        "fab": {
+          "text": "무료 서식 엑셀 3종 · 가입 없이",
+          "visible": true,
+          "clipped": false,
+          "box": {
+            "x": 202,
+            "y": 766,
+            "w": 171,
+            "h": 61
+          },
+          "z": "1000"
+        },
+        "nav": {
+          "tag": "HEADER",
+          "cls": "nav",
+          "h": 65,
+          "w": 390,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "toast",
+            "id": "toast",
+            "bottom": 765,
+            "h": 31
+          },
+          {
+            "cls": "free-fab",
+            "id": "navResources",
+            "bottom": 827,
+            "h": 61
+          }
+        ],
+        "build": "20260729-qa-fix",
+        "themeYard": false
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": [],
+      "menuOpen": {
+        "openClass": "nav-links open",
+        "h": 626,
+        "visible": true
+      }
+    },
+    {
+      "label": "WA",
+      "page": "home",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/?qa=deep",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "theme-yard motion-on hero-ready intro-done",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "A",
+            "id": "",
+            "cls": "skip-link",
+            "left": -999,
+            "right": -854,
+            "w": 145,
+            "pos": "absolute"
+          },
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -13,
+            "right": 1293,
+            "w": 1306,
+            "pos": "static"
+          }
+        ],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 36,
+          "w": 309,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "home",
+      "viewport": "laptop",
+      "url": "https://wakeagain.com/?qa=deep",
+      "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "label": "WA",
+      "page": "home",
+      "viewport": "tablet",
+      "url": "https://wakeagain.com/?qa=deep",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "theme-yard motion-on hero-ready intro-done",
+        "lang": "ko",
+        "scrollW": 768,
+        "clientW": 768,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "A",
+            "id": "",
+            "cls": "skip-link",
+            "left": -999,
+            "right": -854,
+            "w": 145,
+            "pos": "absolute"
+          },
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -8,
+            "right": 776,
+            "w": 783,
+            "pos": "static"
+          }
+        ],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 82,
+          "w": 217,
+          "ok": true,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "home",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/?qa=deep",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "theme-yard motion-on hero-ready intro-done",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "A",
+            "id": "",
+            "cls": "skip-link",
+            "left": -999,
+            "right": -854,
+            "w": 145,
+            "pos": "absolute"
+          },
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -4,
+            "right": 394,
+            "w": 398,
+            "pos": "static"
+          }
+        ],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "mobile-cta",
+            "id": "",
+            "bottom": 844,
+            "h": 71
+          }
+        ],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "home",
+      "viewport": "mobile-sm",
+      "url": "https://wakeagain.com/?qa=deep",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "theme-yard motion-on hero-ready intro-done",
+        "lang": "ko",
+        "scrollW": 360,
+        "clientW": 360,
+        "overflowX": false,
+        "offenders": [
+          {
+            "tag": "A",
+            "id": "",
+            "cls": "skip-link",
+            "left": -999,
+            "right": -854,
+            "w": 145,
+            "pos": "absolute"
+          },
+          {
+            "tag": "IMG",
+            "id": "",
+            "cls": "",
+            "left": -4,
+            "right": 364,
+            "w": 367,
+            "pos": "static"
+          }
+        ],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [
+          {
+            "cls": "mobile-cta",
+            "id": "",
+            "bottom": 740,
+            "h": 71
+          }
+        ],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "app",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/app/",
+      "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "label": "WA",
+      "page": "app",
+      "viewport": "laptop",
+      "url": "https://wakeagain.com/app/",
+      "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "label": "WA",
+      "page": "app",
+      "viewport": "tablet",
+      "url": "https://wakeagain.com/app/",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "app-body theme-yard",
+        "lang": "ko",
+        "scrollW": 768,
+        "clientW": 768,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "HEADER",
+          "cls": "app-top",
+          "h": 56,
+          "w": 768,
+          "ok": true,
+          "overflow": "hidden"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "app",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/app/",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "app-body theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "HEADER",
+          "cls": "app-top",
+          "h": 55,
+          "w": 390,
+          "ok": true,
+          "overflow": "hidden"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "app",
+      "viewport": "mobile-sm",
+      "url": "https://wakeagain.com/app/",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "app-body theme-yard",
+        "lang": "ko",
+        "scrollW": 360,
+        "clientW": 360,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "HEADER",
+          "cls": "app-top",
+          "h": 55,
+          "w": 360,
+          "ok": true,
+          "overflow": "hidden"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "sell",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/sell.html",
+      "info": {
+        "title": "내 프로젝트 올리기 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 36,
+          "w": 214,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "sell",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/sell.html",
+      "info": {
+        "title": "내 프로젝트 올리기 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "buy",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/buy.html",
+      "info": {
+        "title": "관심 구매자 등록 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 36,
+          "w": 214,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "buy",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/buy.html",
+      "info": {
+        "title": "관심 구매자 등록 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "guide",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/guide/",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 36,
+          "w": 190,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "guide",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/guide/",
+      "info": {
+        "title": "WakeAgain — 프로젝트에 두 번째 기회를 주세요.",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "blog",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/blog/",
+      "info": {
+        "title": "블로그 · 사이드 프로젝트 두 번째 기회 | WakeAgain",
+        "bodyClass": "wa-blog theme-yard",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "wa-blog-links",
+          "h": 39,
+          "w": 200,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "blog",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/blog/",
+      "info": {
+        "title": "블로그 · 사이드 프로젝트 두 번째 기회 | WakeAgain",
+        "bodyClass": "wa-blog theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "wa-blog-links",
+          "h": 39,
+          "w": 200,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "legal-terms",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/legal/terms.html",
+      "info": {
+        "title": "이용약관 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 1280,
+        "clientW": 1280,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 36,
+          "w": 151,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "legal-terms",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/legal/terms.html",
+      "info": {
+        "title": "이용약관 — WakeAgain",
+        "bodyClass": "form-body theme-yard",
+        "lang": "ko",
+        "scrollW": 390,
+        "clientW": 390,
+        "overflowX": false,
+        "offenders": [],
+        "fab": null,
+        "nav": {
+          "tag": "NAV",
+          "cls": "nav-links",
+          "h": 0,
+          "w": 0,
+          "ok": false,
+          "overflow": "visible"
+        },
+        "brokenImgs": [],
+        "hasMojibake": false,
+        "badBtns": [],
+        "fixedBottom": [],
+        "build": null,
+        "themeYard": true
+      },
+      "consoleErrs": [],
+      "pageErrs": [],
+      "failed": []
+    },
+    {
+      "label": "WA",
+      "page": "get-app",
+      "viewport": "desktop",
+      "url": "https://wakeagain.com/get-app.html",
+      "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "label": "WA",
+      "page": "get-app",
+      "viewport": "mobile",
+      "url": "https://wakeagain.com/get-app.html",
+      "error": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "label": "RL",
+      "page": "create-fab-state",
+      "viewport": "mobile",
+      "info": {
+        "body": "is-guest-landing session-ready",
+        "fab": {
+          "display": "flex",
+          "visibility": "visible",
+          "visible": true
+        },
+        "guest": true
+      },
+      "special": true
+    }
+  ],
+  "issues": [
+    {
+      "sev": "nav",
+      "where": "WA/home@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 36,
+        "w": 309,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "error",
+      "where": "WA/home@laptop",
+      "msg": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "sev": "nav",
+      "where": "WA/home@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/home@mobile-sm",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "error",
+      "where": "WA/app@desktop",
+      "msg": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "sev": "error",
+      "where": "WA/app@laptop",
+      "msg": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "sev": "nav",
+      "where": "WA/sell@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 36,
+        "w": 214,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/sell@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/buy@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 36,
+        "w": 214,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/buy@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/guide@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 36,
+        "w": 190,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/guide@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/blog@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "wa-blog-links",
+        "h": 39,
+        "w": 200,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/blog@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "wa-blog-links",
+        "h": 39,
+        "w": 200,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/legal-terms@desktop",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 36,
+        "w": 151,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "nav",
+      "where": "WA/legal-terms@mobile",
+      "msg": {
+        "tag": "NAV",
+        "cls": "nav-links",
+        "h": 0,
+        "w": 0,
+        "ok": false,
+        "overflow": "visible"
+      }
+    },
+    {
+      "sev": "error",
+      "where": "WA/get-app@desktop",
+      "msg": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    },
+    {
+      "sev": "error",
+      "where": "WA/get-app@mobile",
+      "msg": "Error: page.evaluate: Execution context was destroyed, most likely because of a navigation"
+    }
+  ],
+  "issueCount": 18
+}

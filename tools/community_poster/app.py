@@ -46,8 +46,11 @@ from product_config import (  # noqa: E402
     DISCLAIMER_SHORT,
     ICON_ICO,
     ICON_PNG,
+    PRODUCT_COMPANY,
     PRODUCT_DISPLAY_NAME,
     PRODUCT_NAME,
+    PRODUCT_RELEASE_NOTES,
+    PRODUCT_SUPPORT_EMAIL,
     PRODUCT_TAGLINE,
     PRODUCT_VERSION,
     STRUCTURE_SCAN_HINT,
@@ -56,6 +59,7 @@ from product_config import (  # noqa: E402
     support_label,
     weekly_plan_text,
 )
+from healthcheck import run_healthcheck  # noqa: E402
 from structure_scan import StructureScanResult, scan_site_structure  # noqa: E402
 from secure_store import decrypt_secret, prepare_password_for_save  # noqa: E402
 from site_analyzer import SiteProfile, analyze_site  # noqa: E402
@@ -66,7 +70,13 @@ from sites_recommend import (  # noqa: E402
     recommend_top,
 )
 from templates import get_template, get_template_for_profile, list_template_names  # noqa: E402
-from validation_log import log_post_attempt  # noqa: E402
+from validation_log import (  # noqa: E402
+    get_summary,
+    log_conversion,
+    log_post_attempt,
+    read_events,
+    summary_text,
+)
 
 from app_dialogs import (  # noqa: E402
     ask_confirm,
@@ -93,6 +103,7 @@ from ui_theme import (  # noqa: E402
 PROFILES_PATH = ROOT / "data" / "sites.json"
 CREDS_PATH = ROOT / "data" / "last_form.json"
 DISCLAIMER_FLAG = ROOT / "data" / ".disclaimer_accepted_v2"
+ONBOARDING_FLAG = ROOT / "data" / ".onboarding_done_v1"
 
 
 class App(tk.Tk):
@@ -121,19 +132,22 @@ class App(tk.Tk):
         self.var_board_url = tk.StringVar()
         self.var_board_name = tk.StringVar(value="(아직 없음 · 게시판 찾기로 고르기)")
         self.var_auto_pick = tk.BooleanVar(value=True)
-        self.var_validation = tk.BooleanVar(value=False)  # 결과 탭 제거 — 기록 UI 없음
+        self.var_validation = tk.BooleanVar(value=True)  # 성과 기록 기본 ON
         self.var_max_day = tk.IntVar(value=DEFAULT_MAX_POSTS_PER_DAY)
         self.var_cooldown = tk.IntVar(value=DEFAULT_COOLDOWN_MINUTES)
         self.var_stats_line = tk.StringVar(value="홈에서 ①②③ 만 하면 됩니다")
         self.var_next_hint = tk.StringVar(
             value="다음: ① 홍보할 내 사이트 주소를 넣고 「홍보글 만들기」를 누르세요"
         )
+        self.var_results_summary = tk.StringVar(value="성과 데이터를 불러오는 중…")
         self._build()
         self._load_last()
         self._refresh_stats_line()
         self._update_next_hint()
         self.after(200, self._maybe_show_disclaimer)
-        self._log(f"{PRODUCT_DISPLAY_NAME} 초간단 모드 — 홈에서 ①②③ 만 하면 됩니다.")
+        self._log(
+            f"{PRODUCT_DISPLAY_NAME} v{PRODUCT_VERSION} — 홈 ①②③ · 성과 탭 · 환경 점검 지원"
+        )
 
     def _apply_app_icon(self) -> None:
         """전문 앱 아이콘 (ico/png) 적용."""
@@ -202,7 +216,7 @@ class App(tk.Tk):
         ttk.Label(brand_row, text=f"  v{PRODUCT_VERSION}", style="HeaderMuted.TLabel").pack(
             side=tk.LEFT, padx=(4, 0), pady=(4, 0)
         )
-        ttk.Label(brand_row, text="  ·  초간단", style="HeaderMuted.TLabel").pack(
+        ttk.Label(brand_row, text="  ·  1.0", style="HeaderMuted.TLabel").pack(
             side=tk.LEFT, padx=(2, 0), pady=(4, 0)
         )
 
@@ -216,6 +230,12 @@ class App(tk.Tk):
         head_right.pack(side=tk.RIGHT)
         ttk.Button(
             head_right, text="사용 방법", style="Header.TButton", command=self._show_help
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            head_right, text="환경 점검", style="Header.TButton", command=self._show_healthcheck
+        ).pack(side=tk.LEFT, padx=2)
+        ttk.Button(
+            head_right, text="정보", style="Header.TButton", command=self._show_about
         ).pack(side=tk.LEFT, padx=2)
         ttk.Button(
             head_right, text="이용 안내", style="Header.TButton", command=self._show_disclaimer_only
@@ -248,6 +268,7 @@ class App(tk.Tk):
 
         nav_items = [
             ("home", "◉  홈", "초간단 3단계"),
+            ("results", "▣  성과", "성공률 · 메모"),
             ("write", "⚙  자세히", "고급 · 필요할 때만"),
         ]
         for key, title, sub in nav_items:
@@ -272,6 +293,18 @@ class App(tk.Tk):
             text="？  사용 방법",
             style="Nav.TButton",
             command=self._show_help,
+        ).pack(fill=tk.X, pady=1)
+        ttk.Button(
+            side_inner,
+            text="✓  환경 점검",
+            style="Nav.TButton",
+            command=self._show_healthcheck,
+        ).pack(fill=tk.X, pady=1)
+        ttk.Button(
+            side_inner,
+            text="ⓘ  제품 정보",
+            style="Nav.TButton",
+            command=self._show_about,
         ).pack(fill=tk.X, pady=1)
 
         ttk.Frame(side_inner, style="Sidebar.TFrame").pack(fill=tk.BOTH, expand=True)
@@ -303,6 +336,7 @@ class App(tk.Tk):
         pages_host.pack(fill=tk.BOTH, expand=True)
 
         self._pages["home"] = self._build_page_home(pages_host)
+        self._pages["results"] = self._build_page_results(pages_host)
         self._pages["write"] = self._build_page_write(pages_host)
         # 하위 호환 별칭
         self._pages["overview"] = self._pages["home"]
@@ -378,6 +412,11 @@ class App(tk.Tk):
         if key == "home":
             try:
                 self._update_next_hint()
+            except Exception:
+                pass
+        if key == "results":
+            try:
+                self._refresh_results_page()
             except Exception:
                 pass
 
@@ -550,6 +589,127 @@ class App(tk.Tk):
             self.var_next_hint.set(
                 "다음: ③ 「브라우저에서 글 쓰기」→ 내용 확인 후 올리기는 직접"
             )
+
+    def _build_page_results(self, parent: ttk.Frame) -> ttk.Frame:
+        """성과 — 시도/성공률/전환 메모 (이 컴퓨터에만 저장)."""
+        wrap, _canvas, frm = self._make_scroll_page(parent)  # type: ignore[misc]
+        pad = {"padx": 0, "pady": (0, 12)}
+
+        head = make_card(frm, "성과 대시보드", None)
+        head.pack(fill=tk.X, **pad)
+        ttk.Label(
+            head,
+            text="올린 시도·성공률·가입/문의 메모를 이 컴퓨터에만 기록합니다. 밖으로 보내지 않습니다.",
+            style="SurfaceMuted.TLabel",
+            wraplength=720,
+        ).pack(anchor=tk.W)
+        row = ttk.Frame(head)
+        row.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(
+            row, text="새로고침", style="Accent.TButton", command=self._refresh_results_page
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(
+            row, text="이번 주 올릴 곳 3곳", command=self._show_weekly_channels
+        ).pack(side=tk.LEFT, padx=(0, 8))
+        ttk.Button(
+            row, text="← 홈으로", command=lambda: self._show_page("home")
+        ).pack(side=tk.LEFT)
+
+        sum_card = make_card(frm, "요약", None)
+        sum_card.pack(fill=tk.X, **pad)
+        self.lbl_results_summary = ttk.Label(
+            sum_card,
+            textvariable=self.var_results_summary,
+            style="Surface.TLabel",
+            wraplength=720,
+            justify=tk.LEFT,
+        )
+        self.lbl_results_summary.pack(anchor=tk.W)
+
+        log_card = make_card(frm, "최근 기록", None)
+        log_card.pack(fill=tk.BOTH, expand=True, **pad)
+        self.txt_results_log = scrolledtext.ScrolledText(
+            log_card, wrap=tk.WORD, height=12, font=self._F["body"]
+        )
+        style_text_widget(self.txt_results_log)
+        self.txt_results_log.pack(fill=tk.BOTH, expand=True)
+
+        conv = make_card(frm, "가입·문의 메모 남기기", None)
+        conv.pack(fill=tk.X, **pad)
+        ttk.Label(
+            conv,
+            text="반응·가입·문의가 있으면 한 줄로 남기세요. (예: 블로그 댓글 문의 1건)",
+            style="SurfaceMuted.TLabel",
+            wraplength=720,
+        ).pack(anchor=tk.W)
+        self.ent_conversion = ttk.Entry(conv, font=self._F["body"])
+        self.ent_conversion.pack(fill=tk.X, pady=(8, 6))
+        ttk.Button(
+            conv,
+            text="메모 저장",
+            style="Accent.TButton",
+            command=self._save_conversion_note,
+        ).pack(anchor=tk.W)
+
+        return wrap
+
+    def _refresh_results_page(self) -> None:
+        try:
+            self.var_results_summary.set(summary_text())
+        except Exception as e:
+            self.var_results_summary.set(f"요약 로드 실패: {e}")
+        if not hasattr(self, "txt_results_log"):
+            return
+        self.txt_results_log.configure(state=tk.NORMAL)
+        self.txt_results_log.delete("1.0", tk.END)
+        rows = list(reversed(read_events(80)))
+        if not rows:
+            self.txt_results_log.insert(
+                "1.0",
+                "아직 기록이 없습니다.\n홈에서 ③ 브라우저 글 쓰기를 하면 여기에 쌓입니다.",
+            )
+        else:
+            lines = []
+            for e in rows[:40]:
+                at = e.get("at") or "-"
+                typ = e.get("type") or "?"
+                if typ == "post_attempt":
+                    ok = "성공" if e.get("ok") else "실패"
+                    title = (e.get("title") or "")[:40]
+                    board = (e.get("board_name") or e.get("community_url") or "")[:40]
+                    lines.append(f"{at}  [{ok}]  {board}  ·  {title}")
+                    if e.get("message"):
+                        lines.append(f"    └ {(e.get('message') or '')[:80]}")
+                elif typ == "conversion":
+                    lines.append(f"{at}  [가입·문의]  {e.get('note', '')}")
+                else:
+                    lines.append(f"{at}  [{typ}]  {e.get('note', e.get('message', ''))}")
+            self.txt_results_log.insert("1.0", "\n".join(lines))
+        self.txt_results_log.configure(state=tk.DISABLED)
+        try:
+            s = get_summary()
+            self.var_stats_line.set(
+                f"시도 {s.get('post_attempts', 0)} · 성공률 {s.get('success_rate_pct', 0)}%"
+                f"  ·  v{PRODUCT_VERSION}"
+            )
+        except Exception:
+            self._refresh_stats_line()
+
+    def _save_conversion_note(self) -> None:
+        note = ""
+        if hasattr(self, "ent_conversion"):
+            note = (self.ent_conversion.get() or "").strip()
+        if not note:
+            show_message(self, "메모", "남길 내용을 입력하세요.", kind="warn")
+            return
+        try:
+            log_conversion(note)
+            self.ent_conversion.delete(0, tk.END)
+            self._refresh_results_page()
+            self._log(f"가입·문의 메모 저장: {note[:60]}")
+            show_message(self, "저장", "메모를 저장했습니다.", kind="info")
+        except Exception as e:
+            show_message(self, "오류", f"저장 실패: {e}", kind="error")
 
     def _build_page_write(self, parent: ttk.Frame) -> ttk.Frame:
         """자세히(고급) — 중복 없이 카드 3개 + 하단 액션 1줄."""
@@ -1135,9 +1295,136 @@ class App(tk.Tk):
         ttk.Button(bf, text="닫기", command=win.destroy).pack(side=tk.RIGHT)
 
     def _maybe_show_disclaimer(self) -> None:
-        if DISCLAIMER_FLAG.exists():
+        if not DISCLAIMER_FLAG.exists():
+            self._show_disclaimer_only(force_accept=True)
             return
-        self._show_disclaimer_only(force_accept=True)
+        self.after(100, self._maybe_show_onboarding)
+
+    def _maybe_show_onboarding(self) -> None:
+        if ONBOARDING_FLAG.exists():
+            return
+        self._show_onboarding()
+
+    def _show_onboarding(self) -> None:
+        win = tk.Toplevel(self)
+        frm = style_window(
+            win,
+            self,
+            title=f"환영합니다 · {PRODUCT_DISPLAY_NAME} {PRODUCT_VERSION}",
+            geometry="620x520",
+            modal=True,
+            minsize=(480, 400),
+        )
+        ttk.Label(
+            frm,
+            text="3분이면 첫 홍보 루틴을 끝낼 수 있습니다",
+            style="App.TLabel",
+        ).pack(anchor=tk.W, pady=(0, 8))
+        body = (
+            "① 홈에서 내 사이트 주소를 넣고 「홍보글 만들기」\n"
+            "② 올릴 곳 주소(또는 「올릴 곳 고르기」) + 계정\n"
+            "③ 「브라우저에서 글 쓰기」→ 내용 확인 → 올리기는 직접\n\n"
+            "· 캡차·가입 인증은 직접 합니다 (자동 우회 없음)\n"
+            "· 도배·같은 글 복붙은 가드레일이 막습니다\n"
+            "· 성과 탭에서 성공률·가입/문의 메모를 봅니다\n"
+            "· 상단「환경 점검」으로 설치 상태를 확인하세요\n\n"
+            f"{PRODUCT_RELEASE_NOTES}"
+        )
+        txt = scrolledtext.ScrolledText(frm, wrap=tk.WORD, font=self._F["body"], height=16)
+        style_text_widget(txt)
+        txt.pack(fill=tk.BOTH, expand=True)
+        txt.insert("1.0", body)
+        txt.configure(state=tk.DISABLED)
+
+        def done(go_home: bool = True) -> None:
+            try:
+                ONBOARDING_FLAG.parent.mkdir(parents=True, exist_ok=True)
+                ONBOARDING_FLAG.write_text(PRODUCT_VERSION, encoding="utf-8")
+            except Exception:
+                pass
+            win.destroy()
+            if go_home:
+                self._show_page("home")
+                try:
+                    self.btn_analyze.focus_set()
+                except Exception:
+                    pass
+
+        bf = ttk.Frame(frm)
+        bf.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(
+            bf, text="환경 점검 먼저", command=lambda: (done(False), self._show_healthcheck())
+        ).pack(side=tk.LEFT)
+        ttk.Button(
+            bf, text="홈에서 시작", style="Accent.TButton", command=lambda: done(True)
+        ).pack(side=tk.RIGHT)
+
+    def _show_healthcheck(self) -> None:
+        report = run_healthcheck()
+        win = tk.Toplevel(self)
+        frm = style_window(
+            win,
+            self,
+            title="환경 점검",
+            geometry="640x520",
+            modal=True,
+            minsize=(480, 360),
+        )
+        ttk.Label(
+            frm,
+            text="전체 통과" if report.ok else "일부 보완이 필요합니다",
+            style="App.TLabel",
+        ).pack(anchor=tk.W, pady=(0, 8))
+        txt = scrolledtext.ScrolledText(frm, wrap=tk.WORD, font=self._F["mono"] if "mono" in self._F else self._F["body"], height=18)
+        style_text_widget(txt)
+        txt.pack(fill=tk.BOTH, expand=True)
+        txt.insert("1.0", report.text())
+        if not report.ok:
+            txt.insert(
+                tk.END,
+                "\n\n설치 명령 (PowerShell):\n"
+                f"  powershell -ExecutionPolicy Bypass -File \"{ROOT / 'setup_reachkit.ps1'}\"",
+            )
+        txt.configure(state=tk.DISABLED)
+        bf = ttk.Frame(frm)
+        bf.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(bf, text="닫기", style="Accent.TButton", command=win.destroy).pack(side=tk.RIGHT)
+        self._log("환경 점검: " + ("통과" if report.ok else "보완 필요"))
+
+    def _show_about(self) -> None:
+        win = tk.Toplevel(self)
+        frm = style_window(
+            win,
+            self,
+            title="제품 정보",
+            geometry="560x420",
+            modal=True,
+            minsize=(420, 320),
+        )
+        body = (
+            f"{PRODUCT_DISPLAY_NAME} (ReachKit)\n"
+            f"버전  {PRODUCT_VERSION}\n"
+            f"제작  {PRODUCT_COMPANY}\n"
+            f"문의  {PRODUCT_SUPPORT_EMAIL}\n\n"
+            f"{PRODUCT_TAGLINE}\n\n"
+            f"{PRODUCT_RELEASE_NOTES}\n\n"
+            "이 프로그램이 하는 일\n"
+            "· 사이트 분석 → 홍보 문구\n"
+            "· 채널·게시판 안내\n"
+            "· 브라우저 글 쓰기 보조 (올리기는 직접)\n"
+            "· 가드레일 · 로컬 성과 기록\n\n"
+            "하지 않는 일\n"
+            "· 캡차 우회 · 무인 대량 도배 · 게시 성공 보장\n\n"
+            f"설치 폴더\n{ROOT}"
+        )
+        txt = scrolledtext.ScrolledText(frm, wrap=tk.WORD, font=self._F["body"], height=16)
+        style_text_widget(txt)
+        txt.pack(fill=tk.BOTH, expand=True)
+        txt.insert("1.0", body)
+        txt.configure(state=tk.DISABLED)
+        bf = ttk.Frame(frm)
+        bf.pack(fill=tk.X, pady=(10, 0))
+        ttk.Button(bf, text="닫기", style="Accent.TButton", command=win.destroy).pack(side=tk.RIGHT)
 
     def _show_disclaimer_only(self, force_accept: bool = False) -> None:
         win = tk.Toplevel(self)
@@ -1162,6 +1449,7 @@ class App(tk.Tk):
             except Exception:
                 pass
             win.destroy()
+            self.after(100, self._maybe_show_onboarding)
 
         bf = ttk.Frame(frm)
         bf.pack(fill=tk.X, pady=(10, 0))

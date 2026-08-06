@@ -13,10 +13,16 @@ PRODUCT_NAME = "리치킷"  # 정식 표시명 (UI 100% 한글)
 PRODUCT_NAME_EN = "ReachKit"  # 파일·내부 식별용 (UI 비표시)
 PRODUCT_NAME_KO = "리치킷"
 PRODUCT_DISPLAY_NAME = "리치킷"  # UI·바로가기 표시명
-PRODUCT_VERSION = "0.5.3"
+PRODUCT_VERSION = "1.0.0"
+PRODUCT_STATUS = "release"  # release | beta
 PRODUCT_TAGLINE = "3단계로 홍보 글 올리기"
 PRODUCT_TAGLINE_EN = "AI-powered analyze · write · reach — with community guardrails."
 PRODUCT_COMPANY = "코어랩스"
+PRODUCT_SUPPORT_EMAIL = "corelabs.studio@gmail.com"
+PRODUCT_RELEASE_NOTES = (
+    "1.0.0 — 판매·양도 가능한 제품 패키지. "
+    "원클릭 설치, 환경 점검, 성과 대시보드, 첫 실행 가이드, 포터블 실행 지원."
+)
 
 _ASSETS = _Path(__file__).resolve().parent / "assets"
 ICON_ICO = _ASSETS / "icon.ico"

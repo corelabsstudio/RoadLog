@@ -28,14 +28,16 @@
 5. Review PASS 전 `git push` / 배포 금지
 6. ReachKit·WakeAgain 과 **섞지 말 것**
 
-### X 일일 자동 게시
+### X 일일 자동 게시 (⚠️ 미구현)
 사용자가 **「X 마케팅」** / **「로드로그 X」** / **「일일 X 팩」** / **「X 자동 게시」** 라고 하면:
 
-1. 읽기: `docs/marketing/x/STRATEGY.md` · `AUTO_POST_SETUP.md`
-2. 실행: `scripts/x_auto_daily.py` (키: `.launch/x.env`)
-3. **RoadLog 풀** + **WakeAgain 소프트** (결제·성사 보장 금지)
-4. 키 없으면 게시 중단 + 세팅 안내 (비밀번호로 대신 로그인 금지)
-5. 성공 시 tweet id / META.json 보고
+**2026-07-31 기준, 아래 파일들이 실제로 존재하지 않는다** (`docs/marketing/x/STRATEGY.md`, `AUTO_POST_SETUP.md`, `scripts/x_auto_daily.py` — git 히스토리 전체를 확인해도 생성된 적 없음). `docs/marketing/x/packs/`에 날짜별 산출물 폴더(`2026-07-28`, `2026-07-30`, `2026-07-31`)만 존재하며, 그 산출물이 어떤 프로세스로 만들어졌는지는 문서화되어 있지 않다.
+
+트리거가 발동되면 **자동화가 없다는 사실을 사용자에게 먼저 안내**하고, 아래 중 어느 쪽으로 진행할지 확인한다:
+1. `docs/marketing/x/packs/` 기존 산출물 방식을 참고해 수동으로 오늘 자 콘텐츠 팩을 만든다, 또는
+2. `scripts/x_auto_daily.py` 자동화 스크립트를 새로 구현한다
+
+(원래 의도했던 사양: 실행 시 `.launch/x.env`의 키 사용, **RoadLog 풀** + **WakeAgain 소프트** 톤(결제·성사 보장 금지 문구), 키 없으면 게시 중단+세팅 안내(비밀번호 대신 로그인 금지), 성공 시 tweet id/META.json 보고 — 새로 구현 시 참고.)
 
 ## 제품 요약
 

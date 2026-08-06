@@ -1,0 +1,129 @@
+{
+  "issues": [],
+  "notes": [
+    {
+      "step": "RL menu toggle",
+      "toggled": true,
+      "menuOpen": {
+        "open": true,
+        "h": 626,
+        "display": "flex"
+      }
+    },
+    {
+      "step": "RL click pricing",
+      "st": {
+        "hash": "#pricing",
+        "active": "view-pricing",
+        "fab": false,
+        "guest": false
+      }
+    },
+    {
+      "step": "RL click create",
+      "st": {
+        "hash": "#create",
+        "active": "view-create",
+        "fab": false,
+        "guest": false
+      }
+    },
+    {
+      "step": "RL auth",
+      "auth": {
+        "open": true,
+        "display": "flex",
+        "vis": "visible"
+      }
+    },
+    {
+      "step": "RL fab click",
+      "url": "https://roadlog.co.kr/resources/",
+      "fabHref": "/resources/"
+    },
+    {
+      "step": "WA register tab",
+      "reg": {
+        "exists": true,
+        "hidden": true,
+        "display": "none"
+      },
+      "shell": {
+        "appTop": true,
+        "formLogin": true,
+        "loginEmail": true,
+        "loginPass": true,
+        "body": "app-body theme-yard",
+        "title": "WakeAgain App",
+        "panels": 11
+      }
+    },
+    {
+      "step": "WA home ctas",
+      "ctas": {
+        "hasApp": true,
+        "hasSell": true,
+        "themeYard": true,
+        "overflowX": false
+      }
+    },
+    {
+      "step": "WA guide hub",
+      "hub": [
+        {
+          "text": "올리기 → 검수 → 성사 → 이전 → 정산",
+          "spanH": 20,
+          "spanW": 316,
+          "imgBottom": 454,
+          "spanTop": 500,
+          "overlap": false,
+          "aOverflow": false
+        },
+        {
+          "text": "둘러보기 → 입찰 → 결제 → 인수",
+          "spanH": 20,
+          "spanW": 316,
+          "imgBottom": 790,
+          "spanTop": 836,
+          "overlap": false,
+          "aOverflow": false
+        },
+        {
+          "text": "사이트 안 결제 · 하지 말 것 / 할 것",
+          "spanH": 20,
+          "spanW": 316,
+          "imgBottom": 1126,
+          "spanTop": 1172,
+          "overlap": false,
+          "aOverflow": false
+        },
+        {
+          "text": "매물 목록 · 입찰 · 관심",
+          "spanH": 20,
+          "spanW": 316,
+          "imgBottom": 1462,
+          "spanTop": 1508,
+          "overlap": false,
+          "aOverflow": false
+        }
+      ]
+    },
+    {
+      "step": "RL resources links",
+      "links": [
+        "/assets/templates/roadlog-driving-log-templates.xlsx",
+        "/assets/templates/01_기본형_운행일지.xlsx",
+        "/assets/templates/01_기본형_운행일지.docx",
+        "/assets/templates/02_간단형_운행일지.xlsx",
+        "/assets/templates/02_간단형_운행일지.docx",
+        "/assets/templates/03_상세형_누적거리.xlsx",
+        "/assets/templates/03_상세형_누적거리.docx",
+        "/assets/templates/04_영업외근형.xlsx",
+        "/assets/templates/04_영업외근형.docx",
+        "/assets/templates/05_현장공사형.xlsx",
+        "/assets/templates/05_현장공사형.docx"
+      ]
+    }
+  ],
+  "issueCount": 0
+}

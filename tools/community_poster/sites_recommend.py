@@ -122,7 +122,7 @@ RECOMMENDED_SITES: list[dict[str, Any]] = [
         "login_url": "https://www.ppomppu.co.kr/login.php",
         "write_url": "",
         "audience": "일반·직장인",
-        "why": "정보 게시판 유입. 가성비(Pro 2,900원) 메시지와 맞음.",
+        "why": "정보 게시판 유입. Pro 정상가 메시지와 맞음.",
         "tip": "정보·사용기 형식. 가격·무료 체험 먼저.",
         "caution": "홍보 규정 엄격한 게시판 많음. 반드시 확인.",
     },

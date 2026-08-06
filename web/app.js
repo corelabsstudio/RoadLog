@@ -6558,22 +6558,14 @@
     }
   }
 
-  function downloadReportPng() {
-    const data = state.lastReportSummary;
-    if (!data || !state.token) {
-      toast("먼저 요약을 불러와 주세요");
-      return;
-    }
+  function buildReportShareCanvas(data) {
     const W = 1080;
     const H = 1350;
     const canvas = document.createElement("canvas");
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      toast("이미지 생성을 지원하지 않는 환경입니다");
-      return;
-    }
+    if (!ctx) return null;
     // cream paper share card (not neon SaaS)
     ctx.fillStyle = "#efe6d6";
     ctx.fillRect(0, 0, W, H);
@@ -6684,6 +6676,20 @@
     ctx.font = "500 16px Malgun Gothic, sans-serif";
     ctx.fillText("roadlog.co.kr · CoreLabs", pad + 48, H - pad - 36);
 
+    return canvas;
+  }
+
+  function downloadReportPng() {
+    const data = state.lastReportSummary;
+    if (!data || !state.token) {
+      toast("먼저 요약을 불러와 주세요");
+      return;
+    }
+    const canvas = buildReportShareCanvas(data);
+    if (!canvas) {
+      toast("이미지 생성을 지원하지 않는 환경입니다");
+      return;
+    }
     canvas.toBlob((blob) => {
       if (!blob) {
         toast("이미지 저장 실패");
@@ -6699,6 +6705,65 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(href), 2000);
       toast("이미지를 저장했습니다");
+    }, "image/png");
+  }
+
+  function shareReportCard() {
+    const data = state.lastReportSummary;
+    if (!data || !state.token) {
+      toast("먼저 요약을 불러와 주세요");
+      return;
+    }
+    const canvas = buildReportShareCanvas(data);
+    if (!canvas) {
+      toast("이미지 생성을 지원하지 않는 환경입니다");
+      return;
+    }
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        toast("이미지 생성 실패");
+        return;
+      }
+      const p = data.period || "summary";
+      const file = new File([blob], `RoadLog_업무요약_${p}.png`, {
+        type: "image/png",
+      });
+      const shareText = `이번 ${
+        data.period_label || "기간"
+      } ${data.total_distance_km ?? 0}km 운행 · ${
+        data.total_logs ?? 0
+      }건 정리 완료! RoadLog로 자동 정리했어요.`;
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "RoadLog 업무 요약",
+            text: shareText + " roadlog.co.kr",
+          });
+          return;
+        } catch (err) {
+          if (err && err.name === "AbortError") return;
+          // fall through to fallback below
+        }
+      }
+      // Desktop / unsupported fallback: download image + open a text-share intent
+      const a = document.createElement("a");
+      const href = URL.createObjectURL(blob);
+      a.href = href;
+      a.download = `RoadLog_업무요약_${p}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 2000);
+      toast("이미지를 저장했어요. X·Threads에 이미지를 첨부해 올려보세요");
+      const intentText = encodeURIComponent(
+        shareText + "\nhttps://roadlog.co.kr"
+      );
+      window.open(
+        `https://twitter.com/intent/tweet?text=${intentText}`,
+        "_blank",
+        "noopener"
+      );
     }, "image/png");
   }
 
@@ -6730,6 +6795,7 @@
       downloadReportFile("xlsx")
     );
     $("#btnReportPng")?.addEventListener("click", () => downloadReportPng());
+    $("#btnReportShare")?.addEventListener("click", () => shareReportCard());
     $("#btnReportCopy")?.addEventListener("click", async () => {
       const text = $("#reportTextBox")?.textContent || "";
       if (!text.trim() || text.includes("불러오는 중") || text.includes("로그인")) {

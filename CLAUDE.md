@@ -30,6 +30,34 @@
 - `ExportBody.format` 기본값 (`validate` 재사용)  
 - `AGENTS.md` X 일일 팩 트리거 문서화  
 
+## 아키텍처
+
+- `server.py` — FastAPI 앱, 실제 프로덕션 진입점.
+- `modules/` — 도메인 로직: `auth`, `db`, `generator`, `validator`, `export`, `admin`, `enterprise`, `notify`, `rate_limit`, `reviews`, `style_learn`, `styles`, `user_config`, `config_manager`.
+- `web/` — SPA/PWA 프런트엔드 (실제 서비스 UI).
+- `scripts/` — 운영/QA/마케팅 스크립트.
+- `docs/` — SAVE_POINT, 마케팅 문서 등.
+- ⚠️ **`app.py` / `pages/` 는 레거시 Streamlit 잔재이며 프로덕션에서 쓰이지 않는다.** 신규 작업은 `server.py` + `web/` 쪽에서 할 것 — 실수로 죽은 Streamlit 코드를 고치지 말 것.
+
+## QA / 테스트
+
+```bash
+python scripts/qa_check.py          # 정적 QA 체크
+python scripts/check_security.py    # 보안 정적 체크 (서버 불필요)
+python scripts/smoke_http.py <url>  # HTTP 스모크 테스트
+python scripts/_roadlog_suite_test.py         # 로컬 mock 기반 전체 E2E 스위트 (가장 가까운 "테스트" 명령)
+python scripts/_roadlog_suite_test.py --live  # 라이브 대상 read-only 프로브
+```
+
+단일 테스트만 골라 실행하는 옵션은 없다 (스위트 단위 실행만 가능).
+
+## 환경 설정
+
+`.env.example` → `.env` 복사 후 채울 것. 주요 변수: `APP_SECRET`, `COST_MODE`, `OPENAI_API_KEY`, `SUPABASE_URL`/`SUPABASE_KEY`, `DATA_DIR`, `ADMIN_USERNAME`/`ADMIN_PASSWORD`.
+
+- **`DATA_DIR`는 반드시 영속 볼륨을 가리켜야 한다** — 아니면 재배포 시 데이터가 유실된다.
+- 로컬 확인용 엔드포인트: `/api/health`, `/docs` (OpenAPI).
+
 ## 작업 방식 (사용자 강제)
 
 1. **말한 것만**  
@@ -53,13 +81,14 @@
 |----|------|
 | 로드로그 이어서 / RoadLog 이어서 | SAVE_POINT + 라이브 이어서 |
 | 로드로그 SEO / 일일 마케팅 | Research→Writer→Review→Publisher |
-| X 마케팅 / 일일 X 팩 | `docs/marketing/x/*` · `scripts/x_auto_daily.py` |
+| X 마케팅 / 일일 X 팩 | ⚠️ **미구현** — `scripts/x_auto_daily.py` 등 관련 파일 없음, 상세는 `AGENTS.md` 참고 |
 | 홍보 이어서 / ReachKit | `tools/community_poster/SAVE_POINT.md` |
 
 ## 배포 습관
 
 - 프론트 변경 시 `scripts/bump_build.py` 로 빌드 번호 정합 (관례)  
 - `main` push 후 `https://roadlog.co.kr/api/health` 확인  
+- Railway 배포는 push 시 자동 트리거되며, CLI로 수동 트리거해야 할 경우 `.launch/railway.token` + GraphQL `serviceInstanceDeployV2` 사용 (`AGENTS.md` 참고)  
 - Railway CLI 미로그인 시 GitHub 연동 배포 상태(`gh` commit status)로 확인 가능  
 
 ## 언어
