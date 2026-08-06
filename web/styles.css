@@ -7850,6 +7850,12 @@ body.is-guest-landing .landing-hero-photo img {
   transform-origin: center center;
   filter: saturate(0.95) contrast(1.04) brightness(1.02) !important;
 }
+/* Mouse-follow parallax: JS-gated (hover+pointer:fine, motion not reduced) — scale up first so the pan never reveals an edge */
+body.is-guest-landing .landing-hero-photo img.rl-hero-mouse {
+  transform: scale(1.1) translate3d(var(--hero-mx, 0px), var(--hero-my, 0px), 0) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
 body.is-guest-landing .landing-hero-scrim {
   background:
     /* left: copy legibility */
