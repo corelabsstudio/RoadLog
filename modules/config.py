@@ -206,7 +206,7 @@ BUSINESS_ADDRESS = _get_secret(
     "BUSINESS_ADDRESS",
     "강원특별자치도 춘천시 세실로192번길 8-3\n1층 왼쪽 상가(후평동)",
 )
-MAIL_ORDER_REG_NO = _get_secret("MAIL_ORDER_REG_NO", "")
+MAIL_ORDER_REG_NO = _get_secret("MAIL_ORDER_REG_NO", "제2026-강원춘천-0553호")  # 2026-08-18 춘천시 신고
 
 # 색상 팔레트
 COLORS = {
