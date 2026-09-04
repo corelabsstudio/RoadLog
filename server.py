@@ -1531,6 +1531,12 @@ def _verify_payment(payment_id: str) -> dict:
     return data
 
 
+@app.get("/api/lamps/ready")
+def lamps_ready():
+    """결제 확인용 시크릿이 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다."""
+    return {"portone_secret_set": bool(PORTONE_API_SECRET)}
+
+
 @app.get("/api/lamps")
 def lamps_status(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
