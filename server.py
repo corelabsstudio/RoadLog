@@ -9,6 +9,7 @@ FastAPI + 정적 프론트엔드 + 기존 modules 재사용
 from __future__ import annotations
 
 import json
+import os
 import re
 import secrets
 from datetime import datetime, timezone
@@ -95,6 +96,7 @@ from modules.rate_limit import (
 )
 from modules.validator import validate_log
 from modules import notify as notify_ops
+from modules import lamps as lamps_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -1490,6 +1492,81 @@ def _file_response(path: Path) -> FileResponse:
     if media:
         return FileResponse(path, media_type=media, headers=headers or None)
     return FileResponse(path, headers=headers or None)
+
+
+
+# ── 등불(선불 재화) ────────────────────────────────────
+# 사주 리포트를 여는 데 쓰는 사내 재화. 등불 1개 = 100원.
+# 생년월일은 서버로 오지 않는다 — 어떤 두 사람인지는 브라우저가 만든 해시로만 구분한다.
+
+PORTONE_API_SECRET = (os.environ.get("PORTONE_API_SECRET") or "").strip()
+
+
+class ChargeBody(BaseModel):
+    paymentId: str
+
+
+class OpenBody(BaseModel):
+    product: str
+    pair: str
+
+
+def _verify_payment(payment_id: str) -> dict:
+    """포트원 V2 로 결제를 다시 확인한다. 프론트가 보낸 금액은 믿지 않는다."""
+    if not PORTONE_API_SECRET:
+        raise HTTPException(503, "결제 확인 설정이 아직 되어 있지 않습니다. 잠시 뒤 다시 시도해 주세요.")
+    try:
+        r = httpx.get(
+            f"https://api.portone.io/payments/{quote(payment_id, safe='')}",
+            headers={"Authorization": f"PortOne {PORTONE_API_SECRET}"},
+            timeout=10.0,
+        )
+    except Exception:
+        raise HTTPException(502, "결제 확인 중 통신 오류가 났습니다.")
+    if r.status_code != 200:
+        raise HTTPException(400, "결제 내역을 찾지 못했습니다.")
+    data = r.json()
+    if data.get("status") != "PAID":
+        raise HTTPException(400, "결제가 완료되지 않았습니다.")
+    return data
+
+
+@app.get("/api/lamps")
+def lamps_status(authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    return lamps_ops.status(user["email"])
+
+
+@app.get("/api/lamps/ledger")
+def lamps_ledger(authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    return {"items": lamps_ops.ledger(user["email"])}
+
+
+@app.post("/api/lamps/charge")
+def lamps_charge(body: ChargeBody, authorization: str | None = Header(default=None), request: Request = None):
+    user = _token_user(authorization)
+    if request is not None:
+        _rate_limit_or_429(f"charge:{_client_ip(request)}", limit=20, window_sec=600, what="충전")
+    paid = _verify_payment(body.paymentId.strip())
+    amount = int((paid.get("amount") or {}).get("total") or 0)
+    lamps = lamps_ops.pack_for_amount(amount)
+    if not lamps:
+        raise HTTPException(400, "충전 패키지와 결제 금액이 맞지 않습니다. 고객센터로 문의해 주세요.")
+    try:
+        return lamps_ops.charge(user["email"], lamps, payment_id=body.paymentId.strip(), price=amount)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/reports/open")
+def report_open(body: OpenBody, authorization: str | None = Header(default=None)):
+    """리포트 열기. 이미 산 것이면 등불을 쓰지 않고 다시 열어 준다."""
+    user = _token_user(authorization)
+    try:
+        return lamps_ops.spend(user["email"], body.product.strip(), body.pair.strip())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 if WEB.exists():

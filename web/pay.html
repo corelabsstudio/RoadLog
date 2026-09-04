@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>결제 · 로드로그</title>
+<title>등불 충전 · 로드로그</title>
 <link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
 <style>
@@ -28,13 +28,12 @@ h1{font-size:1.35rem;margin:0 0 6px;letter-spacing:-.02em}
 .notice{background:var(--peach);border-radius:12px;padding:14px 16px;font-size:.88rem;color:#7a4b32;margin-bottom:18px}
 .order{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
 .row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
-.row:first-of-type{border-top:0}
 .row .k{color:var(--muted);font-size:.9rem}
 .row .v{font-weight:600;text-align:right}
 .total{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
 label{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);margin-top:14px}
-input,select{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
-input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .method{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;font-size:.95rem;background:var(--paper)}
 .method.on{border-color:var(--accent);background:var(--lilac);font-weight:700}
@@ -49,6 +48,13 @@ input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline
 .result pre{margin:8px 0 0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:inherit;opacity:.85}
 .biz{border-top:1px solid var(--line);margin-top:34px;padding:20px 22px;color:var(--muted);font-size:.8rem}
 .biz p{margin:0 0 4px}
+.packs{list-style:none;padding:0;margin:0}
+.packs li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid var(--line);cursor:pointer}
+.packs li:first-child{border-top:0}
+.packs li.on b,.packs li.on .won{color:var(--accent)}
+.packs b{font-size:1rem}
+.packs span.d{display:block;font-size:.8rem;color:var(--muted)}
+.packs .won{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -58,27 +64,22 @@ input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline
     <a href="/">로드로그</a>
   </header>
   <main>
-    <h1>결제</h1>
-    <p class="sub">연락하기 전에 · 재회 사주</p>
+    <h1>등불 충전</h1>
+    <p class="sub">등불 1개로 100원어치를 봅니다. 리포트는 등불로 엽니다.</p>
 
-    <div class="notice" id="modeNotice">
+    <div class="notice">
       <b>테스트 결제 화면입니다.</b> 실제로 카드에서 돈이 빠져나가지 않습니다.
       결제대행사 계약이 끝나면 같은 화면이 실결제로 바뀝니다.
     </div>
 
     <div class="order">
-      <div class="row"><span class="k">상품</span><span class="v" id="orderName">이번 주 7일</span></div>
-      <div class="row"><span class="k">제공 방식</span><span class="v">결제 즉시 화면 열람</span></div>
-      <div class="row"><span class="k">제공 기간</span><span class="v">결제일로부터 12개월</span></div>
-      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">2,900원</span></div>
+      <ul class="packs" id="packs"></ul>
 
-      <label>상품 선택
-        <select id="product"></select>
-      </label>
-      <label>결제 금액 (테스트 중에만 바꿀 수 있어요)
-        <input type="number" id="amount" value="2900" min="100" step="50" />
-      </label>
-      <label>이메일 (결과 재열람 안내를 받을 주소)
+      <div class="row"><span class="k">받는 등불</span><span class="v" id="lampLabel">180등불</span></div>
+      <div class="row"><span class="k">유효 기간</span><span class="v">충전일로부터 12개월</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">16,200원</span></div>
+
+      <label>이메일 (영수증을 받으실 주소)
         <input type="email" id="email" placeholder="you@example.com" />
       </label>
 
@@ -94,7 +95,7 @@ input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline
       <p class="agree">
         결제하시면 <a href="/legal/terms.html">이용약관</a>과
         <a href="/legal/privacy.html">개인정보처리방침</a>에 동의하신 것으로 봅니다.
-        전체 결과를 열기 전에는 전액 환불됩니다 (<a href="/legal/refund.html">환불 정책</a>).
+        쓰지 않은 등불은 환불됩니다 (<a href="/legal/refund.html">환불 정책</a>).
       </p>
 
       <div class="result" id="result"></div>
@@ -112,33 +113,40 @@ input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline
 const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
 
-const PRODUCTS = [
-  { id: 'week', name: '이번 주 7일', price: 2900 },
-  { id: 'dday', name: '연락 D-DAY', price: 16200 },
-  { id: 'mind', name: '그 사람 속마음', price: 17000 },
-  { id: 'full', name: '재회운 종합', price: 17000 },
-  { id: 'bond', name: '다시 만날 필연', price: 21500 },
-  { id: 'ox', name: '붙잡을까, 놓을까', price: 21500 },
+// modules/lamps.py 의 PACKS 와 같은 값이어야 한다. 실제 지급은 서버가 결제 금액으로 다시 판정한다.
+const PACKS = [
+  { lamps: 30,  price: 2900,  note: '이번 주 7일 한 번' },
+  { lamps: 60,  price: 5700,  note: '' },
+  { lamps: 180, price: 16200, note: '30일 전부 한 번' },
+  { lamps: 400, price: 34000, note: '' },
+  { lamps: 800, price: 64000, note: '' },
 ];
-
+const TKEY = 'roadlog.token.v1';
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
+const q = new URLSearchParams(location.search);
+const BACK = q.get('back') || '/';
 
-const sel = $('product');
-sel.innerHTML = PRODUCTS.map(p => `<option value="${p.id}">${p.name} — ${p.price.toLocaleString('ko-KR')}원</option>`).join('');
-function syncProduct() {
-  const p = PRODUCTS.find(x => x.id === sel.value) || PRODUCTS[0];
-  $('orderName').textContent = p.name;
-  $('amount').value = p.price;
-  $('amountLabel').textContent = won(p.price);
+let pick = PACKS.find(p => String(p.lamps) === q.get('lamps')) || PACKS[2];
+
+function paintPacks() {
+  $('packs').innerHTML = PACKS.map(p => {
+    const off = Math.round((1 - p.price / (p.lamps * 100)) * 100);
+    return `<li class="${p === pick ? 'on' : ''}" data-lamps="${p.lamps}">
+      <div><b>등불 ${p.lamps}개</b><span class="d">등불 1개 ${Math.round(p.price / p.lamps)}원${off ? ` · ${off}% 싸게` : ''}${p.note ? ` · ${p.note}` : ''}</span></div>
+      <span class="won">${won(p.price)}</span></li>`;
+  }).join('');
+  $('lampLabel').textContent = `${pick.lamps}등불`;
+  $('amountLabel').textContent = won(pick.price);
 }
-sel.addEventListener('change', syncProduct);
-// 홈에서 ?product=ox 로 들어오면 그 상품이 선택된다
-const pre = new URLSearchParams(location.search).get('product');
-if (pre && PRODUCTS.some(x => x.id === pre)) sel.value = pre;
-syncProduct();
+paintPacks();
 
-$('amount').addEventListener('input', () => { $('amountLabel').textContent = won($('amount').value || 0); });
+$('packs').addEventListener('click', (e) => {
+  const li = e.target.closest('[data-lamps]'); if (!li) return;
+  pick = PACKS.find(p => String(p.lamps) === li.dataset.lamps) || pick;
+  paintPacks();
+});
+
 $('methods').addEventListener('click', (e) => {
   const l = e.target.closest('.method'); if (!l) return;
   document.querySelectorAll('.method').forEach(x => x.classList.toggle('on', x === l));
@@ -146,10 +154,34 @@ $('methods').addEventListener('click', (e) => {
 
 function show(kind, html) { const r = $('result'); r.className = 'result ' + kind; r.innerHTML = html; }
 
+// 결제가 끝나면 서버가 포트원에 다시 물어 금액을 확인하고 등불을 넣는다
+async function claim(paymentId) {
+  const token = localStorage.getItem(TKEY);
+  if (!token) {
+    show('err', '로그인이 풀렸습니다. 홈에서 다시 로그인하신 뒤 아래 결제 번호로 문의해 주세요.<pre>' + paymentId + '</pre>');
+    return;
+  }
+  try {
+    const res = await fetch('/api/lamps/charge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ paymentId }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      show('err', '등불을 넣지 못했습니다. 아래 결제 번호를 가지고 문의해 주세요.<pre>'
+        + ((data && data.detail) || res.status) + '\n' + paymentId + '</pre>');
+      return;
+    }
+    show('ok', `등불 <b>${data.lamps}개</b>를 넣었습니다. 지금 잔액 <b>${data.balance}등불</b>.<br />잠시 뒤 보시던 화면으로 돌아갑니다.`);
+    setTimeout(() => { location.href = BACK + (BACK.includes('?') ? '&' : '?') + 'charged=1'; }, 1600);
+  } catch (e) {
+    show('err', '등불을 넣는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + paymentId + '</pre>');
+  }
+}
+
 $('payBtn').addEventListener('click', async () => {
   const btn = $('payBtn');
-  const amount = Number($('amount').value);
-  if (!amount || amount < 100) { show('err', '결제 금액을 확인해 주세요.'); return; }
   const email = ($('email').value || '').trim();
   const payMethod = document.querySelector('input[name=pm]:checked').value;
 
@@ -161,21 +193,19 @@ $('payBtn').addEventListener('click', async () => {
       storeId: STORE_ID,
       channelKey: CHANNEL_KEY,
       paymentId,
-      orderName: '재회 사주 · ' + $('orderName').textContent,
-      totalAmount: amount,
+      orderName: `등불 ${pick.lamps}개`,
+      totalAmount: pick.price,
       currency: 'CURRENCY_KRW',
       payMethod,
       customer: email ? { email } : undefined,
-      // 모바일에서 결제창이 새 창으로 열릴 때 돌아올 주소
-      redirectUrl: location.origin + '/pay.html',
+      redirectUrl: location.origin + '/pay.html?back=' + encodeURIComponent(BACK),
     });
 
     if (res && res.code) {
       show('err', '결제가 완료되지 않았습니다.<pre>' + (res.message || res.code) + '</pre>');
     } else {
-      show('ok', '결제창에서 승인까지 마쳤습니다. 결제 번호는 아래와 같습니다.'
-        + '<pre>' + paymentId + '</pre>'
-        + '실제 서비스에서는 이 번호로 서버가 금액을 다시 확인한 뒤 전체 결과를 열어 드립니다.');
+      show('ok', '결제를 확인하는 중입니다…');
+      await claim(paymentId);
     }
   } catch (e) {
     show('err', '결제창을 여는 중 문제가 생겼습니다.<pre>' + (e && e.message ? e.message : String(e)) + '</pre>');
@@ -185,10 +215,9 @@ $('payBtn').addEventListener('click', async () => {
 });
 
 // 모바일 결제창에서 돌아온 경우
-const q = new URLSearchParams(location.search);
 if (q.get('paymentId')) {
   if (q.get('code')) show('err', '결제가 완료되지 않았습니다.<pre>' + (q.get('message') || q.get('code')) + '</pre>');
-  else show('ok', '결제창에서 승인까지 마쳤습니다.<pre>' + q.get('paymentId') + '</pre>');
+  else { show('ok', '결제를 확인하는 중입니다…'); claim(q.get('paymentId')); }
 }
 </script>
 </body>
