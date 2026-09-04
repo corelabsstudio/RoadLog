@@ -7,8 +7,8 @@
   <meta name="description" content="헤어진 사람에게 연락할까 말까. 두 사람 사주로 연락해도 되는 날부터 확인하고, 결정을 기록합니다." />
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
   <link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
-  <script type="module" crossorigin src="/assets/main-DYWpybeq.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-C5q4654r.css">
+  <script type="module" crossorigin src="/assets/main-CE01i7mS.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DSjXReVU.css">
 </head>
 <body>
 <div class="app">
@@ -64,7 +64,12 @@
   <section class="tool" id="tool">
     <div class="sec-head">
       <h2>연락해도 되는 날, 먼저 확인</h2>
-      <p>로그인 없이, 두 사람 생년월일은 이 화면 안에서만 계산됩니다. 성별은 대운 방향을 정하는 데만 씁니다.</p>
+      <p>로그인 없이, 생년월일은 이 화면 안에서만 계산됩니다. 성별은 대운 방향을 정하는 데만 씁니다.</p>
+    </div>
+
+    <div class="mode-tabs" id="modeTabs" role="tablist">
+      <button type="button" data-mode="two" class="on" role="tab" aria-selected="true">두 사람</button>
+      <button type="button" data-mode="one" role="tab" aria-selected="false">나 혼자</button>
     </div>
 
     <div class="tool-grid">
@@ -95,7 +100,7 @@
         </div>
         <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
       </div>
-      <div class="person">
+      <div class="person" id="personYou">
         <p class="who">그 사람</p>
         <div class="row">
           <label>생년월일<input type="date" name="youDate" required value="1994-11-02" /></label>
@@ -125,7 +130,7 @@
       <p class="form-error" id="formError" hidden></p>
     </form>
 
-    <div class="cal" aria-live="polite">
+    <div class="cal" id="calWrap" aria-live="polite">
       <div class="cal-head">
         <span class="cal-title" id="calTitle">앞으로 30일</span>
         <span class="cal-legend"><i class="sw good"></i>연락해도 되는 날 <i class="sw avoid"></i>피할 날</span>
@@ -148,7 +153,7 @@
 
     <div class="pillars">
       <div class="pillar-col"><h3>나</h3><table class="ganji" id="meTable"></table></div>
-      <div class="pillar-col"><h3>그 사람</h3><table class="ganji" id="youTable"></table></div>
+      <div class="pillar-col" id="youWrap"><h3>그 사람</h3><table class="ganji" id="youTable"></table></div>
     </div>
 
     <div class="evidence">
