@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-tMLGP-qS.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-8wof3ExH.css">
+  <script type="module" crossorigin src="/assets/main-C_iVR1RZ.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BHnqYxDw.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -161,8 +161,12 @@
       <div class="person">
         <p class="who">나</p>
         <div class="row">
+          <label>이름 <span class="opt">없어도 됩니다</span><input type="text" name="meName" maxlength="12" placeholder="결과에서 부를 이름" autocomplete="name" /></label>
           <label>생년월일<input type="date" name="meDate" required value="1996-03-14" /></label>
+          </div>
+        <div class="row">
           <label>태어난 시간<input type="time" name="meTime" value="23:20" /></label>
+          <label>&nbsp;<span class="who-note">이 이름은 이 화면에서만 쓰고 서버로 보내지 않아요.</span></label>
         </div>
         <div class="row row-3">
           <label>양력·음력
@@ -235,7 +239,7 @@
     <div class="verdict">
       <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="verdict-face" />
       <div>
-        <p class="verdict-kicker">두 사람의 흐름</p>
+        <p class="verdict-kicker" id="verdictKicker">두 사람의 흐름</p>
         <h2 id="verdictLine">계산 중</h2>
         <p class="verdict-sub" id="verdictSub"></p>
       </div>
