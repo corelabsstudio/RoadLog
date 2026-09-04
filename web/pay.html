@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>결제 · 로드로그</title>
+<link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
+<style>
+:root{
+  --paper:#faf8f4; --card:#fffdf9; --line:#ebe6dc; --ink:#2f2d3a; --muted:#7a7785;
+  --lilac:#e6dcf7; --peach:#ffe0d0; --mint:#cfeee2; --accent:#6f5bd3; --good:#1d6f4d; --bad:#a33d3d;
+  --font:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{background:#efe9f3}
+body{margin:0;font-family:var(--font);background:#efe9f3;color:var(--ink);font-size:16px;line-height:1.75;word-break:keep-all}
+a{color:var(--accent)}
+.doc{max-width:640px;margin:0 auto;background:var(--paper);min-height:100dvh;box-shadow:0 0 0 1px rgba(60,40,90,.06)}
+.top{height:60px;display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--line)}
+.top img{width:30px;height:30px;object-fit:cover;object-position:50% 30%;border-radius:10px;background:var(--lilac)}
+.top a{color:var(--ink);text-decoration:none;font-weight:800}
+main{padding:28px 22px 40px}
+h1{font-size:1.35rem;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:20px}
+.notice{background:var(--peach);border-radius:12px;padding:14px 16px;font-size:.88rem;color:#7a4b32;margin-bottom:18px}
+.order{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .k{color:var(--muted);font-size:.9rem}
+.row .v{font-weight:600;text-align:right}
+.total{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
+label{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);margin-top:14px}
+input{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.method{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;font-size:.95rem;background:var(--paper)}
+.method.on{border-color:var(--accent);background:var(--lilac);font-weight:700}
+.method input{display:none}
+.btn{display:block;width:100%;margin-top:18px;font:inherit;font-weight:700;font-size:1rem;color:#fff;background:var(--accent);border:0;border-radius:10px;padding:15px;cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.agree{margin-top:14px;font-size:.82rem;color:var(--muted)}
+.agree a{color:var(--muted)}
+.result{margin-top:18px;border-radius:12px;padding:14px 16px;font-size:.9rem;display:none}
+.result.ok{display:block;background:#e7f6ee;color:var(--good)}
+.result.err{display:block;background:#fbe3e3;color:var(--bad)}
+.result pre{margin:8px 0 0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:inherit;opacity:.85}
+.biz{border-top:1px solid var(--line);margin-top:34px;padding:20px 22px;color:var(--muted);font-size:.8rem}
+.biz p{margin:0 0 4px}
+</style>
+</head>
+<body>
+<div class="doc">
+  <header class="top">
+    <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" />
+    <a href="/">로드로그</a>
+  </header>
+  <main>
+    <h1>결제</h1>
+    <p class="sub">연락하기 전에 · 재회 사주 전체 결과</p>
+
+    <div class="notice" id="modeNotice">
+      <b>테스트 결제 화면입니다.</b> 실제로 카드에서 돈이 빠져나가지 않습니다.
+      결제대행사 계약이 끝나면 같은 화면이 실결제로 바뀝니다.
+    </div>
+
+    <div class="order">
+      <div class="row"><span class="k">상품</span><span class="v">재회 사주 전체 결과</span></div>
+      <div class="row"><span class="k">제공 방식</span><span class="v">결제 즉시 화면 열람</span></div>
+      <div class="row"><span class="k">제공 기간</span><span class="v">결제일로부터 12개월</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">19,000원</span></div>
+
+      <label>결제 금액 (테스트 중에만 바꿀 수 있어요)
+        <input type="number" id="amount" value="19000" min="100" step="100" />
+      </label>
+      <label>이메일 (결과 재열람 안내를 받을 주소)
+        <input type="email" id="email" placeholder="you@example.com" />
+      </label>
+
+      <div class="methods" id="methods">
+        <label class="method on"><input type="radio" name="pm" value="CARD" checked />신용·체크카드</label>
+        <label class="method"><input type="radio" name="pm" value="TRANSFER" />실시간 계좌이체</label>
+        <label class="method"><input type="radio" name="pm" value="VIRTUAL_ACCOUNT" />가상계좌</label>
+        <label class="method"><input type="radio" name="pm" value="EASY_PAY" />간편결제</label>
+      </div>
+
+      <button type="button" class="btn" id="payBtn">결제하기</button>
+
+      <p class="agree">
+        결제하시면 <a href="/legal/terms.html">이용약관</a>과
+        <a href="/legal/privacy.html">개인정보처리방침</a>에 동의하신 것으로 봅니다.
+        전체 결과를 열기 전에는 전액 환불됩니다 (<a href="/legal/refund.html">환불 정책</a>).
+      </p>
+
+      <div class="result" id="result"></div>
+    </div>
+  </main>
+  <div class="biz">
+    <p><b>코어랩스</b> (CoreLabs) · 대표 <b>호현수</b> · 사업자등록번호 <b>705-04-02867</b> · 통신판매업 신고 <b>제2026-강원춘천-0553호</b></p>
+    <p>강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) · TEL <b>033-818-2021</b> · corelabs.studio@gmail.com</p>
+  </div>
+</div>
+
+<script src="https://cdn.portone.io/v2/browser-sdk.js"></script>
+<script>
+// 포트원 V2 · 화면에 넣는 공개값 (비밀키가 아니다)
+const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
+const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
+
+const $ = (id) => document.getElementById(id);
+const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
+
+$('amount').addEventListener('input', () => { $('amountLabel').textContent = won($('amount').value || 0); });
+$('methods').addEventListener('click', (e) => {
+  const l = e.target.closest('.method'); if (!l) return;
+  document.querySelectorAll('.method').forEach(x => x.classList.toggle('on', x === l));
+});
+
+function show(kind, html) { const r = $('result'); r.className = 'result ' + kind; r.innerHTML = html; }
+
+$('payBtn').addEventListener('click', async () => {
+  const btn = $('payBtn');
+  const amount = Number($('amount').value);
+  if (!amount || amount < 100) { show('err', '결제 금액을 확인해 주세요.'); return; }
+  const email = ($('email').value || '').trim();
+  const payMethod = document.querySelector('input[name=pm]:checked').value;
+
+  btn.disabled = true; btn.textContent = '결제창을 여는 중…';
+  const paymentId = 'roadlog-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+
+  try {
+    const res = await PortOne.requestPayment({
+      storeId: STORE_ID,
+      channelKey: CHANNEL_KEY,
+      paymentId,
+      orderName: '재회 사주 전체 결과',
+      totalAmount: amount,
+      currency: 'CURRENCY_KRW',
+      payMethod,
+      customer: email ? { email } : undefined,
+      // 모바일에서 결제창이 새 창으로 열릴 때 돌아올 주소
+      redirectUrl: location.origin + '/pay.html',
+    });
+
+    if (res && res.code) {
+      show('err', '결제가 완료되지 않았습니다.<pre>' + (res.message || res.code) + '</pre>');
+    } else {
+      show('ok', '결제창에서 승인까지 마쳤습니다. 결제 번호는 아래와 같습니다.'
+        + '<pre>' + paymentId + '</pre>'
+        + '실제 서비스에서는 이 번호로 서버가 금액을 다시 확인한 뒤 전체 결과를 열어 드립니다.');
+    }
+  } catch (e) {
+    show('err', '결제창을 여는 중 문제가 생겼습니다.<pre>' + (e && e.message ? e.message : String(e)) + '</pre>');
+  } finally {
+    btn.disabled = false; btn.textContent = '결제하기';
+  }
+});
+
+// 모바일 결제창에서 돌아온 경우
+const q = new URLSearchParams(location.search);
+if (q.get('paymentId')) {
+  if (q.get('code')) show('err', '결제가 완료되지 않았습니다.<pre>' + (q.get('message') || q.get('code')) + '</pre>');
+  else show('ok', '결제창에서 승인까지 마쳤습니다.<pre>' + q.get('paymentId') + '</pre>');
+}
+</script>
+</body>
+</html>
