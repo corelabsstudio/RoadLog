@@ -19,7 +19,7 @@ from urllib.parse import quote
 import httpx
 from fastapi import Cookie, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -1531,8 +1531,19 @@ def _safe_web_file(rel_path: str) -> Path | None:
     return None
 
 
+# 운행일지 시절 URL 정리 (2026-09-04 사주 서비스로 교체).
+# 색인돼 있던 옛 주소는 404 대신 홈으로 영구 이동시킨다.
+_GONE_PREFIXES = ("blog", "resources", "app", "guide", "update.html", "legal/business.html")
+
+
 @app.get("/{path:path}")
 def spa_fallback(path: str):
+    cleaned_head = path.strip("/")
+    if cleaned_head and any(
+        cleaned_head == pre or cleaned_head.startswith(pre + "/") or cleaned_head.startswith(pre + ".")
+        for pre in _GONE_PREFIXES
+    ):
+        return RedirectResponse("/", status_code=301)
     # API·헬스 경로가 정적 폴백에 먹히지 않게
     if path.startswith("api/") or path in {"health", "healthz"}:
         raise HTTPException(404, "Not Found")

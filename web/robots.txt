@@ -1,4 +1,4 @@
-# RoadLog — https://roadlog.co.kr
+# 로드로그 — https://roadlog.co.kr
 User-agent: *
 Allow: /
 
