@@ -7,8 +7,8 @@
   <meta name="description" content="헤어진 사람에게 연락할까 말까. 두 사람 사주로 연락해도 되는 날부터 확인하고, 결정을 기록합니다." />
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
   <link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
-  <script type="module" crossorigin src="/assets/main-DapYrikB.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CnBUzYVk.css">
+  <script type="module" crossorigin src="/assets/main-BhOXFakL.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BNjJf4ql.css">
 </head>
 <body>
 <div class="app">
@@ -133,18 +133,11 @@
       <p class="share-note" id="shareNote" hidden></p>
     </div>
 
-    <div class="locked">
-      <h3>전체 결과에서 열리는 것</h3>
-      <ul>
-        <li>연락 가능한 날 나머지 전부와 그 이유</li>
-        <li>같은 자리에서 부딪히는 글자와 그때 헤어진 이유</li>
-        <li>그날 보낼 첫 문장과 피할 문장</li>
-        <li>결정 기록. 연락했는지 남기면 30일 뒤 다시 물어요</li>
-      </ul>
-      <div class="locked-cta">
-        <p class="price"><span id="priceNum">16,250원</span><small>단건 결제 · 코인 없음 · <a href="/legal/refund.html">열기 전 전액 환불</a></small></p>
-        <button type="button" class="btn" id="buyBtn">전체 결과 열기</button>
-      </div>
+    <div class="shelf">
+      <h3>이 두 사람으로 볼 수 있는 것</h3>
+      <p class="shelf-lede">계산은 이미 끝났습니다. 궁금한 것만 골라서 여세요. 코인 없이 낱개로 삽니다.</p>
+      <ul class="shelf-list" id="shelfList"></ul>
+      <p class="shelf-note">열기 전에는 전액 환불됩니다. <a href="/legal/refund.html">환불 정책</a></p>
     </div>
   </section>
 
@@ -155,23 +148,18 @@
     <div class="full-head">
       <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="verdict-face" />
       <div>
-        <p class="verdict-kicker">전체 결과</p>
+        <p class="verdict-kicker" id="fullKicker">전체 결과</p>
         <h2 id="fullTitle">두 사람의 30일</h2>
       </div>
     </div>
 
-    <h3 class="full-h">연락해도 되는 날과 이유</h3>
-    <ul class="daylist" id="goodDays"></ul>
+    <div class="report" id="reportBody"></div>
 
-    <h3 class="full-h">피할 날과 이유</h3>
-    <ul class="daylist avoid" id="avoidDays"></ul>
-
-    <h3 class="full-h">같은 자리에서 부딪히는 글자</h3>
-    <div class="clash-box" id="clashBox"></div>
-
+    <div class="first-line">
     <h3 class="full-h">그날 보낼 첫 문장</h3>
     <div class="soon-box">
       <p>첫 문장과 피해야 할 문장은 두 사람 글자에 맞춰 따로 써 드리는 부분이라 아직 준비 중입니다. 준비되면 이 자리에 들어옵니다.</p>
+    </div>
     </div>
 
     <h3 class="full-h">결정을 기록해 두세요</h3>
@@ -197,29 +185,9 @@
   <section class="products" id="products">
     <div class="sec-head">
       <h2>고민별로 하나씩</h2>
+      <p>두 사람 생년월일만 넣으면 다섯 가지를 같은 계산에서 뽑습니다.</p>
     </div>
-    <div class="grid">
-      <a class="card" href="#tool">
-        <div class="card-img" style="--tint:#e6dcf7"><img src="/assets/banner_reunion-DtBbKtPl.png" alt="" /></div>
-        <p class="card-q">헤어진 그 사람에게 연락해도 될까?</p>
-        <p class="card-meta"><b>무료 미리보기</b>전체 결과는 준비 중</p>
-      </a>
-      <a class="card" href="#soon">
-        <div class="card-img" style="--tint:#ffe0d0"><img src="/assets/banner_decide-DLEf_ZXH.png" alt="" /></div>
-        <p class="card-q">붙잡을까, 놓을까</p>
-        <p class="card-meta"><b>곧 열립니다</b>이별 결정</p>
-      </a>
-      <a class="card" href="#soon">
-        <div class="card-img" style="--tint:#cfeee2"><img src="/assets/banner_timing-D6c4FkI0.png" alt="" /></div>
-        <p class="card-q">지금 보내면 읽을까</p>
-        <p class="card-meta"><b>곧 열립니다</b>연락 타이밍</p>
-      </a>
-      <a class="card soon" href="#soon" id="soon">
-        <div class="card-img" style="--tint:#f1efe8"><img src="/assets/banner_stay-D3wXFM-O.png" alt="" /></div>
-        <p class="card-q">퇴사할까 버틸까 · 폐업할까 · 시험 한 번 더 볼까</p>
-        <p class="card-meta"><b>준비 중</b>다음에 열릴 질문들</p>
-      </a>
-    </div>
+    <div class="grid" id="productGrid"></div>
   </section>
 
   <section class="about">

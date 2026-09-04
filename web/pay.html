@@ -33,8 +33,8 @@ h1{font-size:1.35rem;margin:0 0 6px;letter-spacing:-.02em}
 .row .v{font-weight:600;text-align:right}
 .total{font-size:1.3rem;font-weight:800;letter-spacing:-.02em}
 label{display:flex;flex-direction:column;gap:6px;font-size:.82rem;color:var(--muted);margin-top:14px}
-input{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
-input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input,select{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 12px}
+input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .methods{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .method{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;font-size:.95rem;background:var(--paper)}
 .method.on{border-color:var(--accent);background:var(--lilac);font-weight:700}
@@ -59,7 +59,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   </header>
   <main>
     <h1>결제</h1>
-    <p class="sub">연락하기 전에 · 재회 사주 전체 결과</p>
+    <p class="sub">연락하기 전에 · 재회 사주</p>
 
     <div class="notice" id="modeNotice">
       <b>테스트 결제 화면입니다.</b> 실제로 카드에서 돈이 빠져나가지 않습니다.
@@ -67,13 +67,16 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     </div>
 
     <div class="order">
-      <div class="row"><span class="k">상품</span><span class="v">재회 사주 전체 결과</span></div>
+      <div class="row"><span class="k">상품</span><span class="v" id="orderName">다시 만날 필연</span></div>
       <div class="row"><span class="k">제공 방식</span><span class="v">결제 즉시 화면 열람</span></div>
       <div class="row"><span class="k">제공 기간</span><span class="v">결제일로부터 12개월</span></div>
-      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">16,250원</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">21,500원</span></div>
 
+      <label>상품 선택
+        <select id="product"></select>
+      </label>
       <label>결제 금액 (테스트 중에만 바꿀 수 있어요)
-        <input type="number" id="amount" value="16250" min="100" step="50" />
+        <input type="number" id="amount" value="21500" min="100" step="50" />
       </label>
       <label>이메일 (결과 재열람 안내를 받을 주소)
         <input type="email" id="email" placeholder="you@example.com" />
@@ -109,8 +112,29 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
 
+const PRODUCTS = [
+  { id: 'bond', name: '다시 만날 필연', price: 21500 },
+  { id: 'ox', name: '붙잡을까, 놓을까', price: 21500 },
+  { id: 'mind', name: '그 사람 속마음', price: 17000 },
+  { id: 'full', name: '재회운 종합', price: 17000 },
+  { id: 'dday', name: '연락 D-DAY', price: 16250 },
+];
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
+
+const sel = $('product');
+sel.innerHTML = PRODUCTS.map(p => `<option value="${p.id}">${p.name} — ${p.price.toLocaleString('ko-KR')}원</option>`).join('');
+function syncProduct() {
+  const p = PRODUCTS.find(x => x.id === sel.value) || PRODUCTS[0];
+  $('orderName').textContent = p.name;
+  $('amount').value = p.price;
+  $('amountLabel').textContent = won(p.price);
+}
+sel.addEventListener('change', syncProduct);
+// 홈에서 ?product=ox 로 들어오면 그 상품이 선택된다
+const pre = new URLSearchParams(location.search).get('product');
+if (pre && PRODUCTS.some(x => x.id === pre)) sel.value = pre;
+syncProduct();
 
 $('amount').addEventListener('input', () => { $('amountLabel').textContent = won($('amount').value || 0); });
 $('methods').addEventListener('click', (e) => {
@@ -135,7 +159,7 @@ $('payBtn').addEventListener('click', async () => {
       storeId: STORE_ID,
       channelKey: CHANNEL_KEY,
       paymentId,
-      orderName: '재회 사주 전체 결과',
+      orderName: '재회 사주 · ' + $('orderName').textContent,
       totalAmount: amount,
       currency: 'CURRENCY_KRW',
       payMethod,
