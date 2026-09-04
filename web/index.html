@@ -7,8 +7,8 @@
   <meta name="description" content="헤어진 사람에게 연락할까 말까. 두 사람 사주로 연락해도 되는 날부터 확인하고, 결정을 기록합니다." />
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
   <link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
-  <script type="module" crossorigin src="/assets/main-D9E_zEZY.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-SFjEqmNO.css">
+  <script type="module" crossorigin src="/assets/main-DYWpybeq.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-C5q4654r.css">
 </head>
 <body>
 <div class="app">
@@ -64,7 +64,7 @@
   <section class="tool" id="tool">
     <div class="sec-head">
       <h2>연락해도 되는 날, 먼저 확인</h2>
-      <p>로그인 없이, 두 사람 생년월일은 이 화면 안에서만 계산됩니다.</p>
+      <p>로그인 없이, 두 사람 생년월일은 이 화면 안에서만 계산됩니다. 성별은 대운 방향을 정하는 데만 씁니다.</p>
     </div>
 
     <div class="tool-grid">
@@ -75,6 +75,24 @@
           <label>생년월일<input type="date" name="meDate" required value="1996-03-14" /></label>
           <label>태어난 시간<input type="time" name="meTime" value="23:20" /></label>
         </div>
+        <div class="row row-3">
+          <label>양력·음력
+            <select name="meCal">
+              <option value="solar">양력</option>
+              <option value="lunar">음력(평달)</option>
+              <option value="leap">음력(윤달)</option>
+            </select>
+          </label>
+          <label>성별
+            <select name="meSex">
+              <option value="female">여자</option>
+              <option value="male">남자</option>
+            </select>
+          </label>
+          <label>태어난 곳
+            <select name="meCity"></select>
+          </label>
+        </div>
         <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
       </div>
       <div class="person">
@@ -82,6 +100,24 @@
         <div class="row">
           <label>생년월일<input type="date" name="youDate" required value="1994-11-02" /></label>
           <label>태어난 시간<input type="time" name="youTime" value="08:10" /></label>
+        </div>
+        <div class="row row-3">
+          <label>양력·음력
+            <select name="youCal">
+              <option value="solar">양력</option>
+              <option value="lunar">음력(평달)</option>
+              <option value="leap">음력(윤달)</option>
+            </select>
+          </label>
+          <label>성별
+            <select name="youSex">
+              <option value="female">여자</option>
+              <option value="male">남자</option>
+            </select>
+          </label>
+          <label>태어난 곳
+            <select name="youCity"></select>
+          </label>
         </div>
         <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
       </div>

@@ -75,9 +75,9 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <div class="order">
       <ul class="packs" id="packs"></ul>
 
-      <div class="row"><span class="k">받는 등불</span><span class="v" id="lampLabel">180등불</span></div>
+      <div class="row"><span class="k">받는 등불</span><span class="v" id="lampLabel">100등불</span></div>
       <div class="row"><span class="k">유효 기간</span><span class="v">충전일로부터 12개월</span></div>
-      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">16,200원</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">9,200원</span></div>
 
       <label>이메일 (영수증을 받으실 주소)
         <input type="email" id="email" placeholder="you@example.com" />
@@ -115,11 +115,11 @@ const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테�
 
 // modules/lamps.py 의 PACKS 와 같은 값이어야 한다. 실제 지급은 서버가 결제 금액으로 다시 판정한다.
 const PACKS = [
-  { lamps: 30,  price: 2900,  note: '이번 주 7일 한 번' },
-  { lamps: 60,  price: 5700,  note: '' },
-  { lamps: 180, price: 16200, note: '30일 전부 한 번' },
-  { lamps: 400, price: 34000, note: '' },
-  { lamps: 800, price: 64000, note: '' },
+  { lamps: 20,  price: 1900,  note: '이번 주 7일 한 번' },
+  { lamps: 50,  price: 4700,  note: '' },
+  { lamps: 100, price: 9200,  note: '가장 비싼 리포트 한 번' },
+  { lamps: 300, price: 26000, note: '' },
+  { lamps: 700, price: 56000, note: '' },
 ];
 const TKEY = 'roadlog.token.v1';
 const $ = (id) => document.getElementById(id);
