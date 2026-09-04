@@ -25,6 +25,7 @@ LAMPS_JSON = Path(DATA_DIR) / "lamps.json"
 LAMP_WON = 100          # 등불 1개 = 100원
 EXPIRE_DAYS = 365       # 충전분 유효기간
 OWNED_DAYS = 365        # 산 리포트 재열람 기간
+FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
 
 # 충전 패키지 — 결제 금액으로 어느 패키지인지 판정한다 (프론트 값을 믿지 않는다)
 PACKS = {
@@ -122,12 +123,20 @@ def status(email: str) -> dict:
         ),
         "owned": [{"product": o["product"], "pair": o["pair"], "expires": o["expires"]} for o in owned],
         "prices": PRICES,
+        "first_charge": not any(e.get("type") == "charge" for e in acc.get("ledger", [])),
+        "first_bonus": int(FIRST_BONUS * 100),
     }
 
 
 def ledger(email: str, limit: int = 50) -> list[dict]:
     acc = _account(_read(), email)
     return list(reversed(acc.get("ledger", [])))[:limit]
+
+
+def is_first_charge(email: str) -> bool:
+    """아직 한 번도 충전한 적이 없는가."""
+    acc = _account(_read(), email)
+    return not any(e.get("type") == "charge" for e in acc.get("ledger", []))
 
 
 def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "") -> dict:
@@ -139,6 +148,11 @@ def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "
     if any(e.get("payment_id") == payment_id for e in acc.get("ledger", [])):
         raise ValueError("이미 처리된 결제입니다.")
 
+    # 첫 충전이면 더 얹어 준다. 정가를 부풀려 할인처럼 보이게 하지 않는다.
+    first = not any(e.get("type") == "charge" for e in acc.get("ledger", []))
+    bonus = int(lamps * FIRST_BONUS) if first else 0
+    lamps += bonus
+
     now = _now()
     expires = now + timedelta(days=EXPIRE_DAYS)
     acc["lots"].append({
@@ -148,11 +162,14 @@ def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "
     })
     acc["ledger"].append({
         "at": _iso(now), "type": "charge", "lamps": lamps,
-        "price": price, "payment_id": payment_id,
+        "price": price, "payment_id": payment_id, "bonus": bonus,
         "expires": _iso(expires), "note": note,
     })
     _write(data)
-    return {"balance": sum(l["remain"] for l in _live_lots(acc, now)), "lamps": lamps, "expires": _iso(expires)}
+    return {
+        "balance": sum(l["remain"] for l in _live_lots(acc, now)),
+        "lamps": lamps, "bonus": bonus, "expires": _iso(expires),
+    }
 
 
 def owns(email: str, product: str, pair: str) -> bool:
