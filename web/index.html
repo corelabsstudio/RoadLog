@@ -11,19 +11,29 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-DR3PTZuv.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CC2e6N0N.css">
+  <script type="module" crossorigin src="/assets/main-jyGPCPUi.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BMkP_qrA.css">
 </head>
 <body>
+<svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
+  <defs>
+    <g id="i-cal"><rect x="3" y="4.5" width="14" height="12.5" rx="2.5"/><path d="M3 8.5h14M6.8 2.6v3M13.2 2.6v3"/><circle cx="10" cy="12.5" r="1.5" fill="currentColor" stroke="none"/></g>
+    <g id="i-grid"><rect x="3" y="3" width="6" height="6" rx="1.8"/><rect x="11" y="3" width="6" height="6" rx="1.8"/><rect x="3" y="11" width="6" height="6" rx="1.8"/><rect x="11" y="11" width="6" height="6" rx="1.8"/></g>
+    <g id="i-note"><path d="M5 2.8h10a1.6 1.6 0 0 1 1.6 1.6v12.8l-3.3-2.2-3.3 2.2-3.3-2.2L3.4 17.2V4.4A1.6 1.6 0 0 1 5 2.8Z"/><path d="M7.2 7.2h5.6M7.2 10.4h3.6"/></g>
+    <g id="i-info"><circle cx="10" cy="10" r="7.4"/><path d="M10 9.2v4.4"/><circle cx="10" cy="6.4" r="1" fill="currentColor" stroke="none"/></g>
+    <g id="i-home"><path d="M3.2 8.6 10 3.2l6.8 5.4v7.4a1.4 1.4 0 0 1-1.4 1.4H4.6a1.4 1.4 0 0 1-1.4-1.4Z"/><path d="M7.8 17.4v-5.2h4.4v5.2"/></g>
+    <g id="i-me"><circle cx="10" cy="6.8" r="3.2"/><path d="M4 17.2c0-3.2 2.7-5 6-5s6 1.8 6 5"/></g>
+  </defs>
+</svg>
 <div class="app">
 
   <header class="top">
     <a class="brand" href="/"><img src="/assets/mudang_v2-C5ztPMJj.png" alt="로드로그 고양이" class="brand-face" /><span class="brand-txt"><b>로드로그</b><em>연락하기 전에 보는 사주</em></span></a>
     <nav class="top-nav">
-      <a href="#tool">연락 가능일 보기</a>
-      <a href="#products">고민별 상품</a>
-      <a href="#records">내 기록</a>
-      <a href="/buy.html">상품 안내</a>
+      <a href="#tool"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-cal"/></svg><span>연락 가능일</span></a>
+      <a href="#products"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-grid"/></svg><span>고민별 상품</span></a>
+      <a href="#records"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-note"/></svg><span>내 기록</span></a>
+      <a href="/buy.html"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-info"/></svg><span>상품 안내</span></a>
     </nav>
     <div class="top-right">
       <button type="button" class="theme-btn" id="themeBtn" aria-label="어두운 화면으로 바꾸기" title="어두운 화면"><span aria-hidden="true">🌙</span></button>
@@ -298,10 +308,10 @@
   </footer>
 
   <nav class="tabbar" aria-label="하단 메뉴">
-    <a class="on" href="#">홈</a>
-    <a href="#tool">내 사주</a>
-    <a href="#records">기록</a>
-    <a href="#login">마이</a>
+    <a class="on" href="#"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-home"/></svg><span>홈</span></a>
+    <a href="#tool"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-cal"/></svg><span>내 사주</span></a>
+    <a href="#records"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-note"/></svg><span>기록</span></a>
+    <a href="#login"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-me"/></svg><span>마이</span></a>
   </nav>
 </div>
 
