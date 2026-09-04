@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-C_iVR1RZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-BHnqYxDw.css">
+  <script type="module" crossorigin src="/assets/main-D1dEZB56.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CHivOm8G.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -154,19 +154,18 @@
   </section>
 
   <section class="tool" id="tool">
-    <p class="tool-lede">생년월일은 이 화면을 벗어나지 않습니다. 성별은 대운 방향에만 씁니다.</p>
+    <p class="tool-lede">이름과 생년월일은 이 화면을 벗어나지 않습니다. 성별은 대운 방향에만 씁니다.</p>
 
     <div class="tool-grid">
     <form class="pair-form" id="pairForm" novalidate>
       <div class="person">
         <p class="who">나</p>
+        <label class="name-row"><span class="lab">이름<span class="opt">없어도 됩니다</span></span>
+          <input type="text" name="meName" maxlength="12" placeholder="내 이름" autocomplete="off" />
+        </label>
         <div class="row">
-          <label>이름 <span class="opt">없어도 됩니다</span><input type="text" name="meName" maxlength="12" placeholder="결과에서 부를 이름" autocomplete="name" /></label>
           <label>생년월일<input type="date" name="meDate" required value="1996-03-14" /></label>
-          </div>
-        <div class="row">
           <label>태어난 시간<input type="time" name="meTime" value="23:20" /></label>
-          <label>&nbsp;<span class="who-note">이 이름은 이 화면에서만 쓰고 서버로 보내지 않아요.</span></label>
         </div>
         <div class="row row-3">
           <label>양력·음력
@@ -178,7 +177,7 @@
           </label>
           <label>성별
             <select name="meSex">
-              <option value="female">여자</option>
+              <option value="female" selected>여자</option>
               <option value="male">남자</option>
             </select>
           </label>
@@ -190,6 +189,9 @@
       </div>
       <div class="person" id="personYou">
         <p class="who">그 사람</p>
+        <label class="name-row"><span class="lab">이름<span class="opt">없어도 됩니다</span></span>
+          <input type="text" name="youName" maxlength="12" placeholder="그 사람 이름" autocomplete="off" />
+        </label>
         <div class="row">
           <label>생년월일<input type="date" name="youDate" required value="1994-11-02" /></label>
           <label>태어난 시간<input type="time" name="youTime" value="08:10" /></label>
@@ -204,7 +206,7 @@
           </label>
           <label>성별
             <select name="youSex">
-              <option value="female">여자</option>
+              <option value="female" selected>여자</option>
               <option value="male">남자</option>
             </select>
           </label>
