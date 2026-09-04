@@ -40,7 +40,7 @@ PACKS = {
 PRICES = {
     # 혼자 보는 것
     "solo": 59,
-    "god": 39,
+    "god": 9,
     "year": 49,
     "charm": 49,
     "luck": 59,

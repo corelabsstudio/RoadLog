@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-BCVKhYeF.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-D0wl3gX3.css">
+  <script type="module" crossorigin src="/assets/main-B6Ku5bZw.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DRDzWXTo.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -78,6 +78,14 @@
   <div class="view view-home" id="viewHome">
   <section class="banners" aria-label="상품 배너">
     <div class="banner-track" id="bannerTrack">
+      <a class="banner" href="#p/god" style="--tint:#2a1418">
+        <img src="/assets/hero_god-CnAidOD4.png" alt="무신도를 걸어 둔 신당 앞에 선 고양이 무당" />
+        <div class="banner-copy">
+          <p class="banner-kicker">수호신</p>
+          <h2>내 몸주는 누구일까.<br />장군신인지, 산신인지, 대신할머니인지</h2>
+          <p class="banner-cta">내 수호신 보기 · 900원</p>
+        </div>
+      </a>
       <a class="banner" href="#p/full" style="--tint:#1d2542">
         <img src="/assets/banner_reunion-D0YgxmJH.png" alt="등불을 들고 밤길의 발자국을 비추는 고양이" />
         <div class="banner-copy">
@@ -92,14 +100,6 @@
           <p class="banner-kicker">이별 결정</p>
           <h2>붙잡을까, 놓을까.<br />같은 자리에서 또 부딪힐지 먼저 봅니다</h2>
           <p class="banner-cta">붙잡을까, 놓을까 보기</p>
-        </div>
-      </a>
-      <a class="banner" href="#p/dday" style="--tint:#1b2440">
-        <img src="/assets/banner_timing-CRllX52x.png" alt="달력 앞에 앉아 날짜를 고르는 고양이" />
-        <div class="banner-copy">
-          <p class="banner-kicker">연락 타이밍</p>
-          <h2>지금 보내면 읽을까.<br />연락이 통하는 날을 고릅니다</h2>
-          <p class="banner-cta">연락 가능일은 무료로 확인</p>
         </div>
       </a>
     </div>
@@ -216,6 +216,10 @@
         </div>
         <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
       </div>
+      <div class="saveme" id="saveMe" hidden>
+        <button type="button" class="linkish" id="saveBtn">내 정보 저장</button>
+        <span id="saveState"></span>
+      </div>
       <button type="submit" class="btn" id="runBtn">연락 가능한 날 보기</button>
       <p class="form-error" id="formError" hidden></p>
     </form>
@@ -262,8 +266,8 @@
 
     <div class="share" id="share">
       <div class="share-head">
-        <h3>이 결과를 그 사람이나 친구에게</h3>
-        <p>생년월일은 카드에 들어가지 않아요. 판정 한 줄과 첫 연락 가능일만 담깁니다.</p>
+        <h3 id="shareTitle">이 결과를 그 사람이나 친구에게</h3>
+        <p id="shareDesc">생년월일은 카드에 들어가지 않아요. 판정 한 줄과 첫 연락 가능일만 담깁니다.</p>
       </div>
       <canvas id="shareCanvas" width="1080" height="1350" aria-label="공유 카드 미리보기"></canvas>
       <div class="share-btns">
