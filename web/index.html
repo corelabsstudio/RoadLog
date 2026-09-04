@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-jyGPCPUi.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-BMkP_qrA.css">
+  <script type="module" crossorigin src="/assets/main-D_1G9MbH.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BL1Kv5EW.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -41,6 +41,19 @@
     </div>
   </header>
 
+
+
+
+
+
+
+
+
+
+
+
+
+  <div class="view view-home" id="viewHome">
   <section class="banners" aria-label="상품 배너">
     <div class="banner-track" id="bannerTrack">
       <a class="banner" href="#tool" style="--tint:#e6dcf7">
@@ -70,24 +83,90 @@
     </div>
     <div class="banner-dots" id="bannerDots" aria-hidden="true"></div>
   </section>
-
-  <nav class="tabs" aria-label="고민별">
-    <a class="on" href="#tool">재회</a>
-    <a href="#products">이별 결정</a>
-    <a href="#products">연락 타이밍</a>
-    <a href="#soon">퇴사 · 폐업 · 시험</a>
+  <nav class="tabs" id="catTabs" aria-label="고민별">
+    <button type="button" class="on" data-cat="all">전체</button>
+    <button type="button" data-cat="solo">나 혼자</button>
+    <button type="button" data-cat="reunion">재회</button>
+    <button type="button" data-cat="decide">이별 결정</button>
+    <button type="button" data-cat="timing">연락 타이밍</button>
   </nav>
+  <section class="products" id="products">
+    <div class="sec-head">
+      <h2>고민별로 하나씩</h2>
+      <p>두 사람 생년월일을 한 번 넣으면 여섯 가지를 같은 계산에서 뽑습니다. 궁금한 것만 고르세요.</p>
+    </div>
+    <div class="grid" id="productGrid"></div>
+  </section>
+  <section class="records" id="records">
+    <div class="sec-head"><h2>내 기록</h2><p>결정과 그 뒤 이야기가 여기에 쌓입니다.</p></div>
+    <ul class="record-list" id="recordList"></ul>
+    <p class="empty" id="recordEmpty">아직 남긴 기록이 없어요. 결과를 보고 결정을 남기면 여기에 쌓입니다.</p>
+  </section>
+  <section class="about">
+    <img src="/assets/mudang_v2-C5ztPMJj.png" alt="고깔을 쓰고 부채를 든 로드로그 고양이" class="about-face" />
+    <div>
+      <h2>로드로그는 이렇게 봅니다</h2>
+      <ul class="about-list">
+        <li><b>근거를 보여줘요.</b> 어떤 글자 때문에 그 답이 나왔는지 표에서 색으로 표시합니다.</li>
+        <li><b>날짜로 답해요.</b> 「마음이 남아 있을까」가 아니라 「언제 연락하면 되나」.</li>
+        <li><b>기록해요.</b> 연락했는지 남기면 30일 뒤에 어떻게 됐는지 다시 묻습니다.</li>
+      </ul>
+      <p class="about-foot">계산은 공개 만세력 라이브러리로 브라우저 안에서 끝나고, 생년월일은 서버로 보내지 않습니다.</p>
+
+      <h3 class="how-title">계산 기준</h3>
+      <p class="how-lede">사주는 보는 방식에 따라 시주나 일주가 달라집니다. 아래 셋은 켜고 끌 수 있고, 바꾸면 결과가 바로 다시 계산됩니다. 잘 모르시겠으면 그대로 두세요.</p>
+      <div class="how-grid">
+        <label class="toggle">
+          <input type="checkbox" id="optSolar" checked />
+          <span class="t">태어난 곳 시간으로 맞추기 <i>진태양시</i></span>
+          <span class="d">우리 시계는 일본 쪽 기준이라 실제 해 위치보다 30분쯤 빠릅니다. 켜면 태어난 도시의 해 위치로 다시 맞춥니다. 끄면 시계에 적힌 시간 그대로 봅니다.</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="optDst" checked />
+          <span class="t">서머타임 되돌리기 <i>일광절약시간</i></span>
+          <span class="d">1948~1988년 사이 몇 해는 시계를 한 시간 앞당겨 썼습니다. 그 시기에 태어나셨다면 켜 두셔야 실제 시간으로 계산됩니다.</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" id="optJasi" />
+          <span class="t">밤 11시 넘으면 다음 날로 <i>야자시</i></span>
+          <span class="d">밤 11시부터 자정까지를 다음 날로 볼지 정합니다. 역술인마다 다르게 보는 부분이라 기본은 꺼 둡니다. 그 시간대에 태어나셨다면 양쪽 다 보시는 게 좋습니다.</span>
+        </label>
+      </div>
+    </div>
+  </section>
+  <section class="reviews">
+    <div class="sec-head"><h2>후기</h2></div>
+    <p class="empty">아직 첫 후기를 기다리고 있어요. 결과를 본 분께는 30일 뒤에 어떻게 됐는지 여쭤보고, 그 답을 여기에 올립니다.</p>
+  </section>
+  <section class="faq" id="faq">
+    <div class="sec-head"><h2>자주 묻는 질문</h2></div>
+    <details><summary>출생 시간을 모르면 볼 수 없나요?</summary><p>볼 수 있어요. 시주를 빼고 세 기둥으로 계산하고, 결과에 그 사실을 적어 둡니다. 날짜 판정의 정확도는 조금 내려갑니다.</p></details>
+    <details><summary>결과는 어디에 저장되나요?</summary><p>저장하지 않아요. 계산은 이 브라우저 안에서 끝나고, 결제할 때만 이메일 주소를 받습니다.</p></details>
+    <details><summary>이 결과대로 하면 재회가 되나요?</summary><p>아니에요. 사주는 두 사람의 흐름을 보는 참고 자료이고, 결정과 행동은 본인 몫입니다. 의료·법률·재정 판단을 대신하지 않습니다.</p></details>
+    <details><summary>환불은 어떻게 되나요?</summary><p>전체 결과를 열기 전에는 전액 환불됩니다. 결과를 열어 본 뒤에는 디지털 콘텐츠 특성상 환불이 어렵습니다.</p></details>
+  </section>
+  </div>
+
+  <div class="view view-product" id="viewProduct" hidden>
+  <section class="picked" id="picked">
+    <button type="button" class="back" id="backHome"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>다른 사주 보기</button>
+    <div class="picked-head">
+      <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="picked-face" id="pickedImg" />
+      <div>
+        <p class="picked-kicker" id="pickedName">상품</p>
+        <h2 id="pickedQ">질문</h2>
+        <p class="picked-line" id="pickedLine"></p>
+      </div>
+    </div>
+    <div class="picked-meta">
+      <span><b id="pickedLamps">0</b>등불</span>
+      <span id="pickedWon">0원어치</span>
+      <span id="pickedSize">0개 항목 · 약 0자</span>
+    </div>
+  </section>
 
   <section class="tool" id="tool">
-    <div class="sec-head">
-      <h2>연락해도 되는 날, 먼저 확인</h2>
-      <p>생년월일은 이 화면을 벗어나지 않습니다. 성별은 대운 방향에만 씁니다.</p>
-    </div>
-
-    <div class="mode-tabs" id="modeTabs" role="tablist">
-      <button type="button" data-mode="two" class="on" role="tab" aria-selected="true">커플</button>
-      <button type="button" data-mode="one" role="tab" aria-selected="false">솔로</button>
-    </div>
+    <p class="tool-lede">생년월일은 이 화면을 벗어나지 않습니다. 성별은 대운 방향에만 씁니다.</p>
 
     <div class="tool-grid">
     <form class="pair-form" id="pairForm" novalidate>
@@ -157,7 +236,6 @@
     </div>
     </div>
   </section>
-
   <section class="result" id="result" hidden>
     <div class="verdict">
       <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="verdict-face" />
@@ -199,8 +277,6 @@
       <p class="shelf-note">쓰지 않은 등불은 환불됩니다. <a href="/legal/refund.html">환불 정책</a></p>
     </div>
   </section>
-
-
   <section class="full" id="full" hidden>
     <p class="trial-note">결제 연결 전이라 지금은 무료로 열립니다. 열리는 내용은 유료 결과와 같습니다.</p>
 
@@ -234,66 +310,7 @@
       <p class="record-saved" id="recordSaved" hidden></p>
     </div>
   </section>
-
-  <section class="records" id="records">
-    <div class="sec-head"><h2>내 기록</h2><p>결정과 그 뒤 이야기가 여기에 쌓입니다.</p></div>
-    <ul class="record-list" id="recordList"></ul>
-    <p class="empty" id="recordEmpty">아직 남긴 기록이 없어요. 결과를 보고 결정을 남기면 여기에 쌓입니다.</p>
-  </section>
-
-  <section class="products" id="products">
-    <div class="sec-head">
-      <h2>고민별로 하나씩</h2>
-      <p>두 사람 생년월일을 한 번 넣으면 여섯 가지를 같은 계산에서 뽑습니다. 궁금한 것만 고르세요.</p>
-    </div>
-    <div class="grid" id="productGrid"></div>
-  </section>
-
-  <section class="about">
-    <img src="/assets/mudang_v2-C5ztPMJj.png" alt="고깔을 쓰고 부채를 든 로드로그 고양이" class="about-face" />
-    <div>
-      <h2>로드로그는 이렇게 봅니다</h2>
-      <ul class="about-list">
-        <li><b>근거를 보여줘요.</b> 어떤 글자 때문에 그 답이 나왔는지 표에서 색으로 표시합니다.</li>
-        <li><b>날짜로 답해요.</b> 「마음이 남아 있을까」가 아니라 「언제 연락하면 되나」.</li>
-        <li><b>기록해요.</b> 연락했는지 남기면 30일 뒤에 어떻게 됐는지 다시 묻습니다.</li>
-      </ul>
-      <p class="about-foot">계산은 공개 만세력 라이브러리로 브라우저 안에서 끝나고, 생년월일은 서버로 보내지 않습니다.</p>
-
-      <h3 class="how-title">계산 기준</h3>
-      <p class="how-lede">사주는 보는 방식에 따라 시주나 일주가 달라집니다. 아래 셋은 켜고 끌 수 있고, 바꾸면 결과가 바로 다시 계산됩니다. 잘 모르시겠으면 그대로 두세요.</p>
-      <div class="how-grid">
-        <label class="toggle">
-          <input type="checkbox" id="optSolar" checked />
-          <span class="t">태어난 곳 시간으로 맞추기 <i>진태양시</i></span>
-          <span class="d">우리 시계는 일본 쪽 기준이라 실제 해 위치보다 30분쯤 빠릅니다. 켜면 태어난 도시의 해 위치로 다시 맞춥니다. 끄면 시계에 적힌 시간 그대로 봅니다.</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="optDst" checked />
-          <span class="t">서머타임 되돌리기 <i>일광절약시간</i></span>
-          <span class="d">1948~1988년 사이 몇 해는 시계를 한 시간 앞당겨 썼습니다. 그 시기에 태어나셨다면 켜 두셔야 실제 시간으로 계산됩니다.</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" id="optJasi" />
-          <span class="t">밤 11시 넘으면 다음 날로 <i>야자시</i></span>
-          <span class="d">밤 11시부터 자정까지를 다음 날로 볼지 정합니다. 역술인마다 다르게 보는 부분이라 기본은 꺼 둡니다. 그 시간대에 태어나셨다면 양쪽 다 보시는 게 좋습니다.</span>
-        </label>
-      </div>
-    </div>
-  </section>
-
-  <section class="reviews">
-    <div class="sec-head"><h2>후기</h2></div>
-    <p class="empty">아직 첫 후기를 기다리고 있어요. 결과를 본 분께는 30일 뒤에 어떻게 됐는지 여쭤보고, 그 답을 여기에 올립니다.</p>
-  </section>
-
-  <section class="faq" id="faq">
-    <div class="sec-head"><h2>자주 묻는 질문</h2></div>
-    <details><summary>출생 시간을 모르면 볼 수 없나요?</summary><p>볼 수 있어요. 시주를 빼고 세 기둥으로 계산하고, 결과에 그 사실을 적어 둡니다. 날짜 판정의 정확도는 조금 내려갑니다.</p></details>
-    <details><summary>결과는 어디에 저장되나요?</summary><p>저장하지 않아요. 계산은 이 브라우저 안에서 끝나고, 결제할 때만 이메일 주소를 받습니다.</p></details>
-    <details><summary>이 결과대로 하면 재회가 되나요?</summary><p>아니에요. 사주는 두 사람의 흐름을 보는 참고 자료이고, 결정과 행동은 본인 몫입니다. 의료·법률·재정 판단을 대신하지 않습니다.</p></details>
-    <details><summary>환불은 어떻게 되나요?</summary><p>전체 결과를 열기 전에는 전액 환불됩니다. 결과를 열어 본 뒤에는 디지털 콘텐츠 특성상 환불이 어렵습니다.</p></details>
-  </section>
+  </div>
 
   <footer class="foot">
     <nav class="foot-links">
@@ -302,8 +319,11 @@
       <a href="/legal/refund.html">취소·환불 정책</a>
       <a href="/legal/privacy.html">개인정보처리방침</a>
     </nav>
-    <p><b>코어랩스</b> (CoreLabs) · 대표 호현수 · 사업자등록번호 705-04-02867 · 통신판매업 신고 제2026-강원춘천-0553호</p>
-    <p>강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) · TEL 033-818-2021 · corelabs.studio@gmail.com</p>
+    <details class="biz">
+      <summary>사업자 정보<span aria-hidden="true">›</span></summary>
+      <p><b>코어랩스</b> (CoreLabs) · 대표 호현수 · 사업자등록번호 705-04-02867 · 통신판매업 신고 제2026-강원춘천-0553호</p>
+      <p>강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) · TEL 033-818-2021 · corelabs.studio@gmail.com</p>
+    </details>
     <p class="disclaimer">이 서비스의 결과는 참고 자료이며 정확성을 보증하지 않습니다. 절기 경계일이나 출생 시간이 불명확한 경우 오차가 있을 수 있습니다.</p>
   </footer>
 
