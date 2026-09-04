@@ -67,16 +67,16 @@ input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline
     </div>
 
     <div class="order">
-      <div class="row"><span class="k">상품</span><span class="v" id="orderName">다시 만날 필연</span></div>
+      <div class="row"><span class="k">상품</span><span class="v" id="orderName">이번 주 7일</span></div>
       <div class="row"><span class="k">제공 방식</span><span class="v">결제 즉시 화면 열람</span></div>
       <div class="row"><span class="k">제공 기간</span><span class="v">결제일로부터 12개월</span></div>
-      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">21,500원</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">2,900원</span></div>
 
       <label>상품 선택
         <select id="product"></select>
       </label>
       <label>결제 금액 (테스트 중에만 바꿀 수 있어요)
-        <input type="number" id="amount" value="21500" min="100" step="50" />
+        <input type="number" id="amount" value="2900" min="100" step="50" />
       </label>
       <label>이메일 (결과 재열람 안내를 받을 주소)
         <input type="email" id="email" placeholder="you@example.com" />
@@ -113,12 +113,14 @@ const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
 
 const PRODUCTS = [
-  { id: 'bond', name: '다시 만날 필연', price: 21500 },
-  { id: 'ox', name: '붙잡을까, 놓을까', price: 21500 },
+  { id: 'week', name: '이번 주 7일', price: 2900 },
+  { id: 'dday', name: '연락 D-DAY', price: 16200 },
   { id: 'mind', name: '그 사람 속마음', price: 17000 },
   { id: 'full', name: '재회운 종합', price: 17000 },
-  { id: 'dday', name: '연락 D-DAY', price: 16250 },
+  { id: 'bond', name: '다시 만날 필연', price: 21500 },
+  { id: 'ox', name: '붙잡을까, 놓을까', price: 21500 },
 ];
+
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
 
