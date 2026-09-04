@@ -7,7 +7,7 @@
   <meta name="description" content="헤어진 사람에게 연락할까 말까. 두 사람 사주로 연락해도 되는 날부터 확인하고, 결정을 기록합니다." />
   <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
   <link rel="icon" href="/assets/mudang_v2-C5ztPMJj.png" />
-  <script type="module" crossorigin src="/assets/main-zGhQx_LH.js"></script>
+  <script type="module" crossorigin src="/assets/main-B8BMHev7.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/main-DSjXReVU.css">
 </head>
 <body>
@@ -64,12 +64,12 @@
   <section class="tool" id="tool">
     <div class="sec-head">
       <h2>연락해도 되는 날, 먼저 확인</h2>
-      <p>로그인 없이, 생년월일은 이 화면 안에서만 계산됩니다. 성별은 대운 방향을 정하는 데만 씁니다.</p>
+      <p>생년월일은 이 화면을 벗어나지 않습니다. 성별은 대운 방향에만 씁니다.</p>
     </div>
 
     <div class="mode-tabs" id="modeTabs" role="tablist">
-      <button type="button" data-mode="two" class="on" role="tab" aria-selected="true">두 사람</button>
-      <button type="button" data-mode="one" role="tab" aria-selected="false">나 혼자</button>
+      <button type="button" data-mode="two" class="on" role="tab" aria-selected="true">커플</button>
+      <button type="button" data-mode="one" role="tab" aria-selected="false">솔로</button>
     </div>
 
     <div class="tool-grid">
@@ -175,7 +175,7 @@
     </div>
 
     <div class="shelf">
-      <h3>이 두 사람으로 볼 수 있는 것</h3>
+      <h3 id="shelfTitle">이 두 사람으로 볼 수 있는 것</h3>
       <p class="shelf-lede">계산은 이미 끝났습니다. 궁금한 것만 골라서 여세요. 등불 1개가 100원어치입니다.</p>
       <ul class="shelf-list" id="shelfList"></ul>
       <p class="shelf-note">쓰지 않은 등불은 환불됩니다. <a href="/legal/refund.html">환불 정책</a></p>
