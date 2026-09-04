@@ -38,13 +38,27 @@ PACKS = {
 
 # 상품별 등불 값 — 프론트와 같은 값을 서버에도 둔다
 PRICES = {
+    # 혼자 보는 것
     "solo": 59,
+    "year": 49,
+    "charm": 49,
+    "luck": 59,
+    "money": 49,
+    "life": 79,
+    # 두 사람 — 시기
     "week": 19,
     "dday": 69,
+    "first": 55,
+    # 두 사람 — 재회
     "mind": 79,
     "full": 98,
     "bond": 89,
+    "again": 59,
+    "match": 79,
+    # 두 사람 — 결정
     "ox": 89,
+    "cool": 49,
+    "marry": 95,
 }
 
 _PAIR_RE = re.compile(r"^[0-9a-f]{16,64}$")

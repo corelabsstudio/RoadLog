@@ -1,0 +1,5 @@
+﻿RoadLog Daily SEO Trigger (backup log only)
+time: 2026-08-13T09:00:01.8893977+09:00
+prompt: C:\Users\hysoo\projects\RoadLog\docs\marketing\news_digest\DAILY_SEO_PROMPT.md
+primary: Grok durable scheduler ??daily SEO (not this PS1)
+fallback: Open Grok and say: 濡쒕뱶濡쒓렇 ?ㅻ뒛 ?댁뒪 SEO ?щ젮
