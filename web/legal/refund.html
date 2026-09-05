@@ -60,7 +60,9 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card);font-si
          color:#fff;background:var(--accent);border:0;border-radius:10px;padding:15px;cursor:pointer;
          text-align:center;text-decoration:none}
 .gets{list-style:none;padding:0;margin:14px 0 0}
-.gets li{border-top:1px solid var(--line);padding:11px 0}
+.gets li{display:flex;align-items:flex-start;gap:14px;border-top:1px solid var(--line);padding:13px 0}
+.gets .gico{width:46px;height:auto;flex:0 0 auto;margin-top:1px}
+@media(max-width:560px){ .gets .gico{width:38px} }
 .gets li b{display:block}
 .gets li span{color:var(--muted);font-size:.9rem}
 /* 삽화 — 문서 폭을 꽉 채운다. 둥근 카드처럼 보이지 않게 모서리는 각지게 */
