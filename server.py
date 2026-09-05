@@ -98,6 +98,7 @@ from modules.validator import validate_log
 from modules import notify as notify_ops
 from modules import lamps as lamps_ops
 from modules import product_reviews as prev_ops
+from modules import stats as stats_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -1497,6 +1498,52 @@ def admin_reviews_delete(
     if not ok:
         raise HTTPException(404, "후기를 찾을 수 없습니다.")
     return {"ok": True, "reviews": reviews_ops.list_admin_reviews()}
+
+
+# ── 방문자 세기 ──────────────────────────────────────────
+# 화면(HTML)이 열릴 때만 센다. 자산·API·검색봇은 세지 않는다.
+_BOT = ("bot", "crawler", "spider", "slurp", "headless", "preview",
+        "monitor", "curl", "wget", "python-requests", "httpx", "lighthouse")
+
+
+def _client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    if fwd:
+        return fwd.split(",")[0].strip()
+    return request.client.host if request.client else ""
+
+
+@app.middleware("http")
+async def _count_visit(request: Request, call_next):
+    resp = await call_next(request)
+    try:
+        p = request.url.path
+        if (
+            request.method == "GET"
+            and resp.status_code == 200
+            and not p.startswith("/api")
+            and not p.startswith("/assets")
+            and (p == "/" or p.endswith(".html"))
+            and "admin" not in p
+        ):
+            ua = request.headers.get("user-agent", "") or ""
+            low = ua.lower()
+            if ua and not any(b in low for b in _BOT):
+                stats_ops.hit(
+                    _client_ip(request), ua, p,
+                    request.headers.get("referer", "") or "",
+                    request.url.hostname or "",
+                )
+    except Exception:
+        pass          # 통계 때문에 화면이 막히면 안 된다
+    return resp
+
+
+@app.get("/api/admin/stats")
+def admin_stats(authorization: str | None = Header(default=None), days: int = 30):
+    """매출·가입·방문자·유입경로를 한 번에."""
+    _require_admin(authorization)
+    return stats_ops.overview(days=max(1, min(days, 90)))
 
 
 @app.get("/api/admin/dashboard")

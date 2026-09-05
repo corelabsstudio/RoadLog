@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>운영 현황 · 로드로그</title>
+<link rel="icon" href="/icons/icon-192.png" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
+<style>
+:root{
+  --paper:#17151d; --line:#322e3f; --ink:#ece9f2; --muted:#9b96a9; --faint:#6f6a7d;
+  --accent:#a493f0; --good:#5fc79a;
+  --font:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#100e15;color:var(--ink);font-family:var(--font);
+     font-size:15px;line-height:1.7;word-break:keep-all;-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:26px 20px 60px}
+h1{font-size:1.2rem;margin:0 0 2px;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:.84rem;margin:0 0 24px}
+h2{font-size:.8rem;letter-spacing:.14em;color:var(--faint);font-weight:700;
+   margin:34px 0 0;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.num{font-variant-numeric:tabular-nums}
+
+/* 큰 숫자 · 작은 설명 — 둥근 카드를 쓰지 않는다 */
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:0;margin-top:14px}
+.tile{padding:14px 16px 16px;border-top:1px solid var(--line)}
+.tile:nth-child(odd){border-right:1px solid var(--line)}
+.tile b{display:block;font-size:1.7rem;font-weight:800;letter-spacing:-.02em;
+        font-variant-numeric:tabular-nums;line-height:1.2}
+.tile span{display:block;font-size:.8rem;color:var(--muted);margin-top:2px}
+.tile.hi b{color:var(--accent)}
+
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
+th,td{border-top:1px solid var(--line);padding:9px 8px;text-align:right;vertical-align:top;
+      font-variant-numeric:tabular-nums}
+th{color:var(--faint);font-weight:600;font-size:.78rem;letter-spacing:.02em}
+td:first-child,th:first-child{text-align:left}
+tbody tr:hover{background:rgba(164,147,240,.06)}
+.zero{color:var(--faint)}
+
+.login{max-width:320px;margin:60px auto}
+.login label{display:block;font-size:.82rem;color:var(--muted);margin:12px 0 5px}
+.login input{width:100%;font:inherit;font-size:.95rem;padding:11px 12px;border-radius:10px;
+  background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.login button{width:100%;margin-top:16px;font:inherit;font-weight:700;font-size:.95rem;
+  color:#fff;background:var(--accent);border:0;border-radius:10px;padding:13px;cursor:pointer}
+.err{color:#e9a0a0;font-size:.85rem;margin-top:10px}
+.foot{margin-top:36px;color:var(--faint);font-size:.78rem;border-top:1px solid var(--line);padding-top:14px}
+.foot button{font:inherit;font-size:.78rem;background:none;border:0;color:var(--muted);
+  cursor:pointer;padding:0;text-decoration:underline}
+@media(min-width:700px){ .tiles{grid-template-columns:repeat(4,1fr)}
+  .tile:nth-child(odd){border-right:0} .tile+.tile{border-left:1px solid var(--line)} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="loginBox" class="login" hidden>
+    <h1>운영 현황</h1>
+    <p class="sub">관리자만 볼 수 있습니다.</p>
+    <form id="loginForm">
+      <label for="em">이메일</label>
+      <input id="em" type="email" autocomplete="username" required />
+      <label for="pw">비밀번호</label>
+      <input id="pw" type="password" autocomplete="current-password" required />
+      <button type="submit">들어가기</button>
+      <p class="err" id="loginErr" hidden></p>
+    </form>
+  </div>
+
+  <div id="board" hidden>
+    <h1>운영 현황</h1>
+    <p class="sub" id="asOf"></p>
+
+    <h2>오늘</h2>
+    <div class="tiles" id="tToday"></div>
+
+    <h2 id="hMonth">이번 달</h2>
+    <div class="tiles" id="tMonth"></div>
+
+    <h2>누적</h2>
+    <div class="tiles" id="tTotal"></div>
+
+    <h2>어디서 들어왔나 · 최근 30일</h2>
+    <table><thead><tr><th>경로</th><th>방문자</th></tr></thead><tbody id="tSrc"></tbody></table>
+
+    <h2>날짜별 · 최근 30일</h2>
+    <table>
+      <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>충전</th><th>매출</th></tr></thead>
+      <tbody id="tDaily"></tbody>
+    </table>
+
+    <h2>월별 매출</h2>
+    <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
+
+    <h2>어떤 사주가 열렸나</h2>
+    <table><thead><tr><th>사주</th><th>열람</th></tr></thead><tbody id="tProd"></tbody></table>
+
+    <p class="foot">
+      방문자는 서버가 직접 셉니다. 쿠키를 굽지 않고, IP·브라우저는 되돌릴 수 없는 형태로만 남으며 90일 뒤 지워집니다.
+      <br /><button type="button" id="out">나가기</button>
+    </p>
+  </div>
+
+</div>
+<script>
+const KEY = 'roadlog.token.v1';
+const $ = (id) => document.getElementById(id);
+const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
+const num = (n) => Number(n || 0).toLocaleString('ko-KR');
+const NAMES = {
+  today:'오늘의 운세', god:'내 수호신', solo:'내 연애 사주', week:'이번 주 7일',
+  dday:'연락 D-DAY', mind:'그 사람 속마음', full:'재회운 종합', bond:'다시 만날 필연',
+  ox:'붙잡을까, 놓을까', year:'올해 운세', charm:'내 매력', luck:'흉살 풀이',
+  money:'재물운', life:'평생 흐름', cool:'권태기 진단', again:'재회 행동 전략',
+  marry:'결혼운', match:'궁합 종합',
+};
+const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+
+function tiles(el, d, hi) {
+  el.innerHTML = [
+    ['매출', won(d.sales), true],
+    ['방문자', num(d.uv) + '명'],
+    ['가입', num(d.signups) + '명'],
+    ['사주 열람', num(d.opens) + '번'],
+  ].map(([k, v, a]) => `<div class="tile${a && hi ? ' hi' : ''}"><b>${v}</b><span>${k}</span></div>`).join('');
+}
+
+function rows(el, list, cells, empty) {
+  el.innerHTML = list.length
+    ? list.map(cells).join('')
+    : `<tr><td colspan="9" class="zero">${empty}</td></tr>`;
+}
+
+async function load() {
+  const r = await fetch('/api/admin/stats?days=30', {
+    headers: { Authorization: `Bearer ${token()}` },
+  });
+  if (r.status === 401 || r.status === 403) { show('login'); return; }
+  if (!r.ok) throw new Error('불러오지 못했습니다.');
+  const d = await r.json();
+
+  $('asOf').textContent = new Date().toLocaleString('ko-KR');
+  $('hMonth').textContent = `${d.month.month.replace('-', '년 ')}월`;
+  tiles($('tToday'), d.today, true);
+  tiles($('tMonth'), d.month, true);
+  tiles($('tTotal'), d.total, true);
+
+  rows($('tSrc'), d.bySource,
+    (s) => `<tr><td>${s.name}</td><td>${num(s.uv)}</td></tr>`,
+    '아직 방문 기록이 없습니다.');
+
+  rows($('tDaily'), d.daily,
+    (x) => `<tr><td>${x.day.slice(5)}</td><td>${num(x.uv)}</td><td>${num(x.signups)}</td>`
+         + `<td>${num(x.opens)}</td><td>${num(x.charges)}</td><td>${won(x.sales)}</td></tr>`,
+    '아직 기록이 없습니다.');
+
+  rows($('tMon'), d.byMonth,
+    (m) => `<tr><td>${m.month}</td><td>${won(m.sales)}</td></tr>`,
+    '아직 매출이 없습니다.');
+
+  rows($('tProd'), d.byProduct,
+    (p) => `<tr><td>${NAMES[p.product] || p.product}</td><td>${num(p.opens)}</td></tr>`,
+    '아직 열린 사주가 없습니다.');
+
+  show('board');
+}
+
+function show(which) {
+  $('loginBox').hidden = which !== 'login';
+  $('board').hidden = which !== 'board';
+}
+
+$('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const err = $('loginErr'); err.hidden = true;
+  try {
+    const r = await fetch('/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: $('em').value.trim(), password: $('pw').value }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || '로그인하지 못했습니다.');
+    localStorage.setItem(KEY, d.token);
+    await load();
+  } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+});
+
+$('out').addEventListener('click', () => {
+  try { localStorage.removeItem(KEY); } catch {}
+  show('login');
+});
+
+if (token()) load().catch(() => show('login'));
+else show('login');
+</script>
+</body>
+</html>
