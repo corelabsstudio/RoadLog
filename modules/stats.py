@@ -156,14 +156,40 @@ def _spends() -> list[dict[str, Any]]:
 
 
 def _signups() -> list[str]:
-    from modules.config import USERS_JSON
+    return [m["at"] for m in members() if m["at"]]
 
+
+def members(limit: int = 300) -> list[dict[str, Any]]:
+    """가입한 사람들. 관리자만 본다."""
+    from modules.config import USERS_JSON
+    from modules import lamps as lamps_ops
+
+    lamp = lamps_ops._read() or {}
     out = []
-    for u in (_read(Path(USERS_JSON), {}) or {}).values():
-        at = str(u.get("created_at", ""))[:10]
-        if at:
-            out.append(at)
-    return out
+    for email, u in (_read(Path(USERS_JSON), {}) or {}).items():
+        if not isinstance(u, dict):
+            continue
+        acc = lamp.get(email) or {}
+        charged = sum(int(e.get("price") or 0)
+                      for e in acc.get("ledger", []) if e.get("type") == "charge")
+        bal = sum(int(l.get("remain") or 0) for l in acc.get("lots", []))
+        if email.endswith("@kakao.local"):
+            how = "카카오"
+        elif email.endswith("@roadlog.local"):
+            how = "관리자"
+        else:
+            how = "이메일 · 소셜"
+        out.append({
+            "email": email,
+            "name": u.get("name") or "",
+            "at": str(u.get("created_at", ""))[:10],
+            "how": how,
+            "lamps": bal,
+            "spent": charged,
+            "opens": len(acc.get("owned", [])),
+        })
+    out.sort(key=lambda m: m["at"], reverse=True)
+    return out[:limit]
 
 
 def overview(days: int = 30) -> dict[str, Any]:
@@ -230,7 +256,10 @@ def overview(days: int = 30) -> dict[str, Any]:
             "signups": len(su),
             "opens": len(sp),
             "members": len(su),
+            "uv": sum(v["uv"] for v in vis.values()),
+            "pv": sum(v["pv"] for v in vis.values()),
         },
+        "members": members(),
         "daily": daily,
         "byMonth": [{"month": m, "sales": s} for m, s in sorted(by_month.items(), reverse=True)],
         "bySource": sorted(

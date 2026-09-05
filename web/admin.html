@@ -9,184 +9,357 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
 <style>
 :root{
-  --paper:#17151d; --line:#322e3f; --ink:#ece9f2; --muted:#9b96a9; --faint:#6f6a7d;
-  --accent:#a493f0; --good:#5fc79a;
+  --bg:#100e15; --paper:#17151d; --line:#3a354a; --ink:#f1eef6;
+  --muted:#a8a3b6; --faint:#807b8f; --accent:#a493f0;
   --font:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-body{margin:0;background:#100e15;color:var(--ink);font-family:var(--font);
-     font-size:15px;line-height:1.7;word-break:keep-all;-webkit-font-smoothing:antialiased}
-.wrap{max-width:960px;margin:0 auto;padding:26px 20px 60px}
-h1{font-size:1.2rem;margin:0 0 2px;letter-spacing:-.02em}
-.sub{color:var(--muted);font-size:.84rem;margin:0 0 24px}
-h2{font-size:.8rem;letter-spacing:.14em;color:var(--faint);font-weight:700;
-   margin:34px 0 0;padding-bottom:8px;border-bottom:1px solid var(--line)}
-.num{font-variant-numeric:tabular-nums}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+     font-size:17px;line-height:1.7;word-break:keep-all;-webkit-font-smoothing:antialiased}
 
-/* 큰 숫자 · 작은 설명 — 둥근 카드를 쓰지 않는다 */
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:0;margin-top:14px}
-.tile{padding:14px 16px 16px;border-top:1px solid var(--line)}
+.top{position:sticky;top:0;z-index:5;background:rgba(16,14,21,.94);
+     backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .bar{max-width:1060px;margin:0 auto;padding:16px 22px 0;
+          display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.top h1{font-size:1.35rem;margin:0;letter-spacing:-.02em}
+.top .as{color:var(--faint);font-size:.9rem;margin:0}
+.top .out{margin-left:auto;font:inherit;font-size:.95rem;background:none;border:0;
+          color:var(--muted);cursor:pointer;text-decoration:underline}
+.tabs{max-width:1060px;margin:0 auto;padding:10px 22px 0;display:flex;gap:2px;overflow-x:auto}
+.tabs button{font:inherit;font-size:1.05rem;background:none;border:0;color:var(--muted);
+  padding:9px 14px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
+.tabs button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+
+.wrap{max-width:1060px;margin:0 auto;padding:8px 22px 80px}
+h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
+   margin:34px 0 0;padding-bottom:9px;border-bottom:1px solid var(--line)}
+
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);margin-top:16px}
+.tile{padding:18px 18px 20px;border-top:1px solid var(--line)}
 .tile:nth-child(odd){border-right:1px solid var(--line)}
-.tile b{display:block;font-size:1.7rem;font-weight:800;letter-spacing:-.02em;
-        font-variant-numeric:tabular-nums;line-height:1.2}
-.tile span{display:block;font-size:.8rem;color:var(--muted);margin-top:2px}
+.tile b{display:block;font-size:2.1rem;font-weight:800;letter-spacing:-.02em;
+        font-variant-numeric:tabular-nums;line-height:1.15}
+.tile span{display:block;font-size:.95rem;color:var(--muted);margin-top:4px}
 .tile.hi b{color:var(--accent)}
-
-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
-th,td{border-top:1px solid var(--line);padding:9px 8px;text-align:right;vertical-align:top;
-      font-variant-numeric:tabular-nums}
-th{color:var(--faint);font-weight:600;font-size:.78rem;letter-spacing:.02em}
-td:first-child,th:first-child{text-align:left}
-tbody tr:hover{background:rgba(164,147,240,.06)}
-.zero{color:var(--faint)}
-
-.login{max-width:320px;margin:60px auto}
-.login label{display:block;font-size:.82rem;color:var(--muted);margin:12px 0 5px}
-.login input{width:100%;font:inherit;font-size:.95rem;padding:11px 12px;border-radius:10px;
-  background:var(--paper);color:var(--ink);border:1px solid var(--line)}
-.login button{width:100%;margin-top:16px;font:inherit;font-weight:700;font-size:.95rem;
-  color:#fff;background:var(--accent);border:0;border-radius:10px;padding:13px;cursor:pointer}
-.login .keep{display:flex;align-items:center;gap:7px;margin-top:14px;
-  font-size:.85rem;color:var(--muted);cursor:pointer}
-.login .keep input{width:auto;margin:0;accent-color:var(--accent)}
-.err{color:#e9a0a0;font-size:.85rem;margin-top:10px}
-.foot{margin-top:36px;color:var(--faint);font-size:.78rem;border-top:1px solid var(--line);padding-top:14px}
-.foot button{font:inherit;font-size:.78rem;background:none;border:0;color:var(--muted);
-  cursor:pointer;padding:0;text-decoration:underline}
-@media(min-width:700px){ .tiles{grid-template-columns:repeat(4,1fr)}
+@media(min-width:820px){ .tiles{grid-template-columns:repeat(4,1fr)}
   .tile:nth-child(odd){border-right:0} .tile+.tile{border-left:1px solid var(--line)} }
+
+.seg{display:flex;margin:16px 0 0}
+.seg button{font:inherit;font-size:1rem;background:none;color:var(--muted);
+  border:1px solid var(--line);padding:8px 18px;cursor:pointer}
+.seg button:first-child{border-radius:9px 0 0 9px}
+.seg button:last-child{border-radius:0 9px 9px 0}
+.seg button+button{border-left:0}
+.seg button.on{color:#fff;background:var(--accent);border-color:var(--accent);font-weight:700}
+
+.chart{margin-top:18px}
+.chart svg{display:block;width:100%;height:230px}
+.chart .gl{stroke:var(--line);stroke-width:1}
+.chart .bar{fill:var(--accent)}
+.chart .bar.z{fill:var(--line)}
+.chart .lb{fill:var(--faint);font-size:15px}
+.chart .vl{fill:var(--muted);font-size:16px}
+.chart-empty{color:var(--faint);font-size:1rem;padding:28px 0}
+
+.rank{list-style:none;padding:0;margin:12px 0 0}
+.rank li{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;
+  border-top:1px solid var(--line);padding:13px 2px}
+.rank .no{color:var(--faint);font-size:.98rem;font-variant-numeric:tabular-nums}
+.rank .nm{min-width:0}
+.rank .nm b{display:block;font-size:1.05rem;font-weight:700}
+.rank .track{display:block;height:6px;background:var(--line);border-radius:3px;
+  margin-top:7px;overflow:hidden}
+.rank .fill{display:block;height:100%;background:var(--accent)}
+.rank .ct{font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums}
+.rank li:nth-child(-n+3) .no{color:var(--accent);font-weight:800}
+.rank li.zero{display:block;color:var(--faint);font-size:1rem}
+
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:1rem}
+th,td{border-top:1px solid var(--line);padding:11px 10px;text-align:right;
+      font-variant-numeric:tabular-nums;white-space:nowrap}
+th{color:var(--faint);font-weight:600;font-size:.9rem}
+td:first-child,th:first-child{text-align:left}
+td.mail{max-width:260px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:normal}
+tbody tr:hover{background:rgba(164,147,240,.07)}
+.zero{color:var(--faint);text-align:left}
+.scroll{overflow-x:auto}
+.note{color:var(--faint);font-size:.92rem;margin:10px 0 0}
+
+.login{max-width:340px;margin:80px auto;padding:0 22px}
+.login h1{font-size:1.4rem;margin:0 0 2px}
+.login .sub{color:var(--muted);font-size:.95rem;margin:0 0 24px}
+.login label{display:block;font-size:.95rem;color:var(--muted);margin:14px 0 6px}
+.login input{width:100%;font:inherit;font-size:1.05rem;padding:13px 14px;border-radius:10px;
+  background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.login .keep{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:.95rem;
+  color:var(--muted);cursor:pointer}
+.login .keep input{width:auto;margin:0;accent-color:var(--accent)}
+.login button[type=submit]{width:100%;margin-top:18px;font:inherit;font-weight:700;
+  font-size:1.05rem;color:#fff;background:var(--accent);border:0;border-radius:10px;
+  padding:14px;cursor:pointer}
+.err{color:#e9a0a0;font-size:.95rem;margin-top:12px}
+.foot{margin-top:44px;color:var(--faint);font-size:.9rem;
+      border-top:1px solid var(--line);padding-top:16px}
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <div id="loginBox" class="login" hidden>
-    <h1>운영 현황</h1>
-    <p class="sub">관리자만 볼 수 있습니다.</p>
-    <form id="loginForm">
-      <label for="em">아이디 또는 이메일</label>
-      <input id="em" type="text" autocomplete="username" required placeholder="hhs126" />
-      <label for="pw">비밀번호</label>
-      <input id="pw" type="password" autocomplete="current-password" required />
-      <label class="keep"><input type="checkbox" id="keep" checked /> 아이디 기억하기</label>
-      <button type="submit">들어가기</button>
-      <p class="err" id="loginErr" hidden></p>
-    </form>
-  </div>
+<div id="loginBox" class="login" hidden>
+  <h1>운영 현황</h1>
+  <p class="sub">관리자만 볼 수 있습니다.</p>
+  <form id="loginForm">
+    <label for="em">아이디 또는 이메일</label>
+    <input id="em" type="text" autocomplete="username" required placeholder="hhs126" />
+    <label for="pw">비밀번호</label>
+    <input id="pw" type="password" autocomplete="current-password" required />
+    <label class="keep"><input type="checkbox" id="keep" checked /> 아이디 기억하기</label>
+    <button type="submit">들어가기</button>
+    <p class="err" id="loginErr" hidden></p>
+  </form>
+</div>
 
-  <div id="board" hidden>
-    <h1>운영 현황</h1>
-    <p class="sub" id="asOf"></p>
+<div id="board" hidden>
+  <header class="top">
+    <div class="bar">
+      <h1>운영 현황</h1>
+      <p class="as" id="asOf"></p>
+      <button type="button" class="out" id="out">나가기</button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button data-tab="sum" class="on">한눈에</button>
+      <button data-tab="sales">매출</button>
+      <button data-tab="visit">방문자</button>
+      <button data-tab="rank">인기 사주</button>
+      <button data-tab="member">회원</button>
+    </nav>
+  </header>
 
-    <h2>오늘</h2>
-    <div class="tiles" id="tToday"></div>
+  <div class="wrap">
+    <section data-page="sum">
+      <h2>방문자</h2>
+      <div class="tiles" id="tVisit"></div>
+      <h2 id="hMonth">이번 달</h2>
+      <div class="tiles" id="tMonth"></div>
+      <h2>누적</h2>
+      <div class="tiles" id="tTotal"></div>
+      <h2>인기 사주</h2>
+      <ol class="rank" id="rTop"></ol>
+    </section>
 
-    <h2 id="hMonth">이번 달</h2>
-    <div class="tiles" id="tMonth"></div>
+    <section data-page="sales" hidden>
+      <h2>매출</h2>
+      <div class="seg" id="segSales">
+        <button data-g="day" class="on">일별</button>
+        <button data-g="week">주간</button>
+        <button data-g="month">월별</button>
+      </div>
+      <div class="chart" id="cSales"></div>
+      <h2>월별 매출</h2>
+      <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
+    </section>
 
-    <h2>누적</h2>
-    <div class="tiles" id="tTotal"></div>
+    <section data-page="visit" hidden>
+      <h2>방문자</h2>
+      <div class="seg" id="segVisit">
+        <button data-g="day" class="on">일별</button>
+        <button data-g="week">주간</button>
+        <button data-g="month">월별</button>
+      </div>
+      <div class="chart" id="cVisit"></div>
+      <h2>어디서 들어왔나</h2>
+      <ol class="rank" id="rSrc"></ol>
+      <h2>날짜별</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>충전</th><th>매출</th></tr></thead>
+        <tbody id="tDaily"></tbody>
+      </table></div>
+    </section>
 
-    <h2>어디서 들어왔나 · 최근 30일</h2>
-    <table><thead><tr><th>경로</th><th>방문자</th></tr></thead><tbody id="tSrc"></tbody></table>
+    <section data-page="rank" hidden>
+      <h2>사람들이 많이 본 사주</h2>
+      <ol class="rank" id="rProd"></ol>
+    </section>
 
-    <h2>날짜별 · 최근 30일</h2>
-    <table>
-      <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>충전</th><th>매출</th></tr></thead>
-      <tbody id="tDaily"></tbody>
-    </table>
-
-    <h2>월별 매출</h2>
-    <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
-
-    <h2>어떤 사주가 열렸나</h2>
-    <table><thead><tr><th>사주</th><th>열람</th></tr></thead><tbody id="tProd"></tbody></table>
+    <section data-page="member" hidden>
+      <h2 id="hMem">가입한 회원</h2>
+      <div class="scroll"><table>
+        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th></tr></thead>
+        <tbody id="tMem"></tbody>
+      </table></div>
+      <p class="note">옛 운행일지 시절 계정도 같은 회원 목록에 들어 있습니다. 「방식」으로 구분됩니다.</p>
+    </section>
 
     <p class="foot">
-      방문자는 서버가 직접 셉니다. 쿠키를 굽지 않고, IP·브라우저는 되돌릴 수 없는 형태로만 남으며 90일 뒤 지워집니다.
-      <br /><button type="button" id="out">나가기</button>
+      방문자는 서버가 직접 셉니다. 쿠키를 굽지 않고, IP·브라우저는 되돌릴 수 없는 형태로만
+      남으며 90일 뒤 지워집니다. 매출·가입·열람은 등불 장부와 가입 기록에서 바로 계산합니다.
     </p>
   </div>
-
 </div>
+
 <script>
 const KEY = 'roadlog.token.v1';
+const IDKEY = 'roadlog.adminid.v1';
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
 const num = (n) => Number(n || 0).toLocaleString('ko-KR');
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g,
+  (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 const NAMES = {
-  today:'오늘의 운세', god:'내 수호신', solo:'내 연애 사주', week:'이번 주 7일',
-  dday:'연락 D-DAY', mind:'그 사람 속마음', full:'재회운 종합', bond:'다시 만날 필연',
-  ox:'붙잡을까, 놓을까', year:'올해 운세', charm:'내 매력', luck:'흉살 풀이',
-  money:'재물운', life:'평생 흐름', cool:'권태기 진단', again:'재회 행동 전략',
-  marry:'결혼운', match:'궁합 종합',
+  today: '오늘의 운세', god: '내 수호신', solo: '내 연애 사주', week: '이번 주 7일',
+  dday: '연락 D-DAY', mind: '그 사람 속마음', full: '재회운 종합', bond: '다시 만날 필연',
+  ox: '붙잡을까, 놓을까', year: '올해 운세', charm: '내 매력', luck: '흉살 풀이',
+  money: '재물운', life: '평생 흐름', cool: '권태기 진단', again: '재회 행동 전략',
+  marry: '결혼운', match: '궁합 종합',
 };
-// 아이디만 넣어도 되게 — 관리자 계정은 「아이디@roadlog.local」이다
 const asEmail = (v) => {
   const t = (v || '').trim();
-  return t.includes('@') ? t : (t ? `${t}@roadlog.local` : '');
+  return t.includes('@') ? t : (t ? t + '@roadlog.local' : '');
 };
 const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+let DATA = null, gSales = 'day', gVisit = 'day';
 
-// 아이디만 기억한다. 비밀번호는 브라우저 암호 관리자에 맡긴다 —
-// 화면 저장소에 비밀번호를 두면 스크립트 한 줄에 통째로 새어 나간다.
-const IDKEY = 'roadlog.adminid.v1';
-try {
-  const saved = localStorage.getItem(IDKEY);
-  if (saved) { $('em').value = saved; }
-  else { $('keep').checked = true; }
-} catch {}
+try { const s = localStorage.getItem(IDKEY); if (s) $('em').value = s; } catch {}
 
-function tiles(el, d, hi) {
-  el.innerHTML = [
-    ['매출', won(d.sales), true],
-    ['방문자', num(d.uv) + '명'],
-    ['가입', num(d.signups) + '명'],
-    ['사주 열람', num(d.opens) + '번'],
-  ].map(([k, v, a]) => `<div class="tile${a && hi ? ' hi' : ''}"><b>${v}</b><span>${k}</span></div>`).join('');
+// 주간은 월요일 시작
+function weekKey(ymd) {
+  const d = new Date(ymd + 'T00:00:00');
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+function group(daily, g, field) {
+  const bag = new Map();
+  (daily || []).forEach((x) => {
+    const k = g === 'day' ? x.day : g === 'week' ? weekKey(x.day) : x.day.slice(0, 7);
+    bag.set(k, (bag.get(k) || 0) + (x[field] || 0));
+  });
+  const out = [...bag.entries()].map(([k, v]) => ({ k, v })).sort((a, b) => (a.k < b.k ? -1 : 1));
+  return g === 'day' ? out.slice(-30) : out.slice(-12);
+}
+const label = (k, g) => (g === 'month' ? k.slice(2) : k.slice(5)).replace('-', '/');
+
+function chart(el, rows, g, fmt) {
+  if (!rows.length || rows.every((r) => !r.v)) {
+    el.innerHTML = '<p class="chart-empty">아직 쌓인 기록이 없습니다.</p>';
+    return;
+  }
+  const W = 1000, H = 230, PB = 34, PT = 24;
+  const max = Math.max(...rows.map((r) => r.v)) || 1;
+  const n = rows.length;
+  const gap = n > 20 ? 3 : 9;
+  const bw = Math.max(3, (W - gap * (n - 1)) / n);
+  const step = Math.ceil(n / 10);
+  const bars = rows.map((r, i) => {
+    const h = Math.round((H - PB - PT) * (r.v / max));
+    const x = i * (bw + gap);
+    const y = r.v ? H - PB - h : H - PB - 2;
+    const show = n <= 14 || i % step === 0;
+    return '<rect class="bar' + (r.v ? '' : ' z') + '" x="' + x + '" y="' + y
+      + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2">'
+      + '<title>' + label(r.k, g) + ' · ' + fmt(r.v) + '</title></rect>'
+      + (show ? '<text class="lb" x="' + (x + bw / 2) + '" y="' + (H - 11)
+        + '" text-anchor="middle">' + label(r.k, g) + '</text>' : '');
+  }).join('');
+  el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">'
+    + '<line class="gl" x1="0" y1="' + (H - PB) + '" x2="' + W + '" y2="' + (H - PB) + '" />'
+    + bars + '<text class="vl" x="2" y="17">최고 ' + fmt(max) + '</text></svg>';
 }
 
-function rows(el, list, cells, empty) {
-  el.innerHTML = list.length
-    ? list.map(cells).join('')
-    : `<tr><td colspan="9" class="zero">${empty}</td></tr>`;
+function rank(el, rows, nameOf, unit) {
+  if (!rows.length) { el.innerHTML = '<li class="zero">아직 기록이 없습니다.</li>'; return; }
+  const max = Math.max(...rows.map((r) => r.n)) || 1;
+  el.innerHTML = rows.map((r, i) =>
+    '<li><span class="no">' + (i + 1) + '</span><span class="nm"><b>' + esc(nameOf(r)) + '</b>'
+    + '<span class="track"><i class="fill" style="width:' + Math.round(r.n / max * 100) + '%"></i></span>'
+    + '</span><span class="ct">' + num(r.n) + unit + '</span></li>').join('');
 }
+
+function tiles(el, items) {
+  el.innerHTML = items.map((it) =>
+    '<div class="tile' + (it[2] ? ' hi' : '') + '"><b>' + it[0] + '</b><span>' + it[1] + '</span></div>'
+  ).join('');
+}
+
+const drawSales = () => chart($('cSales'), group(DATA.daily, gSales, 'sales'), gSales, won);
+const drawVisit = () => chart($('cVisit'), group(DATA.daily, gVisit, 'uv'), gVisit, (v) => num(v) + '명');
+
+function paint() {
+  const d = DATA;
+  $('asOf').textContent = new Date().toLocaleString('ko-KR');
+  $('hMonth').textContent = d.month.month.replace('-', '년 ') + '월';
+
+  tiles($('tVisit'), [
+    [num(d.total.uv) + '명', '전체 방문자', true],
+    [num(d.today.uv) + '명', '오늘 방문자', true],
+    [num(d.today.pv) + '번', '오늘 페이지 열림'],
+    [num(d.total.members) + '명', '회원'],
+  ]);
+  tiles($('tMonth'), [
+    [won(d.month.sales), '매출', true],
+    [num(d.month.uv) + '명', '방문자'],
+    [num(d.month.signups) + '명', '가입'],
+    [num(d.month.opens) + '번', '사주 열람'],
+  ]);
+  tiles($('tTotal'), [
+    [won(d.total.sales), '매출', true],
+    [num(d.total.charges) + '건', '충전'],
+    [num(d.total.signups) + '명', '가입'],
+    [num(d.total.opens) + '번', '사주 열람'],
+  ]);
+
+  const prod = (d.byProduct || []).map((p) => ({ product: p.product, n: p.opens }));
+  rank($('rTop'), prod.slice(0, 5), (r) => NAMES[r.product] || r.product, '번');
+  rank($('rProd'), prod, (r) => NAMES[r.product] || r.product, '번');
+  rank($('rSrc'), (d.bySource || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
+
+  drawSales(); drawVisit();
+
+  $('tMon').innerHTML = (d.byMonth || []).length
+    ? d.byMonth.map((m) => '<tr><td>' + m.month + '</td><td>' + won(m.sales) + '</td></tr>').join('')
+    : '<tr><td colspan="2" class="zero">아직 매출이 없습니다.</td></tr>';
+
+  $('tDaily').innerHTML = (d.daily || []).length
+    ? d.daily.map((x) => '<tr><td>' + x.day.slice(5) + '</td><td>' + num(x.uv) + '</td><td>'
+      + num(x.signups) + '</td><td>' + num(x.opens) + '</td><td>' + num(x.charges)
+      + '</td><td>' + won(x.sales) + '</td></tr>').join('')
+    : '<tr><td colspan="6" class="zero">아직 기록이 없습니다.</td></tr>';
+
+  const mem = d.members || [];
+  $('hMem').textContent = '가입한 회원 · ' + mem.length + '명';
+  $('tMem').innerHTML = mem.length
+    ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
+      + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.how) + '</td><td>' + num(m.lamps)
+      + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td></tr>').join('')
+    : '<tr><td colspan="7" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+}
+
+function seg(id, set) {
+  $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-g]'); if (!b) return;
+    [...$(id).children].forEach((x) => x.classList.toggle('on', x === b));
+    set(b.dataset.g);
+  });
+}
+seg('segSales', (g) => { gSales = g; drawSales(); });
+seg('segVisit', (g) => { gVisit = g; drawVisit(); });
+
+$('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  [...$('tabs').children].forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== b.dataset.tab; });
+  window.scrollTo(0, 0);
+});
 
 async function load() {
-  const r = await fetch('/api/admin/stats?days=30', {
-    headers: { Authorization: `Bearer ${token()}` },
+  const r = await fetch('/api/admin/stats?days=90', {
+    headers: { Authorization: 'Bearer ' + token() },
   });
   if (r.status === 401 || r.status === 403) { show('login'); return; }
   if (!r.ok) throw new Error('불러오지 못했습니다.');
-  const d = await r.json();
-
-  $('asOf').textContent = new Date().toLocaleString('ko-KR');
-  $('hMonth').textContent = `${d.month.month.replace('-', '년 ')}월`;
-  tiles($('tToday'), d.today, true);
-  tiles($('tMonth'), d.month, true);
-  tiles($('tTotal'), d.total, true);
-
-  rows($('tSrc'), d.bySource,
-    (s) => `<tr><td>${s.name}</td><td>${num(s.uv)}</td></tr>`,
-    '아직 방문 기록이 없습니다.');
-
-  rows($('tDaily'), d.daily,
-    (x) => `<tr><td>${x.day.slice(5)}</td><td>${num(x.uv)}</td><td>${num(x.signups)}</td>`
-         + `<td>${num(x.opens)}</td><td>${num(x.charges)}</td><td>${won(x.sales)}</td></tr>`,
-    '아직 기록이 없습니다.');
-
-  rows($('tMon'), d.byMonth,
-    (m) => `<tr><td>${m.month}</td><td>${won(m.sales)}</td></tr>`,
-    '아직 매출이 없습니다.');
-
-  rows($('tProd'), d.byProduct,
-    (p) => `<tr><td>${NAMES[p.product] || p.product}</td><td>${num(p.opens)}</td></tr>`,
-    '아직 열린 사주가 없습니다.');
-
+  DATA = await r.json();
+  paint();
   show('board');
 }
-
 function show(which) {
   $('loginBox').hidden = which !== 'login';
   $('board').hidden = which !== 'board';
@@ -214,8 +387,8 @@ $('loginForm').addEventListener('submit', async (e) => {
 $('out').addEventListener('click', () => {
   try {
     localStorage.removeItem(KEY);
-    const saved = localStorage.getItem(IDKEY);
-    if (saved) $('em').value = saved;
+    const s = localStorage.getItem(IDKEY);
+    if (s) $('em').value = s;
   } catch {}
   $('pw').value = '';
   show('login');
