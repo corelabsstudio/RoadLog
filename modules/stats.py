@@ -117,6 +117,19 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
         _write(VISITS_JSON, data)
 
 
+def forget_visits(day: str | None = None) -> int:
+    """방문 기록을 지운다. 잘못 센 날을 털어낼 때 쓴다."""
+    with _LOCK:
+        data = _read(VISITS_JSON, {})
+        if day:
+            gone = 1 if data.pop(day, None) is not None else 0
+        else:
+            gone = len(data)
+            data = {}
+        _write(VISITS_JSON, data)
+    return gone
+
+
 def _visits() -> dict[str, dict[str, Any]]:
     out = {}
     for day, d in _read(VISITS_JSON, {}).items():

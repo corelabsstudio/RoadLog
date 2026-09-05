@@ -104,6 +104,10 @@ button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
   font-size:1.05rem;color:#fff;background:var(--accent);border:0;border-radius:10px;
   padding:14px;cursor:pointer}
 .err{color:#e9a0a0;font-size:.95rem;margin-top:12px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 2px}
+.tools button{font:inherit;padding:10px 16px;border:1px solid var(--line);
+  background:var(--card);color:var(--ink);cursor:pointer}
+.tools button:hover{border-color:var(--ink)}
 .foot{margin-top:44px;color:var(--faint);font-size:.9rem;
       border-top:1px solid var(--line);padding-top:16px}
 </style>
@@ -174,6 +178,14 @@ button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
       <div class="chart" id="cVisit"></div>
       <h2>어디서 들어왔나</h2>
       <ol class="rank" id="rSrc"></ol>
+      <h2>집계 손질</h2>
+      <div class="tools">
+        <button type="button" id="btnMe">내 방문 빼기</button>
+        <button type="button" id="btnWipeDay">오늘 기록 지우기</button>
+        <button type="button" id="btnWipeAll">전부 지우기</button>
+      </div>
+      <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
+
       <h2>날짜별</h2>
       <div class="scroll"><table>
         <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>충전</th><th>매출</th></tr></thead>
@@ -431,6 +443,32 @@ $('out').addEventListener('click', () => {
   $('pw').value = '';
   show('login');
 });
+
+// 집계 손질 — 내 방문 빼기 · 잘못 센 기록 지우기
+const note = (t) => { const el = $('toolNote'); if (el) el.textContent = t; };
+
+$('btnMe').onclick = () => {
+  fetch('/?nocount=1', { credentials: 'same-origin' })
+    .then(() => note('이 브라우저는 이제 방문자에 안 잡힙니다.'))
+    .catch(() => note('실패했습니다. 주소창에 roadlog.co.kr/?nocount=1 을 직접 열어 주세요.'));
+};
+
+const wipe = async (day) => {
+  const url = '/api/admin/stats/visits' + (day ? '?day=' + day : '');
+  const r = await fetch(url, { method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + token() } });
+  if (!r.ok) { note('지우지 못했습니다.'); return; }
+  note('지웠습니다.');
+  load().catch(() => {});
+};
+
+$('btnWipeDay').onclick = () => {
+  const d = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  if (confirm(d + ' 방문 기록을 지웁니다. 되돌릴 수 없습니다.')) wipe(d);
+};
+$('btnWipeAll').onclick = () => {
+  if (confirm('방문 기록을 전부 지웁니다. 되돌릴 수 없습니다.')) wipe('');
+};
 
 if (token()) load().catch(() => show('login'));
 else show('login');

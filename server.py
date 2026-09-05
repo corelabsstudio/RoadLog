@@ -1524,6 +1524,17 @@ async def _count_visit(request: Request, call_next):
     resp = await call_next(request)
     try:
         p = request.url.path
+        # 내가 보는 것은 안 센다. roadlog.co.kr/?nocount=1 을 한 번 열면
+        # 이 브라우저에 표시가 남아서 그다음부터 계속 빠진다.
+        if request.query_params.get("nocount") in ("1", "on"):
+            resp.set_cookie("rl_nocount", "1", max_age=400 * 86400,
+                            samesite="lax", path="/")
+            return resp
+        if request.query_params.get("nocount") == "0":
+            resp.delete_cookie("rl_nocount", path="/")
+            return resp
+        if request.cookies.get("rl_nocount") == "1":
+            return resp
         if (
             request.method == "GET"
             and resp.status_code == 200
@@ -1545,6 +1556,14 @@ async def _count_visit(request: Request, call_next):
     except Exception:
         pass          # 통계 때문에 화면이 막히면 안 된다
     return resp
+
+
+@app.delete("/api/admin/stats/visits")
+def admin_stats_reset(authorization: str | None = Header(default=None),
+                      day: str = ""):
+    """방문 기록 지우기. day 를 주면 그 하루만, 안 주면 전부."""
+    _require_admin(authorization)
+    return {"ok": True, "removed": stats_ops.forget_visits(day or None)}
 
 
 @app.get("/api/admin/stats")
