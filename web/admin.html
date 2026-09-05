@@ -83,6 +83,9 @@ td:first-child,th:first-child{text-align:left}
 td.mail{max-width:260px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:normal}
 tbody tr:hover{background:rgba(164,147,240,.07)}
 .zero{color:var(--faint);text-align:left}
+button.del{font:inherit;font-size:.85rem;background:none;color:var(--faint);
+  border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
+button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
 .scroll{overflow-x:auto}
 .note{color:var(--faint);font-size:.92rem;margin:10px 0 0}
 
@@ -187,7 +190,7 @@ tbody tr:hover{background:rgba(164,147,240,.07)}
       <h2 id="hMem">가입한 회원</h2>
       <label class="keep" style="margin:14px 0 0"><input type="checkbox" id="showOld" /> 옛 운행일지 계정도 보기</label>
       <div class="scroll"><table>
-        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th></tr></thead>
+        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th></th></tr></thead>
         <tbody id="tMem"></tbody>
       </table></div>
       <p class="note" id="memNote"></p>
@@ -343,11 +346,38 @@ function paintMembers() {
   $('tMem').innerHTML = mem.length
     ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
       + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.how) + '</td><td>' + num(m.lamps)
-      + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td></tr>').join('')
-    : '<tr><td colspan="7" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+      + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td>'
+      + '<td>' + (m.how === '관리자' ? ''
+        : '<button type="button" class="del" data-email="' + esc(m.email) + '">삭제</button>')
+      + '</td></tr>').join('')
+    : '<tr><td colspan="8" class="zero">아직 가입한 분이 없습니다.</td></tr>';
 }
 
 $('showOld').addEventListener('change', paintMembers);
+
+// 회원 삭제 — 되돌릴 수 없으니 아이디를 보여 주고 한 번 더 묻는다
+$('tMem').addEventListener('click', async (e) => {
+  const b = e.target.closest('button.del');
+  if (!b) return;
+  const email = b.dataset.email;
+  if (!confirm(email + '
+
+이 회원을 지웁니다. 되돌릴 수 없습니다.
+계속할까요?')) return;
+  b.disabled = true; b.textContent = '지우는 중';
+  try {
+    const r = await fetch('/api/admin/users/' + encodeURIComponent(email), {
+      method: 'DELETE', headers: { Authorization: 'Bearer ' + token() },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || '지우지 못했습니다.');
+    await load();
+    document.querySelector('#tabs button[data-tab="member"]').click();
+  } catch (ex) {
+    alert(ex.message);
+    b.disabled = false; b.textContent = '삭제';
+  }
+});
 
 function seg(id, set) {
   $(id).addEventListener('click', (e) => {
