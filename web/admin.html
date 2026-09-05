@@ -360,10 +360,7 @@ $('tMem').addEventListener('click', async (e) => {
   const b = e.target.closest('button.del');
   if (!b) return;
   const email = b.dataset.email;
-  if (!confirm(email + '
-
-이 회원을 지웁니다. 되돌릴 수 없습니다.
-계속할까요?')) return;
+  if (!confirm(email + ' — 이 회원을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
   b.disabled = true; b.textContent = '지우는 중';
   try {
     const r = await fetch('/api/admin/users/' + encodeURIComponent(email), {
