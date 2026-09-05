@@ -43,8 +43,8 @@ p{margin:0 0 10px}
 ul,ol{margin:0 0 12px;padding-left:20px}
 li{margin:4px 0}
 table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.94rem}
-th,td{border-top:1px solid var(--line);padding:11px 10px;text-align:left;vertical-align:top}
-th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
+th,td{border-top:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}
+th{width:170px;color:var(--muted);font-weight:600;background:var(--card);font-size:.9rem}
 .callout{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0}
 .callout.warn{background:var(--peach);border-color:#f6cdb4}
 .callout p:last-child{margin-bottom:0}
@@ -67,9 +67,11 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
 .pic{display:block;width:calc(100% + 44px);margin:26px -22px;height:auto}
 .pic.top{margin:-30px -22px 26px}
 /* 등불 — 값이 클수록 밝은 그림 */
-.lampline{display:flex;align-items:center;gap:11px}
-.lampline .lamp{width:30px;height:auto;flex:0 0 auto;margin:-10px 0 -10px -4px}
-@media(max-width:560px){ th{width:110px} .lampline .lamp{width:26px} }
+.lampline{display:flex;align-items:center}
+.lampline{gap:8px}
+.lampline .lamp{width:24px;height:auto;flex:0 0 auto;margin:-10px 0 -10px -3px}
+td span{line-height:1.5}
+@media(max-width:560px){ th{width:110px} .lampline .lamp{width:22px} }
 </style>
 </head>
 <body>
