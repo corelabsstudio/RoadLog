@@ -63,7 +63,10 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
 .gets li{border-top:1px solid var(--line);padding:11px 0}
 .gets li b{display:block}
 .gets li span{color:var(--muted);font-size:.9rem}
-@media(max-width:560px){ th{width:110px} }
+/* 등불 — 값이 클수록 밝은 그림 */
+.lampline{display:flex;align-items:center;gap:11px}
+.lampline .lamp{width:38px;height:auto;flex:0 0 auto;margin:-8px 0 -8px -5px}
+@media(max-width:560px){ th{width:110px} .lampline .lamp{width:32px} }
 </style>
 </head>
 <body>
