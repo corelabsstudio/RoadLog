@@ -14,7 +14,7 @@ import json
 import os
 import threading
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -29,8 +29,16 @@ _SALT = (os.environ.get("APP_SECRET") or "roadlog") + "|visit"
 SAJU_SINCE = os.environ.get("SAJU_SINCE", "2026-09-04")
 
 
+KST = timezone(timedelta(hours=9))
+
+
+def now_kst() -> datetime:
+    """서버는 세계표준시로 돈다. 날짜는 한국 시간으로 끊어야 맞다."""
+    return datetime.now(KST)
+
+
 def _today() -> str:
-    return datetime.now().strftime("%Y-%m-%d")
+    return now_kst().strftime("%Y-%m-%d")
 
 
 def _read(path: Path, default: Any) -> Any:
@@ -103,7 +111,7 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
             d["src"][src] = int(d["src"].get(src, 0)) + 1
         # 오래된 날짜는 버린다
         if len(data) > KEEP_DAYS + 10:
-            cut = (datetime.now() - timedelta(days=KEEP_DAYS)).strftime("%Y-%m-%d")
+            cut = (now_kst() - timedelta(days=KEEP_DAYS)).strftime("%Y-%m-%d")
             for k in [k for k in data if k < cut]:
                 data.pop(k, None)
         _write(VISITS_JSON, data)
@@ -204,7 +212,7 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
 
 def overview(days: int = 30) -> dict[str, Any]:
     """오늘·이번 달·최근 N일을 한 번에."""
-    now = datetime.now()
+    now = now_kst()
     today = now.strftime("%Y-%m-%d")
     month = now.strftime("%Y-%m")
 

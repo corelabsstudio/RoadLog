@@ -1502,8 +1502,14 @@ def admin_reviews_delete(
 
 # ── 방문자 세기 ──────────────────────────────────────────
 # 화면(HTML)이 열릴 때만 센다. 자산·API·검색봇은 세지 않는다.
+# 링크를 붙여 넣기만 해도 긁어 가는 미리보기 크롤러들이 있다.
+# 이들은 UA 에 「bot」이 없고 IP 도 매번 달라서, 안 막으면 방문자 수가 부풀려진다.
 _BOT = ("bot", "crawler", "spider", "slurp", "headless", "preview",
-        "monitor", "curl", "wget", "python-requests", "httpx", "lighthouse")
+        "monitor", "curl", "wget", "python-requests", "httpx", "lighthouse",
+        "facebookexternalhit", "meta-externalagent", "meta-externalfetcher",
+        "whatsapp", "telegram", "discord", "slack", "embedly", "quora link",
+        "skypeuripreview", "applebot", "yeti", "daum", "kakaotalk-scrap",
+        "naver", "petalbot", "ahrefs", "semrush", "dataprovider", "linkedinbot")
 
 
 def _client_ip(request: Request) -> str:
@@ -1528,7 +1534,9 @@ async def _count_visit(request: Request, call_next):
         ):
             ua = request.headers.get("user-agent", "") or ""
             low = ua.lower()
-            if ua and not any(b in low for b in _BOT):
+            # 진짜 브라우저는 UA 에 Mozilla 가 들어 있다. 크롤러 대부분은 없다.
+            looks_browser = "mozilla" in low
+            if ua and looks_browser and not any(b in low for b in _BOT):
                 stats_ops.hit(
                     _client_ip(request), ua, p,
                     request.headers.get("referer", "") or "",
