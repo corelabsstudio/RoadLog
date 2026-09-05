@@ -47,6 +47,9 @@ tbody tr:hover{background:rgba(164,147,240,.06)}
   background:var(--paper);color:var(--ink);border:1px solid var(--line)}
 .login button{width:100%;margin-top:16px;font:inherit;font-weight:700;font-size:.95rem;
   color:#fff;background:var(--accent);border:0;border-radius:10px;padding:13px;cursor:pointer}
+.login .keep{display:flex;align-items:center;gap:7px;margin-top:14px;
+  font-size:.85rem;color:var(--muted);cursor:pointer}
+.login .keep input{width:auto;margin:0;accent-color:var(--accent)}
 .err{color:#e9a0a0;font-size:.85rem;margin-top:10px}
 .foot{margin-top:36px;color:var(--faint);font-size:.78rem;border-top:1px solid var(--line);padding-top:14px}
 .foot button{font:inherit;font-size:.78rem;background:none;border:0;color:var(--muted);
@@ -66,6 +69,7 @@ tbody tr:hover{background:rgba(164,147,240,.06)}
       <input id="em" type="text" autocomplete="username" required placeholder="hhs126" />
       <label for="pw">비밀번호</label>
       <input id="pw" type="password" autocomplete="current-password" required />
+      <label class="keep"><input type="checkbox" id="keep" checked /> 아이디 기억하기</label>
       <button type="submit">들어가기</button>
       <p class="err" id="loginErr" hidden></p>
     </form>
@@ -124,6 +128,15 @@ const asEmail = (v) => {
   return t.includes('@') ? t : (t ? `${t}@roadlog.local` : '');
 };
 const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+
+// 아이디만 기억한다. 비밀번호는 브라우저 암호 관리자에 맡긴다 —
+// 화면 저장소에 비밀번호를 두면 스크립트 한 줄에 통째로 새어 나간다.
+const IDKEY = 'roadlog.adminid.v1';
+try {
+  const saved = localStorage.getItem(IDKEY);
+  if (saved) { $('em').value = saved; }
+  else { $('keep').checked = true; }
+} catch {}
 
 function tiles(el, d, hi) {
   el.innerHTML = [
@@ -190,12 +203,21 @@ $('loginForm').addEventListener('submit', async (e) => {
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || '로그인하지 못했습니다.');
     localStorage.setItem(KEY, d.token);
+    try {
+      if ($('keep').checked) localStorage.setItem(IDKEY, $('em').value.trim());
+      else localStorage.removeItem(IDKEY);
+    } catch {}
     await load();
   } catch (ex) { err.textContent = ex.message; err.hidden = false; }
 });
 
 $('out').addEventListener('click', () => {
-  try { localStorage.removeItem(KEY); } catch {}
+  try {
+    localStorage.removeItem(KEY);
+    const saved = localStorage.getItem(IDKEY);
+    if (saved) $('em').value = saved;
+  } catch {}
+  $('pw').value = '';
   show('login');
 });
 
