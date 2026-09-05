@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-BaS1nX40.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-D6ggAJeO.css">
+  <script type="module" crossorigin src="/assets/main-L0Pg3iPg.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Cjqm4gqj.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -186,6 +186,15 @@
           </label>
         </div>
         <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
+        <div class="hour-split" id="hourPickMe" hidden>
+          <p class="hs-lede"><b>시주가 갈리는 시각입니다.</b> 진태양시를 어디까지 보느냐에 따라 나뉘고, 만세력마다 답이 다른 구간입니다.</p>
+          <div class="hs-opts" data-who="me">
+            <button type="button" data-hm="eq" class="on"></button>
+            <button type="button" data-hm="noeq"></button>
+          </div>
+          <p class="hs-note">아는 쪽으로 고르시면 됩니다. 모르시면 그대로 두세요.</p>
+        </div>
+
         <div class="row bon-row" id="bonRow" hidden>
           <label>본관 <i>몰라도 됩니다</i>
             <select name="meBon" id="meBon"><option value="">고르지 않음</option></select>
@@ -220,6 +229,15 @@
           </label>
         </div>
         <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
+        <div class="hour-split" id="hourPickYou" hidden>
+          <p class="hs-lede"><b>시주가 갈리는 시각입니다.</b> 진태양시를 어디까지 보느냐에 따라 나뉘고, 만세력마다 답이 다른 구간입니다.</p>
+          <div class="hs-opts" data-who="you">
+            <button type="button" data-hm="eq" class="on"></button>
+            <button type="button" data-hm="noeq"></button>
+          </div>
+          <p class="hs-note">아는 쪽으로 고르시면 됩니다. 모르시면 그대로 두세요.</p>
+        </div>
+
       </div>
       <div class="saveme" id="saveMe" hidden>
         <button type="button" class="linkish" id="saveBtn">내 정보 저장</button>
