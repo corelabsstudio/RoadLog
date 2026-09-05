@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-iMVK4oyq.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-LOwS_gUl.css">
+  <script type="module" crossorigin src="/assets/main-GKIWjMRk.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-B8erxhwo.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -142,6 +142,23 @@
       <span class="picked-free" id="pickedFree">먼저 무료로 봅니다</span>
     </div>
     <p class="open-note" id="openNote" hidden></p>
+  </section>
+
+  <section class="p-reviews" id="pReviews" hidden>
+    <div class="sec-head"><h2>이 사주를 본 분들</h2><p id="revSum"></p></div>
+    <ul class="rev-list" id="revList"></ul>
+    <p class="empty" id="revEmpty" hidden>아직 첫 후기를 기다리고 있어요.</p>
+    <form class="rev-form" id="revForm" hidden>
+      <div class="rev-stars" id="revStars" role="radiogroup" aria-label="별점"></div>
+      <textarea id="revText" maxlength="300" rows="3"
+        placeholder="어떤 점이 도움이 됐는지 짧게 남겨 주세요."></textarea>
+      <div class="rev-send">
+        <span class="rev-count" id="revCount">0 / 300</span>
+        <button type="submit" class="btn btn-sm" id="revSend">후기 남기기</button>
+      </div>
+      <p class="form-error" id="revErr" hidden></p>
+    </form>
+    <p class="rev-note" id="revNote" hidden>이 사주를 열어 보신 분만 후기를 남길 수 있습니다.</p>
   </section>
 
   <section class="tool" id="tool">

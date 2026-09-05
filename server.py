@@ -97,6 +97,7 @@ from modules.rate_limit import (
 from modules.validator import validate_log
 from modules import notify as notify_ops
 from modules import lamps as lamps_ops
+from modules import product_reviews as prev_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -1720,6 +1721,75 @@ def lamps_charge(body: ChargeBody, authorization: str | None = Header(default=No
         return lamps_ops.charge(user["email"], lamps, payment_id=body.paymentId.strip(), price=amount)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ── 상품별 손님 후기 ──────────────────────────────────────
+class ReviewBody(BaseModel):
+    rating: int = 5
+    text: str = ""
+
+
+def _maybe_user(authorization: str | None) -> dict | None:
+    """로그인했으면 사용자, 아니면 None. 후기 목록은 비회원도 본다."""
+    if not authorization:
+        return None
+    try:
+        return _token_user(authorization)
+    except Exception:
+        return None
+
+
+def _can_review(email: str, product: str) -> bool:
+    """그 상품을 실제로 연 사람만 후기를 쓴다."""
+    try:
+        acc = lamps_ops.status(email)
+    except Exception:
+        return False
+    return any(o.get("product") == product for o in acc.get("owned", []))
+
+
+@app.get("/api/products/{product}/reviews")
+def product_reviews(product: str, authorization: str | None = Header(default=None)):
+    product = product.strip()[:24]
+    user = _maybe_user(authorization)
+    out = {
+        "items": prev_ops.list_public(product),
+        **prev_ops.summary(product),
+        "canWrite": False,
+        "mine": None,
+    }
+    if user:
+        out["canWrite"] = _can_review(user["email"], product)
+        out["mine"] = prev_ops.mine(product, user["email"])
+    return out
+
+
+@app.post("/api/products/{product}/reviews")
+def product_review_write(
+    product: str, body: ReviewBody, authorization: str | None = Header(default=None)
+):
+    product = product.strip()[:24]
+    user = _token_user(authorization)
+    if not _can_review(user["email"], product):
+        raise HTTPException(403, "이 사주를 먼저 열어 보셔야 후기를 남길 수 있습니다.")
+    try:
+        prev_ops.upsert(product, user["email"], user.get("name") or "", body.rating, body.text)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {
+        "ok": True,
+        "items": prev_ops.list_public(product),
+        **prev_ops.summary(product),
+        "canWrite": True,
+        "mine": prev_ops.mine(product, user["email"]),
+    }
+
+
+@app.delete("/api/products/{product}/reviews")
+def product_review_delete(product: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    prev_ops.remove(product.strip()[:24], user["email"])
+    return {"ok": True}
 
 
 @app.post("/api/reports/open")
