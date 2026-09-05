@@ -49,7 +49,6 @@ PRICES = {
     # 두 사람 — 시기
     "week": 19,
     "dday": 69,
-    "first": 55,
     # 두 사람 — 재회
     "mind": 79,
     "full": 98,
