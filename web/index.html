@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-BF4A5dlH.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-Dgx0dI1d.css">
+  <script type="module" crossorigin src="/assets/main-DlfEo5gj.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Cos4nY-a.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -53,7 +53,7 @@
         <button type="button" class="btn btn-sm" id="acctCharge">충전하기</button>
       </div>
       <nav class="acct-nav">
-        <button type="button" data-acct="records"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-note"/></svg>내 기록</button>
+        <button type="button" data-acct="records"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-note"/></svg>내 기록<i class="due" data-rec-due hidden></i></button>
         <button type="button" data-acct="owned"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-grid"/></svg>내가 본 사주</button>
         <button type="button" data-acct="ledger"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-info"/></svg>등불 내역</button>
         <button type="button" data-acct="logout" class="out">로그아웃</button>
@@ -120,7 +120,7 @@
   <div class="view view-records" id="viewRecords" hidden>
     <button type="button" class="back" id="backHome2"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>홈으로</button>
   <section class="records" id="records">
-    <div class="sec-head"><h2>내 기록</h2><p>연락할지 말지 정한 것을 여기에 남겨 둡니다. 30일 뒤에 어떻게 됐는지 다시 여쭤보고, 그 답까지 함께 쌓입니다.</p></div>
+    <div class="sec-head"><h2>내 기록<i class="due" data-rec-due hidden></i></h2><p>사주를 보고 어떻게 하기로 했는지 남겨 둔 것들입니다. 30일이 지난 기록에는 「그 뒤 어떻게 됐나요?」가 뜨고, 고르시면 사주와 결과가 나란히 남습니다.</p></div>
     <ul class="record-list" id="recordList"></ul>
     <p class="empty" id="recordEmpty">아직 남긴 기록이 없어요. 사주를 본 뒤 「연락했어요」 같은 걸 골라 두면 여기에 모이고, 30일이 지나면 그때 어떻게 됐는지 고를 수 있어요.</p>
   </section>
@@ -334,7 +334,7 @@
     <div id="recordWrap">
     <h3 class="full-h">어떻게 하기로 하셨어요?</h3>
     <div class="record" id="recordBox">
-      <p class="record-lede">아래 셋 중 하나를 고르면 오늘 본 사주와 같이 저장됩니다. 30일이 지난 뒤 <b>내 기록</b>에 들어오시면 실제로 어떻게 됐는지 고를 수 있고, 그러면 사주와 결과가 나란히 남습니다.<br />이 브라우저에만 저장됩니다. 서버로 보내지 않아서, 30일 뒤에 알림이 가지는 않아요.</p>
+      <p class="record-lede">아래 셋 중 하나를 고르면 어떤 사주를 봤는지와 함께 저장됩니다. 30일이 지난 뒤 <b>내 기록</b>에 들어오시면 실제로 어떻게 됐는지 고를 수 있고, 그러면 사주와 결과가 나란히 남습니다.<br />로그인하셨으면 계정에 저장되어 <b>폰을 바꿔도 남습니다</b>. 생년월일은 여기에도 저장되지 않습니다.</p>
       <div class="record-choices">
         <button type="button" class="choice" data-choice="sent">연락했어요</button>
         <button type="button" class="choice" data-choice="wait">가능일까지 기다릴게요</button>

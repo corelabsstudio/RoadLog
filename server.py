@@ -98,6 +98,7 @@ from modules.validator import validate_log
 from modules import notify as notify_ops
 from modules import lamps as lamps_ops
 from modules import product_reviews as prev_ops
+from modules import records as rec_ops
 from modules import stats as stats_ops
 
 ROOT = Path(__file__).resolve().parent
@@ -1864,6 +1865,67 @@ def product_review_delete(product: str, authorization: str | None = Header(defau
     user = _token_user(authorization)
     prev_ops.remove(product.strip()[:24], user["email"])
     return {"ok": True}
+
+
+# ── 내 기록 ──────────────────────────────────────────────
+# 생년월일·이름은 여기 오지 않는다. 고른 항목, 한 줄 메모, 본 사주 이름뿐이다.
+class RecordBody(BaseModel):
+    choice: str = ""
+    memo: str = ""
+    product: str = ""
+
+
+class FollowUpBody(BaseModel):
+    followup: str = ""
+
+
+class RecordMergeBody(BaseModel):
+    items: list[dict] = []
+
+
+@app.get("/api/records")
+def records_list(authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    return rec_ops.listing(user["email"])
+
+
+@app.post("/api/records")
+def records_add(body: RecordBody, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    try:
+        item = rec_ops.add(user["email"], body.choice, body.memo, body.product)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "item": item, **rec_ops.listing(user["email"])}
+
+
+@app.post("/api/records/{rid}/followup")
+def records_followup(
+    rid: str, body: FollowUpBody, authorization: str | None = Header(default=None)
+):
+    user = _token_user(authorization)
+    try:
+        rec_ops.follow_up(user["email"], rid, body.followup)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except KeyError as e:
+        raise HTTPException(404, str(e))
+    return {"ok": True, **rec_ops.listing(user["email"])}
+
+
+@app.delete("/api/records/{rid}")
+def records_delete(rid: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    rec_ops.remove(user["email"], rid)
+    return {"ok": True, **rec_ops.listing(user["email"])}
+
+
+@app.post("/api/records/merge")
+def records_merge(body: RecordMergeBody, authorization: str | None = Header(default=None)):
+    """브라우저에만 있던 옛 기록을 계정으로 옮긴다. 로그인 직후 한 번."""
+    user = _token_user(authorization)
+    moved = rec_ops.merge_in(user["email"], body.items)
+    return {"ok": True, "moved": moved, **rec_ops.listing(user["email"])}
 
 
 @app.post("/api/reports/open")
