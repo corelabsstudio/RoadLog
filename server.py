@@ -816,6 +816,163 @@ def login(body: AuthBody, request: Request):
     return _issue_session(user, msg)
 
 
+# ── 소셜 로그인 (구글 · 카카오) ────────────────────────────
+# 열쇠는 전부 환경변수로 받는다. 없으면 그 제공자는 꺼진 것으로 본다.
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
+KAKAO_REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY", "").strip()
+KAKAO_CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "").strip()
+SITE_ORIGIN = (os.environ.get("SITE_ORIGIN", "https://roadlog.co.kr") or "").rstrip("/")
+
+# state 는 CSRF 방지용. 짧게 살고 한 번 쓰면 버린다.
+_oauth_states: dict[str, float] = {}
+
+
+def _new_state() -> str:
+    import time
+    now = time.time()
+    for k, born in list(_oauth_states.items()):
+        if now - born > 600:
+            _oauth_states.pop(k, None)
+    st = secrets.token_urlsafe(24)
+    _oauth_states[st] = now
+    return st
+
+
+def _use_state(st: str) -> bool:
+    import time
+    born = _oauth_states.pop(st or "", None)
+    return bool(born) and (time.time() - born) <= 600
+
+
+def _social_login(email: str, name: str, provider: str) -> str:
+    """이메일로 기존 회원을 찾고, 없으면 만든다. 우리 토큰을 돌려준다."""
+    email = (email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "이 계정에서 이메일을 받지 못했습니다.")
+    user = db.get_user(email)
+    if not user:
+        # 소셜로만 들어온 회원이라 비밀번호는 쓰지 않는다. 아무도 모르는 값으로 채운다.
+        ok, msg = db.register_user(email, secrets.token_urlsafe(24), name or email.split("@")[0])
+        if not ok:
+            raise HTTPException(400, msg)
+        user = db.get_user(email)
+    if not user:
+        raise HTTPException(500, "계정을 만들지 못했습니다.")
+    sess = _issue_session(user, f"{provider} 로그인")
+    return sess["token"]
+
+
+def _social_redirect(token: str) -> RedirectResponse:
+    # 토큰은 조각(#)으로 넘긴다. 물음표로 넘기면 서버 로그와 리퍼러에 남는다.
+    return RedirectResponse(f"{SITE_ORIGIN}/#t={quote(token)}", status_code=302)
+
+
+@app.get("/api/auth/social/ready")
+def social_ready():
+    """어떤 소셜 로그인이 켜져 있는지. 화면은 이걸 보고 버튼을 그린다."""
+    return {
+        "google": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
+        "kakao": bool(KAKAO_REST_API_KEY),
+    }
+
+
+@app.get("/api/auth/google/start")
+def google_start():
+    if not (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET):
+        raise HTTPException(503, "구글 로그인이 아직 설정되지 않았습니다.")
+    st = _new_state()
+    url = (
+        "https://accounts.google.com/o/oauth2/v2/auth"
+        f"?client_id={quote(GOOGLE_CLIENT_ID)}"
+        f"&redirect_uri={quote(SITE_ORIGIN + '/api/auth/google/callback', safe='')}"
+        "&response_type=code&scope=openid%20email%20profile"
+        f"&state={quote(st)}&prompt=select_account"
+    )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/auth/google/callback")
+def google_callback(code: str = "", state: str = "", error: str = ""):
+    if error:
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
+    if not _use_state(state):
+        raise HTTPException(400, "로그인 요청이 만료되었습니다. 다시 시도해 주세요.")
+    with httpx.Client(timeout=12.0) as client:
+        tok = client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code": code,
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uri": SITE_ORIGIN + "/api/auth/google/callback",
+                "grant_type": "authorization_code",
+            },
+        )
+        if tok.status_code != 200:
+            raise HTTPException(400, "구글 인증에 실패했습니다.")
+        access = tok.json().get("access_token", "")
+        info = client.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        if info.status_code != 200:
+            raise HTTPException(400, "구글에서 정보를 받지 못했습니다.")
+        d = info.json()
+    return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글"))
+
+
+@app.get("/api/auth/kakao/start")
+def kakao_start():
+    if not KAKAO_REST_API_KEY:
+        raise HTTPException(503, "카카오 로그인이 아직 설정되지 않았습니다.")
+    st = _new_state()
+    url = (
+        "https://kauth.kakao.com/oauth/authorize"
+        f"?client_id={quote(KAKAO_REST_API_KEY)}"
+        f"&redirect_uri={quote(SITE_ORIGIN + '/api/auth/kakao/callback', safe='')}"
+        f"&response_type=code&state={quote(st)}"
+    )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/auth/kakao/callback")
+def kakao_callback(code: str = "", state: str = "", error: str = ""):
+    if error:
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
+    if not _use_state(state):
+        raise HTTPException(400, "로그인 요청이 만료되었습니다. 다시 시도해 주세요.")
+    data = {
+        "grant_type": "authorization_code",
+        "client_id": KAKAO_REST_API_KEY,
+        "redirect_uri": SITE_ORIGIN + "/api/auth/kakao/callback",
+        "code": code,
+    }
+    if KAKAO_CLIENT_SECRET:
+        data["client_secret"] = KAKAO_CLIENT_SECRET
+    with httpx.Client(timeout=12.0) as client:
+        tok = client.post("https://kauth.kakao.com/oauth/token", data=data)
+        if tok.status_code != 200:
+            raise HTTPException(400, "카카오 인증에 실패했습니다.")
+        access = tok.json().get("access_token", "")
+        info = client.get(
+            "https://kapi.kakao.com/v2/user/me",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        if info.status_code != 200:
+            raise HTTPException(400, "카카오에서 정보를 받지 못했습니다.")
+        d = info.json()
+    acc = (d.get("kakao_account") or {})
+    profile = (acc.get("profile") or {})
+    email = acc.get("email") or ""
+    name = profile.get("nickname") or ""
+    if not email:
+        # 이메일 동의를 안 했거나 카카오 계정에 이메일이 없는 경우.
+        # 우리 쪽에서만 쓰는 주소를 만들어 계정을 잇는다.
+        email = f"kakao{d.get('id')}@kakao.local"
+    return _social_redirect(_social_login(email, name, "카카오"))
+
+
 @app.get("/api/me")
 def me(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
@@ -1575,8 +1732,20 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
         raise HTTPException(400, str(e))
 
 
+class _HashedAssets(StaticFiles):
+    """파일명에 내용 해시가 붙은 자산은 내용이 바뀌면 이름이 바뀐다.
+    그래서 오래 캐시해도 안전하고, 매 방문 재검증 왕복을 없앨 수 있다."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        import re as _re
+        if resp.status_code == 200 and _re.search(r"-[A-Za-z0-9_-]{8,}\.(js|css|png|jpg|webp|woff2?)$", path):
+            resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return resp
+
+
 if WEB.exists():
-    app.mount("/assets", StaticFiles(directory=WEB / "assets"), name="assets")
+    app.mount("/assets", _HashedAssets(directory=WEB / "assets"), name="assets")
 
 
 @app.get("/")

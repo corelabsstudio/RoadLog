@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
-  <script type="module" crossorigin src="/assets/main-CfZYjxqm.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CBFgj9wP.css">
+  <script type="module" crossorigin src="/assets/main-DxHL6pbD.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CKE_5qWz.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -367,6 +367,12 @@
     <p class="dlg-err" id="authErr" hidden></p>
     <button type="submit" class="btn" id="authSubmit">로그인</button>
   </form>
+  <div class="social" id="socialBox" hidden>
+    <p class="social-or"><span>또는</span></p>
+    <a class="social-btn kakao" id="btnKakao" href="/api/auth/kakao/start" hidden>카카오로 시작하기</a>
+    <a class="social-btn google" id="btnGoogle" href="/api/auth/google/start" hidden>구글로 시작하기</a>
+    <p class="social-note">처음이면 계정이 자동으로 만들어집니다. 생년월일은 계정에 저장되지 않습니다.</p>
+  </div>
   <p class="dlg-switch"><span id="authAsk">처음이신가요?</span> <button type="button" id="authToggle">가입하기</button></p>
 </dialog>
 
