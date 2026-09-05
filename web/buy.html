@@ -63,6 +63,9 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
 .gets li{border-top:1px solid var(--line);padding:11px 0}
 .gets li b{display:block}
 .gets li span{color:var(--muted);font-size:.9rem}
+/* 삽화 — 문서 폭을 꽉 채운다. 둥근 카드처럼 보이지 않게 모서리는 각지게 */
+.pic{display:block;width:calc(100% + 44px);margin:26px -22px;height:auto}
+.pic.top{margin:-30px -22px 26px}
 /* 등불 — 값이 클수록 밝은 그림 */
 .lampline{display:flex;align-items:center;gap:11px}
 .lampline .lamp{width:38px;height:auto;flex:0 0 auto;margin:-8px 0 -8px -5px}
@@ -76,6 +79,7 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
     <a href="/">로드로그</a>
   </header>
   <main>
+    <img class="pic top" src="/assets/buy_hero-CVwtsK_Z.png" alt="등불을 들고 밤길에 선 로드로그 고양이" />
     <h1>연락하기 전에 · 재회 사주</h1>
     <p class="updated">디지털 콘텐츠 · 충전 후 바로 열람 · 정기결제 없음</p>
 
@@ -125,6 +129,7 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card)}
     </table>
     <p style="color:var(--muted);font-size:.88rem">정기결제나 자동갱신은 없습니다. 필요하실 때 그때그때 충전하시면 됩니다.</p>
 
+    <img class="pic" src="/assets/buy_read-BS5NfsqD.png" alt="등불 옆에서 두 사람의 사주 종이를 펼쳐 보는 고양이" />
     <h2>어떤 상품인가요</h2>
     <p>두 사람의 생년월일로 사주를 계산해, 헤어진 상대와의 관계를 <b>근거와 함께</b> 읽어 드리는 디지털 리포트입니다.
        사이트에서 무료로 판정 한 줄과 첫 번째 연락 가능일까지 확인하실 수 있고, 결제하시면 고르신 상품의 전체 내용이 열립니다.
