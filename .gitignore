@@ -48,3 +48,6 @@ railway-variables.env
 .launch/tistory.env
 tools/tistory_publish/publish_log.jsonl
 
+
+# vite 개발 캐시 (잘못된 폴더에서 띄우면 생긴다)
+.vite/
