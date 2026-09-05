@@ -62,8 +62,8 @@ tbody tr:hover{background:rgba(164,147,240,.06)}
     <h1>운영 현황</h1>
     <p class="sub">관리자만 볼 수 있습니다.</p>
     <form id="loginForm">
-      <label for="em">이메일</label>
-      <input id="em" type="email" autocomplete="username" required />
+      <label for="em">아이디 또는 이메일</label>
+      <input id="em" type="text" autocomplete="username" required placeholder="hhs126" />
       <label for="pw">비밀번호</label>
       <input id="pw" type="password" autocomplete="current-password" required />
       <button type="submit">들어가기</button>
@@ -117,6 +117,11 @@ const NAMES = {
   ox:'붙잡을까, 놓을까', year:'올해 운세', charm:'내 매력', luck:'흉살 풀이',
   money:'재물운', life:'평생 흐름', cool:'권태기 진단', again:'재회 행동 전략',
   marry:'결혼운', match:'궁합 종합',
+};
+// 아이디만 넣어도 되게 — 관리자 계정은 「아이디@roadlog.local」이다
+const asEmail = (v) => {
+  const t = (v || '').trim();
+  return t.includes('@') ? t : (t ? `${t}@roadlog.local` : '');
 };
 const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 
@@ -180,7 +185,7 @@ $('loginForm').addEventListener('submit', async (e) => {
   try {
     const r = await fetch('/api/auth/login', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: $('em').value.trim(), password: $('pw').value }),
+      body: JSON.stringify({ email: asEmail($('em').value), password: $('pw').value }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || '로그인하지 못했습니다.');
