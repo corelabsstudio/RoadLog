@@ -92,6 +92,8 @@ tbody tr:hover{background:rgba(164,147,240,.07)}
 .login label{display:block;font-size:.95rem;color:var(--muted);margin:14px 0 6px}
 .login input{width:100%;font:inherit;font-size:1.05rem;padding:13px 14px;border-radius:10px;
   background:var(--paper);color:var(--ink);border:1px solid var(--line)}
+.keep{display:flex;align-items:center;gap:8px;font-size:.95rem;color:var(--muted);cursor:pointer}
+.keep input{width:auto;margin:0;accent-color:var(--accent)}
 .login .keep{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:.95rem;
   color:var(--muted);cursor:pointer}
 .login .keep input{width:auto;margin:0;accent-color:var(--accent)}
@@ -183,11 +185,12 @@ tbody tr:hover{background:rgba(164,147,240,.07)}
 
     <section data-page="member" hidden>
       <h2 id="hMem">가입한 회원</h2>
+      <label class="keep" style="margin:14px 0 0"><input type="checkbox" id="showOld" /> 옛 운행일지 계정도 보기</label>
       <div class="scroll"><table>
         <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th></tr></thead>
         <tbody id="tMem"></tbody>
       </table></div>
-      <p class="note">옛 운행일지 시절 계정도 같은 회원 목록에 들어 있습니다. 「방식」으로 구분됩니다.</p>
+      <p class="note" id="memNote"></p>
     </section>
 
     <p class="foot">
@@ -324,14 +327,27 @@ function paint() {
       + '</td><td>' + won(x.sales) + '</td></tr>').join('')
     : '<tr><td colspan="6" class="zero">아직 기록이 없습니다.</td></tr>';
 
-  const mem = d.members || [];
-  $('hMem').textContent = '가입한 회원 · ' + mem.length + '명';
+  paintMembers();
+}
+
+function paintMembers() {
+  const d = DATA;
+  const all = d.members || [];
+  const old = $('showOld').checked;
+  const mem = old ? all : all.filter((m) => !m.legacy);
+  const n = all.filter((m) => m.legacy).length;
+  $('hMem').textContent = '사주 손님 · ' + all.filter((m) => !m.legacy).length + '명';
+  $('memNote').textContent = n
+    ? '옛 운행일지 시절 계정 ' + n + '개는 숫자에서 뺐습니다. 위 상자를 켜면 같이 보입니다.'
+    : '';
   $('tMem').innerHTML = mem.length
     ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
       + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.how) + '</td><td>' + num(m.lamps)
       + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td></tr>').join('')
     : '<tr><td colspan="7" class="zero">아직 가입한 분이 없습니다.</td></tr>';
 }
+
+$('showOld').addEventListener('change', paintMembers);
 
 function seg(id, set) {
   $(id).addEventListener('click', (e) => {

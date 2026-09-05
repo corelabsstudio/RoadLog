@@ -25,6 +25,9 @@ KEEP_DAYS = 90
 _LOCK = threading.Lock()
 _SALT = (os.environ.get("APP_SECRET") or "roadlog") + "|visit"
 
+# 사주 서비스를 연 날. 이전에 만들어진 계정은 옛 운행일지 계정이다.
+SAJU_SINCE = os.environ.get("SAJU_SINCE", "2026-09-04")
+
 
 def _today() -> str:
     return datetime.now().strftime("%Y-%m-%d")
@@ -156,7 +159,8 @@ def _spends() -> list[dict[str, Any]]:
 
 
 def _signups() -> list[str]:
-    return [m["at"] for m in members() if m["at"]]
+    """사주 손님만. 옛 운행일지 계정은 세지 않는다."""
+    return [m["at"] for m in members() if m["at"] and not m["legacy"]]
 
 
 def members(limit: int = 300) -> list[dict[str, Any]]:
@@ -179,14 +183,20 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
             how = "관리자"
         else:
             how = "이메일 · 소셜"
+        at = str(u.get("created_at", ""))[:10]
+        opens = len(acc.get("owned", []))
+        # 사주를 쓴 적이 있거나, 사주 시작일 이후에 가입했으면 사주 손님이다
+        used = bool(opens or acc.get("ledger"))
+        legacy = (how == "관리자") or not (used or (at and at >= SAJU_SINCE))
         out.append({
             "email": email,
             "name": u.get("name") or "",
-            "at": str(u.get("created_at", ""))[:10],
+            "at": at,
             "how": how,
             "lamps": bal,
             "spent": charged,
-            "opens": len(acc.get("owned", [])),
+            "opens": opens,
+            "legacy": legacy,
         })
     out.sort(key=lambda m: m["at"], reverse=True)
     return out[:limit]
@@ -256,6 +266,7 @@ def overview(days: int = 30) -> dict[str, Any]:
             "signups": len(su),
             "opens": len(sp),
             "members": len(su),
+            "legacy": len([m for m in members() if m["legacy"]]),
             "uv": sum(v["uv"] for v in vis.values()),
             "pv": sum(v["pv"] for v in vis.values()),
         },
