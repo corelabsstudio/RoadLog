@@ -2072,20 +2072,28 @@ _GONE_PREFIXES = ("blog", "resources", "app", "guide", "update.html", "legal/bus
 
 @app.get("/{path:path}")
 def spa_fallback(path: str):
-    cleaned_head = path.strip("/")
+    # API·헬스 경로가 정적 폴백에 먹히지 않게
+    if path.startswith("api/") or path in {"health", "healthz"}:
+        raise HTTPException(404, "Not Found")
+
+    # 🛑 옛 주소 정리보다 **실제 파일이 먼저다.** 2026-09-07 에 사주 블로그를
+    #    /blog 아래에 냈는데, 운행일지 시절 규칙이 그걸 통째로 홈으로 보냈다.
+    safe = _safe_web_file(path)
+    if safe is not None:
+        return _file_response(safe)
+    cleaned = path.strip("/")
+    for rel in (f"{cleaned}/index.html", f"{cleaned}.html"):
+        if cleaned and ".." not in cleaned.replace("\\", "/").split("/"):
+            hit = _safe_web_file(rel)
+            if hit is not None:
+                return _file_response(hit)
+
+    cleaned_head = cleaned
     if cleaned_head and any(
         cleaned_head == pre or cleaned_head.startswith(pre + "/") or cleaned_head.startswith(pre + ".")
         for pre in _GONE_PREFIXES
     ):
         return RedirectResponse("/", status_code=301)
-    # API·헬스 경로가 정적 폴백에 먹히지 않게
-    if path.startswith("api/") or path in {"health", "healthz"}:
-        raise HTTPException(404, "Not Found")
-    # 정적 파일 → 디렉터리 index.html → path.html (SEO 블로그 URL)
-    safe = _safe_web_file(path)
-    if safe is not None:
-        return _file_response(safe)
-    cleaned = path.strip("/")
     if cleaned and ".." not in cleaned.replace("\\", "/").split("/"):
         for rel in (f"{cleaned}/index.html", f"{cleaned}.html"):
             safe_idx = _safe_web_file(rel)
