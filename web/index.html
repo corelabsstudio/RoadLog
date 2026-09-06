@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-DA7_E8cc.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-r1bk-C7c.css">
+  <script type="module" crossorigin src="/assets/main-wvHSQJ4I.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Cv-PHYF4.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -180,79 +180,132 @@
 
     <div class="tool-grid">
     <form class="pair-form" id="pairForm" novalidate>
-      <div class="person">
-        <p class="who">나</p>
-        <label class="name-row">이름
+      <div class="wiz-bar" id="wizBar" aria-hidden="true"><i id="wizFill"></i></div>
+      <p class="wiz-count"><span id="wizNow">1</span> / <span id="wizAll">5</span></p>
+
+      <!-- 나 ─────────────────────────────────────── -->
+      <section class="step" data-step="meSex" data-who="me">
+        <h3 class="step-q">성별을 알려 주세요</h3>
+        <p class="step-sub">십 년 단위 흐름(대운)이 어느 쪽으로 도는지가 성별에 따라 갈립니다.</p>
+        <input type="hidden" name="meSex" value="female" />
+        <div class="pick" data-for="meSex">
+          <button type="button" data-val="female" class="on">여자</button>
+          <button type="button" data-val="male">남자</button>
+        </div>
+      </section>
+
+      <section class="step" data-step="meDate" data-who="me">
+        <h3 class="step-q">생년월일을 알려 주세요</h3>
+        <p class="step-sub">여덟 글자 중 연·월·일 세 기둥이 여기서 나옵니다.</p>
+        <label class="big-field">태어난 날
+          <input type="date" name="meDate" required value="1996-03-14" />
+        </label>
+        <input type="hidden" name="meCal" value="solar" />
+        <div class="pick pick-3" data-for="meCal">
+          <button type="button" data-val="solar" class="on">양력</button>
+          <button type="button" data-val="lunar">음력 평달</button>
+          <button type="button" data-val="leap">음력 윤달</button>
+        </div>
+      </section>
+
+      <section class="step" data-step="meTime" data-who="me">
+        <h3 class="step-q">태어난 시간을 알려 주세요</h3>
+        <p class="step-sub">마지막 기둥인 시주가 여기서 나옵니다. 몰라도 나머지 여섯 글자로 봅니다.</p>
+        <label class="big-field">태어난 시각
+          <input type="time" name="meTime" value="23:20" />
+        </label>
+        <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
+        <label class="big-field">태어난 곳
+          <select name="meCity"></select>
+        </label>
+        <p class="step-note">해가 남중하는 시각이 지역마다 달라, 태어난 곳까지 넣으면 시주가 더 정확해집니다.</p>
+      </section>
+
+      <section class="step" data-step="meName" data-who="me">
+        <h3 class="step-q">이름을 알려 주세요</h3>
+        <p class="step-sub">결과에 부르는 말로만 씁니다. 계산에는 들어가지 않습니다.</p>
+        <label class="big-field">내 이름
           <input type="text" name="meName" maxlength="12" required placeholder="내 이름" autocomplete="off" />
         </label>
-        <div class="row">
-          <label>생년월일<input type="date" name="meDate" required value="1996-03-14" /></label>
-          <label>태어난 시간<input type="time" name="meTime" value="23:20" /></label>
-        </div>
-        <div class="row row-3">
-          <label>양력·음력
-            <select name="meCal">
-              <option value="solar">양력</option>
-              <option value="lunar">음력(평달)</option>
-              <option value="leap">음력(윤달)</option>
-            </select>
-          </label>
-          <label>성별
-            <select name="meSex">
-              <option value="female" selected>여자</option>
-              <option value="male">남자</option>
-            </select>
-          </label>
-          <label>태어난 곳
-            <select name="meCity"></select>
-          </label>
-        </div>
-        <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
+      </section>
 
-        <div class="row bon-row" id="bonRow" hidden>
-          <label>본관 <i>몰라도 됩니다</i>
-            <select name="meBon" id="meBon"><option value="">고르지 않음</option></select>
-            <input type="text" id="meBonEtc" class="bon-etc" hidden maxlength="20" placeholder="예: 신평 호씨" autocomplete="off" />
-          </label>
+      <section class="step" data-step="meBon" data-who="me" id="bonRow" hidden>
+        <h3 class="step-q">본관을 알려 주세요</h3>
+        <p class="step-sub">조상 자리를 짚을 때만 씁니다. 몰라도 됩니다.</p>
+        <label class="big-field">본관
+          <select name="meBon" id="meBon"><option value="">고르지 않음</option></select>
+        </label>
+        <input type="text" id="meBonEtc" class="bon-etc" hidden maxlength="20" placeholder="예: 신평 호씨" autocomplete="off" />
+      </section>
+
+      <!-- 그 사람 ─────────────────────────────────── -->
+      <section class="step step-bridge" data-step="bridge" data-who="you">
+        <img class="step-face" src="/assets/face-ebveWHzw.png" alt="" aria-hidden="true" />
+        <h3 class="step-q">이제 그 사람 차례예요</h3>
+        <p class="step-sub" id="bridgeLine">생년월일만 알면 됩니다. 태어난 시간과 지역은 몰라도 괜찮아요.</p>
+      </section>
+
+      <section class="step" data-step="youDate" data-who="you">
+        <h3 class="step-q">그 사람 생년월일을 알려 주세요</h3>
+        <p class="step-sub">여기까지만 알아도 두 사람 글자를 맞춰 볼 수 있습니다.</p>
+        <label class="big-field">그 사람이 태어난 날
+          <input type="date" name="youDate" required value="1994-11-02" />
+        </label>
+        <input type="hidden" name="youCal" value="solar" />
+        <div class="pick pick-3" data-for="youCal">
+          <button type="button" data-val="solar" class="on">양력</button>
+          <button type="button" data-val="lunar">음력 평달</button>
+          <button type="button" data-val="leap">음력 윤달</button>
         </div>
-      </div>
-      <div class="person" id="personYou">
-        <p class="who">그 사람</p>
-        <p class="who-note">생년월일만 알면 됩니다. 태어난 시간과 지역은 몰라도 괜찮아요.</p>
-        <label class="name-row">이름
+      </section>
+
+      <section class="step" data-step="youTime" data-who="you">
+        <h3 class="step-q">그 사람이 태어난 시간은요?</h3>
+        <p class="step-sub">모르면 「시간을 몰라요」를 고르고 넘어가세요. 대부분 모릅니다.</p>
+        <label class="big-field">태어난 시각
+          <input type="time" name="youTime" value="08:10" />
+        </label>
+        <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
+        <label class="big-field">태어난 곳
+          <select name="youCity"></select>
+        </label>
+      </section>
+
+      <section class="step" data-step="youSex" data-who="you">
+        <h3 class="step-q">그 사람 성별은요?</h3>
+        <p class="step-sub">그 사람의 십 년 흐름이 어느 쪽으로 도는지에만 씁니다.</p>
+        <input type="hidden" name="youSex" value="male" />
+        <div class="pick" data-for="youSex">
+          <button type="button" data-val="female">여자</button>
+          <button type="button" data-val="male" class="on">남자</button>
+        </div>
+      </section>
+
+      <section class="step" data-step="youName" data-who="you">
+        <h3 class="step-q">그 사람을 뭐라고 부를까요?</h3>
+        <p class="step-sub">결과에 쓰는 말입니다. 본명이 아니어도 됩니다.</p>
+        <label class="big-field">그 사람 이름
           <input type="text" name="youName" maxlength="12" required placeholder="그 사람 이름" autocomplete="off" />
         </label>
-        <div class="row">
-          <label>생년월일<input type="date" name="youDate" required value="1994-11-02" /></label>
-          <label>태어난 시간<input type="time" name="youTime" value="08:10" /></label>
-        </div>
-        <div class="row row-3">
-          <label>양력·음력
-            <select name="youCal">
-              <option value="solar">양력</option>
-              <option value="lunar">음력(평달)</option>
-              <option value="leap">음력(윤달)</option>
-            </select>
-          </label>
-          <label>성별
-            <select name="youSex">
-              <option value="female" selected>여자</option>
-              <option value="male">남자</option>
-            </select>
-          </label>
-          <label>태어난 곳
-            <select name="youCity"></select>
-          </label>
-        </div>
-        <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
+      </section>
 
-      </div>
-      <div class="saveme" id="saveMe" hidden>
-        <button type="button" class="linkish" id="saveBtn">내 정보 저장</button>
-        <span id="saveState"></span>
-      </div>
-      <button type="submit" class="btn" id="runBtn">연락 가능한 날 보기</button>
+      <!-- 확인 ────────────────────────────────────── -->
+      <section class="step" data-step="confirm">
+        <h3 class="step-q">이대로 볼까요?</h3>
+        <p class="step-sub">잘못된 게 있으면 눌러서 고치세요.</p>
+        <dl class="wiz-sum" id="wizSum"></dl>
+        <div class="saveme" id="saveMe" hidden>
+          <button type="button" class="linkish" id="saveBtn">내 정보 저장</button>
+          <span id="saveState"></span>
+        </div>
+      </section>
+
       <p class="form-error" id="formError" hidden></p>
+      <div class="wiz-nav">
+        <button type="button" class="wiz-back" id="wizBack">이전</button>
+        <button type="button" class="btn" id="wizNext">다음으로</button>
+        <button type="submit" class="btn" id="runBtn" hidden>결과 보기</button>
+      </div>
     </form>
 
     <div class="cal" id="calWrap" aria-live="polite">
