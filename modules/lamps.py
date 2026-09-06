@@ -26,7 +26,14 @@ LAMP_WON = 100          # 등불 1개 = 100원
 EXPIRE_DAYS = 365       # 충전분 유효기간
 OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
-WELCOME_LAMPS = 300     # 가입 선물. 아래 상품들을 여럿 열어 볼 수 있는 양
+WELCOME_LAMPS = 300     # 가입 선물. 질문 열 번을 할 수 있는 양
+ASK_LAMPS = 30          # 무냥이에게 한 번 더 물어보기 (askmenu.js 와 같은 값)
+ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
+
+# 🛑 결제가 열리는 날 True 로. 그때부터 리포트는 전부 단건 결제가 되고,
+#    등불은 「무냥이에게 더 물어보기」 전용으로 남는다.
+#    지금 켜면 결제가 안 되는 상태라 아무도 아무것도 못 연다.
+PAY_PER_REPORT = False
 WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지 않는다
 
 # 충전 패키지 — 결제 금액으로 어느 패키지인지 판정한다 (프론트 값을 믿지 않는다)
@@ -219,9 +226,18 @@ def welcome(email: str) -> dict:
     }
 
 
+def won_of(product: str) -> int:
+    """단건 결제로 살 수 있는 값(원). 스위치를 켜면 모든 리포트가 여기에 들어온다."""
+    if product in PREMIUM_WON:
+        return PREMIUM_WON[product]
+    if PAY_PER_REPORT and product in PRICES:
+        return PRICES[product] * LAMP_WON
+    return 0
+
+
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
-    """프리미엄 한 건 결제. 등불은 건드리지 않는다."""
-    won = PREMIUM_WON.get(product)
+    """한 건 결제. 등불은 건드리지 않는다."""
+    won = won_of(product)
     if not won:
         raise ValueError("프리미엄 상품이 아닙니다.")
     if not _PAIR_RE.match(pair or ""):
@@ -242,6 +258,45 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     })
     _write(data)
     return {"ok": True, "product": product, "expires": _iso(expires)}
+
+
+def ask(email: str, qid: str, pair: str) -> dict:
+    """무냥이에게 한 번 더 묻는다. 같은 질문을 다시 열면 등불을 안 쓴다.
+
+    답은 서버가 만들지 않는다 — 브라우저에 있는 계산 블록이 그린다. 여기서는
+    등불만 센다. 그래서 물어볼 때마다 바깥에 나가는 돈이 없다.
+    """
+    if not qid or len(qid) > 40:
+        raise ValueError("잘못된 질문입니다.")
+    if not _PAIR_RE.match(pair or ""):
+        raise ValueError("잘못된 요청입니다.")
+    key = f"ask:{qid}"
+    data = _read()
+    acc = _account(data, email)
+    now = _now()
+    if any(o["product"] == key and o["pair"] == pair for o in _owned_live(acc, now)):
+        return {"ok": True, "spent": 0, "balance": sum(l["remain"] for l in _live_lots(acc, now)), "reopened": True}
+    live = _live_lots(acc, now)
+    have = sum(l["remain"] for l in live)
+    if have < ASK_LAMPS:
+        raise ValueError(f"등불이 모자랍니다. {ASK_LAMPS - have}개가 더 필요해요.")
+    left = ASK_LAMPS
+    for lot in sorted(live, key=lambda l: _parse(l["expires"])):
+        take = min(left, lot["remain"])
+        lot["remain"] -= take
+        left -= take
+        if not left:
+            break
+    acc["owned"].append({
+        "product": key, "pair": pair, "at": _iso(now),
+        "expires": _iso(now + timedelta(days=ASK_DAYS)),
+    })
+    acc["ledger"].append({
+        "at": _iso(now), "type": "ask", "qid": qid, "pair": pair,
+        "lamps": -ASK_LAMPS, "price": 0,
+    })
+    _write(data)
+    return {"ok": True, "spent": ASK_LAMPS, "balance": sum(l["remain"] for l in _live_lots(acc, now)), "reopened": False}
 
 
 def owns(email: str, product: str, pair: str) -> bool:

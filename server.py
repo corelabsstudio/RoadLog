@@ -1759,6 +1759,11 @@ class PremiumBody(BaseModel):
     paymentId: str
 
 
+class AskBody(BaseModel):
+    qid: str
+    pair: str
+
+
 def _verify_payment(payment_id: str) -> dict:
     """포트원 V2 로 결제를 다시 확인한다. 프론트가 보낸 금액은 믿지 않는다."""
     if not PORTONE_API_SECRET:
@@ -1955,6 +1960,18 @@ def records_merge(body: RecordMergeBody, authorization: str | None = Header(defa
     return {"ok": True, "moved": moved, **rec_ops.listing(user["email"])}
 
 
+@app.post("/api/ask")
+def ask_open(body: AskBody, authorization: str | None = Header(default=None)):
+    """무냥이에게 한 번 더 묻기. 등불을 쓴다."""
+    user = _token_user(authorization)
+    if _is_owner(user):
+        return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
+    try:
+        return lamps_ops.ask(user["email"], body.qid.strip(), body.pair.strip())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.post("/api/premium/buy")
 def premium_buy(body: PremiumBody, authorization: str | None = Header(default=None)):
     """프리미엄 한 건 결제. 등불을 거치지 않고 그 자리에서 사서 연다."""
@@ -1973,7 +1990,10 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
 @app.get("/api/premium/price")
 def premium_price():
     """프리미엄 값표. 프론트가 결제창에 넣을 금액을 서버에서 받아 간다."""
-    return {"prices": lamps_ops.PREMIUM_WON}
+    prices = dict(lamps_ops.PREMIUM_WON)
+    if lamps_ops.PAY_PER_REPORT:
+        prices.update({k: v * lamps_ops.LAMP_WON for k, v in lamps_ops.PRICES.items()})
+    return {"prices": prices, "payPerReport": lamps_ops.PAY_PER_REPORT}
 
 
 @app.post("/api/reports/open")
@@ -1983,8 +2003,8 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
     if _is_owner(user):
         # 주인은 등불을 깎지 않고 바로 연다. 사서 여는 손님과 같은 화면을 보기 위해서다.
         return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
-    # 프리미엄은 등불로 사는 물건이 아니다. 결제로 이미 샀는지만 본다.
-    if body.product.strip() in lamps_ops.PREMIUM_WON:
+    # 단건 결제 상품은 등불로 사는 물건이 아니다. 결제로 이미 샀는지만 본다.
+    if lamps_ops.won_of(body.product.strip()):
         if lamps_ops.owns(user["email"], body.product.strip(), body.pair.strip()):
             return {"ok": True, "spent": 0, "balance": lamps_ops.balance(user["email"]), "reopened": True}
         raise HTTPException(402, "이 상품은 등불이 아니라 결제로 열어요.")
