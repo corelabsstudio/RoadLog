@@ -95,6 +95,46 @@ def source_of(ref: str, host: str = "") -> str:
     return h[:40]
 
 
+# ── 무엇으로 들어왔나 ────────────────────────────────────
+# 「직접·앱」이 크면 사람인지 크롤러인지 갈라 봐야 한다. UA 원문은 길고 개인을
+# 가리킬 수 있어 저장하지 않고, **계열 이름만** 세어 둔다.
+# 🛑 카카오톡·네이버앱 인앱 브라우저는 UA 에 Chrome 도 같이 들어 있다.
+#    그래서 **먼저 걸리는 것부터** 본다. 순서를 바꾸면 전부 「크롬」이 된다.
+_APPS = [
+    ("KAKAOTALK", "카카오톡"),
+    ("NAVER(inapp", "네이버앱"), ("NAVER(", "네이버앱"),
+    ("Instagram", "인스타그램"),
+    ("FBAV", "페이스북"), ("FB_IAB", "페이스북"),
+    ("Line/", "라인"),
+    ("DaumApps", "다음앱"),
+    ("Whale", "웨일"),
+    ("SamsungBrowser", "삼성인터넷"),
+    ("Edg/", "엣지"),
+    ("OPR/", "오페라"),
+    ("Firefox", "파이어폭스"),
+    ("CriOS", "크롬"), ("Chrome", "크롬"),
+    ("Safari", "사파리"),
+]
+_OS = [
+    ("iPhone", "아이폰"), ("iPad", "아이패드"),
+    ("Android", "안드로이드"),
+    ("Macintosh", "맥"), ("Mac OS X", "맥"),
+    ("Windows", "윈도우"),
+    ("Linux", "리눅스"),
+]
+
+
+def client_of(ua: str) -> str:
+    """UA 를 「크롬 · 안드로이드」 같은 한 줄로 줄인다."""
+    ua = ua or ""
+    app = next((n for k, n in _APPS if k in ua), "기타")
+    osn = next((n for k, n in _OS if k in ua), "기타")
+    # 사람 브라우저인 척하는 것들. 헤드리스는 자동화 도구다
+    if "HeadlessChrome" in ua or "Headless" in ua:
+        app = "헤드리스(자동화)"
+    return f"{app} · {osn}"
+
+
 def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
     """페이지 한 번 열림. 화면(HTML)만 세고 자산·API 는 안 센다."""
     day = _today()
@@ -104,11 +144,14 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
         data = _read(VISITS_JSON, {})
         d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
         d.setdefault("src", {})
+        d.setdefault("ua", {})
         d["pv"] = int(d.get("pv", 0)) + 1
         if fp not in d["uv"]:
             d["uv"].append(fp)
-            # 유입경로는 그날 처음 온 사람만 센다 — 안 그러면 새로고침이 다 잡힌다
+            # 유입경로·기기는 그날 처음 온 사람만 센다 — 안 그러면 새로고침이 다 잡힌다
             d["src"][src] = int(d["src"].get(src, 0)) + 1
+            cl = client_of(ua or "")
+            d["ua"][cl] = int(d["ua"].get(cl, 0)) + 1
         # 오래된 날짜는 버린다
         if len(data) > KEEP_DAYS + 10:
             cut = (now_kst() - timedelta(days=KEEP_DAYS)).strftime("%Y-%m-%d")
@@ -137,6 +180,7 @@ def _visits() -> dict[str, dict[str, Any]]:
             "pv": int(d.get("pv", 0)),
             "uv": len(d.get("uv", [])),
             "src": dict(d.get("src", {})),
+            "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
         }
     return out
 
@@ -271,12 +315,24 @@ def overview(days: int = 30) -> dict[str, Any]:
     # 유입경로 — 이번 달과 최근 N일
     src_month: dict[str, int] = defaultdict(int)
     src_recent: dict[str, int] = defaultdict(int)
+    ua_recent: dict[str, int] = defaultdict(int)
     for d, v in vis.items():
         for name, c in (v.get("src") or {}).items():
             if d.startswith(month):
                 src_month[name] += c
             if d >= start:
                 src_recent[name] += c
+        if d >= start:
+            for name, c in (v.get("ua") or {}).items():
+                ua_recent[name] += c
+
+    # 🛑 사람 수와 페이지 수가 거의 1:1 이면 사람이 아니다.
+    #    사람은 한 명이 여러 페이지를 본다. 1:1 은 서로 다른 IP 에서 한 번씩 찍고 간 것 —
+    #    링크 미리보기 크롤러다 (2026-09-05 스레드에서 실제로 겪었다).
+    real = [v for d, v in vis.items() if d >= start]
+    r_uv = sum(v["uv"] for v in real)
+    r_pv = sum(v["pv"] for v in real)
+    per = round(r_pv / r_uv, 2) if r_uv else 0.0
 
     return {
         "today": {"day": today, **_sum(lambda d: d == today)},
@@ -297,6 +353,15 @@ def overview(days: int = 30) -> dict[str, Any]:
         "bySource": sorted(
             [{"name": n, "uv": c} for n, c in src_recent.items()],
             key=lambda x: x["uv"], reverse=True),
+        "byClient": sorted(
+            [{"name": n, "uv": c} for n, c in ua_recent.items()],
+            key=lambda x: x["uv"], reverse=True),
+        "crawlerHint": {
+            "uv": r_uv, "pv": r_pv, "perPerson": per,
+            # 1.3 미만이면 「한 명이 한 페이지만 보고 갔다」에 가깝다
+            "suspicious": bool(r_uv >= 10 and per < 1.3),
+            "unknownUa": ua_recent.get("기타 · 기타", 0),
+        },
         "bySourceMonth": sorted(
             [{"name": n, "uv": c} for n, c in src_month.items()],
             key=lambda x: x["uv"], reverse=True),

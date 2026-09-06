@@ -180,6 +180,11 @@ button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
       <div class="chart" id="cVisit"></div>
       <h2>어디서 들어왔나</h2>
       <ol class="rank" id="rSrc"></ol>
+
+      <h2>무엇으로 들어왔나</h2>
+      <ol class="rank" id="rClient"></ol>
+      <p class="note" id="humanNote"></p>
+
       <h2>집계 손질</h2>
       <div class="tools">
         <button type="button" id="btnMe">내 방문 빼기</button>
@@ -294,6 +299,26 @@ function rank(el, rows, nameOf, unit) {
     + '</span><span class="ct">' + num(r.n) + unit + '</span></li>').join('');
 }
 
+// 사람인가 크롤러인가.
+// 🛑 사람은 한 명이 여러 페이지를 본다. 사람 수와 페이지 수가 1:1 에 가까우면
+//    서로 다른 IP 에서 한 번씩 찍고 간 것 — 링크 미리보기 크롤러다.
+//    2026-09-05 스레드에 주소를 붙였다 지웠다 하다가 실제로 겪었다.
+function drawHuman(h) {
+  const el = $('humanNote');
+  if (!el) return;
+  if (!h || !h.uv) { el.textContent = '아직 판단할 만큼 쌓이지 않았습니다.'; return; }
+  const bits = ['한 사람이 <b>' + h.perPerson + '쪽</b>을 봤어요 (방문 ' + num(h.uv) + '명 · 페이지 ' + num(h.pv) + '번).'];
+  if (h.suspicious) {
+    bits.push('<b>1:1 에 가까우면 사람이 아닐 수 있어요.</b> 한 번씩 찍고 가는 링크 미리보기 크롤러가 이렇게 잡혀요.');
+  } else {
+    bits.push('한 명이 여러 쪽을 봤으니 사람 쪽에 가까워요.');
+  }
+  if (h.unknownUa) {
+    bits.push('기기를 알 수 없는 방문이 <b>' + num(h.unknownUa) + '명</b> 있어요. 이쪽이 크면 의심해 보세요.');
+  }
+  el.innerHTML = bits.join(' ');
+}
+
 function tiles(el, items) {
   el.innerHTML = items.map((it) =>
     '<div class="tile' + (it[2] ? ' hi' : '') + '"><b>' + it[0] + '</b><span>' + it[1] + '</span></div>'
@@ -331,6 +356,8 @@ function paint() {
   rank($('rTop'), prod.slice(0, 5), (r) => NAMES[r.product] || r.product, '번');
   rank($('rProd'), prod, (r) => NAMES[r.product] || r.product, '번');
   rank($('rSrc'), (d.bySource || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
+  rank($('rClient'), (d.byClient || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
+  drawHuman(d.crawlerHint);
 
   drawSales(); drawVisit();
 
