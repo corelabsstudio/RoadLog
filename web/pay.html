@@ -78,8 +78,8 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <a href="/">로드로그</a>
   </header>
   <main>
-    <h1>등불 충전</h1>
-    <p class="sub">등불 1개로 100원어치를 봅니다. 리포트는 등불로 엽니다.</p>
+    <h1 id="payTitle">등불 충전</h1>
+    <p class="sub" id="paySub">등불 1개로 100원어치를 봅니다. 리포트는 등불로 엽니다.</p>
 
     <div class="notice">
       <b>테스트 결제 화면입니다.</b> 실제로 카드에서 돈이 빠져나가지 않습니다.
@@ -89,8 +89,8 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <div class="order">
       <ul class="packs" id="packs"></ul>
 
-      <div class="row"><span class="k">받는 등불</span><span class="v" id="lampLabel">100등불</span></div>
-      <div class="row"><span class="k">유효 기간</span><span class="v">충전일로부터 12개월</span></div>
+      <div class="row" id="lampRow"><span class="k">받는 등불</span><span class="v" id="lampLabel">100등불</span></div>
+      <div class="row" id="termRow"><span class="k">유효 기간</span><span class="v">충전일로부터 12개월</span></div>
       <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">9,200원</span></div>
 
       <label>이메일 (영수증을 받으실 주소)
@@ -141,6 +141,14 @@ const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
 const q = new URLSearchParams(location.search);
 const BACK = q.get('back') || '/';
 
+// 프리미엄 한 건 결제 — 등불을 거치지 않는다
+const PREMIUM = q.get('premium') ? {
+  product: q.get('premium'),
+  pair: q.get('pair') || '',
+  amount: Number(q.get('amount') || 0),
+  name: q.get('name') || '프리미엄',
+} : null;
+
 let pick = PACKS.find(p => String(p.lamps) === q.get('lamps')) || PACKS[2];
 
 function paintPacks() {
@@ -154,6 +162,16 @@ function paintPacks() {
   $('amountLabel').textContent = won(pick.price);
 }
 paintPacks();
+
+// 프리미엄이면 묶음 고르기를 감추고 그 상품 한 건만 보여 준다
+if (PREMIUM) {
+  $('payTitle').textContent = PREMIUM.name;
+  $('paySub').textContent = '이 상품은 등불이 아니라 한 건으로 결제하고 바로 엽니다.';
+  $('packs').hidden = true;
+  $('lampRow').hidden = true;
+  $('termRow').innerHTML = '<span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span>';
+  $('amountLabel').textContent = won(PREMIUM.amount);
+}
 
 $('packs').addEventListener('click', (e) => {
   const li = e.target.closest('[data-lamps]'); if (!li) return;
@@ -175,6 +193,7 @@ async function claim(paymentId) {
     show('err', '로그인이 풀렸습니다. 홈에서 다시 로그인하신 뒤 아래 결제 번호로 문의해 주세요.<pre>' + paymentId + '</pre>');
     return;
   }
+  if (PREMIUM) return claimPremium(paymentId, token);
   try {
     const res = await fetch('/api/lamps/charge', {
       method: 'POST',
@@ -194,6 +213,27 @@ async function claim(paymentId) {
   }
 }
 
+async function claimPremium(paymentId, token) {
+  try {
+    const res = await fetch('/api/premium/buy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ paymentId, product: PREMIUM.product, pair: PREMIUM.pair }),
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      show('err', '상품을 열어 드리지 못했습니다. 아래 결제 번호를 가지고 문의해 주세요.<pre>'
+        + ((data && data.detail) || res.status) + '
+' + paymentId + '</pre>');
+      return;
+    }
+    show('ok', `<b>${PREMIUM.name}</b> 결제가 끝났습니다.<br />잠시 뒤 보시던 화면으로 돌아가 바로 열립니다.`);
+    setTimeout(() => { location.href = BACK + (BACK.includes('?') ? '&' : '?') + 'bought=' + encodeURIComponent(PREMIUM.product); }, 1600);
+  } catch (e) {
+    show('err', '여는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + paymentId + '</pre>');
+  }
+}
+
 $('payBtn').addEventListener('click', async () => {
   const btn = $('payBtn');
   const email = ($('email').value || '').trim();
@@ -207,12 +247,13 @@ $('payBtn').addEventListener('click', async () => {
       storeId: STORE_ID,
       channelKey: CHANNEL_KEY,
       paymentId,
-      orderName: `등불 ${pick.lamps}개`,
-      totalAmount: pick.price,
+      orderName: PREMIUM ? PREMIUM.name : `등불 ${pick.lamps}개`,
+      totalAmount: PREMIUM ? PREMIUM.amount : pick.price,
       currency: 'CURRENCY_KRW',
       payMethod,
       customer: email ? { email } : undefined,
-      redirectUrl: location.origin + '/pay.html?back=' + encodeURIComponent(BACK),
+      redirectUrl: location.origin + '/pay.html?back=' + encodeURIComponent(BACK)
+        + (PREMIUM ? `&premium=${encodeURIComponent(PREMIUM.product)}&pair=${encodeURIComponent(PREMIUM.pair)}&amount=${PREMIUM.amount}&name=${encodeURIComponent(PREMIUM.name)}` : ''),
     });
 
     if (res && res.code) {

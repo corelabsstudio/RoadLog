@@ -598,7 +598,12 @@ def register(body: AuthBody, request: Request):
     ok, msg = db.register_user(body.email, body.password, body.name)
     if not ok:
         raise HTTPException(400, msg)
-    return {"ok": True, "message": msg}
+    # 가입 선물. 손에 쥐는 게 있어야 계정을 만든다.
+    try:
+        gift = lamps_ops.welcome(body.email)
+    except Exception:
+        gift = {"given": 0}
+    return {"ok": True, "message": msg, "welcome": gift.get("given", 0)}
 
 
 def _issue_session(user: dict, message: str) -> dict:
@@ -859,6 +864,10 @@ def _social_login(email: str, name: str, provider: str) -> str:
         ok, msg = db.register_user(email, secrets.token_urlsafe(24), name or email.split("@")[0])
         if not ok:
             raise HTTPException(400, msg)
+        try:
+            lamps_ops.welcome(email)      # 소셜로 처음 들어온 분께도 같이
+        except Exception:
+            pass
         user = db.get_user(email)
     if not user:
         raise HTTPException(500, "계정을 만들지 못했습니다.")
@@ -1744,6 +1753,12 @@ class OpenBody(BaseModel):
     pair: str
 
 
+class PremiumBody(BaseModel):
+    product: str
+    pair: str
+    paymentId: str
+
+
 def _verify_payment(payment_id: str) -> dict:
     """포트원 V2 로 결제를 다시 확인한다. 프론트가 보낸 금액은 믿지 않는다."""
     if not PORTONE_API_SECRET:
@@ -1940,6 +1955,27 @@ def records_merge(body: RecordMergeBody, authorization: str | None = Header(defa
     return {"ok": True, "moved": moved, **rec_ops.listing(user["email"])}
 
 
+@app.post("/api/premium/buy")
+def premium_buy(body: PremiumBody, authorization: str | None = Header(default=None)):
+    """프리미엄 한 건 결제. 등불을 거치지 않고 그 자리에서 사서 연다."""
+    user = _token_user(authorization)
+    paid = _verify_payment(body.paymentId.strip())
+    amount = int((paid.get("amount") or {}).get("total") or 0)
+    try:
+        return lamps_ops.buy_premium(
+            user["email"], body.product.strip(), body.pair.strip(),
+            payment_id=body.paymentId.strip(), paid=amount,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/premium/price")
+def premium_price():
+    """프리미엄 값표. 프론트가 결제창에 넣을 금액을 서버에서 받아 간다."""
+    return {"prices": lamps_ops.PREMIUM_WON}
+
+
 @app.post("/api/reports/open")
 def report_open(body: OpenBody, authorization: str | None = Header(default=None)):
     """리포트 열기. 이미 산 것이면 등불을 쓰지 않고 다시 열어 준다."""
@@ -1947,6 +1983,11 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
     if _is_owner(user):
         # 주인은 등불을 깎지 않고 바로 연다. 사서 여는 손님과 같은 화면을 보기 위해서다.
         return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
+    # 프리미엄은 등불로 사는 물건이 아니다. 결제로 이미 샀는지만 본다.
+    if body.product.strip() in lamps_ops.PREMIUM_WON:
+        if lamps_ops.owns(user["email"], body.product.strip(), body.pair.strip()):
+            return {"ok": True, "spent": 0, "balance": lamps_ops.balance(user["email"]), "reopened": True}
+        raise HTTPException(402, "이 상품은 등불이 아니라 결제로 열어요.")
     try:
         return lamps_ops.spend(user["email"], body.product.strip(), body.pair.strip())
     except ValueError as e:

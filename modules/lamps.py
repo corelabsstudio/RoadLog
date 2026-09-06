@@ -26,6 +26,8 @@ LAMP_WON = 100          # 등불 1개 = 100원
 EXPIRE_DAYS = 365       # 충전분 유효기간
 OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
+WELCOME_LAMPS = 300     # 가입 선물. 아래 상품들을 여럿 열어 볼 수 있는 양
+WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지 않는다
 
 # 충전 패키지 — 결제 금액으로 어느 패키지인지 판정한다 (프론트 값을 믿지 않는다)
 PACKS = {
@@ -59,6 +61,12 @@ PRICES = {
     "ox": 89,
     "cool": 49,
     "marry": 95,
+}
+
+# 프리미엄 — 등불로 사지 않는다. 그 자리에서 결제하고 연다.
+# 값은 원 단위다(등불 개수가 아니다). 프론트 products.js 와 같은 값이어야 한다.
+PREMIUM_WON = {
+    "great": 29000,
 }
 
 _PAIR_RE = re.compile(r"^[0-9a-f]{16,64}$")
@@ -184,6 +192,56 @@ def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "
         "balance": sum(l["remain"] for l in _live_lots(acc, now)),
         "lamps": lamps, "bonus": bonus, "expires": _iso(expires),
     }
+
+
+def welcome(email: str) -> dict:
+    """가입 선물. 한 계정에 한 번만 나간다."""
+    data = _read()
+    acc = _account(data, email)
+    if any(e.get("type") == "welcome" for e in acc.get("ledger", [])):
+        return {"given": 0, "balance": sum(l["remain"] for l in _live_lots(acc))}
+    now = _now()
+    expires = now + timedelta(days=WELCOME_DAYS)
+    acc["lots"].append({
+        "lamps": WELCOME_LAMPS, "remain": WELCOME_LAMPS,
+        "at": _iso(now), "expires": _iso(expires),
+        "payment_id": "", "price": 0,
+    })
+    acc["ledger"].append({
+        "at": _iso(now), "type": "welcome", "lamps": WELCOME_LAMPS,
+        "price": 0, "expires": _iso(expires), "note": "가입 선물",
+    })
+    _write(data)
+    return {
+        "given": WELCOME_LAMPS,
+        "balance": sum(l["remain"] for l in _live_lots(acc, now)),
+        "expires": _iso(expires),
+    }
+
+
+def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
+    """프리미엄 한 건 결제. 등불은 건드리지 않는다."""
+    won = PREMIUM_WON.get(product)
+    if not won:
+        raise ValueError("프리미엄 상품이 아닙니다.")
+    if not _PAIR_RE.match(pair or ""):
+        raise ValueError("잘못된 요청입니다.")
+    if paid < won:
+        raise ValueError("결제 금액이 상품 값보다 적습니다.")
+    data = _read()
+    acc = _account(data, email)
+    if any(e.get("payment_id") == payment_id for e in acc.get("ledger", [])):
+        raise ValueError("이미 처리된 결제입니다.")
+    now = _now()
+    expires = now + timedelta(days=OWNED_DAYS)
+    if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
+        acc["owned"].append({"product": product, "pair": pair, "at": _iso(now), "expires": _iso(expires)})
+    acc["ledger"].append({
+        "at": _iso(now), "type": "premium", "product": product, "pair": pair,
+        "lamps": 0, "price": paid, "payment_id": payment_id, "expires": _iso(expires),
+    })
+    _write(data)
+    return {"ok": True, "product": product, "expires": _iso(expires)}
 
 
 def owns(email: str, product: str, pair: str) -> bool:
