@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-wvHSQJ4I.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-Cv-PHYF4.css">
+  <script type="module" crossorigin src="/assets/main-CvUnwNcl.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BxlftMSg.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -197,9 +197,14 @@
       <section class="step" data-step="meDate" data-who="me">
         <h3 class="step-q">생년월일을 알려 주세요</h3>
         <p class="step-sub">여덟 글자 중 연·월·일 세 기둥이 여기서 나옵니다.</p>
-        <label class="big-field">태어난 날
-          <input type="date" name="meDate" required value="1996-03-14" />
-        </label>
+        <p class="wheel-label">태어난 날</p>
+        <div class="wheel" data-wheel="meDate">
+          <div class="wheel-col" data-part="y" tabindex="0" role="listbox" aria-label="연도"></div>
+          <div class="wheel-col" data-part="m" tabindex="0" role="listbox" aria-label="월"></div>
+          <div class="wheel-col" data-part="d" tabindex="0" role="listbox" aria-label="일"></div>
+          <div class="wheel-line" aria-hidden="true"></div>
+        </div>
+        <input type="hidden" name="meDate" value="1996-03-14" />
         <input type="hidden" name="meCal" value="solar" />
         <div class="pick pick-3" data-for="meCal">
           <button type="button" data-val="solar" class="on">양력</button>
@@ -248,9 +253,14 @@
       <section class="step" data-step="youDate" data-who="you">
         <h3 class="step-q">그 사람 생년월일을 알려 주세요</h3>
         <p class="step-sub">여기까지만 알아도 두 사람 글자를 맞춰 볼 수 있습니다.</p>
-        <label class="big-field">그 사람이 태어난 날
-          <input type="date" name="youDate" required value="1994-11-02" />
-        </label>
+        <p class="wheel-label">그 사람이 태어난 날</p>
+        <div class="wheel" data-wheel="youDate">
+          <div class="wheel-col" data-part="y" tabindex="0" role="listbox" aria-label="연도"></div>
+          <div class="wheel-col" data-part="m" tabindex="0" role="listbox" aria-label="월"></div>
+          <div class="wheel-col" data-part="d" tabindex="0" role="listbox" aria-label="일"></div>
+          <div class="wheel-line" aria-hidden="true"></div>
+        </div>
+        <input type="hidden" name="youDate" value="1994-11-02" />
         <input type="hidden" name="youCal" value="solar" />
         <div class="pick pick-3" data-for="youCal">
           <button type="button" data-val="solar" class="on">양력</button>
