@@ -367,6 +367,124 @@ def set_user_plan(email: str, plan: str) -> bool:
     return True
 
 
+# ── 비밀번호 다시 정하기 ────────────────────────────────
+# 손님이 비밀번호를 잊으면 계정과 함께 충전해 둔 등불까지 잃는다.
+# 되찾는 길은 modules/password_reset.py 가 낸 토큰을 거쳐 여기로 온다.
+
+
+def get_user_record(email: str) -> dict | None:
+    """저장된 그대로. _normalize_user 가 떨어뜨리는 provider 같은 값이 필요할 때."""
+    email = (email or "").strip().lower()
+    if not email:
+        return None
+    if _sb.enabled:
+        try:
+            res = (
+                _sb.client.table("profiles")
+                .select("*")
+                .eq("email", email)
+                .limit(1)
+                .execute()
+            )
+            return res.data[0] if res.data else None
+        except Exception:
+            return None
+    return _read_json(USERS_JSON, {}).get(email)
+
+
+def mark_social(email: str, provider: str) -> bool:
+    """소셜로 처음 들어온 계정임을 적어 둔다.
+
+    이 표시가 있고 password_set 이 아직 없으면 «비밀번호가 없는 계정»이다.
+    비밀번호 찾기를 눌렀을 때 재설정 링크 대신 로그인 방법을 안내하는 근거가 된다.
+    """
+    email = (email or "").strip().lower()
+    provider = (provider or "").strip().lower()
+    if not email or not provider:
+        return False
+    if _sb.enabled:
+        try:
+            # profiles 에 provider 칸이 없는 스키마일 수 있다. 없으면 조용히 넘어간다
+            _sb.client.table("profiles").update({"provider": provider}).eq(
+                "email", email
+            ).execute()
+            return True
+        except Exception:
+            return False
+    users = _read_json(USERS_JSON, {})
+    u = users.get(email)
+    if not u:
+        return False
+    provs = u.get("providers") or []
+    if provider not in provs:
+        provs.append(provider)
+    u["providers"] = provs
+    u["provider"] = u.get("provider") or provider
+    users[email] = u
+    _write_json(USERS_JSON, users)
+    return True
+
+
+def social_only_provider(email: str) -> str:
+    """비밀번호를 한 번도 정한 적 없는 소셜 계정이면 그 제공자 이름. 아니면 빈 문자열.
+
+    🛑 소셜 가입도 register_user 를 지나며 «아무도 모르는 임의 문자열»이 비밀번호로
+    들어간다(server.py `_social_login`). 그래서 비밀번호 칸이 차 있다는 것만으로는
+    구분이 안 된다. provider 표시와 password_set 을 같이 본다.
+    """
+    u = get_user_record(email)
+    if not u:
+        return ""
+    if u.get("password_set"):
+        return ""          # 소셜로 들어왔더라도 나중에 비밀번호를 정했으면 재설정 대상이다
+    prov = (u.get("provider") or "").strip().lower()
+    if prov:
+        return prov
+    # 표시를 남기기 전(2026-09-07 이전)에 카카오로 들어오신 분. 주소가 증거다
+    if (u.get("email") or "").endswith("@kakao.local"):
+        return "kakao"
+    return ""
+
+
+def set_password(email: str, new_password: str) -> tuple[bool, str]:
+    """비밀번호를 새로 정한다. (성공, 메시지)"""
+    email = (email or "").strip().lower()
+    from modules.config import MIN_PASSWORD_LENGTH
+
+    min_len = int(MIN_PASSWORD_LENGTH or 8)
+    if len(new_password or "") < min_len:
+        return False, f"비밀번호는 {min_len}자 이상이어야 합니다."
+    if not email:
+        return False, "계정을 찾지 못했습니다."
+
+    pw_hash, salt = _hash_password(new_password)
+    if _sb.enabled:
+        try:
+            res = (
+                _sb.client.table("profiles")
+                .update({"password_hash": pw_hash, "salt": salt, "password_set": True})
+                .eq("email", email)
+                .execute()
+            )
+            if not res.data:
+                return False, "계정을 찾지 못했습니다."
+            return True, "비밀번호를 새로 정했어요."
+        except Exception as e:
+            return False, f"비밀번호를 바꾸지 못했습니다: {e}"
+
+    users = _read_json(USERS_JSON, {})
+    u = users.get(email)
+    if not u:
+        return False, "계정을 찾지 못했습니다."
+    u["password_hash"] = pw_hash
+    u["salt"] = salt
+    u["password_set"] = True
+    u["password_changed_at"] = _now_iso()
+    users[email] = u
+    _write_json(USERS_JSON, users)
+    return True, "비밀번호를 새로 정했어요."
+
+
 def list_users() -> list[dict]:
     if _sb.enabled:
         try:

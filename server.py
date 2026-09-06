@@ -56,6 +56,7 @@ from modules.config import (
     FREE_MONTHLY_LIMIT,
     FREE_TOTAL_LIMIT,
     MAIL_ORDER_REG_NO,
+    MIN_PASSWORD_LENGTH,
     COST_MODE,
     OPENAI_API_KEY,
     PRO_ANNUAL_MONTHLY_EQ_KRW,
@@ -96,6 +97,8 @@ from modules.rate_limit import (
 )
 from modules.validator import validate_log
 from modules import notify as notify_ops
+from modules import mailer
+from modules import password_reset as reset_ops
 from modules import lamps as lamps_ops
 from modules import product_reviews as prev_ops
 from modules import records as rec_ops
@@ -259,6 +262,15 @@ class AuthBody(BaseModel):
     name: str = ""
     ref: str = ""      # 친구를 따라 들어온 분의 추천 코드
     via: str = ""      # 어느 길로 오셨는지 (utm / 들어온 사이트). 개인 식별값은 담지 않는다
+
+
+class ForgotBody(BaseModel):
+    email: str
+
+
+class ResetBody(BaseModel):
+    token: str
+    password: str
 
 
 class GenerateBody(BaseModel):
@@ -826,6 +838,118 @@ def login(body: AuthBody, request: Request):
     return _issue_session(user, msg)
 
 
+# ── 비밀번호 다시 정하기 ──────────────────────────────────
+# 결제가 붙는 서비스라, 비밀번호를 잊는 순간 충전해 둔 등불까지 같이 묶인다.
+# 되찾는 길을 열되 남의 계정으로 들어가는 문은 되지 않게 한다.
+#
+# 🛑 **어느 경우에도 같은 대답을 돌려준다.** 「가입된 계정이 없어요」라고 알려 주면
+#    아무나 이메일을 넣어 보며 누가 우리 손님인지 캐낼 수 있다. 사주 서비스라
+#    가입 사실 자체가 알려지면 안 되는 정보다. 그래서 갈라지는 안내는 전부
+#    **본인만 여는 메일 안에** 둔다 (modules/mailer.py).
+
+RESET_SENT_MSG = (
+    "메일을 보냈어요. 받은 편지함을 확인해 주세요. "
+    "가입된 계정일 때만 도착하고, 안 보이면 스팸함도 한 번 봐 주세요."
+)
+
+
+@app.post("/api/auth/password/forgot")
+def password_forgot(body: ForgotBody, request: Request):
+    """재설정 링크를 메일로 보낸다. 대답은 언제나 같다."""
+    ip = _client_ip(request)
+    _rate_limit_or_429(
+        f"forgot:{ip}", limit=AUTH_LIMIT, window_sec=AUTH_WINDOW, what="비밀번호 찾기"
+    )
+    email = (body.email or "").strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "올바른 이메일을 입력해 주세요.")
+
+    # 메일을 보낼 수 없는 상태면 조용히 넘어가지 않는다. 손님이 기다리게 두면 안 된다
+    if not mailer.mail_configured():
+        raise HTTPException(
+            503,
+            "지금은 재설정 메일을 보낼 수 없어요. "
+            f"{CONTACT_EMAIL} 로 알려 주시면 바로 도와드릴게요.",
+        )
+
+    user = db.get_user(email)
+    if not user:
+        return {"ok": True, "message": RESET_SENT_MSG}     # 있는지 없는지 알려 주지 않는다
+
+    # 카카오·구글로만 들어오시는 분은 정해 둔 비밀번호가 없다.
+    # 링크를 보내면 «없던 비밀번호»가 생겨 오히려 헷갈린다 → 들어오시는 방법을 안내한다
+    prov = db.social_only_provider(email)
+    if prov:
+        try:
+            mailer.send_social_only_notice(email, prov)
+        except Exception as e:
+            print(f"[reset] 소셜 안내 메일 실패 {email!r}: {e}", flush=True)
+        return {"ok": True, "message": RESET_SENT_MSG}
+
+    token, why = reset_ops.issue(email, ip=ip)
+    if not token:
+        raise HTTPException(429, why or "잠시 후 다시 시도해 주세요.")
+
+    link = f"{SITE_ORIGIN}/reset.html?t={quote(token)}"
+    try:
+        sent = mailer.send_password_reset_link(email, link, minutes=reset_ops.TTL_MIN)
+    except Exception as e:
+        print(f"[reset] 메일 실패 {email!r}: {e}", flush=True)
+        sent = False
+    if not sent:
+        raise HTTPException(
+            502,
+            "메일을 보내지 못했어요. 잠시 후 다시 시도하시거나 "
+            f"{CONTACT_EMAIL} 로 알려 주세요.",
+        )
+    return {"ok": True, "message": RESET_SENT_MSG}
+
+
+@app.get("/api/auth/password/check")
+def password_reset_check(request: Request, t: str = ""):
+    """링크가 아직 살아 있나. 화면이 폼을 그릴지 정할 때만 쓴다 (여기서 쓰지는 않는다)."""
+    _rate_limit_or_429(
+        f"resetcheck:{_client_ip(request)}",
+        limit=AUTH_LIMIT, window_sec=AUTH_WINDOW, what="링크 확인",
+    )
+    ok, email, why = reset_ops.peek(t)
+    if not ok:
+        return {"ok": False, "message": why}
+    # 어느 계정인지는 앞 두 글자만. 열려 있는 링크라도 주소 전체를 다시 뿌리지 않는다
+    local = (email or "").split("@")[0]
+    hint = (local[:2] + "•" * max(1, len(local) - 2)) + "@" + (email or "").split("@")[-1]
+    return {"ok": True, "email_hint": hint, "min_length": MIN_PASSWORD_LENGTH}
+
+
+@app.post("/api/auth/password/reset")
+def password_reset(body: ResetBody, request: Request):
+    """새 비밀번호를 저장한다. 링크는 여기서 닫힌다."""
+    ip = _client_ip(request)
+    _rate_limit_or_429(
+        f"reset:{ip}", limit=AUTH_LIMIT, window_sec=AUTH_WINDOW, what="비밀번호 재설정"
+    )
+    if len(body.password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(400, f"비밀번호는 {MIN_PASSWORD_LENGTH}자 이상이어야 해요.")
+
+    # 먼저 닫고 바꾼다. 같은 링크로 두 번 들어오는 길을 막는다
+    ok, email, why = reset_ops.consume(body.token)
+    if not ok:
+        raise HTTPException(400, why)
+
+    saved, msg = db.set_password(email, body.password)
+    if not saved:
+        raise HTTPException(400, msg)
+
+    # 남이 알아낸 비밀번호로 이미 들어와 있었다면 여기서 끊는다
+    dropped = _drop_sessions_for_email(email)
+    try:
+        mailer.send_password_changed(email)
+    except Exception as e:
+        print(f"[reset] 변경 알림 메일 실패 {email!r}: {e}", flush=True)
+    print(f"[reset] 비밀번호 변경 {email!r} · 끊은 세션 {dropped}개", flush=True)
+    return {"ok": True, "message": "비밀번호를 새로 정했어요. 새 비밀번호로 로그인해 주세요."}
+
+
 # ── 소셜 로그인 (구글 · 카카오) ────────────────────────────
 # 열쇠는 전부 환경변수로 받는다. 없으면 그 제공자는 꺼진 것으로 본다.
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
@@ -855,7 +979,7 @@ def _use_state(st: str) -> bool:
     return bool(born) and (time.time() - born) <= 600
 
 
-def _social_login(email: str, name: str, provider: str) -> str:
+def _social_login(email: str, name: str, provider: str, provider_key: str = "") -> str:
     """이메일로 기존 회원을 찾고, 없으면 만든다. 우리 토큰을 돌려준다."""
     email = (email or "").strip().lower()
     if not email or "@" not in email:
@@ -866,6 +990,14 @@ def _social_login(email: str, name: str, provider: str) -> str:
         ok, msg = db.register_user(email, secrets.token_urlsafe(24), name or email.split("@")[0])
         if not ok:
             raise HTTPException(400, msg)
+        # 🛑 «비밀번호가 없는 계정»이라고 적어 둔다. 위에서 넣은 임의 문자열은
+        #    본인도 모르는 값이라, 비밀번호 찾기에서 재설정 링크를 보내면 안 된다.
+        #    이미 있는 계정에는 표시하지 않는다 — 메일로 가입한 뒤 소셜로도
+        #    들어오시는 분은 정해 둔 비밀번호가 있다.
+        try:
+            db.mark_social(email, provider_key or provider)
+        except Exception:
+            pass
         try:
             lamps_ops.welcome(email)      # 소셜로 처음 들어온 분께도 같이
         except Exception:
@@ -933,7 +1065,7 @@ def google_callback(code: str = "", state: str = "", error: str = ""):
         if info.status_code != 200:
             raise HTTPException(400, "구글에서 정보를 받지 못했습니다.")
         d = info.json()
-    return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글"))
+    return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글", "google"))
 
 
 @app.get("/api/auth/kakao/start")
@@ -984,7 +1116,7 @@ def kakao_callback(code: str = "", state: str = "", error: str = ""):
         # 이메일 동의를 안 했거나 카카오 계정에 이메일이 없는 경우.
         # 우리 쪽에서만 쓰는 주소를 만들어 계정을 잇는다.
         email = f"kakao{d.get('id')}@kakao.local"
-    return _social_redirect(_social_login(email, name, "카카오"))
+    return _social_redirect(_social_login(email, name, "카카오", "kakao"))
 
 
 @app.get("/api/me")
