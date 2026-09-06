@@ -1770,10 +1770,22 @@ def lamps_ready():
     return {"portone_secret_set": bool(PORTONE_API_SECRET)}
 
 
+def _is_owner(user: dict) -> bool:
+    """관리자(사이트 주인)인가. 주인은 등불을 쓰지 않는다."""
+    return bool(user.get("is_admin"))
+
+
 @app.get("/api/lamps")
 def lamps_status(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
-    return lamps_ops.status(user["email"])
+    st = lamps_ops.status(user["email"])
+    if _is_owner(user):
+        # 주인은 무제한. 화면이 잔액을 그대로 보여 주므로 큰 수를 넣어 둔다.
+        st["balance"] = 999999
+        st["unlimited"] = True
+        st["expiring_lamps"] = 0
+        st["expires_soonest"] = None
+    return st
 
 
 @app.get("/api/lamps/ledger")
@@ -1932,6 +1944,9 @@ def records_merge(body: RecordMergeBody, authorization: str | None = Header(defa
 def report_open(body: OpenBody, authorization: str | None = Header(default=None)):
     """리포트 열기. 이미 산 것이면 등불을 쓰지 않고 다시 열어 준다."""
     user = _token_user(authorization)
+    if _is_owner(user):
+        # 주인은 등불을 깎지 않고 바로 연다. 사서 여는 손님과 같은 화면을 보기 위해서다.
+        return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
     try:
         return lamps_ops.spend(user["email"], body.product.strip(), body.pair.strip())
     except ValueError as e:
