@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-Dd0nd6y2.js"></script>
+  <script type="module" crossorigin src="/assets/main-D8d75rwV.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/main-DWAV0DM8.css">
 </head>
 <body>
@@ -142,6 +142,15 @@
       <span class="picked-free" id="pickedFree">먼저 무료로 봅니다</span>
     </div>
     <p class="open-note" id="openNote" hidden></p>
+
+    <div class="odds" id="odds2" hidden>
+      <p class="odds-q" id="odds2Q">우리의 가능성은?</p>
+      <p class="odds-num">상위 <b id="odds2Num">??</b>%</p>
+      <p class="odds-sub" id="odds2Sub">지금 확인해 보세요</p>
+      <div class="odds-bar"><i id="odds2Mark"></i></div>
+      <ol class="odds-steps" id="odds2Steps"></ol>
+      <p class="odds-note" id="odds2Note"></p>
+    </div>
   </section>
 
   <section class="p-reviews" id="pReviews" hidden>
@@ -301,12 +310,12 @@
     </div>
 
     <div class="odds" id="odds" hidden>
-      <p class="odds-q">우리의 재회 가능성은?</p>
+      <p class="odds-q" id="oddsQ">우리의 가능성은?</p>
       <p class="odds-num">상위 <b id="oddsNum">??</b>%</p>
       <p class="odds-sub" id="oddsSub">끝난 인연인지, 다시 이어질 인연인지 아래에서 확인하세요</p>
       <div class="odds-bar"><i id="oddsMark"></i></div>
       <ol class="odds-steps" id="oddsSteps"></ol>
-      <p class="odds-note"><b>이 숫자는 로드로그 이용자 통계가 아닙니다.</b> 사주로 나올 수 있는 두 사람의 조합 <b>7,464만 가지를 전부 계산</b>해, 그 안에서 이 두 분이 어디쯤인지 본 것입니다. 다른 사람의 결과를 모으거나 들여다본 것이 아니라 사주 계산만으로 나오는 값이라, 누가 언제 봐도 같은 자리가 나옵니다.<br />어떤 글자 때문에 이 자리인지는 아래 사주에서 근거와 함께 보여 드립니다.</p>
+      <p class="odds-note" id="oddsNote"></p>
     </div>
 
     <div class="shelf">
