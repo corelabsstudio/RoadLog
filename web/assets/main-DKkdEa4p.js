@@ -33,7 +33,7 @@ var e=(e,t)=>()=>(t||(e((t={exports:{}}).exports,t),e=null),t.exports);(function
         <p class="card-sub">${e.line}</p>
         <p class="card-go">${e.free?`무료로 시작하기`:e.cta} <span>→</span></p>
       </div>
-    </a>`}var xo=[{cat:`reunion`,name:`그 사람 마음`,line:`연락하기 전에 그 사람 쪽을 먼저 봅니다`},{cat:`decide`,name:`계속할까 말까`,line:`붙잡을지 놓을지 정해야 할 때`},{cat:`timing`,name:`언제 보낼까`,line:`보내도 되는 날과 시간`},{cat:`solo`,name:`나부터`,line:`상대 생년월일 없이 나만 봅니다`}];function So(e=`all`){let t=X(`productGrid`);if(!t)return;if(e!==`all`){let n=Ar.filter(t=>(t.cats||[]).includes(e));t.className=`grid`,t.innerHTML=(n.length?n:Ar).map(bo).join(``);return}t.className=`lanes`;let n=new Set;t.innerHTML=xo.map(({cat:e,name:t,line:r})=>{let i=Ar.filter(t=>(t.cats||[]).includes(e)&&!n.has(t.id));return i.forEach(e=>n.add(e.id)),i.length?`<section class="lane">
+    </a>`}var xo=[{cat:`solo`,name:`나부터`,line:`상대 생년월일 없이 나만 봅니다`},{cat:`reunion`,name:`그 사람 마음`,line:`연락하기 전에 그 사람 쪽을 먼저 봅니다`},{cat:`decide`,name:`계속할까 말까`,line:`붙잡을지 놓을지 정해야 할 때`},{cat:`timing`,name:`언제 보낼까`,line:`보내도 되는 날과 시간`}];function So(e=`all`){let t=X(`productGrid`);if(!t)return;if(e!==`all`){let n=Ar.filter(t=>(t.cats||[]).includes(e));t.className=`grid`,t.innerHTML=(n.length?n:Ar).map(bo).join(``);return}t.className=`lanes`;let n=new Set;t.innerHTML=xo.map(({cat:e,name:t,line:r})=>{let i=Ar.filter(t=>(t.cats||[]).includes(e)&&!n.has(t.id));return i.forEach(e=>n.add(e.id)),i.length?`<section class="lane">
       <div class="lane-head">
         <h2>${t}<i>${i.length}</i></h2>
         <button type="button" class="lane-all" data-gocat="${e}">전부 보기 <span>→</span></button>
