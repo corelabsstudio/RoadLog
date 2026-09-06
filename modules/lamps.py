@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -35,6 +36,11 @@ ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
 #    지금 켜면 결제가 안 되는 상태라 아무도 아무것도 못 연다.
 PAY_PER_REPORT = False
 WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지 않는다
+
+# 데려온 분·따라온 분 양쪽에 준다. 광고비 없이 손님이 오게 하는 유일한 장치다.
+REFER_LAMPS = 30        # 무냥이에게 한 번 더 묻는 값과 같게 맞췄다
+REFER_DAYS = 30
+REFER_MAX = 20          # 한 계정이 받을 수 있는 횟수. 장난을 막는 선이다
 
 # 충전 패키지 — 결제 금액으로 어느 패키지인지 판정한다 (프론트 값을 믿지 않는다)
 PACKS = {
@@ -72,8 +78,10 @@ PRICES = {
 
 # 프리미엄 — 등불로 사지 않는다. 그 자리에서 결제하고 연다.
 # 값은 원 단위다(등불 개수가 아니다). 프론트 products.js 와 같은 값이어야 한다.
+# 🛑 처음부터 최고가로 걸면 안 팔렸을 때 값 탓인지 물건 탓인지 못 가른다.
+#    2026-09-07 에 29,000 → 12,900 으로 내렸다. 팔리는 것을 보고 올린다.
 PREMIUM_WON = {
-    "great": 29000,
+    "great": 12900,
 }
 
 _PAIR_RE = re.compile(r"^[0-9a-f]{16,64}$")
@@ -201,28 +209,108 @@ def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "
     }
 
 
-def welcome(email: str) -> dict:
-    """가입 선물. 한 계정에 한 번만 나간다."""
+def refer_code(email: str) -> str:
+    """계정마다 정해지는 추천 코드. 값을 따로 저장하지 않으려고 이메일에서 만든다."""
+    key = "roadlog.refer." + email.strip().lower()
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:8]
+
+
+def _email_of_code(data: dict, code: str) -> str | None:
+    code = (code or "").strip().lower()
+    if len(code) != 8:
+        return None
+    for em in data:
+        if refer_code(em) == code:
+            return em
+    return None
+
+
+def _add_lot(acc: dict, lamps: int, days: int, now: datetime, kind: str, note: str) -> str:
+    expires = now + timedelta(days=days)
+    acc["lots"].append({
+        "lamps": lamps, "remain": lamps,
+        "at": _iso(now), "expires": _iso(expires),
+        "payment_id": "", "price": 0,
+    })
+    acc["ledger"].append({
+        "at": _iso(now), "type": kind, "lamps": lamps,
+        "price": 0, "expires": _iso(expires), "note": note,
+    })
+    return _iso(expires)
+
+
+def refer_stats(email: str) -> dict:
+    """내 추천 코드와, 지금까지 데려온 사람 수."""
+    data = _read()
+    acc = _account(data, email)
+    got = [e for e in acc.get("ledger", []) if e.get("type") == "refer"]
+    return {
+        "code": refer_code(email),
+        "count": len(got),
+        "lamps": sum(e.get("lamps", 0) for e in got),
+        "per": REFER_LAMPS,
+        "max": REFER_MAX,
+    }
+
+
+def claim_refer(email: str, code: str) -> dict:
+    """추천 코드를 나중에 넣는 길.
+
+    소셜 로그인은 구글·카카오를 다녀오는 사이에 코드가 날아가므로, 들어온 뒤에
+    한 번 넣을 수 있게 열어 둔다. **한 계정에 한 번만** 받는다.
+    """
+    email = (email or "").strip().lower()
+    data = _read()
+    acc = _account(data, email)
+    if any(e.get("type") == "refer_in" for e in acc.get("ledger", [])):
+        return {"given": 0, "why": "이미 받으셨어요."}
+    inviter = _email_of_code(data, code)
+    if not inviter or inviter == email:
+        return {"given": 0, "why": "그런 코드가 없어요."}
+    iacc = data.get(inviter)
+    if iacc is None:
+        return {"given": 0, "why": "그런 코드가 없어요."}
+    if sum(1 for e in iacc.get("ledger", []) if e.get("type") == "refer") >= REFER_MAX:
+        return {"given": 0, "why": "이 코드는 다 쓰였어요."}
+    now = _now()
+    _add_lot(acc, REFER_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
+    _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
+    _write(data)
+    return {"given": REFER_LAMPS, "balance": sum(l["remain"] for l in _live_lots(acc, now))}
+
+
+def welcome(email: str, ref: str = "", via: str = "") -> dict:
+    """가입 선물. 한 계정에 한 번만 나간다.
+
+    추천 코드를 달고 들어오면 **데려온 분과 따라온 분 양쪽에** 등불을 더 준다.
+    코드는 이메일에서 만들어지므로 따로 저장하는 값이 없다.
+    """
     data = _read()
     acc = _account(data, email)
     if any(e.get("type") == "welcome" for e in acc.get("ledger", [])):
         return {"given": 0, "balance": sum(l["remain"] for l in _live_lots(acc))}
     now = _now()
-    expires = now + timedelta(days=WELCOME_DAYS)
-    acc["lots"].append({
-        "lamps": WELCOME_LAMPS, "remain": WELCOME_LAMPS,
-        "at": _iso(now), "expires": _iso(expires),
-        "payment_id": "", "price": 0,
-    })
-    acc["ledger"].append({
-        "at": _iso(now), "type": "welcome", "lamps": WELCOME_LAMPS,
-        "price": 0, "expires": _iso(expires), "note": "가입 선물",
-    })
+    expires = _add_lot(acc, WELCOME_LAMPS, WELCOME_DAYS, now, "welcome",
+                       f"가입 선물 · {via}" if via else "가입 선물")
+
+    bonus = 0
+    inviter = _email_of_code(data, ref) if ref else None
+    # 내 코드로 내가 들어오는 것은 안 된다. 데려온 쪽도 이미 있는 계정이어야 한다.
+    if inviter and inviter != email.strip().lower():
+        iacc = data.get(inviter)
+        if iacc is not None:
+            done = sum(1 for e in iacc.get("ledger", []) if e.get("type") == "refer")
+            if done < REFER_MAX:
+                bonus = REFER_LAMPS
+                _add_lot(acc, REFER_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
+                _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
+
     _write(data)
     return {
-        "given": WELCOME_LAMPS,
+        "given": WELCOME_LAMPS + bonus,
+        "referred": bonus,
         "balance": sum(l["remain"] for l in _live_lots(acc, now)),
-        "expires": _iso(expires),
+        "expires": expires,
     }
 
 

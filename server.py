@@ -257,6 +257,8 @@ class AuthBody(BaseModel):
     email: str
     password: str
     name: str = ""
+    ref: str = ""      # 친구를 따라 들어온 분의 추천 코드
+    via: str = ""      # 어느 길로 오셨는지 (utm / 들어온 사이트). 개인 식별값은 담지 않는다
 
 
 class GenerateBody(BaseModel):
@@ -600,10 +602,10 @@ def register(body: AuthBody, request: Request):
         raise HTTPException(400, msg)
     # 가입 선물. 손에 쥐는 게 있어야 계정을 만든다.
     try:
-        gift = lamps_ops.welcome(body.email)
+        gift = lamps_ops.welcome(body.email, (body.ref or "").strip(), (body.via or "").strip()[:80])
     except Exception:
         gift = {"given": 0}
-    return {"ok": True, "message": msg, "welcome": gift.get("given", 0)}
+    return {"ok": True, "message": msg, "welcome": gift.get("given", 0), "referred": gift.get("referred", 0)}
 
 
 def _issue_session(user: dict, message: str) -> dict:
@@ -1985,6 +1987,24 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+class ReferBody(BaseModel):
+    code: str
+
+
+@app.get("/api/refer")
+def refer_mine(authorization: str | None = Header(default=None)):
+    """내 추천 코드와 지금까지 데려온 사람 수."""
+    user = _token_user(authorization)
+    return lamps_ops.refer_stats(user["email"])
+
+
+@app.post("/api/refer/claim")
+def refer_claim(body: ReferBody, authorization: str | None = Header(default=None)):
+    """추천 코드를 넣는다. 한 계정에 한 번만 받는다."""
+    user = _token_user(authorization)
+    return lamps_ops.claim_refer(user["email"], (body.code or "").strip())
 
 
 @app.get("/api/premium/price")

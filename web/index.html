@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-DNjKnH3I.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-Bf61qvoU.css">
+  <script type="module" crossorigin src="/assets/main-6RiERGyp.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CZX1Px3P.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -381,6 +381,17 @@
         <button type="button" class="btn" id="shareSend">공유하기</button>
       </div>
       <p class="share-note" id="shareNote" hidden></p>
+
+      <div class="invite" id="invite" hidden>
+        <h4>친구를 데려오면 둘 다 등불을 받아요</h4>
+        <p class="invite-lede">아래 링크로 친구가 들어와 사주를 보면 <b>친구도 나도 등불 30개</b>씩 받아요.
+          무냥이에게 한 번 더 물어볼 수 있는 양이에요.</p>
+        <div class="invite-row">
+          <input type="text" id="inviteLink" readonly aria-label="내 초대 링크" />
+          <button type="button" class="btn btn-sm" id="inviteCopy">복사</button>
+        </div>
+        <p class="invite-count" id="inviteCount"></p>
+      </div>
     </div>
 
     <div class="odds" id="odds" hidden>
