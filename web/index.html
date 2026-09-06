@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-BWmw2oEL.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-Cx-A5p7w.css">
+  <script type="module" crossorigin src="/assets/main-CBfk1iRb.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-DxeMrVVz.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -181,6 +181,10 @@
 
     <div class="tool-grid">
     <form class="pair-form" id="pairForm" novalidate>
+      <div class="wiz-say">
+        <img src="/assets/mudang_v2-C5ztPMJj.png" alt="무냥이" class="talk-face" />
+        <p class="talk-b" id="wizSay">뭐부터 물어볼까요.</p>
+      </div>
       <div class="wiz-bar" id="wizBar" aria-hidden="true"><i id="wizFill"></i></div>
       <p class="wiz-count"><span id="wizNow">1</span> / <span id="wizAll">5</span></p>
 
@@ -332,11 +336,13 @@
   <section class="loading" id="loading" hidden aria-live="polite">
     <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="load-face" />
     <p class="load-step" id="loadStep">사주를 뽑는 중</p>
+    <p class="load-say">다 짚을 때까지 이 화면을 두세요.</p>
     <div class="load-bar"><i id="loadBar"></i></div>
     <div class="load-memo"><p class="load-memo-t">알아 두면 좋은 것</p><p id="loadMemo"></p></div>
   </section>
 
   <section class="result" id="result" hidden>
+    <div class="talk" id="talk"></div>
     <div class="verdict">
       <img src="/assets/mudang_v2-C5ztPMJj.png" alt="" class="verdict-face" />
       <div>
