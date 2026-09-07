@@ -195,7 +195,7 @@ button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
 
       <h2>날짜별</h2>
       <div class="scroll"><table>
-        <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>충전</th><th>매출</th></tr></thead>
+        <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>결제</th><th>매출</th></tr></thead>
         <tbody id="tDaily"></tbody>
       </table></div>
     </section>
@@ -388,7 +388,7 @@ function paint() {
   ]);
   tiles($('tTotal'), [
     [won(d.total.sales), '매출', true],
-    [num(d.total.charges) + '건', '충전'],
+    [num(d.total.charges) + '건', '결제'],
     [num(d.total.signups) + '명', '가입'],
     [num(d.total.opens) + '번', '사주 열람'],
   ]);
