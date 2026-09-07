@@ -2273,6 +2273,42 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
 
 
+class SummaryBody(BaseModel):
+    product: str
+    pair: str
+
+
+@app.post("/api/saju/summary")
+def saju_summary(body: SummaryBody, authorization: str | None = Header(default=None)):
+    """공유 카드에 넣을 두 줄. 이미 써 둔 결과지에서 뽑는다.
+
+    새로 글을 쓰지 않으므로 결과지가 없으면 빈 값을 준다.
+    한 번 뽑은 요약은 결과지 옆에 남겨 두고 다시 뽑지 않는다."""
+    user = _token_user(authorization)
+    product = (body.product or "").strip()
+    pair = (body.pair or "").strip()
+    if not product or not pair:
+        raise HTTPException(400, "상품과 사주 값이 필요합니다.")
+    try:
+        data = saju_writer.load(product, pair)
+    except ValueError:
+        raise HTTPException(400, "사주 값이 올바르지 않습니다.")
+    if not data or not data.get("blocks"):
+        return {"ok": True, "summary": ""}
+    if data.get("summary"):
+        return {"ok": True, "summary": data["summary"]}
+    if not saju_writer.ready():
+        return {"ok": True, "summary": ""}
+    try:
+        line = saju_writer.summarize(data["blocks"])
+    except Exception:                       # noqa: BLE001
+        return {"ok": True, "summary": ""}
+    if line:
+        data["summary"] = line
+        saju_writer.save(product, pair, data)
+    return {"ok": True, "summary": line}
+
+
 class _HashedAssets(StaticFiles):
     """파일명에 내용 해시가 붙은 자산은 내용이 바뀌면 이름이 바뀐다.
     그래서 오래 캐시해도 안전하고, 매 방문 재검증 왕복을 없앨 수 있다."""

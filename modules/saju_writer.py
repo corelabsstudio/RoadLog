@@ -308,3 +308,41 @@ def merge(product: str, pair: str, blocks: list[dict[str, Any]]) -> dict[str, An
     data = {"blocks": list(by.values())}
     save(product, pair, data)
     return data
+
+
+# ── 카드에 넣을 한두 줄 ──────────────────────────────────────
+# 공유 카드는 남이 본다. 사주 용어를 늘어놓으면 아무도 안 누른다.
+# 읽은 사람이 「이거 내 얘기네」 하고 캡처하고 싶어지는 두 줄이어야 한다.
+
+SUMMARY_SYSTEM = """너는 사주 결과지를 읽고, 공유 카드에 넣을 짧은 글을 뽑는다.
+
+[규칙]
+- 두 문장. 합쳐서 55자 안쪽. 넘으면 잘린다.
+- 남이 본다. 사주 용어(일간·십성·대운·신살·오행 이름)를 쓰지 마라.
+- 손님 이름을 넣지 마라. 생년월일도 안 된다.
+- 「당신은 ~한 사람입니다」 같은 설명문 말고, 읽은 사람이 뜨끔할 한마디로.
+- 존댓말. 「~해요」 「~거든요」 「~죠」. 이모지·느낌표 금지.
+- 좋은 말로 마무리하지 마라. 찌르고 끝낸다.
+
+[좋은 예]
+겉으로는 다 받아 주면서 속으로 명단을 적어 두는 사람이에요. 그 명단이 길어지면 조용히 문을 닫죠.
+먼저 연락하는 법이 없어요. 기다리는 게 편한 게 아니라, 먼저 손 내미는 법을 안 배운 거예요.
+
+[나쁜 예 — 이렇게 쓰지 마라]
+당신은 갑목 일간으로 인성이 강한 사주입니다.  (용어)
+좋은 기운이 함께하니 힘내세요.  (훈훈한 마무리)"""
+
+
+def summarize(blocks: list[dict[str, Any]], *, model: str | None = None) -> str:
+    """리포트 앞부분을 읽고 카드에 넣을 두 줄을 뽑는다."""
+    src = []
+    for b in blocks[:3]:
+        t = (b.get("text") or "").strip()
+        if t:
+            src.append(t[:900])
+    if not src:
+        return ""
+    user = "[결과지 앞부분]\n" + "\n\n".join(src)
+    res = _call(SUMMARY_SYSTEM, user, model=model, temperature=0.9, max_tokens=300)
+    txt = " ".join(res["text"].split())
+    return txt[:90]
