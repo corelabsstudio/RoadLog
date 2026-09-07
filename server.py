@@ -2397,11 +2397,22 @@ def admin_lamps(authorization: str | None = Header(default=None)):
             continue
         led = acc.get("ledger", [])
         name, _, dom = str(email).partition("@")
+        kinds = {}
+        for e in led:
+            k = str(e.get("type") or "?")
+            kinds[k] = kinds.get(k, 0) + 1
         out.append({
             "who": (name[:2] + "***@" + dom),
             "balance": lamps_ops.balance(email),
             "welcomeGiven": any(e.get("type") == "welcome" for e in led),
             "entries": len(led),
+            "kinds": kinds,
+            # 무엇에 썼는지. 값·계정은 담지 않는다
+            "recent": [{"type": e.get("type"), "product": e.get("product"),
+                        "lamps": e.get("lamps"), "at": str(e.get("at"))[:16]}
+                       for e in led[-12:]],
+            "lots": [{"remain": l.get("remain"), "expires": str(l.get("expires"))[:10]}
+                     for l in (acc.get("lots") or [])][-6:],
         })
     out.sort(key=lambda x: -x["balance"])
     return {"count": len(out),
