@@ -1970,7 +1970,7 @@ def _verify_payment(payment_id: str) -> dict:
 @app.get("/api/lamps/ready")
 def lamps_ready():
     """결제 확인용 시크릿이 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다."""
-    return {"portone_secret_set": bool(PORTONE_API_SECRET), "pay_open": PAY_OPEN}
+    return {"portone_secret_set": bool(PORTONE_API_SECRET), "pay_open": PAY_OPEN, "sale_until": SALE_UNTIL}
 
 
 def _is_owner(user: dict) -> bool:
@@ -1987,6 +1987,12 @@ def _is_owner(user: dict) -> bool:
 #    PG 승인이 나고 pay.html 의 CHANNEL_KEY 를 실채널로 바꾼 뒤에
 #    Railway 에 PAY_OPEN=1 을 넣어 연다.
 PAY_OPEN = os.getenv("PAY_OPEN", "").strip() in ("1", "true", "TRUE", "yes")
+
+# 오픈 기념 할인 마감일 (YYYY-MM-DD). 비어 있으면 화면에 아무것도 안 뜬다.
+# 🛑 적어 둔 날이 오면 **실제로 값을 올리거나 마감을 다시 밝힌다.** 지나고도 그대로 두면
+#    거짓 할인이고, 전자상거래법이 금지하는 과장 광고다. 새로고침마다 시간이 되살아나는
+#    「1시간 남음」 류를 쓰지 않는 이유도 같다 (2026-09-07).
+SALE_UNTIL = (os.getenv("SALE_UNTIL", "") or "").strip()[:10]
 
 _FREE_PASS_PATH = DATA_DIR / "free_pass.json"
 
