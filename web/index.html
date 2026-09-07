@@ -12,10 +12,10 @@
   <meta name="theme-color" content="#100e15" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-CAkWn4Ap.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-DgDHkV9I.css">
+  <script type="module" crossorigin src="/assets/main-CRzWY031.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BbozAwl4.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -234,7 +234,7 @@
     <div class="tool-grid">
     <form class="pair-form" id="pairForm" novalidate>
       <div class="wiz-say">
-        <img src="/assets/mudang_v2-C5ztPMJj.png" alt="무냥이" class="talk-face" />
+        <img src="/assets/face_cut-z3SXS0he.png" alt="무냥이" class="talk-face" />
         <p class="talk-b" id="wizSay">뭐부터 물어볼까요.</p>
       </div>
       <div class="wiz-bar" id="wizBar" aria-hidden="true"><i id="wizFill"></i></div>
@@ -257,7 +257,7 @@
         <div class="wheel-head">
           <p class="wheel-label">태어난 날</p>
           <label class="year-jump">연도 바로 넣기
-            <input type="text" inputmode="numeric" maxlength="4" placeholder="1983"
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="____"
                    data-jump="meDate" aria-label="연도를 숫자로 넣기" />
           </label>
         </div>
@@ -269,10 +269,9 @@
         </div>
         <input type="hidden" name="meDate" value="1996-03-14" />
         <input type="hidden" name="meCal" value="solar" />
-        <div class="pick pick-3" data-for="meCal">
+        <div class="pick pick-2" data-for="meCal">
           <button type="button" data-val="solar" class="on">양력</button>
-          <button type="button" data-val="lunar">음력 평달</button>
-          <button type="button" data-val="leap">음력 윤달</button>
+          <button type="button" data-val="lunar">음력</button>
         </div>
       </section>
 
@@ -282,7 +281,7 @@
         <div class="wheel-head">
           <p class="wheel-label">태어난 시각</p>
           <label class="year-jump">분 바로 넣기
-            <input type="text" inputmode="numeric" maxlength="2" placeholder="25"
+            <input type="text" inputmode="numeric" maxlength="2" placeholder="__"
                    data-minjump="meTime" aria-label="분을 숫자로 넣기" />
           </label>
         </div>
@@ -334,7 +333,7 @@
         <div class="wheel-head">
           <p class="wheel-label">그 사람이 태어난 날</p>
           <label class="year-jump">연도 바로 넣기
-            <input type="text" inputmode="numeric" maxlength="4" placeholder="1983"
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="____"
                    data-jump="youDate" aria-label="연도를 숫자로 넣기" />
           </label>
         </div>
@@ -346,10 +345,9 @@
         </div>
         <input type="hidden" name="youDate" value="1994-11-02" />
         <input type="hidden" name="youCal" value="solar" />
-        <div class="pick pick-3" data-for="youCal">
+        <div class="pick pick-2" data-for="youCal">
           <button type="button" data-val="solar" class="on">양력</button>
-          <button type="button" data-val="lunar">음력 평달</button>
-          <button type="button" data-val="leap">음력 윤달</button>
+          <button type="button" data-val="lunar">음력</button>
         </div>
       </section>
 
@@ -359,7 +357,7 @@
         <div class="wheel-head">
           <p class="wheel-label">그 사람 태어난 시각</p>
           <label class="year-jump">분 바로 넣기
-            <input type="text" inputmode="numeric" maxlength="2" placeholder="25"
+            <input type="text" inputmode="numeric" maxlength="2" placeholder="__"
                    data-minjump="youTime" aria-label="분을 숫자로 넣기" />
           </label>
         </div>
@@ -660,6 +658,6 @@
   <button type="button" class="btn btn-sm" id="installGo">설치</button>
   <button type="button" class="install-x" id="installNo" aria-label="닫기">닫기</button>
 </div>
-
+
 </body>
 </html>
