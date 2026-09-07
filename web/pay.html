@@ -72,6 +72,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 </style>
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
   <meta property="og:locale" content="ko_KR" />
@@ -164,6 +165,11 @@ const PREMIUM = q.get('premium') ? {
 
 let pick = PACKS.find(p => String(p.lamps) === q.get('lamps')) || PACKS[2];
 
+// 리포트를 사면 덤으로 얹어 드리는 등불. 🛑 서버 modules/lamps.py:bonus_lamps 와
+// 같은 계단이어야 한다 — 어긋나면 화면에 적힌 수와 실제로 들어오는 수가 달라진다.
+// node tools/check_gift.mjs 가 세 곳(서버·products.js·여기)을 대조한다.
+const giftFor = (won) => (won >= 20000 ? 150 : won >= 5000 ? 60 : 30);
+
 function paintPacks() {
   $('packs').innerHTML = '';       // 🛑 등불은 팔지 않는다. 위 PACKS 주석 참고
   if (true) return;
@@ -177,7 +183,11 @@ if (PREMIUM) {
   $('payTitle').textContent = PREMIUM.name;
   $('paySub').textContent = '이 상품은 등불이 아니라 한 건으로 결제하고 바로 엽니다.';
   $('packs').hidden = true;
-  $('lampRow').hidden = true;
+  // 🛑 「받는 등불」로 적으면 「900원 = 30등불」로 읽힌다. 등불에 현금 값이 붙는 순간
+  //    포인트 충전 업종으로 잡힌다(2026-09-07 NHN KCP 지적). 사은품임을 문구로 못박는다.
+  $('lampRow').querySelector('.k').textContent = '함께 드리는 등불';
+  $('lampLabel').textContent = giftFor(PREMIUM.amount) + '개';
+  $('lampRow').hidden = false;
   $('termRow').innerHTML = '<span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span>';
   $('amountLabel').textContent = won(PREMIUM.amount);
 }
