@@ -88,6 +88,12 @@ tbody tr:hover{background:rgba(164,147,240,.07)}
 button.del{font:inherit;font-size:.85rem;background:none;color:var(--faint);
   border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
 button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
+button.vip{font:inherit;font-size:.85rem;background:none;color:var(--faint);
+  border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
+button.vip:hover{color:var(--ink);border-color:var(--ink)}
+button.vip.on{color:#c8b6ff;border-color:#c8b6ff}
+button.vip[disabled]{opacity:.5;cursor:default}
+td.owner{color:var(--faint);font-size:.85rem}
 .scroll{overflow-x:auto}
 .note{color:var(--faint);font-size:.92rem;margin:10px 0 0}
 
@@ -208,7 +214,7 @@ button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
     <section data-page="member" hidden>
       <h2 id="hMem">가입한 회원</h2>
       <div class="scroll"><table>
-        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th></th></tr></thead>
+        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>VIP</th><th></th></tr></thead>
         <tbody id="tMem"></tbody>
       </table></div>
       <p class="note" id="memNote"></p>
@@ -284,6 +290,7 @@ const asEmail = (v) => {
 };
 const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 let DATA = null, gSales = 'day', gVisit = 'day';
+let FREE = new Set();   // 값을 치르지 않고 다 보시는 분들(VIP)
 
 try { const s = localStorage.getItem(IDKEY); if (s) $('em').value = s; } catch {}
 
@@ -435,10 +442,13 @@ function paintMembers() {
     ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
       + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.legacy && m.how !== '관리자' ? '옛 계정' : m.how) + '</td><td>' + num(m.lamps)
       + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td>'
+      + '<td>' + (m.how === '관리자' ? '<span class=\'owner\'>주인</span>'
+        : '<button type="button" class="vip' + (FREE.has(String(m.email).toLowerCase()) ? ' on' : '')
+          + '" data-vip="' + esc(m.email) + '">' + (FREE.has(String(m.email).toLowerCase()) ? 'VIP' : '승격') + '</button>') + '</td>'
       + '<td>' + (m.how === '관리자' ? ''
         : '<button type="button" class="del" data-email="' + esc(m.email) + '">삭제</button>')
       + '</td></tr>').join('')
-    : '<tr><td colspan="8" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+    : '<tr><td colspan="9" class="zero">아직 가입한 분이 없습니다.</td></tr>';
 }
 
 // 회원 삭제 — 되돌릴 수 없으니 아이디를 보여 주고 한 번 더 묻는다
@@ -486,9 +496,37 @@ async function load() {
   if (r.status === 401 || r.status === 403) { show('login'); return; }
   if (!r.ok) throw new Error('불러오지 못했습니다.');
   DATA = await r.json();
+  try {
+    const f = await fetch('/api/admin/freepass', { headers: { Authorization: 'Bearer ' + token() } });
+    FREE = new Set(((await f.json()).emails || []).map((e) => String(e).toLowerCase()));
+  } catch { FREE = new Set(); }
   paint();
   show('board');
 }
+// VIP 승격·해제 — 값을 치르지 않고 다 보시게 한다. 운영 화면은 여전히 안 열린다.
+$('tMem').addEventListener('click', async (e) => {
+  const b = e.target.closest('button.vip');
+  if (!b) return;
+  const email = b.dataset.vip;
+  const on = !b.classList.contains('on');
+  if (!on && !confirm(email + ' — VIP 를 해제합니다. 이제 값을 치러야 볼 수 있습니다.')) return;
+  b.disabled = true;
+  try {
+    const r = await fetch('/api/admin/freepass', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ email, on }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || '바꾸지 못했습니다.');
+    FREE = new Set((d.emails || []).map((x) => String(x).toLowerCase()));
+    paintMembers();
+  } catch (ex) {
+    alert(ex.message);
+    b.disabled = false;
+  }
+});
+
 function show(which) {
   $('loginBox').hidden = which !== 'login';
   $('board').hidden = which !== 'board';
