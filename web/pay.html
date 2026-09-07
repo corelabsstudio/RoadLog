@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>등불 충전 · 로드로그</title>
+<title>결제 · 로드로그</title>
 <link rel="icon" href="/assets/face-ebveWHzw.png" />
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -78,7 +78,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <a href="/">로드로그</a>
   </header>
   <main>
-    <h1 id="payTitle">등불 충전</h1>
+    <h1 id="payTitle">결제</h1>
     <p class="sub" id="paySub">사주 리포트를 한 건씩 결제해서 보십니다. 정기결제나 자동갱신은 없습니다.</p>
 
     <div class="notice">
@@ -89,7 +89,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <div class="order">
       <ul class="packs" id="packs"></ul>
 
-      <div class="row" id="lampRow"><span class="k">받는 등불</span><span class="v" id="lampLabel">-</span></div>
+      <div class="row" id="lampRow" hidden><span class="k">받는 등불</span><span class="v" id="lampLabel">-</span></div>
       <div class="row" id="termRow"><span class="k">유효 기간</span><span class="v">충전일로부터 12개월</span></div>
       <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">9,200원</span></div>
 
@@ -127,14 +127,10 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
 
-// modules/lamps.py 의 PACKS 와 같은 값이어야 한다. 실제 지급은 서버가 결제 금액으로 다시 판정한다.
-const PACKS = [
-  { lamps: 20,  price: 1900,  note: '이번 주 7일 한 번' },
-  { lamps: 50,  price: 4700,  note: '' },
-  { lamps: 100, price: 9200,  note: '가장 비싼 리포트 한 번' },
-  { lamps: 300, price: 26000, note: '' },
-  { lamps: 700, price: 56000, note: '' },
-];
+// 🛑 등불 유료 충전은 없앴다 (2026-09-07). 이 화면은 **건별 결제 전용**이다.
+//    NHN KCP 담당자가 사이트에서 등불에 값이 붙은 것을 보고 포인트 충전 업종으로 잡았다.
+//    이 목록을 다시 채우면 그 글자가 화면에 되살아난다. 비워 둘 것.
+const PACKS = [];
 const TKEY = 'roadlog.token.v1';
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
@@ -152,12 +148,8 @@ const PREMIUM = q.get('premium') ? {
 let pick = PACKS.find(p => String(p.lamps) === q.get('lamps')) || PACKS[2];
 
 function paintPacks() {
-  $('packs').innerHTML = PACKS.map(p => {
-    const off = Math.round((1 - p.price / (p.lamps * 100)) * 100);
-    return `<li class="${p === pick ? 'on' : ''}" data-lamps="${p.lamps}">
-      <div><b>등불 ${p.lamps}개</b><span class="d">등불 1개 ${Math.round(p.price / p.lamps)}원${off ? ` · ${off}% 싸게` : ''}${p.note ? ` · ${p.note}` : ''}</span></div>
-      <span class="won">${won(p.price)}</span></li>`;
-  }).join('');
+  $('packs').innerHTML = '';       // 🛑 등불은 팔지 않는다. 위 PACKS 주석 참고
+  if (true) return;
   $('lampLabel').textContent = `${pick.lamps}등불`;
   $('amountLabel').textContent = won(pick.price);
 }
@@ -223,8 +215,7 @@ async function claimPremium(paymentId, token) {
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       show('err', '상품을 열어 드리지 못했습니다. 아래 결제 번호를 가지고 문의해 주세요.<pre>'
-        + ((data && data.detail) || res.status) + '
-' + paymentId + '</pre>');
+        + ((data && data.detail) || res.status) + '<br />' + paymentId + '</pre>');
       return;
     }
     show('ok', `<b>${PREMIUM.name}</b> 결제가 끝났습니다.<br />잠시 뒤 보시던 화면으로 돌아가 바로 열립니다.`);
