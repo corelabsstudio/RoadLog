@@ -2172,7 +2172,9 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
 # 계산은 프론트가 끝내서 보내고, 여기서는 그 값을 글로 옮기기만 시킨다.
 
 PREVIEW_SECTIONS = 3        # 값을 치르기 전에 보여 주는 항목 수
-PREVIEW_DAILY_CAP = 20      # 한 계정이 하루에 뽑을 수 있는 미리보기
+PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
+                            # 🛑 폭스바니는 2회다. 헐렁하게 두면 원가만 나가고
+                            #    「몇 번 안 남았다」는 압박도 사라진다
 
 
 class WriteBody(BaseModel):
@@ -2184,6 +2186,22 @@ class WriteBody(BaseModel):
     preview: bool = False
     chars: int = 0          # 항목 하나를 몇 자로 쓸지. 프론트가 상품마다 정해서 보낸다
     force: bool = False     # 주인이 일부러 새로 뽑을 때만 참
+
+
+def _preview_used(email: str) -> int:
+    """오늘 이 계정이 미리보기를 몇 번 뽑았나."""
+    from pathlib import Path as _P
+    import json as _j
+    import datetime as _dt
+    f = _P(DATA_DIR) / "saju_preview_count.json"
+    today = _dt.date.today().isoformat()
+    try:
+        data = _j.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    if data.get("day") != today:
+        return 0
+    return int(data.get("by", {}).get(email, 0))
 
 
 def _preview_quota(email: str) -> None:
@@ -2201,12 +2219,22 @@ def _preview_quota(email: str) -> None:
         data = {"day": today, "by": {}}
     n = int(data["by"].get(email, 0))
     if n >= PREVIEW_DAILY_CAP:
-        raise HTTPException(429, "오늘은 미리보기를 충분히 보셨어요. 내일 다시 열어 주세요.")
+        raise HTTPException(429, "오늘 무료로 볼 수 있는 사주를 다 보셨어요. 내일 0시부터 다시 열려요.")
     data["by"][email] = n + 1
     try:
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass
+
+
+@app.get("/api/saju/quota")
+def saju_quota(authorization: str | None = Header(default=None)):
+    """오늘 무료로 몇 번 더 볼 수 있나. 「몇 번 안 남았다」가 보여야 압박이 된다."""
+    user = _token_user(authorization)
+    if _is_owner(user):
+        return {"cap": PREVIEW_DAILY_CAP, "left": PREVIEW_DAILY_CAP, "unlimited": True}
+    used = _preview_used(user["email"])
+    return {"cap": PREVIEW_DAILY_CAP, "left": max(0, PREVIEW_DAILY_CAP - used), "unlimited": False}
 
 
 @app.get("/api/saju/ready")
@@ -2268,7 +2296,8 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             if b.get("text"):
                 done[b["title"]] = b
 
-    return {"ok": True, "paid": paid, "ownerSkip": owner_skip,
+    left = PREVIEW_DAILY_CAP if _is_owner(user) else max(0, PREVIEW_DAILY_CAP - _preview_used(user["email"]))
+    return {"ok": True, "paid": paid, "ownerSkip": owner_skip, "left": left,
             "blocks": [{"title": s, "text": done.get(s, {}).get("text", "")} for s in want],
             "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
 
