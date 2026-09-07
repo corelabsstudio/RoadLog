@@ -1852,7 +1852,7 @@ _TEXT_MEDIA = {
 }
 
 
-def _file_response(path: Path) -> FileResponse:
+def _file_response(path: Path, status_code: int = 200) -> FileResponse:
     """UTF-8 charset을 붙여 한글 UI 깨짐을 방지. SW·앱 셸은 캐시 재검증 강제."""
     media = _TEXT_MEDIA.get(path.suffix.lower())
     name = path.name.lower()
@@ -1873,8 +1873,8 @@ def _file_response(path: Path) -> FileResponse:
     elif path.suffix.lower() in {".js", ".css", ".html", ".webmanifest"}:
         headers["Cache-Control"] = "no-cache, must-revalidate"
     if media:
-        return FileResponse(path, media_type=media, headers=headers or None)
-    return FileResponse(path, headers=headers or None)
+        return FileResponse(path, media_type=media, headers=headers or None, status_code=status_code)
+    return FileResponse(path, headers=headers or None, status_code=status_code)
 
 
 
@@ -2520,7 +2520,12 @@ def spa_fallback(path: str):
             safe_idx = _safe_web_file(rel)
             if safe_idx is not None:
                 return _file_response(safe_idx)
-    # 존재하지 않는 SPA 라우트만 index 폴백 (경로 탈출 시도는 404)
-    if ".." in path.replace("\\", "/").split("/"):
-        raise HTTPException(404, "Not Found")
-    return _file_response(WEB / "index.html")
+    # 🛑 없는 주소에 홈을 200 으로 돌려주지 않는다 (2026-09-07).
+    #    그전에는 여기서 index.html 을 200 으로 줬다. 검색엔진은 그것을 홈의
+    #    복사본으로 읽어(soft 404) 색인에 불리하고, 손님은 주소를 잘못 눌러
+    #    놓고 홈을 보게 되니 무엇이 잘못됐는지 모른다.
+    #    로드로그는 화면 이동을 전부 해시(#p/…)로 하므로 경로 폴백이 필요 없다.
+    nf = _safe_web_file("404.html")
+    if nf is not None:
+        return _file_response(nf, status_code=404)
+    raise HTTPException(404, "Not Found")
