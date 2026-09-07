@@ -8,10 +8,12 @@ FastAPI + 정적 프론트엔드 + 기존 modules 재사용
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,7 +22,7 @@ from urllib.parse import quote
 import httpx
 from fastapi import Cookie, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -2555,6 +2557,149 @@ def _safe_web_file(rel_path: str) -> Path | None:
 # 운행일지 시절 URL 정리 (2026-09-04 사주 서비스로 교체).
 # 색인돼 있던 옛 주소는 404 대신 홈으로 영구 이동시킨다.
 _GONE_PREFIXES = ("blog", "resources", "app", "guide", "update.html", "legal/business.html")
+
+
+# 카드 한 장을 보여 주는 쪽. 그림 하나와 「나도 보기」 한 줄이면 된다.
+# 🛑 배경 사주 글자는 여기에도 깐다 (CLAUDE.md 규칙).
+CARD_HTML = """<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>%(title)s · 로드로그</title>
+<meta name="description" content="%(line)s" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="로드로그" />
+<meta property="og:locale" content="ko_KR" />
+<meta property="og:url" content="%(url)s" />
+<meta property="og:title" content="%(title)s" />
+<meta property="og:description" content="%(line)s" />
+<meta property="og:image" content="%(img)s" />
+<meta property="og:image:width" content="1080" />
+<meta property="og:image:height" content="1350" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="%(title)s" />
+<meta name="twitter:description" content="%(line)s" />
+<meta name="twitter:image" content="%(img)s" />
+<link rel="icon" href="/assets/character/face.png" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
+<link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{--bg:#100e15;--paper:#171523;--ink:#efeaf7;--muted:#a79fbb;--line:#2b2740;--go:#c8b6ff;
+    --seal:url("data:image/svg+xml;utf8,%%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%%3E%%3Ctext x='20' y='60' font-size='46' fill='%%23ffffff' fill-opacity='0.048'%%3E甲%%3C/text%%3E%%3Ctext x='150' y='130' font-size='46' fill='%%23ffffff' fill-opacity='0.048'%%3E丙%%3C/text%%3E%%3Ctext x='60' y='210' font-size='46' fill='%%23ffffff' fill-opacity='0.048'%%3E壬%%3C/text%%3E%%3Ctext x='210' y='270' font-size='46' fill='%%23ffffff' fill-opacity='0.048'%%3E子%%3C/text%%3E%%3C/svg%%3E")}
+  body{background:var(--bg);background-image:var(--seal);background-size:300px 300px;
+    color:var(--ink);font-family:"Pretendard",-apple-system,system-ui,sans-serif;
+    word-break:keep-all;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;padding:28px 18px;gap:20px}
+  .top{font-family:"Gugi",serif;font-size:1.3rem;letter-spacing:-.01em}
+  .card{width:100%%;max-width:420px;border-radius:16px;overflow:hidden;display:block;
+    box-shadow:0 18px 50px rgba(0,0,0,.45)}
+  .card img{width:100%%;display:block}
+  .lede{color:var(--muted);font-size:.95rem;line-height:1.7;text-align:center;max-width:420px}
+  .go{display:block;width:100%%;max-width:420px;padding:15px;border-radius:12px;
+    background:var(--go);color:#231d3a;font-weight:800;text-align:center;text-decoration:none}
+  .foot{color:#6f6885;font-size:.8rem;text-align:center;line-height:1.7}
+</style></head><body>
+  <p class="top">로드로그</p>
+  <a class="card" href="%(go)s"><img src="%(img)s" alt="%(title)s" /></a>
+  <p class="lede">%(line)s</p>
+  <a class="go" href="%(go)s">나도 내 사주 보러 가기</a>
+  <p class="foot">사주로 길을 보고, 기록으로 남겨요<br />오늘의 운세는 값 없이 보실 수 있어요</p>
+</body></html>"""
+
+
+# ── 공유 카드 ──────────────────────────────────────────
+# 🛑 카드는 브라우저 캔버스가 그린 그림이라 링크에 실리지 않는다. 스레드·X 에 주소만
+#    붙이면 사이트 대표 그림이 뜨고 정작 그 사람의 카드는 안 보인다 (2026-09-07 지적).
+#    그래서 카드마다 주소를 하나씩 내주고, 그 주소의 og:image 를 그 카드로 둔다.
+# 🛑 카드에는 이름도 생년월일도 들어가지 않는다(화면에도 그렇게 적어 뒀다).
+#    그래도 주소를 아는 사람은 누구나 보므로 id 는 추측할 수 없게 만든다.
+CARD_DIR = DATA_DIR / "cards"
+CARD_KEEP_DAYS = 90          # 오래된 카드는 지운다. 저장 공간이 무한하지 않다
+CARD_MAX_BYTES = 3_000_000
+
+
+class CardBody(BaseModel):
+    image: str                # data:image/jpeg;base64,...
+    title: str = ""
+    line: str = ""
+    ref: str = ""             # 데려온 분 코드. 카드로 들어온 친구가 보면 양쪽 다 등불을 받는다
+
+
+def _card_sweep() -> None:
+    """오래된 카드를 지운다. 새 카드를 올릴 때마다 슬쩍 훑는다."""
+    try:
+        cut = time.time() - CARD_KEEP_DAYS * 86400
+        for f in CARD_DIR.glob("*.jpg"):
+            if f.stat().st_mtime < cut:
+                f.unlink(missing_ok=True)
+                CARD_DIR.joinpath(f.stem + ".json").unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+@app.post("/api/card")
+def card_put(body: CardBody, authorization: str | None = Header(default=None)):
+    """카드 그림을 받아 두고 나눌 주소를 내준다."""
+    _token_user(authorization)
+    raw = body.image or ""
+    if "," in raw:
+        raw = raw.split(",", 1)[1]
+    try:
+        data = base64.b64decode(raw, validate=True)
+    except Exception:
+        raise HTTPException(400, "그림을 읽지 못했습니다.")
+    if not data or len(data) > CARD_MAX_BYTES:
+        raise HTTPException(400, "그림이 너무 큽니다.")
+    if data[:3] != bytes((0xFF, 0xD8, 0xFF)):        # JPEG 만 받는다
+        raise HTTPException(400, "jpg 만 올릴 수 있습니다.")
+    CARD_DIR.mkdir(parents=True, exist_ok=True)
+    cid = secrets.token_urlsafe(9)
+    (CARD_DIR / f"{cid}.jpg").write_bytes(data)
+    (CARD_DIR / f"{cid}.json").write_text(json.dumps(
+        {"title": (body.title or "")[:60], "line": (body.line or "")[:120],
+         "ref": re.sub(r"[^A-Za-z0-9_-]", "", (body.ref or ""))[:24]},
+        ensure_ascii=False), "utf-8")
+    _card_sweep()
+    return {"id": cid, "url": f"{SITE_ORIGIN}/card/{cid}"}
+
+
+_CARD_ID = re.compile(r"^[A-Za-z0-9_-]{6,24}$")
+
+
+@app.get("/card/{cid}.jpg")
+def card_image(cid: str):
+    if not _CARD_ID.match(cid):
+        raise HTTPException(404, "Not Found")
+    f = CARD_DIR / f"{cid}.jpg"
+    if not f.is_file():
+        raise HTTPException(404, "Not Found")
+    return FileResponse(f, media_type="image/jpeg",
+                        headers={"Cache-Control": "public, max-age=604800"})
+
+
+@app.get("/card/{cid}")
+def card_page(cid: str):
+    """카드 한 장을 보여 주는 쪽. 링크를 붙이면 이 그림이 뜬다."""
+    if not _CARD_ID.match(cid) or not (CARD_DIR / f"{cid}.jpg").is_file():
+        nf = _safe_web_file("404.html")
+        if nf is not None:
+            return _file_response(nf, status_code=404)
+        raise HTTPException(404, "Not Found")
+    meta = {}
+    try:
+        meta = json.loads((CARD_DIR / f"{cid}.json").read_text("utf-8"))
+    except Exception:
+        pass
+    esc = lambda s: (s or "").replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;")
+    title = esc(meta.get("title") or "로드로그 사주")
+    line = esc(meta.get("line") or "사주로 길을 보고, 기록으로 남겨요.")
+    img = f"{SITE_ORIGIN}/card/{cid}.jpg"
+    ref = re.sub(r"[^A-Za-z0-9_-]", "", str(meta.get("ref") or ""))[:24]
+    go = f"{SITE_ORIGIN}/?ref={ref}" if ref else f"{SITE_ORIGIN}/"
+    html = CARD_HTML % {"title": title, "line": line, "img": img, "url": url, "go": go}
+    return HTMLResponse(html, headers={"Cache-Control": "public, max-age=3600"})
+
 
 
 @app.get("/{path:path}")
