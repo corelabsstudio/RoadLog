@@ -2177,7 +2177,9 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
 # 왜: 코드에 박아 둔 문장은 같은 십성인 사람에게 늘 같은 글을 준다.
 # 계산은 프론트가 끝내서 보내고, 여기서는 그 값을 글로 옮기기만 시킨다.
 
-PREVIEW_SECTIONS = 3        # 값을 치르기 전에 보여 주는 항목 수
+PREVIEW_SECTIONS = 1        # 값을 치르기 전에 무냥이 글로 보여 주는 항목 수
+#   🛑 첫 자리 하나만이다 (2026-09-07 지시). 셋이면 상품에 따라 2장까지 열려 버렸다.
+#   🛑 main.js:PREVIEW_ITEMS 와 같아야 한다 — 화면이 그 수만큼 자리를 잡아 둔다.
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
                             # 🛑 폭스바니는 2회다. 헐렁하게 두면 원가만 나가고
                             #    「몇 번 안 남았다」는 압박도 사라진다
