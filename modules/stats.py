@@ -186,7 +186,13 @@ def _visits() -> dict[str, dict[str, Any]]:
 
 
 def _charges() -> list[dict[str, Any]]:
-    """등불 충전 기록 전부. 계정별 장부에 흩어져 있는 것을 모은다."""
+    """돈이 오간 기록 전부. 계정별 장부에 흩어져 있는 것을 모은다.
+
+    🛑 `charge`(등불 판매)만 세면 매출이 영영 0 이다 (2026-09-07 발견).
+       등불 판매는 KG이니시스 거절로 접었고, 지금 돈이 들어오는 길은
+       `premium`(리포트 건별 결제) 하나뿐이다. 실제로 8,900원 결제 기록이
+       장부에 있는데도 운영 화면은 「매출 0원 · 결제 0건」을 보여 주고 있었다.
+    """
     from modules import lamps as lamps_ops
 
     rows = []
@@ -194,7 +200,7 @@ def _charges() -> list[dict[str, Any]]:
         if not isinstance(acc, dict):
             continue
         for e in acc.get("ledger", []):
-            if e.get("type") != "charge":
+            if e.get("type") not in ("charge", "premium"):
                 continue
             at = str(e.get("at", ""))[:10]
             if not at:
