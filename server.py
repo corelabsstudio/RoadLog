@@ -2183,6 +2183,7 @@ class WriteBody(BaseModel):
     name: str = ""
     preview: bool = False
     chars: int = 0          # 항목 하나를 몇 자로 쓸지. 프론트가 상품마다 정해서 보낸다
+    force: bool = False     # 주인이 일부러 새로 뽑을 때만 참
 
 
 def _preview_quota(email: str) -> None:
@@ -2244,6 +2245,14 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     done = {b["title"]: b for b in have.get("blocks", []) if b.get("text")}
     todo = [s for s in want if s not in done]
 
+    # 🛑 주인(관리자)은 화면을 보려고 수없이 열어 본다. 그때마다 새로 뽑으면
+    #    파는 것도 없이 돈만 나간다. 이미 써 둔 것만 보여 주고, 새로 뽑지 않는다.
+    #    정말 새로 뽑아야 할 때만 주소에 ?write=1 을 붙인다.
+    owner_skip = False
+    if todo and _is_owner(user) and not body.force:
+        todo = []
+        owner_skip = True
+
     if todo:
         if not paid:
             _preview_quota(user["email"])
@@ -2259,7 +2268,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             if b.get("text"):
                 done[b["title"]] = b
 
-    return {"ok": True, "paid": paid,
+    return {"ok": True, "paid": paid, "ownerSkip": owner_skip,
             "blocks": [{"title": s, "text": done.get(s, {}).get("text", "")} for s in want],
             "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
 
