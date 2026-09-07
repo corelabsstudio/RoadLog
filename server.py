@@ -2695,6 +2695,7 @@ def card_page(cid: str):
     title = esc(meta.get("title") or "로드로그 사주")
     line = esc(meta.get("line") or "사주로 길을 보고, 기록으로 남겨요.")
     img = f"{SITE_ORIGIN}/card/{cid}.jpg"
+    url = f"{SITE_ORIGIN}/card/{cid}"
     ref = re.sub(r"[^A-Za-z0-9_-]", "", str(meta.get("ref") or ""))[:24]
     go = f"{SITE_ORIGIN}/?ref={ref}" if ref else f"{SITE_ORIGIN}/"
     html = CARD_HTML % {"title": title, "line": line, "img": img, "url": url, "go": go}
