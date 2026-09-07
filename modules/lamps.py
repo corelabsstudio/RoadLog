@@ -96,7 +96,7 @@ PREMIUM_WON = {
     "hour": 5900,
     "first": 7900,
     "mind": 7900,
-    "great": 12900,
+    "great": 39800,
     "full": 9800,
     "bond": 8900,
     "ox": 8900,
