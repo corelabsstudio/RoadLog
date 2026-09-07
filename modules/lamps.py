@@ -40,6 +40,7 @@ WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지
 # 데려온 분·따라온 분 양쪽에 준다. 광고비 없이 손님이 오게 하는 유일한 장치다.
 REFER_LAMPS = 30        # 무냥이에게 한 번 더 묻는 값과 같게 맞췄다
 REFER_DAYS = 30
+GIFT_DAYS = 90          # 값을 치른 분께 얹어 드리는 등불. 선물이라 넉넉히 둔다
 REFER_MAX = 20          # 한 계정이 받을 수 있는 횟수. 장난을 막는 선이다
 
 # 🛑 등불 유료 충전은 닫았다 (2026-09-07).
@@ -355,8 +356,20 @@ def won_of(product: str) -> int:
     return 0
 
 
+def bonus_lamps(won: int) -> int:
+    """값을 치르면 등불도 함께 드린다.
+
+    폭스바니는 결제할 때 「질문 5회권」을 얹어 준다. 우리 등불 30개가 한 번 묻는 값이니
+    같은 셈으로 맞췄다. 등불은 파는 물건이 아니라 원가가 없다 — 얹어 주기만 하면 된다."""
+    if won >= 20000:
+        return 150      # 다섯 번 더 물어볼 수 있는 양
+    if won >= 5000:
+        return 60       # 두 번
+    return 30           # 한 번
+
+
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
-    """한 건 결제. 등불은 건드리지 않는다."""
+    """한 건 결제. 값을 치른 분께는 등불을 얹어 드린다."""
     won = won_of(product)
     if not won:
         raise ValueError("프리미엄 상품이 아닙니다.")
@@ -372,12 +385,15 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     expires = now + timedelta(days=OWNED_DAYS)
     if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
         acc["owned"].append({"product": product, "pair": pair, "at": _iso(now), "expires": _iso(expires)})
+    gift = bonus_lamps(won)
+    if gift:
+        _add_lot(acc, gift, GIFT_DAYS, now, "premium-gift", "%s 결제 선물" % product)
     acc["ledger"].append({
         "at": _iso(now), "type": "premium", "product": product, "pair": pair,
-        "lamps": 0, "price": paid, "payment_id": payment_id, "expires": _iso(expires),
+        "lamps": gift, "price": paid, "payment_id": payment_id, "expires": _iso(expires),
     })
     _write(data)
-    return {"ok": True, "product": product, "expires": _iso(expires)}
+    return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
 
 
 def ask(email: str, qid: str, pair: str) -> dict:
