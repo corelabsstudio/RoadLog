@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-H7X3UBVD.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CjSv95o2.css">
+  <script type="module" crossorigin src="/assets/main-b_hhs2K6.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-4PNdSNUv.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -254,7 +254,13 @@
       <section class="step" data-step="meDate" data-who="me">
         <h3 class="step-q">생년월일을 알려 주세요</h3>
         <p class="step-sub">여덟 글자 중 연·월·일 세 기둥이 여기서 나와요.</p>
-        <p class="wheel-label">태어난 날</p>
+        <div class="wheel-head">
+          <p class="wheel-label">태어난 날</p>
+          <label class="year-jump">연도 바로 넣기
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="1983"
+                   data-jump="meDate" aria-label="연도를 숫자로 넣기" />
+          </label>
+        </div>
         <div class="wheel" data-wheel="meDate">
           <div class="wheel-col" data-part="y" tabindex="0" role="listbox" aria-label="연도"></div>
           <div class="wheel-col" data-part="m" tabindex="0" role="listbox" aria-label="월"></div>
@@ -314,7 +320,13 @@
       <section class="step" data-step="youDate" data-who="you">
         <h3 class="step-q">그 사람 생년월일을 알려 주세요</h3>
         <p class="step-sub">여기까지만 알아도 두 사람 글자를 맞춰 볼 수 있어요.</p>
-        <p class="wheel-label">그 사람이 태어난 날</p>
+        <div class="wheel-head">
+          <p class="wheel-label">그 사람이 태어난 날</p>
+          <label class="year-jump">연도 바로 넣기
+            <input type="text" inputmode="numeric" maxlength="4" placeholder="1983"
+                   data-jump="youDate" aria-label="연도를 숫자로 넣기" />
+          </label>
+        </div>
         <div class="wheel" data-wheel="youDate">
           <div class="wheel-col" data-part="y" tabindex="0" role="listbox" aria-label="연도"></div>
           <div class="wheel-col" data-part="m" tabindex="0" role="listbox" aria-label="월"></div>
