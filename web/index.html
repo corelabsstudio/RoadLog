@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-ePWjeBuj.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-cmQpEUV_.css">
+  <script type="module" crossorigin src="/assets/main-CWnNGtxN.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CjSv95o2.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -273,9 +273,13 @@
       <section class="step" data-step="meTime" data-who="me">
         <h3 class="step-q">태어난 시간을 알려 주세요</h3>
         <p class="step-sub">마지막 기둥인 시주가 여기서 나와요. 몰라도 나머지 여섯 글자로 봐요.</p>
-        <label class="big-field">태어난 시각
-          <input type="time" name="meTime" value="23:20" />
-        </label>
+        <p class="wheel-label">태어난 시각</p>
+        <div class="wheel wheel-2" data-wheel="meTime" data-kind="time">
+          <div class="wheel-col" data-part="h" tabindex="0" role="listbox" aria-label="시"></div>
+          <div class="wheel-col" data-part="i" tabindex="0" role="listbox" aria-label="분"></div>
+          <div class="wheel-line" aria-hidden="true"></div>
+        </div>
+        <input type="hidden" name="meTime" value="23:20" />
         <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
         <label class="big-field">태어난 곳
           <select name="meCity"></select>
@@ -329,9 +333,13 @@
       <section class="step" data-step="youTime" data-who="you">
         <h3 class="step-q">그 사람이 태어난 시간은요?</h3>
         <p class="step-sub">모르면 「시간을 몰라요」를 고르고 넘어가세요. 대부분 몰라요.</p>
-        <label class="big-field">태어난 시각
-          <input type="time" name="youTime" value="08:10" />
-        </label>
+        <p class="wheel-label">그 사람 태어난 시각</p>
+        <div class="wheel wheel-2" data-wheel="youTime" data-kind="time">
+          <div class="wheel-col" data-part="h" tabindex="0" role="listbox" aria-label="시"></div>
+          <div class="wheel-col" data-part="i" tabindex="0" role="listbox" aria-label="분"></div>
+          <div class="wheel-line" aria-hidden="true"></div>
+        </div>
+        <input type="hidden" name="youTime" value="08:10" />
         <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
         <label class="big-field">태어난 곳
           <select name="youCity"></select>
