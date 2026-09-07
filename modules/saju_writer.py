@@ -31,6 +31,8 @@ from typing import Any
 
 import httpx
 
+from modules.saju_brief import brief_of
+
 MODEL = os.getenv("SAJU_MODEL", "gemini-3.8-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
 TIMEOUT = 90
@@ -209,8 +211,13 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
     fact = facts(saju)
     guide = "%s\n%s\n%s" % (OPENERS[idx % len(OPENERS)], CLOSERS[idx % len(CLOSERS)],
                              _length_note(chars))
-    user = ("손님 이름: %s\n\n[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
-            % (name, fact, section, guide))
+    # 🛑 상품이 무엇을 묻는지 안 알려 주면 사주 일반론으로 흐른다 (2026-09-07).
+    #    항목 제목은 각도일 뿐이고, 손님이 산 것은 이 질문에 대한 답이다.
+    ask = brief_of(product)
+    head = ("[이 상품이 답해야 할 것]\n%s\n\n🛑 아래 항목이 무엇이든, 결국 위 "
+            "질문에 답하는 방향으로 쓴다.\n\n" % ask) if ask else ""
+    user = ("손님 이름: %s\n\n%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
+            % (name, head, fact, section, guide))
     res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
     bad = check_counts(res["text"], saju)
     if bad:

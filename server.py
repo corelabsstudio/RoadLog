@@ -2629,7 +2629,7 @@ CARD_HTML = """<!doctype html>
   <a class="card" href="%(go)s"><img src="%(img)s" alt="%(title)s" /></a>
   <p class="lede">%(line)s</p>
   <a class="go" href="%(go)s">나도 내 사주 보러 가기</a>
-  <p class="foot">사주로 길을 보고, 기록으로 남겨요<br />오늘의 운세는 값 없이 보실 수 있어요</p>
+  <p class="foot">사주로 길을 보고, 기록으로 남겨요<br />오늘의 운세는 결제 없이 보실 수 있어요</p>
 </body></html>"""
 
 
