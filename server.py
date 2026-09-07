@@ -2423,7 +2423,8 @@ def admin_lamps(authorization: str | None = Header(default=None)):
             "kinds": kinds,
             # 무엇에 썼는지. 값·계정은 담지 않는다
             "recent": [{"type": e.get("type"), "product": e.get("product"),
-                        "lamps": e.get("lamps"), "at": str(e.get("at"))[:16]}
+                        "lamps": e.get("lamps"), "price": e.get("price"),
+                        "pay": bool(e.get("payment_id")), "at": str(e.get("at"))[:16]}
                        for e in led[-12:]],
             "lots": [{"remain": l.get("remain"), "expires": str(l.get("expires"))[:10]}
                      for l in (acc.get("lots") or [])][-6:],
