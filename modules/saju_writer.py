@@ -88,7 +88,13 @@ SYSTEM = """너는 사주 상담 사이트 「로드로그」의 글을 쓴다. 
 - 왜 그런지를 [사주]의 글자를 대고 말한다. 「일간이 경금인데 월지에 사화가 붙어 있어서」처럼.
 - 그래서 일상에서 뭘로 나타나는지 구체적인 장면 하나. 「카톡 답장을 바로 안 하고 한 번 더 읽어보는」 같은 것.
 
-길이: 320~450자."""
+[길게 쓸 때]
+분량을 채우려고 같은 말을 돌려 쓰지 마라. 문단마다 각도를 바꾼다.
+쓸 수 있는 각도: 평소에 나오는 모습 / 관계에서 나오는 모습 / 일이나 돈에서 나오는 모습 /
+스스로는 모르는 부분 / 어떤 조건이면 달라지는지 / 지금 당장 해볼 것.
+특히 아래 둘은 손님이 가장 고마워하는 대목이니 길게 쓸수록 꼭 넣는다.
+- 조건: 「무조건 이렇다」가 아니라 「이 조건이면 이렇게, 아니면 저렇게」로 갈라 준다
+- 그대로 써먹을 것: 해볼 행동이나 하지 말 말을 손에 잡히게 적어 준다"""
 
 
 def facts(saju: dict[str, Any]) -> str:
@@ -186,14 +192,25 @@ def _call(system: str, user: str, *, model: str | None = None,
     raise RuntimeError("생성 실패: %s" % last)
 
 
+def _length_note(chars: int) -> str:
+    """몇 자로 쓸지. 문단 수까지 같이 정해 줘야 늘어지지 않는다."""
+    if chars >= 1000:
+        return "길이: %d자 안팎. 문단을 다섯에서 여섯으로 나누고, 문단마다 각도를 바꾼다." % chars
+    if chars >= 700:
+        return "길이: %d자 안팎. 문단 넷 정도로 나눈다." % chars
+    return "길이: %d자 안팎. 문단 셋 정도." % max(chars, 300)
+
+
 def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
-                  *, product: str = "", model: str | None = None) -> dict[str, Any]:
+                  *, product: str = "", model: str | None = None,
+                  chars: int = 420) -> dict[str, Any]:
     """항목 하나를 쓴다. 숫자가 어긋나면 한 번 다시 쓰게 한다."""
     fact = facts(saju)
-    guide = "%s\n%s" % (OPENERS[idx % len(OPENERS)], CLOSERS[idx % len(CLOSERS)])
+    guide = "%s\n%s\n%s" % (OPENERS[idx % len(OPENERS)], CLOSERS[idx % len(CLOSERS)],
+                             _length_note(chars))
     user = ("손님 이름: %s\n\n[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
             % (name, fact, section, guide))
-    res = _call(SYSTEM, user, model=model)
+    res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
     bad = check_counts(res["text"], saju)
     if bad:
         fix = user + ("\n\n[다시 쓴다]\n앞서 쓴 글에서 개수를 틀렸다: %s\n"
@@ -210,13 +227,14 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
 
 def write_report(name: str, saju: dict[str, Any], sections: list[str],
                  *, product: str = "", model: str | None = None,
-                 workers: int = 6) -> dict[str, Any]:
+                 workers: int = 6, chars: int = 420) -> dict[str, Any]:
     """항목들을 한꺼번에 쓴다. 순서는 넘어온 그대로 지킨다."""
     import concurrent.futures as cf
 
     out: dict[str, Any] = {}
     with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {ex.submit(write_section, name, saju, s, i, product=product, model=model): s
+        futs = {ex.submit(write_section, name, saju, s, i, product=product,
+                          model=model, chars=chars): s
                 for i, s in enumerate(sections)}
         for f in cf.as_completed(futs):
             try:
