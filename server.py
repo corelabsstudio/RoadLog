@@ -2391,12 +2391,26 @@ def admin_lamps(authorization: str | None = Header(default=None)):
         data = lamps_ops._read()
     except Exception as e:                      # noqa: BLE001
         raise HTTPException(500, "등불 장부를 읽지 못했습니다: %s" % str(e)[:120])
+
+    # 🛑 등불 장부만 보면 안 된다. 가입 선물이 실패하면 장부에 계정 자체가 안 생겨서,
+    #    못 받은 사람만 골라 목록에서 빠진다 (2026-09-07 실제로 이렇게 놓쳤다).
+    #    회원 명부를 기준으로 돌면서 장부를 대조한다.
+    emails = []
+    for u in db.list_users():
+        em = ((u or {}).get("email") or "").strip().lower()
+        if "@" in em:
+            emails.append(em)
+    for em in (data or {}):
+        if "@" in str(em) and str(em) not in emails:
+            emails.append(str(em))
+
     out = []
-    for email, acc in (data or {}).items():
-        if not isinstance(acc, dict) or "@" not in str(email):
-            continue
+    for email in emails:
+        acc = (data or {}).get(email) or {}
         led = acc.get("ledger", [])
         name, _, dom = str(email).partition("@")
+        if not isinstance(acc, dict):
+            acc, led = {}, []
         kinds = {}
         for e in led:
             k = str(e.get("type") or "?")
