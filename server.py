@@ -24,6 +24,10 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import logging
+
+log = logging.getLogger("roadlog")
+
 from modules import db
 from modules import visitors as visitors_ops
 from modules.config import (
@@ -616,7 +620,9 @@ def register(body: AuthBody, request: Request):
     # 가입 선물. 손에 쥐는 게 있어야 계정을 만든다.
     try:
         gift = lamps_ops.welcome(body.email, (body.ref or "").strip(), (body.via or "").strip()[:80])
-    except Exception:
+    except Exception as e:                      # noqa: BLE001
+        # 🛑 조용히 삼키면 「가입하면 등불 300개」라고 적어 놓고 안 준 것을 아무도 모른다.
+        log.error("가입 선물 실패 (%s): %s", body.email, e)
         gift = {"given": 0}
     return {"ok": True, "message": msg, "welcome": gift.get("given", 0), "referred": gift.get("referred", 0)}
 
@@ -1001,8 +1007,8 @@ def _social_login(email: str, name: str, provider: str, provider_key: str = "") 
             pass
         try:
             lamps_ops.welcome(email)      # 소셜로 처음 들어온 분께도 같이
-        except Exception:
-            pass
+        except Exception as e:                  # noqa: BLE001
+            log.error("소셜 가입 선물 실패 (%s): %s", email, e)
         user = db.get_user(email)
     if not user:
         raise HTTPException(500, "계정을 만들지 못했습니다.")
@@ -2339,6 +2345,68 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
         data["summary"] = line
         saju_writer.save(product, pair, data)
     return {"ok": True, "summary": line}
+
+
+@app.post("/api/admin/lamps/backfill")
+def admin_lamps_backfill(authorization: str | None = Header(default=None)):
+    """가입 선물을 못 받은 분들께 소급해서 드린다. 주인만 부를 수 있다.
+
+    「가입하면 등불 300개」라고 적어 두고 못 준 사람이 있었다 (2026-09-07).
+    welcome() 이 원장을 보고 이미 받은 분은 건너뛰므로 두 번 나가지 않는다.
+    """
+    user = _token_user(authorization)
+    if not _is_owner(user):
+        raise HTTPException(403, "권한이 없습니다.")
+    given, skipped, failed = [], 0, []
+    for u in db.list_users():
+        email = (u or {}).get("email") or ""
+        if "@" not in email:
+            continue
+        name, _, dom = email.partition("@")
+        who = name[:2] + "***@" + dom
+        try:
+            r = lamps_ops.welcome(email, "", "소급 지급")
+        except Exception as e:                  # noqa: BLE001
+            log.error("소급 지급 실패 (%s): %s", email, e)
+            failed.append(who)
+            continue
+        if r.get("given"):
+            given.append(who)
+        else:
+            skipped += 1
+    log.info("가입 선물 소급: 지급 %d · 이미받음 %d · 실패 %d", len(given), skipped, len(failed))
+    return {"given": len(given), "skipped": skipped, "failed": failed, "who": given}
+
+
+@app.get("/api/admin/lamps")
+def admin_lamps(authorization: str | None = Header(default=None)):
+    """계정마다 등불이 실제로 들어갔는지 본다. 주인만 볼 수 있다.
+
+    「가입하면 등불 300개」라고 적어 놓고 안 나가면 표시와 사실이 어긋난다.
+    이메일은 앞 두 글자만 남긴다 — 화면에 띄우거나 기록에 남길 것이라서."""
+    user = _token_user(authorization)
+    if not _is_owner(user):
+        raise HTTPException(403, "권한이 없습니다.")
+    try:
+        data = lamps_ops._read()
+    except Exception as e:                      # noqa: BLE001
+        raise HTTPException(500, "등불 장부를 읽지 못했습니다: %s" % str(e)[:120])
+    out = []
+    for email, acc in (data or {}).items():
+        if not isinstance(acc, dict) or "@" not in str(email):
+            continue
+        led = acc.get("ledger", [])
+        name, _, dom = str(email).partition("@")
+        out.append({
+            "who": (name[:2] + "***@" + dom),
+            "balance": lamps_ops.balance(email),
+            "welcomeGiven": any(e.get("type") == "welcome" for e in led),
+            "entries": len(led),
+        })
+    out.sort(key=lambda x: -x["balance"])
+    return {"count": len(out),
+            "noWelcome": [a["who"] for a in out if not a["welcomeGiven"]],
+            "accounts": out[:50]}
 
 
 class _HashedAssets(StaticFiles):

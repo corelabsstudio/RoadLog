@@ -229,6 +229,47 @@ const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
 const num = (n) => Number(n || 0).toLocaleString('ko-KR');
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g,
   (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
+// 「무냥이에게 더 물어보기」 질문. 없으면 화면에 ask:q_want 처럼 날것으로 나온다.
+const ASK_NAMES = {
+  q_think: '그 사람, 이달에 내 생각을 할까요?',
+  q_newlove: '그 사람 곁에 새 사람이 들어올 자리가 있나요?',
+  q_hour: '하루 중 언제 제 생각이 날까요?',
+  q_block: '막혀 있는 게 언제 풀릴까요?',
+  q_youare: '그 사람은 원래 어떤 사람인가요?',
+  q_youel: '그 사람에게 넘치는 것과 비어 있는 것은요?',
+  q_youpartner: '그 사람의 배우자 자리에는 무엇이 앉아 있나요?',
+  q_youtype: '그 사람과 결이 맞는 사람은 어떤 사람인가요?',
+  q_youluck: '그 사람은 지금 어떤 십 년을 지나고 있나요?',
+  q_want: '그 사람이 사실은 바라는 게 뭔가요?',
+  q_do: '연락한다면 첫 줄에 뭐라고 써야 하나요?',
+  q_dont: '지금 하면 오히려 멀어지는 행동은 뭔가요?',
+  q_days: '언제 보내야 읽힐까요?',
+  q_seeme: '그 사람 눈에 저는 어떻게 보였나요?',
+  q_iseeyou: '제 눈에 그 사람은 어떻게 보였나요?',
+  q_hits: '두 사람 글자가 어디서 맞물리고 어디서 부딪히나요?',
+  q_talk: '같은 말을 왜 다르게 듣나요?',
+  q_fill: '서로가 채워 주던 게 뭔가요?',
+  q_youyear: '올해 그 사람에게는 어떤 해인가요?',
+  q_yousinsal: '그 사람 사주에 걸려 있는 건 뭔가요?',
+  q_wonjin: '미워하면서도 왜 못 끊을까요?',
+  q_give: '누가 주고 누가 받기만 했나요?',
+  q_luckpair: '두 사람의 때가 지금 어긋나 있나요?',
+  q_tired: '가까워질수록 지치는 쪽은 누구인가요?',
+  q_meare: '저는 원래 어떤 사람인가요?',
+  q_meel: '저에게 넘치는 것과 비어 있는 것은요?',
+  q_loop: '제가 되풀이하는 자리는 어디인가요?',
+  q_seat: '제 배우자 자리에는 무엇이 앉아 있나요?',
+  q_partner: '저와 결이 맞는 사람은 어떤 사람인가요?',
+  q_charm: '제 사주에 사람을 끄는 힘이 있나요?',
+  q_sinsal: '평생 저를 따라다니는 기운은 무엇인가요?',
+  q_meluck: '제 앞의 십 년은 어디로 가나요?',
+  q_year: '올해는 저에게 어떤 해인가요?',
+  q_month: '올해 어느 달이 오르고 어느 달이 꺾이나요?',
+  q_strength: '제가 타고난 힘은 센 편인가요, 얕은 편인가요?',
+  q_void: '제가 채우지 못한 자리는 어디인가요?',
+  q_hidden: '겉으로 안 보이는 제 글자는 뭔가요?',
+  q_today: '오늘은 저에게 어떤 날인가요?'
+};
 const NAMES = {
   today: '오늘의 운세', god: '내 수호신', solo: '내 연애 사주', week: '이번 주 7일',
   dday: '연락 D-DAY', mind: '그 사람 속마음', full: '재회운 종합', bond: '다시 만날 필연',
@@ -353,8 +394,16 @@ function paint() {
   ]);
 
   const prod = (d.byProduct || []).map((p) => ({ product: p.product, n: p.opens }));
-  rank($('rTop'), prod.slice(0, 5), (r) => NAMES[r.product] || r.product, '번');
-  rank($('rProd'), prod, (r) => NAMES[r.product] || r.product, '번');
+  const label = (r) => {
+    const k = r.product || '';
+    if (k.startsWith('ask:')) {
+      const q = ASK_NAMES[k.slice(4)];
+      return q ? `더 물어보기 · ${q}` : k;
+    }
+    return NAMES[k] || k;
+  };
+  rank($('rTop'), prod.slice(0, 5), label, '번');
+  rank($('rProd'), prod, label, '번');
   rank($('rSrc'), (d.bySource || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
   rank($('rClient'), (d.byClient || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
   drawHuman(d.crawlerHint);
