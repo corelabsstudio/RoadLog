@@ -1522,6 +1522,11 @@ class BillingBody(BaseModel):
     enterprise_seat_annual_price_krw: int | None = None
 
 
+class FreePassBody(BaseModel):
+    email: str
+    on: bool = True
+
+
 class VipBody(BaseModel):
     id: str
     email: str = ""
@@ -1766,6 +1771,22 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
         raise HTTPException(400, str(e)) from e
 
 
+@app.get("/api/admin/freepass")
+def admin_freepass_list(authorization: str | None = Header(default=None)):
+    """값을 치르지 않고 다 보시는 분들. 관리자 화면은 열리지 않는다."""
+    _require_admin(authorization)
+    return {"emails": sorted(_free_pass())}
+
+
+@app.post("/api/admin/freepass")
+def admin_freepass_set(body: FreePassBody, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return {"ok": True, "emails": _free_pass_set(body.email, body.on)}
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+
 @app.get("/api/admin/vip")
 def admin_vip_list(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
@@ -1936,11 +1957,44 @@ def _is_owner(user: dict) -> bool:
     return bool(user.get("is_admin"))
 
 
+# ── 무료 이용권 ────────────────────────────────────────
+# 지인처럼 값을 치르지 않고 다 보시는 분들. 관리자와 달리 **운영 화면은 못 본다.**
+# 🛑 이메일을 코드에 박지 않는다. DATA_DIR 에 두고 관리자 API 로 넣고 뺀다.
+_FREE_PASS_PATH = DATA_DIR / "free_pass.json"
+
+
+def _free_pass() -> set[str]:
+    try:
+        return {str(e).strip().lower() for e in json.loads(_FREE_PASS_PATH.read_text("utf-8")) if str(e).strip()}
+    except Exception:
+        return set()
+
+
+def _free_pass_set(email: str, on: bool) -> list[str]:
+    """무료 이용권 명단에 넣거나 뺀다. 관리자만 부른다."""
+    e = (email or "").strip().lower()
+    if not e or "@" not in e:
+        raise ValueError("이메일이 아닙니다.")
+    cur = _free_pass()
+    cur.add(e) if on else cur.discard(e)
+    _FREE_PASS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    _FREE_PASS_PATH.write_text(json.dumps(sorted(cur), ensure_ascii=False, indent=1), "utf-8")
+    return sorted(cur)
+
+
+def _is_free(user: dict) -> bool:
+    """값을 치르지 않고 다 볼 수 있는 분인가. 주인 + 무료 이용권 명단.
+
+    🛑 관리자 전용 기능(운영 화면·회원 삭제)에는 쓰지 않는다. 그건 _is_owner 그대로다.
+    """
+    return _is_owner(user) or (user.get("email") or "").strip().lower() in _free_pass()
+
+
 @app.get("/api/lamps")
 def lamps_status(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
     st = lamps_ops.status(user["email"])
-    if _is_owner(user):
+    if _is_free(user):
         # 주인은 무제한. 화면이 잔액을 그대로 보여 주므로 큰 수를 넣어 둔다.
         st["balance"] = 999999
         st["unlimited"] = True
@@ -2105,7 +2159,7 @@ def records_merge(body: RecordMergeBody, authorization: str | None = Header(defa
 def ask_open(body: AskBody, authorization: str | None = Header(default=None)):
     """무냥이에게 한 번 더 묻기. 등불을 쓴다."""
     user = _token_user(authorization)
-    if _is_owner(user):
+    if _is_free(user):
         return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
     try:
         return lamps_ops.ask(user["email"], body.qid.strip(), body.pair.strip())
@@ -2159,7 +2213,7 @@ def premium_price():
 def report_open(body: OpenBody, authorization: str | None = Header(default=None)):
     """리포트 열기. 이미 산 것이면 등불을 쓰지 않고 다시 열어 준다."""
     user = _token_user(authorization)
-    if _is_owner(user):
+    if _is_free(user):
         # 주인은 등불을 깎지 않고 바로 연다. 사서 여는 손님과 같은 화면을 보기 위해서다.
         return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
     # 단건 결제 상품은 등불로 사는 물건이 아니다. 결제로 이미 샀는지만 본다.
@@ -2239,7 +2293,7 @@ def _preview_quota(email: str) -> None:
 def saju_quota(authorization: str | None = Header(default=None)):
     """오늘 무료로 몇 번 더 볼 수 있나. 「몇 번 안 남았다」가 보여야 압박이 된다."""
     user = _token_user(authorization)
-    if _is_owner(user):
+    if _is_free(user):
         return {"cap": PREVIEW_DAILY_CAP, "left": PREVIEW_DAILY_CAP, "unlimited": True}
     used = _preview_used(user["email"])
     return {"cap": PREVIEW_DAILY_CAP, "left": max(0, PREVIEW_DAILY_CAP - used), "unlimited": False}
@@ -2268,7 +2322,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
         raise HTTPException(400, "쓸 항목이 없습니다.")
 
     # 값을 치른 사람인가. 아니면 앞 몇 항목만 준다.
-    paid = _is_owner(user) or lamps_ops.owns(user["email"], product, pair)
+    paid = _is_free(user) or lamps_ops.owns(user["email"], product, pair)
     if not body.preview and not paid:
         raise HTTPException(402, "이 리포트는 아직 열려 있지 않아요.")
     if not paid:
@@ -2304,7 +2358,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             if b.get("text"):
                 done[b["title"]] = b
 
-    left = PREVIEW_DAILY_CAP if _is_owner(user) else max(0, PREVIEW_DAILY_CAP - _preview_used(user["email"]))
+    left = PREVIEW_DAILY_CAP if _is_free(user) else max(0, PREVIEW_DAILY_CAP - _preview_used(user["email"]))
     return {"ok": True, "paid": paid, "ownerSkip": owner_skip, "left": left,
             "blocks": [{"title": s, "text": done.get(s, {}).get("text", "")} for s in want],
             "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
@@ -2327,7 +2381,7 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
     # 🛑 값을 치른 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.
-    if not (_is_owner(user) or lamps_ops.owns(user["email"], product, pair)):
+    if not (_is_free(user) or lamps_ops.owns(user["email"], product, pair)):
         return {"ok": True, "summary": "", "paid": False}
     try:
         data = saju_writer.load(product, pair)
