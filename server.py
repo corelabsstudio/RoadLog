@@ -1949,7 +1949,7 @@ def _verify_payment(payment_id: str) -> dict:
 @app.get("/api/lamps/ready")
 def lamps_ready():
     """결제 확인용 시크릿이 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다."""
-    return {"portone_secret_set": bool(PORTONE_API_SECRET)}
+    return {"portone_secret_set": bool(PORTONE_API_SECRET), "pay_open": PAY_OPEN}
 
 
 def _is_owner(user: dict) -> bool:
@@ -1960,6 +1960,13 @@ def _is_owner(user: dict) -> bool:
 # ── 무료 이용권 ────────────────────────────────────────
 # 지인처럼 값을 치르지 않고 다 보시는 분들. 관리자와 달리 **운영 화면은 못 본다.**
 # 🛑 이메일을 코드에 박지 않는다. DATA_DIR 에 두고 관리자 API 로 넣고 뺀다.
+# 🛑 결제가 실제로 돈을 받는가. 기본은 **닫힘**이다 (2026-09-07).
+#    테스트 채널이 걸린 동안에는 결제창이 PAID 를 돌려주기 때문에, 열어 두면
+#    돈은 안 들어오는데 리포트만 나간다. 실제로 9,800원어치가 그렇게 열렸다.
+#    PG 승인이 나고 pay.html 의 CHANNEL_KEY 를 실채널로 바꾼 뒤에
+#    Railway 에 PAY_OPEN=1 을 넣어 연다.
+PAY_OPEN = os.getenv("PAY_OPEN", "").strip() in ("1", "true", "TRUE", "yes")
+
 _FREE_PASS_PATH = DATA_DIR / "free_pass.json"
 
 
@@ -2170,6 +2177,9 @@ def ask_open(body: AskBody, authorization: str | None = Header(default=None)):
 @app.post("/api/premium/buy")
 def premium_buy(body: PremiumBody, authorization: str | None = Header(default=None)):
     """프리미엄 한 건 결제. 등불을 거치지 않고 그 자리에서 사서 연다."""
+    if not PAY_OPEN:
+        # 🛑 앞단만 막으면 우회된다. 서버가 마지막으로 거절한다.
+        raise HTTPException(503, "결제를 준비하고 있어요. 열리면 알려 드릴게요.")
     user = _token_user(authorization)
     paid = _verify_payment(body.paymentId.strip())
     amount = int((paid.get("amount") or {}).get("total") or 0)

@@ -183,8 +183,9 @@ if (PREMIUM) {
   $('payTitle').textContent = PREMIUM.name;
   $('paySub').textContent = '이 상품은 등불이 아니라 한 건으로 결제하고 바로 엽니다.';
   $('packs').hidden = true;
-  // 🛑 「받는 등불」로 적으면 「900원 = 30등불」로 읽힌다. 등불에 현금 값이 붙는 순간
-  //    포인트 충전 업종으로 잡힌다(2026-09-07 NHN KCP 지적). 사은품임을 문구로 못박는다.
+  // 🛑 「받는 등불」로 적으면 결제 금액 바로 옆에 놓여 등불에 값이 붙은 것처럼 읽힌다.
+  //    그 순간 포인트 충전 업종으로 잡힌다(2026-09-07 NHN KCP 지적).
+  //    사은품이라는 것을 문구로 못박는다. 숫자를 나란히 쓰지 말 것 — 검사기가 잡는다.
   $('lampRow').querySelector('.k').textContent = '함께 드리는 등불';
   $('lampLabel').textContent = giftFor(PREMIUM.amount) + '개';
   $('lampRow').hidden = false;
@@ -251,6 +252,19 @@ async function claimPremium(paymentId, token) {
     show('err', '여는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + paymentId + '</pre>');
   }
 }
+
+// 🛑 결제가 아직 돈을 받지 않는 상태면 여기서 멈춘다 (2026-09-07).
+//    서버도 거절하지만, 결제창까지 띄우고 나서 실패하면 손님은 이미 카드를 꺼낸 뒤다.
+fetch('/api/lamps/ready')
+  .then((r) => r.json())
+  .then((d) => {
+    if (d.pay_open) return;
+    const b = $('payBtn');
+    b.disabled = true;
+    b.textContent = '결제 준비 중이에요';
+    show('warn', '결제를 준비하고 있어요. 열리면 알려 드릴게요.<br />그동안 <b>오늘의 운세</b>는 그냥 보실 수 있어요.');
+  })
+  .catch(() => {});
 
 $('payBtn').addEventListener('click', async () => {
   const btn = $('payBtn');
