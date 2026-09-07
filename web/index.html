@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-Byx4bCDB.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-DDDhfaZe.css">
+  <script type="module" crossorigin src="/assets/main-CuiQkxiA.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-4RT6E43P.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -50,7 +50,7 @@
       <div class="acct-lamp">
         <span>등불 잔액</span>
         <b id="acctLamps">0</b>
-        <button type="button" class="btn btn-sm" id="acctCharge">충전하기</button>
+        <button type="button" class="btn btn-sm" id="acctCharge">등불이란</button>
       </div>
       <nav class="acct-nav">
         <button type="button" data-acct="records"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><use href="#i-note"/></svg>내 기록<i class="due" data-rec-due hidden></i></button>
@@ -495,7 +495,7 @@
 <dialog id="authDlg" class="dlg">
   <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
   <h3 id="authTitle">로그인</h3>
-  <p class="dlg-lede" id="authLede">등불을 충전하고 리포트를 열려면 계정이 필요해요. 생년월일은 계정에 저장되지 않아요.</p>
+  <p class="dlg-lede" id="authLede">리포트를 열려면 계정이 필요해요. 가입하시면 <b>등불 300개</b>를 드려요. 생년월일은 계정에 저장되지 않아요.</p>
   <p class="dlg-gift" id="authGift" hidden><b>가입하면 등불 50개</b>를 드려요. 4,900원짜리 사주 하나를 바로 열어 보실 수 있어요. <em>받은 날부터 14일</em> 안에 쓰시면 돼요.</p>
   <form id="authForm">
     <label>이메일<input type="email" name="email" required autocomplete="email" placeholder="you@example.com" /></label>
@@ -524,7 +524,7 @@
     <p class="dlg-ok" id="forgotOk" hidden></p>
     <button type="submit" class="btn" id="forgotSubmit">재설정 메일 받기</button>
   </form>
-  <p class="dlg-note">카카오나 구글로 시작하셨다면 따로 정해 둔 비밀번호가 없어요. 로그인 창에서 그 단추를 그대로 누르시면 들어오실 수 있고, 충전해 두신 등불도 그대로예요.</p>
+  <p class="dlg-note">카카오나 구글로 시작하셨다면 따로 정해 둔 비밀번호가 없어요. 로그인 창에서 그 단추를 그대로 누르시면 들어오실 수 있고, 받아 두신 등불도 그대로예요.</p>
   <p class="dlg-switch"><button type="button" id="forgotBack">로그인으로 돌아가기</button></p>
 </dialog>
 
@@ -552,13 +552,13 @@
 
 <dialog id="chargeDlg" class="dlg">
   <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
-  <h3>등불 충전</h3>
-  <p class="dlg-lede">등불 1개가 100원어치예요. 한 번에 많이 담을수록 등불 값이 싸져요.</p>
+  <h3>등불이 모자라요</h3>
+  <p class="dlg-lede">등불은 <b>파는 물건이 아니에요.</b> 가입하실 때 드리고, 친구를 데려오시면 더 드려요.</p>
   <p class="dlg-err" id="chargeErr" hidden></p>
-  <p class="first-bonus" id="firstBonus" hidden>처음 충전하시는 분께 <b>20%를 더</b> 드려요. 아래 금액 그대로 결제되고, 등불만 더 들어가요.</p>
+  <p class="first-bonus" id="firstBonus" hidden></p>
   <p class="bal">지금 <b id="balNow">0</b>등불<span id="balExp"></span></p>
   <ul class="packs" id="packList"></ul>
-  <p class="dlg-note">충전한 등불은 <b>1년</b> 안에 쓰셔야 해요. 쓰지 않은 등불은 <a href="/legal/refund.html">환불</a>해 드려요.</p>
+  <p class="dlg-note"><b>친구를 데려오시면 두 분 모두 30개</b>씩 받아요. 결과 화면 아래에 내 초대 링크가 있어요.<br />사주 리포트는 등불 없이 <b>한 건씩 결제</b>해서 보실 수 있어요.</p>
 </dialog>
 
 </body>
