@@ -29,6 +29,9 @@ OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
 WELCOME_LAMPS = 300     # 가입 선물. 질문 열 번을 할 수 있는 양
 ASK_LAMPS = 30          # 무냥이에게 한 번 더 물어보기 (askmenu.js 와 같은 값)
+FREE_ASKS = 1           # 🛑 값을 치르지 않은 분이 물어볼 수 있는 횟수.
+                        #    가입 선물 300개로 열 번을 공짜로 묻고 나가 버리면
+                        #    결제할 이유가 없다 (2026-09-07 실제로 그런 분이 있었다)
 ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
 
 # 🛑 결제가 열리는 날 True 로. 그때부터 리포트는 전부 단건 결제가 되고,
@@ -412,6 +415,15 @@ def ask(email: str, qid: str, pair: str) -> dict:
     now = _now()
     if any(o["product"] == key and o["pair"] == pair for o in _owned_live(acc, now)):
         return {"ok": True, "spent": 0, "balance": sum(l["remain"] for l in _live_lots(acc, now)), "reopened": True}
+
+    # 값을 치른 적이 없는 분은 한 번만. 등불이 남아 있어도 그렇다.
+    led = acc.get("ledger", [])
+    if not any(e.get("type") == "premium" for e in led):
+        used = sum(1 for e in led if e.get("type") == "ask")
+        if used >= FREE_ASKS:
+            raise ValueError(
+                "사주를 하나 열어 보시면 더 여쭤보실 수 있어요. "
+                "값을 치르기 전에는 한 번까지만 답해 드려요.")
     live = _live_lots(acc, now)
     have = sum(l["remain"] for l in live)
     if have < ASK_LAMPS:
