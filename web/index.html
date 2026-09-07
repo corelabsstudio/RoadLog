@@ -20,6 +20,7 @@
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
   <meta property="og:locale" content="ko_KR" />
@@ -35,8 +36,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v1.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-C9Yud7ME.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-D7zSFrPF.css">
+  <script type="module" crossorigin src="/assets/main-CUiI2tli.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-84bv8-Lm.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -67,7 +68,14 @@
       <div class="acct-who">
         <img src="/assets/face-ebveWHzw.png" alt="" />
         <div><b id="acctName">—</b><span id="acctMail"></span></div>
+        <button type="button" class="acct-rename" id="acctRename">이름 바꾸기</button>
       </div>
+      <form class="acct-name-form" id="acctNameForm" hidden>
+        <label class="sr-only" for="acctNameInput">결과 화면에서 부를 이름</label>
+        <input type="text" id="acctNameInput" maxlength="20" placeholder="무냥이가 부를 이름" autocomplete="off" />
+        <button type="submit" class="btn btn-sm">저장</button>
+        <p class="acct-name-note">결과 화면에서 부를 때만 써요. 사주 계산에는 안 들어가요.</p>
+      </form>
       <div class="acct-lamp">
         <span>등불 잔액</span>
         <b id="acctLamps">0</b>

@@ -348,6 +348,28 @@ def get_user(email: str) -> dict | None:
     return enrich_user_flags(_normalize_user(u)) if u else None
 
 
+def set_user_name(email: str, name: str) -> bool:
+    """손님이 부르는 이름을 바꾼다. 결과 화면에서 부를 때만 쓴다.
+
+    🛑 소셜 로그인으로 들어오면 그쪽 이름이 그대로 들어온다 —
+       「류지웅 (Yu_Liu Jiwoong)」처럼 길면 머리 줄이 겹쳤다 (2026-09-07).
+    """
+    email = email.strip().lower()
+    name = (name or "").strip()[:20]
+    if _sb.enabled:
+        try:
+            _sb.client.table("profiles").update({"name": name}).eq("email", email).execute()
+            return True
+        except Exception:
+            return False
+    users = _read_json(USERS_JSON, {})
+    if email not in users:
+        return False
+    users[email]["name"] = name
+    _write_json(USERS_JSON, users)
+    return True
+
+
 def set_user_plan(email: str, plan: str) -> bool:
     """plan: free | pro"""
     email = email.strip().lower()

@@ -1152,6 +1152,21 @@ def me(authorization: str | None = Header(default=None)):
     }
 
 
+@app.put("/api/me/name")
+def me_set_name(body: NameBody, authorization: str | None = Header(default=None)):
+    """결과 화면에서 부를 이름을 바꾼다.
+
+    🛑 계산에는 쓰지 않는다. 부르는 말일 뿐이라 아무렇게나 적으셔도 된다.
+    """
+    user = _token_user(authorization)
+    name = (body.name or "").strip()[:20]
+    if not name:
+        raise HTTPException(400, "이름을 적어 주세요.")
+    if not db.set_user_name(user["email"], name):
+        raise HTTPException(400, "이름을 바꾸지 못했습니다.")
+    return {"ok": True, "name": name}
+
+
 @app.get("/api/settings")
 def get_settings(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
@@ -1522,6 +1537,10 @@ class BillingBody(BaseModel):
     enterprise_base_seats: int | None = None
     enterprise_seat_price_krw: int | None = None
     enterprise_seat_annual_price_krw: int | None = None
+
+
+class NameBody(BaseModel):
+    name: str
 
 
 class FreePassBody(BaseModel):
