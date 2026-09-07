@@ -399,6 +399,39 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
 
 
+def gift_used(email: str) -> dict | None:
+    """선착순 이벤트로 이미 한 편을 여셨나. 열었으면 그 기록을 준다."""
+    acc = _account(_read(), email)
+    for e in reversed(acc.get("ledger", [])):
+        if e.get("type") == "gift-open":
+            return {"product": e.get("product"), "pair": e.get("pair"), "at": e.get("at")}
+    return None
+
+
+def gift_open(email: str, product: str, pair: str, *, note: str = "") -> dict:
+    """선착순 이벤트로 한 편을 값 없이 열어 드린다.
+
+    🛑 결제가 아니다. 원장에 type="gift-open" 으로 남기고, **한 계정에 한 번만** 받는다.
+       이미 받으셨는지도 이 기록으로 본다 — 따로 파일을 두지 않는다.
+    """
+    if not _PAIR_RE.match(pair or ""):
+        raise ValueError("잘못된 요청입니다.")
+    data = _read()
+    acc = _account(data, email)
+    if any(e.get("type") == "gift-open" for e in acc.get("ledger", [])):
+        raise ValueError("이 이벤트는 한 분께 한 편만 열어 드려요.")
+    now = _now()
+    expires = now + timedelta(days=OWNED_DAYS)
+    if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
+        acc["owned"].append({"product": product, "pair": pair, "at": _iso(now), "expires": _iso(expires)})
+    acc["ledger"].append({
+        "at": _iso(now), "type": "gift-open", "product": product, "pair": pair,
+        "lamps": 0, "price": 0, "note": note or "선착순 이벤트", "expires": _iso(expires),
+    })
+    _write(data)
+    return {"ok": True, "product": product, "expires": _iso(expires)}
+
+
 def ask(email: str, qid: str, pair: str) -> dict:
     """무냥이에게 한 번 더 묻는다. 같은 질문을 다시 열면 등불을 안 쓴다.
 

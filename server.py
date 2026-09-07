@@ -2024,6 +2024,89 @@ def _is_free(user: dict) -> bool:
     return _is_owner(user) or (user.get("email") or "").strip().lower() in _free_pass()
 
 
+# ── 선착순 100분 · 한 편 무료 ────────────────────────────
+# 왜: 결제가 아직 안 열려서 값나가는 리포트를 아무도 못 연다. 그동안 먼저 들러
+#     가입해 주신 분들께 **아무 상품이나 한 편**을 값 없이 열어 드린다
+#     (2026-09-08 온해님 지시 · 스레드에 이미 알렸다).
+#
+# 🛑 세는 사람에서 빠지는 계정: 관리자 · 테스트 계정 · 무료 이용권(VIP).
+#    이분들은 어차피 다 열리니 자리를 차지하면 진짜 손님 몫이 줄어든다.
+# 🛑 순번은 **가입 시각 순**이다. 자리가 다 차면 그 뒤로 가입한 분은 대상이 아니다.
+# 🛑 한 계정에 한 편. 어느 편을 여셨는지는 lamps 원장(type="gift-open")에 남는다.
+EVENT_FREE_N = int(os.getenv("EVENT_FREE_N", "100") or 100)
+EVENT_FREE_ON = os.getenv("EVENT_FREE_ON", "1").strip() not in ("0", "false", "FALSE", "no")
+
+
+def _gift_line() -> list[str]:
+    """이벤트 자리를 차지하는 계정만 가입 순으로 늘어놓는다."""
+    free = _free_pass()
+    out = []
+    for u in db.list_users():
+        email = (u.get("email") or "").strip().lower()
+        if not email or "@" not in email:
+            continue
+        if u.get("is_admin") or email in free:
+            continue
+        if db.is_tester_account(u):
+            continue
+        out.append((u.get("created_at") or "9999", email))
+    out.sort()
+    return [e for _, e in out]
+
+
+def _gift_state(user: dict | None) -> dict:
+    line = _gift_line()
+    taken = min(len(line), EVENT_FREE_N)
+    st = {
+        "on": EVENT_FREE_ON,
+        "cap": EVENT_FREE_N,
+        "taken": taken,
+        "left": max(0, EVENT_FREE_N - len(line)),
+        "eligible": False,
+        "rank": 0,
+        "used": None,
+    }
+    if not user:
+        return st
+    email = (user.get("email") or "").strip().lower()
+    if email in line:
+        st["rank"] = line.index(email) + 1
+        st["eligible"] = EVENT_FREE_ON and st["rank"] <= EVENT_FREE_N
+    st["used"] = lamps_ops.gift_used(email)
+    return st
+
+
+@app.get("/api/gift")
+def gift_state(authorization: str | None = Header(default=None)):
+    """선착순 이벤트 상태. 비회원도 남은 자리는 본다."""
+    return _gift_state(_maybe_user(authorization))
+
+
+class GiftBody(BaseModel):
+    product: str
+    pair: str
+
+
+@app.post("/api/gift/open")
+def gift_open(body: GiftBody, authorization: str | None = Header(default=None)):
+    """이벤트로 한 편을 연다. 한 계정에 한 번만."""
+    user = _token_user(authorization)
+    st = _gift_state(user)
+    if st["used"]:
+        raise HTTPException(400, "이 이벤트는 한 분께 한 편만 열어 드려요.")
+    if not st["eligible"]:
+        raise HTTPException(403, "선착순 100분 이벤트가 마감됐어요.")
+    product = (body.product or "").strip()[:24]
+    if not lamps_ops.won_of(product) and product not in lamps_ops.PRICES:
+        raise HTTPException(400, "없는 상품이에요.")
+    try:
+        out = lamps_ops.gift_open(user["email"], product, (body.pair or "").strip(),
+                                  note="선착순 %d분 이벤트 · %d번" % (EVENT_FREE_N, st["rank"]))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return out
+
+
 @app.get("/api/lamps")
 def lamps_status(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
