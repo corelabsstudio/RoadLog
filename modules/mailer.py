@@ -12,11 +12,11 @@
 ## Railway 환경변수
 
     RESEND_API_KEY   re_...                       ← 이것만 넣으면 돈다
-    MAIL_FROM        로드로그 <noreply@roadlog.co.kr>
+    MAIL_FROM        로드로그 <noreply@send.roadlog.co.kr>
     MAIL_REPLY_TO    corelabs.studio@gmail.com    (선택)
 
-발신 도메인(roadlog.co.kr)은 Resend 대시보드에서 도메인을 추가하고
-가비아 DNS 에 TXT·DKIM 레코드를 넣어야 Verified 가 된다.
+발신 도메인은 **`send.roadlog.co.kr`** 이다 (2026-09-07 가비아에 DKIM TXT +
+CNAME 2개 + DMARC 를 넣어 인증함).
 🛑 **루트 CNAME(Railway) 은 건드리지 말 것.**
 
 SMTP 로 쓸 때 (폴백):
@@ -36,7 +36,10 @@ import urllib.request
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
-DEFAULT_FROM = "로드로그 <noreply@roadlog.co.kr>"
+# 🛑 Resend 에서 Verified 시킨 도메인과 **정확히 같아야** 한다. 다르면 발송이 거부된다.
+#    2026-09-07 에 `send.roadlog.co.kr` (도쿄 ap-northeast-1) 로 인증했다.
+#    루트(roadlog.co.kr)는 나중에 진짜 우편함을 붙일 수 있게 비워 뒀다.
+DEFAULT_FROM = "로드로그 <noreply@send.roadlog.co.kr>"
 
 
 def _env(name: str, default: str = "") -> str:
@@ -258,7 +261,7 @@ def send_password_reset_link(to: str, link: str, *, minutes: int = 30) -> bool:
         f"이 주소는 {minutes}분 뒤에 닫히고, 한 번 쓰면 다시 열리지 않아요.\n"
         "누르지 않으시면 지금 비밀번호는 그대로예요.\n\n"
         "요청하신 적이 없다면 이 메일은 그냥 두셔도 돼요.\n"
-        "충전해 두신 등불은 그대로 있어요.\n\n"
+        "받아 두신 등불은 그대로 있어요.\n\n"
         "— 로드로그 · 코어랩스\n"
     )
     html = _WRAP.format(
@@ -271,7 +274,7 @@ def send_password_reset_link(to: str, link: str, *, minutes: int = 30) -> bool:
             f"<p style='margin:0 0 8px;color:#7a7785;font-size:.88rem'>이 주소는 {minutes}분 뒤에 닫혀요. "
             "한 번 쓰면 다시 열리지 않아요.</p>"
             "<p style='margin:0 0 8px;color:#7a7785;font-size:.88rem'>요청하신 적이 없다면 그냥 두셔도 돼요. "
-            "누르지 않으면 지금 비밀번호는 그대로고, 충전해 두신 등불도 그대로예요.</p>"
+            "누르지 않으면 지금 비밀번호는 그대로고, 받아 두신 등불도 그대로예요.</p>"
             "<p style='margin:16px 0 0;color:#9b96a9;font-size:.78rem;word-break:break-all'>"
             f"단추가 안 눌리면 이 주소를 붙여 넣으세요<br/>{link}</p>"
         )
@@ -294,7 +297,7 @@ def send_social_only_notice(to: str, provider: str) -> bool:
         "따로 정해 둔 비밀번호가 없어서 다시 정할 것도 없어요.\n"
         f"로드로그에서 「{label}로 시작하기」를 누르시면 그대로 들어오실 수 있어요.\n\n"
         "https://roadlog.co.kr\n\n"
-        "충전해 두신 등불은 그대로 있어요.\n\n"
+        "받아 두신 등불은 그대로 있어요.\n\n"
         "— 로드로그 · 코어랩스\n"
     )
     html = _WRAP.format(
@@ -306,7 +309,7 @@ def send_social_only_notice(to: str, provider: str) -> bool:
             "<p style='margin:0 0 20px'><a href='https://roadlog.co.kr' "
             "style='display:inline-block;background:#6f5bd3;color:#fff;text-decoration:none;"
             "font-weight:700;padding:14px 26px;border-radius:10px'>로드로그 열기</a></p>"
-            "<p style='margin:0;color:#7a7785;font-size:.88rem'>충전해 두신 등불은 그대로 있어요.</p>"
+            "<p style='margin:0;color:#7a7785;font-size:.88rem'>받아 두신 등불은 그대로 있어요.</p>"
         )
     )
     return send_mail(to, "[로드로그] 로그인하시는 방법", text, html=html)
@@ -316,7 +319,7 @@ def send_password_changed(to: str) -> bool:
     text = (
         "로드로그 비밀번호가 방금 바뀌었어요.\n\n"
         "다른 기기에 로그인돼 있던 것은 모두 끊었어요. 새 비밀번호로 다시 들어와 주세요.\n"
-        "충전해 두신 등불은 그대로 있어요.\n\n"
+        "받아 두신 등불은 그대로 있어요.\n\n"
         "본인이 바꾼 게 아니라면 바로 알려 주세요 — corelabs.studio@gmail.com\n\n"
         "— 로드로그 · 코어랩스\n"
     )
@@ -324,7 +327,7 @@ def send_password_changed(to: str) -> bool:
         body=(
             "<h2 style='font-size:1.15rem;margin:0 0 14px;color:#2f2d3a'>비밀번호가 바뀌었어요</h2>"
             "<p style='margin:0 0 16px'>다른 기기에 로그인돼 있던 것은 모두 끊었어요. "
-            "새 비밀번호로 다시 들어와 주세요. 충전해 두신 등불은 그대로 있어요.</p>"
+            "새 비밀번호로 다시 들어와 주세요. 받아 두신 등불은 그대로 있어요.</p>"
             "<p style='margin:0;color:#a33d3d;font-size:.88rem'>본인이 바꾼 게 아니라면 바로 알려 주세요 — "
             "<a href='mailto:corelabs.studio@gmail.com' style='color:#a33d3d'>corelabs.studio@gmail.com</a></p>"
         )
