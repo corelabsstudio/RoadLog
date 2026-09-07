@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
   <script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
-  <script type="module" crossorigin src="/assets/main-C6lCzxg_.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-zu6_jXE5.css">
+  <script type="module" crossorigin src="/assets/main-DKZYOEwf.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BcdQSzU7.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -470,6 +470,21 @@
       </div>
       <p class="share-note" id="shareNote" hidden></p>
 
+      <div class="share-sns">
+        <p class="sns-lede">링크로 나누기</p>
+        <label class="sns-link">
+          <input type="text" id="shareUrl" readonly aria-label="공유 링크" />
+          <button type="button" class="btn btn-sm" id="shareCopy">복사</button>
+        </label>
+        <div class="sns-row">
+          <a href="#" id="snsX" target="_blank" rel="noopener">X</a>
+          <a href="#" id="snsThreads" target="_blank" rel="noopener">스레드</a>
+          <a href="#" id="snsStory" target="_blank" rel="noopener">카카오스토리</a>
+          <a href="#" id="snsBand" target="_blank" rel="noopener">밴드</a>
+        </div>
+        <p class="sns-note">인스타그램은 링크를 받지 않아요. <b>이미지로 저장</b>한 뒤 올려 주세요.</p>
+      </div>
+
       <div class="invite" id="invite" hidden>
         <h4>친구를 데려오면 둘 다 등불을 받아요</h4>
         <p class="invite-lede">아래 링크로 친구가 들어와 사주를 보면 <b>친구도 나도 등불 30개</b>씩 받아요.
@@ -515,6 +530,10 @@
     </div>
 
     <div class="report" id="reportBody"></div>
+    <div class="full-tools">
+      <button type="button" class="btn btn-line" id="savePdf">PDF로 저장</button>
+      <p class="full-tools-note">인쇄 창에서 <b>대상</b>을 「PDF로 저장」으로 고르시면 돼요.</p>
+    </div>
 
     <div class="ask-wrap" id="askWrap" hidden>
       <h3 class="full-h">무냥이에게 더 물어보기</h3>
