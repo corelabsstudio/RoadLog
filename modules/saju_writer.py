@@ -29,7 +29,7 @@ import re
 import time
 from typing import Any
 
-import requests
+import httpx
 
 MODEL = os.getenv("SAJU_MODEL", "gemini-3.8-flash")
 _URL = "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent"
@@ -171,7 +171,7 @@ def _call(system: str, user: str, *, model: str | None = None,
     last = None
     for attempt in range(3):
         try:
-            r = requests.post(url, json=body, timeout=TIMEOUT)
+            r = httpx.post(url, json=body, timeout=TIMEOUT)
             j = r.json()
             if "candidates" in j:
                 txt = "".join(p.get("text", "") for p in j["candidates"][0]["content"]["parts"])
@@ -180,7 +180,7 @@ def _call(system: str, user: str, *, model: str | None = None,
                         "in": u.get("promptTokenCount", 0),
                         "out": u.get("candidatesTokenCount", 0)}
             last = json.dumps(j, ensure_ascii=False)[:300]
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             last = str(e)[:200]
         time.sleep(1.5 * (attempt + 1))
     raise RuntimeError("생성 실패: %s" % last)
