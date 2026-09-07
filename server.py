@@ -2289,6 +2289,9 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     pair = (body.pair or "").strip()
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
+    # 🛑 값을 치른 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.
+    if not (_is_owner(user) or lamps_ops.owns(user["email"], product, pair)):
+        return {"ok": True, "summary": "", "paid": False}
     try:
         data = saju_writer.load(product, pair)
     except ValueError:
