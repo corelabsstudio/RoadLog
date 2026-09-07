@@ -12,7 +12,7 @@
 ## Railway 환경변수
 
     RESEND_API_KEY   re_...                       ← 이것만 넣으면 돈다
-    MAIL_FROM        로드로그 <noreply@send.roadlog.co.kr>
+    MAIL_FROM        로드로그 <help@send.roadlog.co.kr>
     MAIL_REPLY_TO    corelabs.studio@gmail.com    (선택)
 
 발신 도메인은 **`send.roadlog.co.kr`** 이다 (2026-09-07 가비아에 DKIM TXT +
@@ -39,7 +39,11 @@ from email.utils import formatdate, make_msgid
 # 🛑 Resend 에서 Verified 시킨 도메인과 **정확히 같아야** 한다. 다르면 발송이 거부된다.
 #    2026-09-07 에 `send.roadlog.co.kr` (도쿄 ap-northeast-1) 로 인증했다.
 #    루트(roadlog.co.kr)는 나중에 진짜 우편함을 붙일 수 있게 비워 뒀다.
-DEFAULT_FROM = "로드로그 <noreply@send.roadlog.co.kr>"
+# 🛑 `noreply@` 는 쓰지 않는다. Resend 진단이 짚어 준 항목이고(2026-09-07),
+#    받는 사람이 답장할 데가 없으면 스팸 판정에도 불리하다.
+#    다만 send. 서브도메인은 **받는 설정을 안 했다** — 그래서 답장이 실제로 닿는 곳은
+#    아래 reply_to(코어랩스 주소)다. 둘을 같이 둬야 말이 된다.
+DEFAULT_FROM = "로드로그 <help@send.roadlog.co.kr>"
 
 
 def _env(name: str, default: str = "") -> str:
@@ -52,6 +56,18 @@ def _bool_env(name: str, default: str = "0") -> bool:
 
 def mail_from() -> str:
     return _env("MAIL_FROM") or _env("RESEND_FROM") or _env("SMTP_FROM") or DEFAULT_FROM
+
+
+def reply_to() -> str:
+    """답장이 실제로 닿는 곳. 환경변수가 없으면 사이트 연락처로 보낸다."""
+    v = _env("MAIL_REPLY_TO") or _env("SMTP_REPLY_TO")
+    if v:
+        return v
+    try:
+        from modules.config import CONTACT_EMAIL
+        return (CONTACT_EMAIL or "").strip()
+    except Exception:
+        return ""
 
 
 def mail_configured() -> bool:
@@ -71,9 +87,9 @@ def _send_via_resend(to: str, subject: str, body: str, html: str | None) -> bool
     payload: dict = {"from": mail_from(), "to": [to], "subject": subject, "text": body}
     if html:
         payload["html"] = html
-    reply_to = _env("MAIL_REPLY_TO") or _env("SMTP_REPLY_TO")
-    if reply_to:
-        payload["reply_to"] = reply_to
+    rt = reply_to()
+    if rt:
+        payload["reply_to"] = rt
     req = urllib.request.Request(
         "https://api.resend.com/emails",
         data=json.dumps(payload).encode("utf-8"),
@@ -228,9 +244,9 @@ def send_mail(to: str, subject: str, body: str, *, html: str | None = None) -> b
         msg["To"] = to
         msg["Date"] = formatdate(localtime=False)
         msg["Message-ID"] = make_msgid(domain="roadlog.co.kr")
-        reply_to = _env("MAIL_REPLY_TO") or _env("SMTP_REPLY_TO")
-        if reply_to:
-            msg["Reply-To"] = reply_to
+        rt = reply_to()
+        if rt:
+            msg["Reply-To"] = rt
         msg.set_content(body)
         if html:
             msg.add_alternative(html, subtype="html")
