@@ -86,6 +86,7 @@ from modules.generator import generate_driving_log, scrub_submission_log
 from modules import style_learn
 from modules import admin_ops
 from modules import reviews as reviews_ops
+from modules import saju_writer
 from modules.rate_limit import (
     AUTH_LIMIT,
     AUTH_WINDOW,
@@ -2164,6 +2165,100 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
         return lamps_ops.spend(user["email"], body.product.strip(), body.pair.strip())
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ── 결과지 문장 — 모델이 매번 새로 쓴다 ──────────────────────
+# 왜: 코드에 박아 둔 문장은 같은 십성인 사람에게 늘 같은 글을 준다.
+# 계산은 프론트가 끝내서 보내고, 여기서는 그 값을 글로 옮기기만 시킨다.
+
+PREVIEW_SECTIONS = 3        # 값을 치르기 전에 보여 주는 항목 수
+PREVIEW_DAILY_CAP = 20      # 한 계정이 하루에 뽑을 수 있는 미리보기
+
+
+class WriteBody(BaseModel):
+    product: str
+    pair: str
+    sections: list[str] = []
+    saju: dict = {}
+    name: str = ""
+    preview: bool = False
+
+
+def _preview_quota(email: str) -> None:
+    """미리보기는 값을 치르기 전에 나가는 원가다. 하루 한도를 둔다."""
+    from pathlib import Path as _P
+    import json as _j
+    import datetime as _dt
+    f = _P(DATA_DIR) / "saju_preview_count.json"
+    today = _dt.date.today().isoformat()
+    try:
+        data = _j.loads(f.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {}
+    if data.get("day") != today:
+        data = {"day": today, "by": {}}
+    n = int(data["by"].get(email, 0))
+    if n >= PREVIEW_DAILY_CAP:
+        raise HTTPException(429, "오늘은 미리보기를 충분히 보셨어요. 내일 다시 열어 주세요.")
+    data["by"][email] = n + 1
+    try:
+        f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
+@app.get("/api/saju/ready")
+def saju_ready():
+    """모델 키가 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다."""
+    return {"ready": saju_writer.ready(), "model": saju_writer.MODEL,
+            "preview": PREVIEW_SECTIONS}
+
+
+@app.post("/api/saju/write")
+def saju_write(body: WriteBody, authorization: str | None = Header(default=None)):
+    """항목별 문장을 받아 온다. 한 번 쓴 항목은 남겨 두고 다시 쓰지 않는다."""
+    user = _token_user(authorization)
+    product = (body.product or "").strip()
+    pair = (body.pair or "").strip()
+    if not product or not pair:
+        raise HTTPException(400, "상품과 사주 값이 필요합니다.")
+    if not saju_writer.ready():
+        raise HTTPException(503, "글쓰기 준비가 아직 안 됐어요.")
+
+    want = [s for s in (body.sections or []) if isinstance(s, str) and s.strip()][:20]
+    if not want:
+        raise HTTPException(400, "쓸 항목이 없습니다.")
+
+    # 값을 치른 사람인가. 아니면 앞 몇 항목만 준다.
+    paid = _is_owner(user) or lamps_ops.owns(user["email"], product, pair)
+    if not body.preview and not paid:
+        raise HTTPException(402, "이 리포트는 아직 열려 있지 않아요.")
+    if not paid:
+        want = want[:PREVIEW_SECTIONS]
+
+    try:
+        have = saju_writer.load(product, pair) or {"blocks": []}
+    except ValueError:
+        raise HTTPException(400, "사주 값이 올바르지 않습니다.")
+    done = {b["title"]: b for b in have.get("blocks", []) if b.get("text")}
+    todo = [s for s in want if s not in done]
+
+    if todo:
+        if not paid:
+            _preview_quota(user["email"])
+        try:
+            res = saju_writer.write_report(
+                (body.name or "손님").strip()[:12], body.saju or {}, todo, product=product)
+        except Exception as e:                      # noqa: BLE001
+            raise HTTPException(502, "글을 받아 오지 못했어요: %s" % str(e)[:120])
+        saju_writer.merge(product, pair, res["blocks"])
+        for b in res["blocks"]:
+            if b.get("text"):
+                done[b["title"]] = b
+
+    return {"ok": True, "paid": paid,
+            "blocks": [{"title": s, "text": done.get(s, {}).get("text", "")} for s in want],
+            "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
 
 
 class _HashedAssets(StaticFiles):
