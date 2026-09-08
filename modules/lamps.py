@@ -29,7 +29,7 @@ OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
 WELCOME_LAMPS = 300     # 가입 선물. 질문 열 번을 할 수 있는 양
 ASK_LAMPS = 30          # 무냥이에게 한 번 더 물어보기 (askmenu.js 와 같은 값)
-FREE_ASKS = 1           # 🛑 값을 치르지 않은 분이 물어볼 수 있는 횟수.
+FREE_ASKS = 1           # 🛑 복채를 내지 않은 분이 물어볼 수 있는 횟수.
                         #    가입 선물 300개로 열 번을 공짜로 묻고 나가 버리면
                         #    결제할 이유가 없다 (2026-09-07 실제로 그런 분이 있었다)
 ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
@@ -43,7 +43,7 @@ WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지
 # 데려온 분·따라온 분 양쪽에 준다. 광고비 없이 손님이 오게 하는 유일한 장치다.
 REFER_LAMPS = 30        # 무냥이에게 한 번 더 묻는 값과 같게 맞췄다
 REFER_DAYS = 30
-GIFT_DAYS = 90          # 값을 치른 분께 얹어 드리는 등불. 선물이라 넉넉히 둔다
+GIFT_DAYS = 90          # 복채를 내신 분께 얹어 드리는 등불. 선물이라 넉넉히 둔다
 REFER_MAX = 20          # 한 계정이 받을 수 있는 횟수. 장난을 막는 선이다
 
 # 🛑 등불 유료 충전은 닫았다 (2026-09-07).
@@ -363,7 +363,7 @@ def won_of(product: str) -> int:
 
 
 def bonus_lamps(won: int) -> int:
-    """값을 치르면 등불도 함께 드린다.
+    """복채를 내면 등불도 함께 드린다.
 
     폭스바니는 결제할 때 「질문 5회권」을 얹어 준다. 우리 등불 30개가 한 번 묻는 값이니
     같은 셈으로 맞췄다. 등불은 파는 물건이 아니라 원가가 없다 — 얹어 주기만 하면 된다."""
@@ -375,7 +375,7 @@ def bonus_lamps(won: int) -> int:
 
 
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
-    """한 건 결제. 값을 치른 분께는 등불을 얹어 드린다."""
+    """한 건 결제. 복채를 내신 분께는 등불을 얹어 드린다."""
     won = won_of(product)
     if not won:
         raise ValueError("프리미엄 상품이 아닙니다.")
@@ -412,7 +412,7 @@ def gift_used(email: str) -> dict | None:
 
 
 def gift_open(email: str, product: str, pair: str, *, note: str = "") -> dict:
-    """선착순 이벤트로 한 편을 값 없이 열어 드린다.
+    """선착순 이벤트로 한 편을 복채 없이 열어 드린다.
 
     🛑 결제가 아니다. 원장에 type="gift-open" 으로 남기고, **한 계정에 한 번만** 받는다.
        이미 받으셨는지도 이 기록으로 본다 — 따로 파일을 두지 않는다.
@@ -452,14 +452,14 @@ def ask(email: str, qid: str, pair: str) -> dict:
     if any(o["product"] == key and o["pair"] == pair for o in _owned_live(acc, now)):
         return {"ok": True, "spent": 0, "balance": sum(l["remain"] for l in _live_lots(acc, now)), "reopened": True}
 
-    # 값을 치른 적이 없는 분은 한 번만. 등불이 남아 있어도 그렇다.
+    # 복채를 낸 적이 없는 분은 한 번만. 등불이 남아 있어도 그렇다.
     led = acc.get("ledger", [])
     if not any(e.get("type") == "premium" for e in led):
         used = sum(1 for e in led if e.get("type") == "ask")
         if used >= FREE_ASKS:
             raise ValueError(
                 "사주를 하나 열어 보시면 더 여쭤보실 수 있어요. "
-                "값을 치르기 전에는 한 번까지만 답해 드려요.")
+                "복채를 내기 전에는 한 번까지만 답해 드려요.")
     live = _live_lots(acc, now)
     have = sum(l["remain"] for l in live)
     if have < ASK_LAMPS:

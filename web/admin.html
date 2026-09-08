@@ -290,7 +290,7 @@ const asEmail = (v) => {
 };
 const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
 let DATA = null, gSales = 'day', gVisit = 'day';
-let FREE = new Set();   // 값을 치르지 않고 다 보시는 분들(VIP)
+let FREE = new Set();   // 복채를 내지 않고 다 보시는 분들(VIP)
 
 try { const s = localStorage.getItem(IDKEY); if (s) $('em').value = s; } catch {}
 
@@ -503,7 +503,7 @@ async function load() {
   paint();
   show('board');
 }
-// VIP 승격·해제 — 값을 치르지 않고 다 보시게 한다. 운영 화면은 여전히 안 열린다.
+// VIP 승격·해제 — 복채를 내지 않고 다 보시게 한다. 운영 화면은 여전히 안 열린다.
 $('tMem').addEventListener('click', async (e) => {
   const b = e.target.closest('button.vip');
   if (!b) return;

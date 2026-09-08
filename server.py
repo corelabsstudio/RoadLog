@@ -1835,7 +1835,7 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
 
 @app.get("/api/admin/freepass")
 def admin_freepass_list(authorization: str | None = Header(default=None)):
-    """값을 치르지 않고 다 보시는 분들. 관리자 화면은 열리지 않는다."""
+    """복채를 내지 않고 다 보시는 분들. 관리자 화면은 열리지 않는다."""
     _require_admin(authorization)
     return {"emails": sorted(_free_pass())}
 
@@ -2020,7 +2020,7 @@ def _is_owner(user: dict) -> bool:
 
 
 # ── 무료 이용권 ────────────────────────────────────────
-# 지인처럼 값을 치르지 않고 다 보시는 분들. 관리자와 달리 **운영 화면은 못 본다.**
+# 지인처럼 복채를 내지 않고 다 보시는 분들. 관리자와 달리 **운영 화면은 못 본다.**
 # 🛑 이메일을 코드에 박지 않는다. DATA_DIR 에 두고 관리자 API 로 넣고 뺀다.
 # 🛑 결제가 실제로 돈을 받는가. 기본은 **닫힘**이다 (2026-09-07).
 #    테스트 채널이 걸린 동안에는 결제창이 PAID 를 돌려주기 때문에, 열어 두면
@@ -2058,7 +2058,7 @@ def _free_pass_set(email: str, on: bool) -> list[str]:
 
 
 def _is_free(user: dict) -> bool:
-    """값을 치르지 않고 다 볼 수 있는 분인가. 주인 + 무료 이용권 명단.
+    """복채를 내지 않고 다 볼 수 있는 분인가. 주인 + 무료 이용권 명단.
 
     🛑 관리자 전용 기능(운영 화면·회원 삭제)에는 쓰지 않는다. 그건 _is_owner 그대로다.
     """
@@ -2066,8 +2066,8 @@ def _is_free(user: dict) -> bool:
 
 
 # ── 선착순 100분 · 한 편 무료 ────────────────────────────
-# 왜: 결제가 아직 안 열려서 값나가는 리포트를 아무도 못 연다. 그동안 먼저 들러
-#     가입해 주신 분들께 **아무 상품이나 한 편**을 값 없이 열어 드린다
+# 왜: 결제가 아직 안 열려서 복채가 있는 리포트를 아무도 못 연다. 그동안 먼저 들러
+#     가입해 주신 분들께 **아무 상품이나 한 편**을 복채 없이 열어 드린다
 #     (2026-09-08 온해님 지시 · 스레드에 이미 알렸다).
 #
 # 🛑 세는 사람에서 빠지는 계정: 관리자 · 테스트 계정 · 무료 이용권(VIP).
@@ -2440,7 +2440,7 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
 # 왜: 코드에 박아 둔 문장은 같은 십성인 사람에게 늘 같은 글을 준다.
 # 계산은 프론트가 끝내서 보내고, 여기서는 그 값을 글로 옮기기만 시킨다.
 
-PREVIEW_SECTIONS = 1        # 값을 치르기 전에 무냥이 글로 보여 주는 항목 수
+PREVIEW_SECTIONS = 1        # 복채를 내기 전에 무냥이 글로 보여 주는 항목 수
 #   🛑 첫 자리 하나만이다 (2026-09-07 지시). 셋이면 상품에 따라 2장까지 열려 버렸다.
 #   🛑 main.js:PREVIEW_ITEMS 와 같아야 한다 — 화면이 그 수만큼 자리를 잡아 둔다.
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
@@ -2483,7 +2483,7 @@ def _preview_used(email: str) -> int:
 
 
 def _preview_quota(email: str) -> None:
-    """미리보기는 값을 치르기 전에 나가는 원가다. 하루 한도를 둔다."""
+    """미리보기는 복채를 내기 전에 나가는 원가다. 하루 한도를 둔다."""
     from pathlib import Path as _P
     import json as _j
     import datetime as _dt
@@ -2581,7 +2581,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     if not want:
         raise HTTPException(400, "쓸 항목이 없습니다.")
 
-    # 값을 치른 사람인가. 아니면 앞 몇 항목만 준다.
+    # 복채를 낸 사람인가. 아니면 앞 몇 항목만 준다.
     paid = _is_free(user) or lamps_ops.owns(user["email"], product, pair)
     if not body.preview and not paid:
         raise HTTPException(402, "이 리포트는 아직 열려 있지 않아요.")
@@ -2640,7 +2640,7 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     pair = (body.pair or "").strip()
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
-    # 🛑 값을 치른 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.
+    # 🛑 복채를 낸 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.
     if not (_is_free(user) or lamps_ops.owns(user["email"], product, pair)):
         return {"ok": True, "summary": "", "paid": False}
     try:
