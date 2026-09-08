@@ -107,7 +107,10 @@ def read_face(product: str, shots: list[str], *, name: str = "",
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM}]},
         "contents": [{"role": "user", "parts": [_part(b) for b in shots] + [{"text": ask}]}],
-        "generationConfig": {"temperature": 1.0, "maxOutputTokens": max(700, chars * 2)},
+        # 🛑 thinkingBudget 을 0 으로 안 두면 **생각 토큰이 답 예산을 다 먹고 글이 잘린다.**
+        #    2026-09-09 에 실제로 27토큰(한 문장 반)에서 끊겼다. saju_writer 와 같은 설정이다.
+        "generationConfig": {"temperature": 1.0, "maxOutputTokens": max(700, chars * 2),
+                             "thinkingConfig": {"thinkingBudget": 0}},
     }
     url = (_URL % (model or MODEL)) + "?key=" + key
 
