@@ -104,6 +104,7 @@ from modules.rate_limit import (
 )
 from modules.validator import validate_log
 from modules import notify as notify_ops
+from modules import inbox
 from modules import mailer
 from modules import password_reset as reset_ops
 from modules import lamps as lamps_ops
@@ -626,7 +627,46 @@ def register(body: AuthBody, request: Request):
         # 🛑 조용히 삼키면 「가입하면 등불 300개」라고 적어 놓고 안 준 것을 아무도 모른다.
         log.error("가입 선물 실패 (%s): %s", body.email, e)
         gift = {"given": 0}
+    # 🛑 준 것을 **말해 줘야 준 것이다.** 전에는 등불만 조용히 들어가서
+    #    내역을 열어 보지 않으면 받은 줄도 몰랐다 (2026-09-08).
+    try:
+        _welcome_inbox(body.email, gift)
+    except Exception as e:                      # noqa: BLE001
+        log.error("가입 알림 실패 (%s): %s", body.email, e)
     return {"ok": True, "message": msg, "welcome": gift.get("given", 0), "referred": gift.get("referred", 0)}
+
+
+def _welcome_inbox(email: str, gift: dict) -> None:
+    """가입한 분께 무엇을 드렸는지 알림함에 남긴다."""
+    given = gift.get("given", 0)
+    if given:
+        inbox.push(
+            email,
+            "무냥이가 등불 %d개를 드렸어요" % given,
+            "리포트를 보다가 궁금한 게 생기면 무냥이한테 물어보실 수 있어요. "
+            "한 번 물을 때마다 등불이 조금씩 들어가요.",
+            key="welcome", icon="lamp",
+        )
+    if gift.get("referred"):
+        inbox.push(
+            email,
+            "친구 따라 들어오셔서 등불을 더 드렸어요",
+            "데려오신 분께도 같이 드렸어요. 고맙습니다.",
+            key="refer_in", icon="lamp",
+        )
+    # 선착순 자리를 받으셨는지
+    try:
+        st = _gift_state(db.get_user(email))
+    except Exception:                           # noqa: BLE001
+        return
+    if st.get("eligible"):
+        inbox.push(
+            email,
+            "선착순 %d번째로 무료 열람 1회권을 받으셨어요" % st.get("rank", 0),
+            "값이 있는 사주 한 편을 그냥 보실 수 있어요. 어느 편이든 괜찮아요. "
+            "다만 한 번 고르면 그 편으로 끝이라 천천히 고르셔도 돼요.",
+            key="gift-ticket", icon="ticket",
+        )
 
 
 def _issue_session(user: dict, message: str) -> dict:
@@ -2417,6 +2457,50 @@ def saju_quota(authorization: str | None = Header(default=None)):
         return {"cap": PREVIEW_DAILY_CAP, "left": PREVIEW_DAILY_CAP, "unlimited": True}
     used = _preview_used(user["email"])
     return {"cap": PREVIEW_DAILY_CAP, "left": max(0, PREVIEW_DAILY_CAP - used), "unlimited": False}
+
+
+# ── 알림함 ────────────────────────────────────────────────
+# 🛑 받은 줄 모르면 준 게 아니다. 가입 선물·1회권·공지를 여기로 알린다.
+
+@app.get("/api/inbox")
+def inbox_list(authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    return inbox.listing(user["email"])
+
+
+class InboxReadBody(BaseModel):
+    ids: list[str] | None = None
+
+
+@app.post("/api/inbox/read")
+def inbox_read(body: InboxReadBody, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    n = inbox.mark_read(user["email"], body.ids)
+    return {"ok": True, "read": n}
+
+
+class InboxNoticeBody(BaseModel):
+    title: str
+    body: str = ""
+    key: str = ""
+    link: str = ""
+
+
+@app.post("/api/admin/inbox/notice")
+def inbox_notice(body: InboxNoticeBody, authorization: str | None = Header(default=None)):
+    """전체 공지. 결제가 열렸을 때 같은 소식을 한 번에 보낸다. 주인만."""
+    user = _token_user(authorization)
+    if not _is_owner(user):
+        raise HTTPException(403, "권한이 없습니다.")
+    title = (body.title or "").strip()
+    if not title:
+        raise HTTPException(400, "제목이 필요합니다.")
+    emails = [(u.get("email") or "").strip().lower() for u in db.list_users()]
+    n = inbox.push_all([e for e in emails if e and "@" in e],
+                       title, (body.body or "").strip(),
+                       key=(body.key or "").strip(), link=(body.link or "").strip(),
+                       icon="notice")
+    return {"ok": True, "sent": n}
 
 
 @app.get("/api/saju/ready")
