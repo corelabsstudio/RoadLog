@@ -55,6 +55,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://roadlog.co.kr/saju/past.html</loc>
+    <lastmod>2026-09-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://roadlog.co.kr/saju/god.html</loc>
     <lastmod>2026-09-04</lastmod>
     <changefreq>monthly</changefreq>
