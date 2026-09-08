@@ -248,16 +248,35 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
         except Exception:                               # noqa: BLE001
             seen = ""                                   # 앞 편을 못 읽어도 글은 나와야 한다
 
+    # 🛑 **물결로 나눠 쓴다.** 전에는 열두 항목을 한꺼번에 던져서 서로 뭘 썼는지 몰랐다.
+    #    그래서 한 편 안에서 같은 장면이 두 번 나왔다(시안 12항목 중 둘에
+    #    「장바구니에 담아두고 결제창을 닫는」이 겹쳤다 · 2026-09-07 기록).
+    #    한 물결이 끝나면 거기서 쓴 것을 다음 물결에 알려 준다.
+    #    순차로 바꾸면 확실하지만 12항목에 1분이 넘는다 — 손님이 기다린다.
+    #    물결은 **뒤로 갈수록 키운다.** 앞쪽이 기준을 만들고, 뒤쪽은 참고할 게 이미 많다.
+    #    6 → 12 → 12 … 로 가면 51항목 대점이 아홉 물결에서 다섯 물결로 준다.
     out: dict[str, Any] = {}
-    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = {ex.submit(write_section, name, saju, s, i, product=product,
-                          model=model, chars=chars, seen=seen): s
-                for i, s in enumerate(sections)}
-        for f in cf.as_completed(futs):
-            try:
-                out[futs[f]] = f.result()
-            except Exception as e:                      # noqa: BLE001
-                out[futs[f]] = {"text": "", "in": 0, "out": 0, "error": str(e)[:200]}
+    wrote: list[tuple[str, str]] = []               # 이 편에서 이미 쓴 (제목, 첫 문장)
+    start, size = 0, workers
+    while start < len(sections):
+        wave = sections[start:start + size]
+        note = seen + _same_note(wrote)             # 다른 편 + 이 편에서 이미 쓴 것
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            futs = {ex.submit(write_section, name, saju, s, start + i, product=product,
+                              model=model, chars=chars, seen=note): s
+                    for i, s in enumerate(wave)}
+            for f in cf.as_completed(futs):
+                try:
+                    out[futs[f]] = f.result()
+                except Exception as e:              # noqa: BLE001
+                    out[futs[f]] = {"text": "", "in": 0, "out": 0, "error": str(e)[:200]}
+        # 이 물결에서 나온 것을 다음 물결에 넘길 목록에 쌓는다
+        for t in wave:
+            txt = (out.get(t) or {}).get("text") or ""
+            if txt:
+                wrote.append((t, _first_sentence(txt)))
+        start += size
+        size = min(size * 2, _WAVE_MAX)             # 🛑 상한을 둔다. 동시 호출이 너무 늘면 막힌다
 
     blocks, tin, tout, errs, fixed = [], 0, 0, [], 0
     for s in sections:
@@ -437,4 +456,40 @@ def seen_note(product: str, pair: str) -> str:
           "- 위와 **같은 문장으로 시작하지 마라.**\n"
           "- 같은 글자를 말하더라도 **이 상품의 질문에 맞게 다시 읽어라.**\n"
           "  (같은 일지라도 재회에서는 「돌아오는 방식」, 결혼에서는 「같이 사는 방식」이다.)\n\n"
+    )
+
+
+# ── 한 편 안에서 항목끼리 겹치지 않게 ───────────────────────
+# 왜: 항목을 한꺼번에 병렬로 뽑으니 **서로 뭘 썼는지 몰랐다.** 그래서 한 편 안에서
+# 같은 장면이 두 번 나왔다(12항목 시안 중 둘에 「장바구니에 담아두고 결제창을 닫는」).
+# 손님은 한 편을 이어 읽으므로 이게 앞뒤로 붙어 나오면 바로 보인다.
+#
+# `write_report` 가 물결마다 이 문단을 만들어 다음 물결에 넘긴다.
+# 🛑 첫 문장만 쓴다. 본문을 다 넣으면 뒤 물결일수록 입력이 눈덩이가 된다.
+
+_WAVE_MAX = 12          # 한 물결에 동시에 돌릴 수 있는 최대 (rate limit 안전선)
+_SAME_HEAD = 60         # 한 줄은 앞 60자만
+_SAME_MAX = 12          # 열두 줄까지 (그 이상은 오래된 것부터 버린다)
+
+
+def _first_sentence(text: str) -> str:
+    """글의 첫 문장. 되풀이는 여는 문장에서 가장 잘 드러난다."""
+    t = (text or "").replace("\n", " ").strip()
+    return re.split(r"(?<=[.!?요죠])\s", t, 1)[0][:_SAME_HEAD]
+
+
+def _same_note(wrote: list[tuple[str, str]]) -> str:
+    """이 편에서 이미 쓴 항목들. 없으면 빈 문자열."""
+    if not wrote:
+        return ""
+    rows = wrote[-_SAME_MAX:]
+    body = "\n".join("  - %s — %s" % (t, f) for t, f in rows)
+    return (
+        "[이 편에서 이미 쓴 항목]\n"
+        "같은 리포트 안에서 아래 항목들을 먼저 썼다. 손님은 이걸 이어서 읽는다.\n\n"
+        + body
+        + "\n\n🛑 **같은 편 안이라 겹치면 바로 보인다.**\n"
+          "- 위에 나온 **장면·비유·예시를 다시 쓰지 마라.** 다른 장면을 찾아라.\n"
+          "- 위와 **같은 문장으로 시작하지 마라.**\n"
+          "- 같은 글자(십성·오행·신살)를 또 말해야 하면, **이번 항목의 각도로만** 말한다.\n\n"
     )
