@@ -20,7 +20,7 @@ Minimum version required to store current data is: `+c+`.
       <div class="shelf-head">
         <div class="shelf-txt"><b>${e.name}</b><span>${e.line}</span></div>
         <div class="shelf-buy"><span class="won">${e.free?`무료`:`<s>${bp(e.list)}</s><em>${Math.round((1-e.price/e.list)*100)}% 할인</em>`}</span>
-        <button type="button" class="btn btn-sm" data-open="${e.id}"${e.free?` data-free="1"`:` data-won="${bp(e.price)}"`}>${e.free?`무료로 보기`:`${bp(e.price)} 결제하고 열기`}</button></div>
+        <button type="button" class="btn btn-sm" data-open="${e.id}"${e.free?` data-free="1"`:` data-won="${bp(e.price)}"`}>${e.free?`무료로 보기`:`${bp(e.price)} 복채 내고 열기`}</button></div>
       </div>
       <details class="toc">
         <summary>${e.sections.length}개 항목 <span>무엇이 들어 있나</span></summary>
@@ -65,7 +65,7 @@ Minimum version required to store current data is: `+c+`.
     <p class="gate-price">${t}</p>
     ${Xp()}
     ${Wp(e)}
-    ${Jp?`<button type="button" class="btn gate-btn" data-unlock="${e.id}">이어서 보기</button>
+    ${Jp?`<button type="button" class="btn gate-btn" data-unlock="${e.id}">복채 내고 이어서 보기</button>
     <p class="gate-gift">열어 보시면 <b>등불 ${i}개</b>도 함께 드려요. 무냥이에게 ${Math.floor(i/30)}번 더 물어볼 수 있는 양이에요.</p>
     <p class="gate-note">한 번 연 사주는 <b>다시 열 때 값을 치르지 않아요.</b></p>`:`<p class="gate-soon">결제를 준비하고 있어요. 열리면 <b>여기에 알려 드릴게요.</b></p>
     <p class="gate-gift">그동안 <b>오늘의 운세</b>는 그냥 보실 수 있고, 무냥이에게 물어보기도 열려 있어요.</p>`}
