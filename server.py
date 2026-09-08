@@ -2470,7 +2470,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             chars = min(max(int(body.chars or 420), 300), 1600)   # 프론트 값을 그대로 믿지 않는다
             res = saju_writer.write_report(
                 (body.name or "손님").strip()[:12], body.saju or {}, todo,
-                product=product, chars=chars)
+                product=product, chars=chars, pair=pair)
         except Exception as e:                      # noqa: BLE001
             raise HTTPException(502, "글을 받아 오지 못했어요: %s" % str(e)[:120])
         saju_writer.merge(product, pair, res["blocks"])

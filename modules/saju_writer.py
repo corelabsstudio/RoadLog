@@ -206,7 +206,7 @@ def _length_note(chars: int) -> str:
 
 def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
                   *, product: str = "", model: str | None = None,
-                  chars: int = 420) -> dict[str, Any]:
+                  chars: int = 420, seen: str = "") -> dict[str, Any]:
     """항목 하나를 쓴다. 숫자가 어긋나면 한 번 다시 쓰게 한다."""
     fact = facts(saju)
     guide = "%s\n%s\n%s" % (OPENERS[idx % len(OPENERS)], CLOSERS[idx % len(CLOSERS)],
@@ -216,8 +216,9 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
     ask = brief_of(product)
     head = ("[이 상품이 답해야 할 것]\n%s\n\n🛑 아래 항목이 무엇이든, 결국 위 "
             "질문에 답하는 방향으로 쓴다.\n\n" % ask) if ask else ""
-    user = ("손님 이름: %s\n\n%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
-            % (name, head, fact, section, guide))
+    # 🛑 앞서 읽은 편이 있으면 그것부터 알려 준다. 겹치면 2차 결제가 끊긴다
+    user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
+            % (name, seen or "", head, fact, section, guide))
     res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
     bad = check_counts(res["text"], saju)
     if bad:
@@ -235,14 +236,22 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
 
 def write_report(name: str, saju: dict[str, Any], sections: list[str],
                  *, product: str = "", model: str | None = None,
-                 workers: int = 6, chars: int = 420) -> dict[str, Any]:
+                 workers: int = 6, chars: int = 420, pair: str = "") -> dict[str, Any]:
     """항목들을 한꺼번에 쓴다. 순서는 넘어온 그대로 지킨다."""
     import concurrent.futures as cf
+
+    # 🛑 앞서 읽은 편은 **여기서 한 번만** 찾는다. 항목마다 찾으면 같은 파일을 열두 번 읽는다.
+    seen = ""
+    if pair:
+        try:
+            seen = seen_note(product, pair)
+        except Exception:                               # noqa: BLE001
+            seen = ""                                   # 앞 편을 못 읽어도 글은 나와야 한다
 
     out: dict[str, Any] = {}
     with cf.ThreadPoolExecutor(max_workers=workers) as ex:
         futs = {ex.submit(write_section, name, saju, s, i, product=product,
-                          model=model, chars=chars): s
+                          model=model, chars=chars, seen=seen): s
                 for i, s in enumerate(sections)}
         for f in cf.as_completed(futs):
             try:
@@ -353,3 +362,79 @@ def summarize(blocks: list[dict[str, Any]], *, model: str | None = None) -> str:
     res = _call(SUMMARY_SYSTEM, user, model=model, temperature=0.9, max_tokens=300)
     txt = " ".join(res["text"].split())
     return txt[:90]
+
+
+# ── 앞서 읽은 편과 겹치지 않게 ─────────────────────────────
+# 왜: 손님은 한 편을 읽고 다음 편을 산다. 그때 앞에서 읽은 이야기가 또 나오면
+# 「돈 두 번 냈는데 같은 글」이 된다. 2·3차 결제가 여기서 끊긴다
+# (2026-09-08 실측: 대점 → 재회운 종합 → 다시 만날 필연에서 3편째의 65%가 되풀이였다).
+#
+# 파일 이름이 `{상품}__{사주쌍}.json` 이라 **같은 사주쌍의 다른 상품 글을 이름만으로 찾을 수 있다.**
+# 그 글에서 되풀이되면 안 되는 것만 짧게 뽑아 프롬프트에 넣는다.
+#
+# 🛑 앞 글을 통째로 넣지 않는다. 입력 토큰이 폭발하고 원가가 몇 배가 된다.
+#    항목 제목과 **첫 문장**만 쓴다 — 되풀이는 거기서 제일 잘 드러난다.
+# 🛑 「같은 사주를 다르게 읽는 것」과 「다른 말을 지어내는 것」은 다르다.
+#    사실은 그대로 두고 **장면·비유·표현**만 겹치지 말라고 시킨다.
+
+_SEEN_MAX_PRODUCTS = 4      # 앞서 읽은 편은 최근 넷까지만 본다
+_SEEN_MAX_LINES = 10        # 한 편에서 열 줄까지
+_SEEN_HEAD = 70             # 한 줄은 앞 70자만
+
+
+def seen_before(product: str, pair: str) -> list[tuple[str, list[str]]]:
+    """같은 사주쌍으로 **다른 상품**에서 이미 써 둔 글을 찾는다.
+
+    돌려주는 것: [(상품id, [항목제목 — 첫 문장, ...]), ...] · 최근에 쓴 것부터.
+    """
+    try:
+        if not _SAFE.match(product or "") or not _SAFE.match(pair or ""):
+            return []
+        d = _store_dir()
+    except Exception:                                   # noqa: BLE001
+        return []
+    rows: list[tuple[float, str, list[str]]] = []
+    for p in d.glob("*__%s.json" % pair):
+        pid = p.name[: -len("__%s.json" % pair)]
+        if pid == product or not pid:
+            continue
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            mtime = p.stat().st_mtime
+        except (OSError, ValueError):
+            continue
+        lines: list[str] = []
+        for b in (data.get("blocks") or []):
+            t = (b.get("text") or "").strip()
+            title = (b.get("title") or "").strip()
+            if not t:
+                continue
+            # 첫 문장만. 되풀이는 여는 문장에서 가장 잘 드러난다
+            first = re.split(r"(?<=[.!?요죠])\s", t.replace("\n", " "), 1)[0]
+            lines.append("%s — %s" % (title, first[:_SEEN_HEAD]))
+            if len(lines) >= _SEEN_MAX_LINES:
+                break
+        if lines:
+            rows.append((mtime, pid, lines))
+    rows.sort(key=lambda x: -x[0])
+    return [(pid, lines) for _, pid, lines in rows[:_SEEN_MAX_PRODUCTS]]
+
+
+def seen_note(product: str, pair: str) -> str:
+    """앞서 읽은 편을 프롬프트에 넣을 문단으로 만든다. 없으면 빈 문자열."""
+    rows = seen_before(product, pair)
+    if not rows:
+        return ""
+    body = []
+    for pid, lines in rows:
+        body.append("· %s\n%s" % (pid, "\n".join("  - " + x for x in lines)))
+    return (
+        "[이 손님이 이미 읽은 편]\n"
+        "같은 사주로 아래 편들을 먼저 읽었다. 각 줄은 그 편의 항목과 첫 문장이다.\n\n"
+        + "\n".join(body)
+        + "\n\n🛑 사주 사실은 같으니 같은 글자를 다시 말해도 된다. 다만 **이번 편은 다른 편이다.**\n"
+          "- 위에 나온 **장면·비유·예시를 다시 쓰지 마라.** 다른 장면을 찾아라.\n"
+          "- 위와 **같은 문장으로 시작하지 마라.**\n"
+          "- 같은 글자를 말하더라도 **이 상품의 질문에 맞게 다시 읽어라.**\n"
+          "  (같은 일지라도 재회에서는 「돌아오는 방식」, 결혼에서는 「같이 사는 방식」이다.)\n\n"
+    )
