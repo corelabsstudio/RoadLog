@@ -123,6 +123,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
   <meta property="og:locale" content="ko_KR" />
@@ -201,7 +202,10 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 <script>
 // 포트원 V2 · 화면에 넣는 공개값 (비밀키가 아니다)
 const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
-const CHANNEL_KEY = 'channel-key-12d3978e-4e85-4ae8-8fe9-9607553e891b'; // 테스트 채널
+// NHN KCP 실채널 (2026-09-08 계약 승인 · 사이트코드 IPB5Z · 포트원 채널 「RoadLog NHN KCP」)
+// 🛑 이 값은 브라우저에 노출되는 공개값이다. 비밀은 KCP 개인키(.pem)와 그 비밀번호이고,
+//    그 둘은 포트원 콘솔에만 있다. 이 저장소에 넣지 말 것.
+const CHANNEL_KEY = 'channel-key-e985315c-202d-4b36-b2c5-278f55a24e60';
 
 // 🛑 등불 유료 충전은 없앴다 (2026-09-07). 이 화면은 **건별 결제 전용**이다.
 //    NHN KCP 담당자가 사이트에서 등불에 값이 붙은 것을 보고 포인트 충전 업종으로 잡았다.
