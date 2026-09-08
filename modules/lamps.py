@@ -195,7 +195,9 @@ def status(email: str) -> dict:
             l["remain"] for l in lots
             if _parse(l["expires"]) < now + timedelta(days=30)
         ),
-        "owned": [{"product": o["product"], "pair": o["pair"], "expires": o["expires"]} for o in owned],
+        # 🛑 「내 사주」에서 언제 산 것인지 보여 준다 (2026-09-09)
+        "owned": [{"product": o["product"], "pair": o["pair"], "at": o.get("at", ""),
+                   "expires": o["expires"]} for o in owned],
         "prices": PRICES,
         "first_charge": not any(e.get("type") == "charge" for e in acc.get("ledger", [])),
         "first_bonus": int(FIRST_BONUS * 100),
