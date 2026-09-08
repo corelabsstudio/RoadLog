@@ -30,7 +30,7 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v2.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-DKj3U-ac.js"></script>
+  <script type="module" crossorigin src="/assets/main-CuGyHsFw.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/main-CS7HaUhk.css">
 </head>
 <body>
@@ -192,6 +192,20 @@
         <button type="button" class="btn" id="gwanGo" hidden>관상 보기</button>
         <p class="gwan-note">사진은 <b>저장하지 않아요.</b> 보는 데만 쓰고 바로 버려요.</p>
         <div class="gwan-out" id="gwanOut" hidden></div>
+
+        <!-- 관상 공유 카드. 🛑 **올린 얼굴은 카드에 한 픽셀도 안 들어간다** —
+             관멍이 그림 한 장을 고정으로 쓰고 글 몇 줄만 얹는다 (2026-09-09 온해님). -->
+        <div class="gwan-share" id="gwanShare" hidden>
+          <div class="share-head">
+            <h3>관멍이가 본 얼굴, 카드로</h3>
+            <p><b>올리신 사진은 카드에 안 들어가요.</b> 관멍이 그림과 글 몇 줄만 담겨요.</p>
+          </div>
+          <canvas id="gwanCanvas" width="1080" height="1350" aria-label="관상 공유 카드 미리보기"></canvas>
+          <div class="share-btns">
+            <button type="button" class="btn btn-line" id="gwanCardSave">이미지로 저장</button>
+            <button type="button" class="btn" id="gwanCardSend">공유하기</button>
+          </div>
+        </div>
       </div>
     </section>
   </div>
