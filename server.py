@@ -9,6 +9,7 @@ FastAPI + 정적 프론트엔드 + 기존 modules 재사용
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import re
@@ -2326,6 +2327,52 @@ def ask_open(body: AskBody, authorization: str | None = Header(default=None)):
         raise HTTPException(400, str(e))
 
 
+@app.post("/api/ask/free")
+def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)):
+    """무냥이에게 **아무거나** 묻는다. 정해진 질문이 아니라 손님이 쓴 문장에 답한다.
+
+    왜: 「더 물어보기」가 열 개 중 고르는 방식이라 진짜 묻고 싶은 것을 못 물었다
+    (2026-09-09 온해님 지시). 폭스바니처럼 1:1 대화로 바꾼다.
+
+    🛑 **차감을 뒤에 한다.** 글을 못 받았는데 등불만 빠지면 손님이 손해다.
+       대신 부르기 전에 잔액을 먼저 보고, 모자라면 아예 부르지 않는다.
+    """
+    user = _token_user(authorization)
+    q = (body.question or "").strip()
+    pair = (body.pair or "").strip()
+    if not q:
+        raise HTTPException(400, "무엇이 궁금한지 적어 주세요.")
+    if len(q) > 300:
+        raise HTTPException(400, "질문이 너무 길어요. 300자 안으로 적어 주세요.")
+    if not pair:
+        raise HTTPException(400, "사주 값이 필요합니다.")
+    if not saju_writer.ready():
+        raise HTTPException(503, "지금은 답을 못 드려요. 잠시 뒤에 다시 여쭤 주세요.")
+
+    free = _is_free(user)
+    # 같은 질문을 다시 열면 등불을 안 쓴다 — 기존 ask 와 같은 규칙이라 키만 맞춘다
+    qid = "free-" + hashlib.sha1(q.encode("utf-8")).hexdigest()[:20]
+    if not free:
+        if lamps_ops.balance(user["email"]) < lamps_ops.ASK_LAMPS:
+            raise HTTPException(402, "등불이 모자라요.")
+
+    try:
+        res = saju_writer.answer(body.name or "", body.saju or {}, q)
+    except (RuntimeError, ValueError) as e:
+        raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.") from e
+
+    spent = 0
+    balance = 999999
+    if not free:
+        try:
+            r = lamps_ops.ask(user["email"], qid, pair)
+            spent = r.get("spent", 0)
+            balance = r.get("balance", 0)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance}
+
+
 @app.post("/api/premium/buy")
 def premium_buy(body: PremiumBody, authorization: str | None = Header(default=None)):
     """프리미엄 한 건 결제. 등불을 거치지 않고 그 자리에서 사서 연다."""
@@ -2399,6 +2446,13 @@ PREVIEW_SECTIONS = 1        # 값을 치르기 전에 무냥이 글로 보여 �
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
                             # 🛑 폭스바니는 2회다. 헐렁하게 두면 원가만 나가고
                             #    「몇 번 안 남았다」는 압박도 사라진다
+
+
+class AskFreeBody(BaseModel):
+    question: str
+    pair: str
+    saju: dict = {}
+    name: str = ""
 
 
 class WriteBody(BaseModel):
