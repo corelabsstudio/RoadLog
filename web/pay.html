@@ -122,6 +122,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
   <meta property="og:locale" content="ko_KR" />
@@ -148,17 +149,25 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <h1 id="payTitle">결제</h1>
     <p class="sub" id="paySub">사주 리포트를 한 건씩 결제해서 보십니다. 정기결제나 자동갱신은 없습니다.</p>
 
-    <div class="notice">
-      <b>테스트 결제 화면입니다.</b> 실제로 카드에서 돈이 빠져나가지 않습니다.
-      결제대행사 계약이 끝나면 같은 화면이 실결제로 바뀝니다.
+    <!-- 🛑 결제가 아직 안 열렸을 때만 보인다. 열리면 JS 가 지운다.
+         카드사 심사에서 「테스트(TEST) 결제창인 경우 심사 진행 불가」라 이 문구가 남아 있으면 반려된다. -->
+    <div class="notice" id="testNote" hidden>
+      <b>아직 결제를 받지 않습니다.</b> 결제대행사 심사가 끝나면 이 화면에서 바로 결제됩니다.
     </div>
 
-    <div class="order">
+    <!-- 상품 없이 주소로 바로 들어온 경우. 팔지 않는 금액을 보여 주면
+         카드사 심사 6번(노출 금액과 결제창 금액이 같은가)에서 걸린다. -->
+    <div class="notice" id="noPick" hidden>
+      <b>결제할 상품이 정해지지 않았어요.</b> 홈에서 보실 사주를 먼저 고르시면
+      그 상품의 값으로 이 화면이 열려요. <a href="/">상품 보러 가기</a>
+    </div>
+
+    <div class="order" id="order">
       <ul class="packs" id="packs"></ul>
 
-      <div class="row" id="lampRow" hidden><span class="k">받는 등불</span><span class="v" id="lampLabel">-</span></div>
+      <div class="row" id="lampRow" hidden><span class="k">함께 드리는 등불</span><span class="v" id="lampLabel">-</span></div>
       <div class="row" id="termRow"><span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span></div>
-      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">9,200원</span></div>
+      <div class="row"><span class="k">결제 금액</span><span class="v total" id="amountLabel">-</span></div>
 
       <label>이메일 (영수증을 받으실 주소)
         <input type="email" id="email" placeholder="you@example.com" />
@@ -240,6 +249,13 @@ if (PREMIUM) {
   $('lampRow').hidden = false;
   $('termRow').innerHTML = '<span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span>';
   $('amountLabel').textContent = won(PREMIUM.amount);
+} else {
+  // 🛑 상품 없이 주소로 들어왔다. 결제 칸을 아예 감춘다.
+  //    전에는 기본값 9,200원이 그대로 보였는데, 그 값으로 파는 상품이 없다.
+  //    카드사 심사에서 「사이트 노출 금액과 결제창 금액이 같은가」에 걸린다.
+  $('order').hidden = true;
+  $('noPick').hidden = false;
+  $('paySub').textContent = '사주 리포트를 한 건씩 결제해서 봅니다. 정기결제나 자동갱신은 없습니다.';
 }
 
 $('packs').addEventListener('click', (e) => {
@@ -307,7 +323,8 @@ async function claimPremium(paymentId, token) {
 fetch('/api/lamps/ready')
   .then((r) => r.json())
   .then((d) => {
-    if (d.pay_open) return;
+    if (d.pay_open) return;                 // 열렸으면 안내문도 안 띄운다
+    $('testNote').hidden = false;
     const b = $('payBtn');
     b.disabled = true;
     b.textContent = '결제 준비 중이에요';
