@@ -2186,6 +2186,7 @@ def lamps_charge(body: ChargeBody, authorization: str | None = Header(default=No
 class ReviewBody(BaseModel):
     rating: int = 5
     text: str = ""
+    stem: str = ""          # 일간 한 글자. 후기에 붙일 표시를 정한다 (없어도 된다)
 
 
 def _maybe_user(authorization: str | None) -> dict | None:
@@ -2232,7 +2233,8 @@ def product_review_write(
     if not _can_review(user["email"], product):
         raise HTTPException(403, "이 사주를 먼저 열어 보셔야 후기를 남길 수 있습니다.")
     try:
-        prev_ops.upsert(product, user["email"], user.get("name") or "", body.rating, body.text)
+        prev_ops.upsert(product, user["email"], user.get("name") or "", body.rating, body.text,
+                        stem=(body.stem or ""))
     except ValueError as e:
         raise HTTPException(400, str(e))
     return {

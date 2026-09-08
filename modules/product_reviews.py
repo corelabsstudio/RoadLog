@@ -26,6 +26,13 @@ MAX_TEXT = 300
 MIN_TEXT = 5
 
 
+# 🛑 일간(日干) 한 글자. 후기에 그 사람 사주에서 나온 표시를 붙이려고 받는다
+#    (2026-09-08 · 폭스바니는 아이디 앞에 이모지를 붙인다).
+#    **한 글자만** 저장한다. 열 개 중 하나라 생년월일을 역산할 수 없다 —
+#    개인정보처리방침의 「생년월일은 서버로 보내지 않는다」를 지킨다.
+STEMS = ("갑", "을", "병", "정", "무", "기", "경", "신", "임", "계")
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -63,6 +70,7 @@ def _public(r: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": r["id"],
         "nick": r.get("nick_masked") or "손님",
+        "stem": r.get("stem") or "",
         "rating": r.get("rating", 5),
         "text": r.get("text", ""),
         "at": r.get("at", ""),
@@ -90,7 +98,8 @@ def mine(product: str, email: str) -> dict[str, Any] | None:
     return None
 
 
-def upsert(product: str, email: str, nick: str, rating: int, text: str) -> dict[str, Any]:
+def upsert(product: str, email: str, nick: str, rating: int, text: str,
+           stem: str = "") -> dict[str, Any]:
     text = (text or "").strip()
     if len(text) < MIN_TEXT:
         raise ValueError(f"후기는 {MIN_TEXT}자 이상 써 주세요.")
@@ -102,6 +111,9 @@ def upsert(product: str, email: str, nick: str, rating: int, text: str) -> dict[
         raise ValueError("별점이 올바르지 않습니다.")
     if not 1 <= rating <= 5:
         raise ValueError("별점은 1에서 5 사이입니다.")
+    stem = (stem or "").strip()[:1]
+    if stem not in STEMS:
+        stem = ""                       # 모르는 글자가 오면 그냥 안 붙인다
 
     with _LOCK:
         data = _read()
@@ -111,6 +123,7 @@ def upsert(product: str, email: str, nick: str, rating: int, text: str) -> dict[
                 r.update({
                     "rating": rating, "text": text,
                     "nick_masked": mask(nick, email), "at": _now(),
+                    "stem": stem or r.get("stem") or "",
                 })
                 _write(data)
                 return _public(r)
@@ -118,6 +131,7 @@ def upsert(product: str, email: str, nick: str, rating: int, text: str) -> dict[
             "id": secrets.token_urlsafe(9),
             "email": email,
             "nick_masked": mask(nick, email),
+            "stem": stem,
             "rating": rating,
             "text": text,
             "at": _now(),
