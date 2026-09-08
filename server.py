@@ -111,6 +111,7 @@ from modules import password_reset as reset_ops
 from modules import lamps as lamps_ops
 from modules import product_reviews as prev_ops
 from modules import records as rec_ops
+from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
 
 ROOT = Path(__file__).resolve().parent
@@ -1983,6 +1984,18 @@ class PremiumBody(BaseModel):
     paymentId: str
 
 
+class GwansangBody(BaseModel):
+    """관상 — 얼굴 사진으로 본다.
+
+    🛑 사진은 **저장하지 않는다.** 받은 그대로 Gemini 로 넘기고 버린다.
+       그래서 multipart(UploadFile) 가 아니라 base64 본문으로 받는다 —
+       multipart 는 크면 임시 파일로 디스크에 떨어진다.
+    """
+    product: str
+    shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
+    name: str = ""
+
+
 class AskBody(BaseModel):
     qid: str
     pair: str
@@ -2389,6 +2402,35 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+# ── 관상 ────────────────────────────────────────────────
+# 🛑 **사진을 저장하지 않는다.** 받은 그대로 Gemini 로 넘기고 그 자리에서 버린다.
+#    파일을 만들지 않으므로 디스크에 남을 일이 없다.
+# 🛑 아직 **만드는 중**이라 주인만 부를 수 있다. 상품이 열리면 결제를 붙인다.
+GWAN_MAX_SHOTS = 2
+
+
+@app.post("/api/gwansang")
+def gwansang_read(body: GwansangBody, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    if not _is_owner(user):
+        raise HTTPException(403, "관상은 아직 준비 중이에요.")
+    shots = body.shots or []
+    if not shots or len(shots) > GWAN_MAX_SHOTS:
+        raise HTTPException(400, "사진을 %d장까지 보낼 수 있어요." % GWAN_MAX_SHOTS)
+    try:
+        clean = [gwansang_ops.check_jpeg(x) for x in shots]
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        out = gwansang_ops.read_face(body.product.strip(), clean, name=(body.name or "").strip())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                            # noqa: BLE001
+        raise HTTPException(502, "관상을 읽지 못했어요. 잠시 뒤 다시 해 주세요.")
+    # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
+    return {"ok": True, "text": out["text"], "tokens": out.get("tokens")}
 
 
 class ReferBody(BaseModel):
