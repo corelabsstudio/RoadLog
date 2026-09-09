@@ -2674,6 +2674,10 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
 class SummaryBody(BaseModel):
     product: str
     pair: str
+    # 🛑 공유 카드 문구용 **재료**. 계산은 앞단이 하고 서버는 말만 다듬는다 (2026-09-09).
+    #    없으면 카드 문구를 만들지 않는다 — 그때 화면은 표로 떨어진다.
+    kind: str | None = None
+    facts: dict[str, str] | None = None
 
 
 @app.post("/api/saju/summary")
@@ -2696,8 +2700,26 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
         raise HTTPException(400, "사주 값이 올바르지 않습니다.")
     if not data or not data.get("blocks"):
         return {"ok": True, "summary": ""}
+    # 🛑 카드 문구는 **한 번만** 만들고 저장한다. 다시 열 때 이름이 바뀌면
+    #    「내 전생은 ○○이었다」가 흔들려서 손님이 이상하게 본다.
+    def _card() -> dict:
+        if not body.facts:
+            return {}
+        if isinstance(data.get("card"), dict) and data["card"].get("name"):
+            return data["card"]
+        if not saju_writer.ready():
+            return {}
+        try:
+            made = saju_writer.write_card(body.kind or product, body.facts)
+        except Exception:                   # noqa: BLE001
+            return {}
+        if made:
+            data["card"] = made
+            saju_writer.save(product, pair, data)
+        return made
+
     if data.get("summary"):
-        return {"ok": True, "summary": data["summary"]}
+        return {"ok": True, "summary": data["summary"], "card": _card()}
     if not saju_writer.ready():
         return {"ok": True, "summary": ""}
     try:
@@ -2707,7 +2729,7 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     if line:
         data["summary"] = line
         saju_writer.save(product, pair, data)
-    return {"ok": True, "summary": line}
+    return {"ok": True, "summary": line, "card": _card()}
 
 
 @app.post("/api/admin/lamps/backfill")

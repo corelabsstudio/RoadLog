@@ -399,6 +399,75 @@ def summarize(blocks: list[dict[str, Any]], *, model: str | None = None) -> str:
     return txt[:90]
 
 
+# ── 공유 카드 문구 ────────────────────────────────────────
+# 왜: 카드가 **표에서 조각을 꺼내 이어 붙이는** 구조라 「조용히 굴리던 뱃짐장수」처럼
+# 뜻이 안 통하는 이름이 나왔다 (2026-09-09 온해님 「이게 무슨 뜻인지 너는 알아?」).
+#
+# 🛑 **계산을 LLM 에게 맡기지 않는다.** 어느 십성·오행·십이운성·신살에서 나왔는지는
+#    그대로 우리가 정하고, **말만 다듬게** 한다. 그래야 「왜 이 답인지」가 계속 성립한다.
+# 🛑 실패하면 빈 dict 를 준다. 화면은 표로 떨어져 그대로 나온다 — 대비책을 없애지 않는다.
+
+CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. 공유 카드에 들어갈 짧은 글을 쓴다.
+
+[써야 할 것 — JSON 하나만 내놓는다. 다른 말은 쓰지 마라]
+{"name": "…", "line": "…", "tale": "…"}
+  name  🛑 열두 자를 넘기지 마라. 쓰고 나서 세어 보고 넘으면 줄여라.
+        「어떤 사람이었나 + 무슨 일을 했나」가 한눈에 들어와야 한다
+        꾸밈말을 두 번 겹치지 마라 — 「가장 높이 올랐던 글 읽던 사람」처럼 되면 안 된다
+  line  스무 자 안쪽. 그 사람이 어떻게 살았는지. 끝에 마침표를 찍지 마라
+  tale  두 문장. 그 전생이 지금 나에게 무엇을 남겼는지로 닫는다
+
+[🛑 하지 않는 것 — 하나라도 어기면 다시 쓴다]
+1. 재료에 없는 것을 보태지 않는다. 없는 사건·이름·지명을 지어내지 않는다
+2. 사주 용어를 쓰지 않는다 — 편재·화개·십이운성·양(養) 같은 말 금지
+3. 이모지·느낌표를 쓰지 않는다
+4. 목적어 없는 서술어로 이름을 짓지 않는다.
+   🛑 「조용히 굴리던 뱃짐장수」처럼 뒤의 직업이 목적어로 읽히면 안 된다
+5. 좋은 말로 훈훈하게 맺지 않는다
+6. 말투는 「~해요」. 단정하지 않는다 — 「그렇게 보여요」"""
+
+_CARD_KEYS = ("name", "line", "tale")
+_CARD_MAX = {"name": 24, "line": 40, "tale": 160}
+
+
+def write_card(kind: str, facts: dict[str, str], *,
+               model: str | None = None) -> dict[str, str]:
+    """계산에서 나온 재료를 주고 카드 문구를 받는다. 못 쓰면 빈 dict."""
+    rows = [f"  {k} : {str(v).strip()[:80]}" for k, v in (facts or {}).items()
+            if str(v or "").strip()]
+    if not rows:
+        return {}
+    user = ("[무엇에 대한 카드인가] " + (kind or "전생") + "\n"
+            "[받은 재료]  ← 계산에서 나온 것. 이것 말고는 아무것도 모른다\n"
+            + "\n".join(rows[:8]))
+    try:
+        res = _call(CARD_SYSTEM, user, model=model, temperature=1.0, max_tokens=400)
+    except Exception:                                    # noqa: BLE001
+        return {}
+    txt = (res.get("text") or "").strip()
+    # ```json 울타리를 걷어낸다. 모델이 자주 붙인다
+    if txt.startswith("```"):
+        txt = txt.split("```")[1] if "```" in txt[3:] else txt[3:]
+        txt = txt[4:] if txt.lower().startswith("json") else txt
+    i, j = txt.find("{"), txt.rfind("}")
+    if i < 0 or j <= i:
+        return {}
+    try:
+        got = json.loads(txt[i:j + 1])
+    except Exception:                                    # noqa: BLE001
+        return {}
+    out = {}
+    for k in _CARD_KEYS:
+        v = " ".join(str(got.get(k) or "").split())
+        # 🛑 이름·한 줄은 끝 마침표를 뗀다. 모델이 들쭉날쭉 붙여서 카드가 지저분해진다
+        if k in ("name", "line"):
+            v = v.rstrip(" .。")
+        if v:
+            out[k] = v[:_CARD_MAX[k]]
+    # 이름과 한 줄이 둘 다 있어야 쓸 수 있다. 하나만 오면 표가 낫다
+    return out if out.get("name") and out.get("line") else {}
+
+
 # ── 앞서 읽은 편과 겹치지 않게 ─────────────────────────────
 # 왜: 손님은 한 편을 읽고 다음 편을 산다. 그때 앞에서 읽은 이야기가 또 나오면
 # 「돈 두 번 냈는데 같은 글」이 된다. 2·3차 결제가 여기서 끊긴다
