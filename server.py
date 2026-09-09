@@ -2428,7 +2428,12 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:                            # noqa: BLE001
-        raise HTTPException(502, "관상을 읽지 못했어요. 잠시 뒤 다시 해 주세요.")
+        # 🛑 **이유를 삼키지 않는다** (2026-09-09). 그전에는 「잠시 뒤 다시 해 주세요」만
+        #    돌려주고 진짜 이유를 어디에도 안 남겨서, 실패했을 때 무엇을 고쳐야 할지
+        #    알 길이 없었다. 서버 로그에 남기고, **아직 주인만 쓰는 기능이라** 화면에도 적는다.
+        # 🛑 손님에게 여는 날 이 줄을 손님용 문구로 되돌릴 것.
+        print("[gwansang] 실패:", repr(e)[:400])
+        raise HTTPException(502, "관상을 읽지 못했어요 — %s" % str(e)[:220])
     # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
     return {"ok": True, "text": out["text"], "tokens": out.get("tokens")}
 
