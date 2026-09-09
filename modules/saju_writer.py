@@ -482,8 +482,18 @@ def summarize(blocks: list[dict[str, Any]], *, question: str = "",
     if question:
         user = ("[손님이 물은 것 — 이 물음에 답해야 한다]" + chr(10)
                 + question.strip() + chr(10) + chr(10) + user)
-    res = _call(SUMMARY_SYSTEM, user, model=model, temperature=0.9, max_tokens=300)
-    txt = " ".join(res["text"].split())
+    # 🛑 한 번은 다시 시킨다 (2026-09-10 온해님 「어김없이 나와야 해」).
+    #    여기서 빈 값이 나가면 복채를 낸 손님의 카드에 두 줄이 통째로 빈다.
+    txt = ""
+    for _ in range(2):
+        try:
+            res = _call(SUMMARY_SYSTEM, user, model=model,
+                        temperature=0.9, max_tokens=300)
+            txt = " ".join((res.get("text") or "").split())
+        except Exception:                            # noqa: BLE001
+            txt = ""
+        if txt:
+            break
     return txt[:90]
 
 
