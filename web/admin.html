@@ -9,116 +9,142 @@
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
 <style>
 :root{
-  --bg:#100e15; --paper:#17151d; --line:#3a354a; --ink:#f1eef6;
-  --muted:#a8a3b6; --faint:#807b8f; --accent:#a493f0;
+  --bg:#0d0b12; --paper:#17151d; --card:#1c1926; --line:#2f2b3c; --ink:#f1eef6;
+  --muted:#a8a3b6; --faint:#7b7689; --accent:#a493f0; --up:#5fc79a; --down:#e9a0a0;
   --font:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   color-scheme:dark;
 
   --seal:url("data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='300'%20viewBox='0%200%20300%20300'>%20<g%20fill='%2523f0e2be'%20fill-opacity='0.48'%20font-family='serif'%20font-weight='700'>%20<text%20x='24'%20y='58'%20font-size='34'%20transform='rotate%28-8%2024%2058%29'>%E7%94%B2</text>%20<text%20x='120'%20y='36'%20font-size='26'>%E5%AD%90</text>%20<text%20x='214'%20y='72'%20font-size='38'%20transform='rotate%286%20214%2072%29'>%E4%B8%99</text>%20<text%20x='62'%20y='142'%20font-size='27'%20transform='rotate%285%2062%20142%29'>%E5%AF%85</text>%20<text%20x='166'%20y='128'%20font-size='33'>%E6%88%8A</text>%20<text%20x='252'%20y='166'%20font-size='25'%20transform='rotate%28-7%20252%20166%29'>%E5%8D%88</text>%20<text%20x='18'%20y='224'%20font-size='30'%20transform='rotate%284%2018%20224%29'>%E5%BA%9A</text>%20<text%20x='108'%20y='212'%20font-size='24'>%E7%94%B3</text>%20<text%20x='196'%20y='246'%20font-size='35'%20transform='rotate%28-5%20196%20246%29'>%E5%A3%AC</text>%20<text%20x='276'%20y='286'%20font-size='26'>%E4%BA%A5</text>%20<text%20x='84'%20y='288'%20font-size='28'%20transform='rotate%287%2084%20288%29'>%E4%B9%99</text>%20</g></svg>");
 }
 *{box-sizing:border-box}
-body{margin:0;background-color:var(--bg);background-image:var(--seal);background-size:300px 300px;background-repeat:repeat;color:var(--ink);font-family:var(--font);
-     font-size:15px;line-height:1.55;word-break:keep-all;-webkit-font-smoothing:antialiased}
+body{margin:0;background-color:var(--bg);background-image:var(--seal);
+     background-size:300px 300px;background-repeat:repeat;color:var(--ink);
+     font-family:var(--font);font-size:15px;line-height:1.5;word-break:keep-all;
+     -webkit-font-smoothing:antialiased}
 
-.top{position:sticky;top:0;z-index:5;background:rgba(16,14,21,.94);
-     backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.top .bar{max-width:1400px;margin:0 auto;padding:16px 22px 0;
-          display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
-.top h1{font-size:1.35rem;margin:0;letter-spacing:-.02em}
-.top .as{color:var(--faint);font-size:.9rem;margin:0}
-.top .out{margin-left:auto;font:inherit;font-size:.95rem;background:none;border:0;
-          color:var(--muted);cursor:pointer;text-decoration:underline}
-.tabs{max-width:1400px;margin:0 auto;padding:10px 22px 0;display:flex;gap:2px;overflow-x:auto}
-.tabs button{font:inherit;font-size:1.05rem;background:none;border:0;color:var(--muted);
-  padding:9px 14px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
-.tabs button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+/* ── 왼쪽 줄 ─────────────────────────────────────────
+   🛑 아이콘을 손으로 그리지 않는다. 글자로 둔다 (전역 CLAUDE.md 「이미지는 제미나이」). */
+#board{display:grid;grid-template-columns:132px 1fr;min-height:100vh}
+.rail{position:sticky;top:0;align-self:start;height:100vh;padding:20px 12px;
+      background:var(--paper);border-right:1px solid var(--line);
+      display:flex;flex-direction:column;gap:4px}
+.rail .brand{font-size:.95rem;font-weight:800;letter-spacing:-.02em;padding:4px 10px 18px}
+.rail .brand span{display:block;font-size:.72rem;font-weight:600;color:var(--faint);letter-spacing:0}
+.rail button{font:inherit;font-size:.95rem;text-align:left;background:none;border:0;
+  color:var(--muted);padding:10px 12px;border-radius:10px;cursor:pointer}
+.rail button:hover{color:var(--ink);background:rgba(164,147,240,.08)}
+.rail button.on{color:var(--ink);font-weight:700;background:rgba(164,147,240,.16)}
+.rail .out{margin-top:auto;color:var(--faint);font-size:.88rem}
 
-.wrap{max-width:1400px;margin:0 auto;padding:8px 22px 80px}
-h2{font-size:.88rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
-   margin:20px 0 0;padding-bottom:6px;border-bottom:1px solid var(--line)}
+/* ── 위쪽 줄 ───────────────────────────────────────── */
+.main{min-width:0;padding:0 26px 60px}
+.head{display:flex;align-items:baseline;gap:14px;padding:22px 0 16px}
+.head h1{font-size:1.5rem;margin:0;letter-spacing:-.02em}
+.head .as{color:var(--faint);font-size:.88rem;margin:0;margin-left:auto}
 
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);margin-top:8px}
-.tile{padding:10px 14px 12px;border-top:1px solid var(--line)}
-.tile:nth-child(odd){border-right:1px solid var(--line)}
-.tile b{display:block;font-size:1.6rem;font-weight:800;letter-spacing:-.02em;
-        font-variant-numeric:tabular-nums;line-height:1.15}
-.tile span{display:block;font-size:.86rem;color:var(--muted);margin-top:2px}
-.tile.hi b{color:var(--accent)}
-@media(min-width:820px){ .tiles{grid-template-columns:repeat(4,1fr)}
-  .tile:nth-child(odd){border-right:0} .tile+.tile{border-left:1px solid var(--line)} }
+/* ── 카드 ──────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px 18px}
+.card>h2{font-size:1rem;font-weight:700;color:var(--ink);letter-spacing:-.01em;
+  margin:0 0 2px;padding:0;border:0}
+.card>.sub{color:var(--faint);font-size:.85rem;margin:0 0 6px}
+.card .hd{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.card .hd h2{margin:0}
+.card .hd .seg{margin:0 0 0 auto}
 
-.seg{display:flex;margin:10px 0 0}
-.seg button{font:inherit;font-size:.9rem;background:none;color:var(--muted);
-  border:1px solid var(--line);padding:5px 14px;cursor:pointer}
+.deck{display:grid;gap:14px;margin-bottom:14px}
+.deck.wide{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+.deck.half{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
+@media(max-width:1080px){ .deck.wide{grid-template-columns:1fr} }
+@media(max-width:640px){ #board{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;overflow-x:auto;border-right:0;
+        border-bottom:1px solid var(--line)}
+  .rail .brand{display:none} .rail .out{margin-top:0}
+  .stats{grid-template-columns:1fr} .main{padding:0 16px 50px} }
+
+/* 숫자 카드 — 🛑 변화율을 둥근 배지에 넣지 않는다. 글자와 화살표로만. */
+.stat .lb{display:block;color:var(--muted);font-size:.86rem}
+.stat b{display:block;font-size:1.85rem;font-weight:800;letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums;line-height:1.2;margin-top:2px}
+.stat .spark{display:block;width:100%;height:34px;margin-top:6px}
+.stat .dl{display:block;margin-top:4px;font-size:.83rem;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.stat .dl i{font-style:normal;font-weight:700}
+.stat .dl i.up{color:var(--up)} .stat .dl i.down{color:var(--down)}
+
+/* ── 고르는 단추 ───────────────────────────────────── */
+.seg{display:flex}
+.seg button{font:inherit;font-size:.85rem;background:none;color:var(--muted);
+  border:1px solid var(--line);padding:4px 12px;cursor:pointer}
 .seg button:first-child{border-radius:9px 0 0 9px}
 .seg button:last-child{border-radius:0 9px 9px 0}
 .seg button+button{border-left:0}
 .seg button.on{color:#17151d;background:var(--accent);border-color:var(--accent);font-weight:700}
 
-.chart{margin-top:10px}
-.chart svg{display:block;width:100%;height:180px}
+/* ── 차트 ──────────────────────────────────────────── */
+.chart svg{display:block;width:100%;height:200px}
 .chart .gl{stroke:var(--line);stroke-width:1}
 .chart .bar{fill:var(--accent)}
 .chart .bar.z{fill:var(--line)}
+.chart .bar.pick{fill:#ded6ff}
 .chart .lb{fill:var(--faint);font-size:15px}
 .chart .vl{fill:var(--muted);font-size:16px}
-.chart-empty{color:var(--faint);font-size:1rem;padding:28px 0}
-
-.rank{list-style:none;padding:0;margin:6px 0 0}
-.rank li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;
-  border-top:1px solid var(--line);padding:8px 2px}
-.rank .no{color:var(--faint);font-size:.98rem;font-variant-numeric:tabular-nums}
-.rank .nm{min-width:0}
-.rank .nm b{display:block;font-size:.95rem;font-weight:700}
-.rank .track{display:block;height:6px;background:var(--line);border-radius:3px;
-  margin-top:7px;overflow:hidden}
-.rank .fill{display:block;height:100%;background:var(--accent)}
-.rank .ct{font-size:1.1rem;font-weight:800;font-variant-numeric:tabular-nums}
-.rank li:nth-child(-n+3) .no{color:var(--accent);font-weight:800}
-.rank li.zero{display:block;color:var(--faint);font-size:1rem}
-
-/* 🛑 한 화면에 담는다 (2026-09-09 온해님 지적 — 스크롤을 계속 내려야 했다).
-   목록 둘을 나란히 놓고 행 높이를 66px → 40px 으로 줄였다. */
-/* 넓은 화면에서는 옆으로 눕힌다. 좁으면 알아서 한 칸이 된다. */
-.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 28px}
-.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:0 32px;align-items:start}
-.fold{margin-top:20px;border-top:1px solid var(--line);padding-top:8px}
-.fold>summary{cursor:pointer;color:var(--muted);font-size:.88rem;letter-spacing:.1em;font-weight:700;list-style:none}
-.fold>summary::-webkit-details-marker{display:none}
-.fold>summary::before{content:'▸ ';color:var(--faint)}
-.fold[open]>summary::before{content:'▾ '}
-.split h3{font-size:1.02rem;font-weight:700;margin:16px 0 0}
-.rank.tight li{grid-template-columns:22px 1fr auto;gap:10px;padding:7px 2px}
-.rank.tight .nm b{font-size:.98rem}
-.rank.tight .track{height:4px;margin-top:5px}
-.rank.tight .ct{font-size:1rem}
-.rank.tight .no{font-size:.9rem}
-.picked{margin:6px 0 0;font-size:.95rem;color:var(--muted)}
-.picked b{color:var(--ink)}
-.picked button{margin-left:8px;font:inherit;font-size:.9rem;padding:3px 10px;cursor:pointer;
-  color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px}
 .chart .hit{fill:transparent;cursor:pointer}
 .chart .hit:hover{fill:rgba(164,147,240,.12)}
-.chart .bar.pick{fill:#ded6ff}
-table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
-th,td{border-top:1px solid var(--line);padding:6px 9px;text-align:right;
+.chart-empty{color:var(--faint);font-size:.95rem;padding:24px 0}
+.picked{margin:6px 0 0;font-size:.88rem;color:var(--muted)}
+.picked b{color:var(--ink)}
+.picked button{margin-left:8px;font:inherit;font-size:.83rem;padding:2px 10px;cursor:pointer;
+  color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px}
+
+/* ── 순위 목록 (참고 그림의 Top Platform 자리) ─────────── */
+.rank{list-style:none;padding:0;margin:4px 0 0}
+.rank li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 10px;padding:9px 0 0;
+  align-items:baseline}
+.rank .no{color:var(--faint);font-size:.85rem;font-variant-numeric:tabular-nums}
+.rank li:nth-child(-n+3) .no{color:var(--accent);font-weight:800}
+.rank li+li{border-top:1px solid var(--line);margin-top:9px}
+.rank .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.rank .nm b{font-size:.95rem;font-weight:700}
+.rank .ct{font-size:.95rem;font-weight:800;font-variant-numeric:tabular-nums}
+.rank .track{grid-column:1/4;display:block;height:5px;margin-top:2px;background:var(--line);
+  border-radius:3px;overflow:hidden}
+.rank .fill{display:block;height:100%;background:var(--accent);border-radius:3px}
+.rank li:nth-child(2) .fill{background:#7ec8ff}
+.rank li:nth-child(3) .fill{background:#f0c96f}
+.rank li:nth-child(4) .fill{background:#8fd9b6}
+.rank li.zero{display:block;color:var(--faint);font-size:.95rem;border:0}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:0 26px}
+.split h3{font-size:.9rem;font-weight:700;color:var(--muted);margin:10px 0 0}
+
+/* ── 표 ────────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;margin-top:4px;font-size:.9rem}
+th,td{border-top:1px solid var(--line);padding:7px 9px;text-align:right;
       font-variant-numeric:tabular-nums;white-space:nowrap}
-th{color:var(--faint);font-weight:600;font-size:.9rem}
+th{color:var(--faint);font-weight:600;font-size:.84rem;border-top:0}
 td:first-child,th:first-child{text-align:left}
-td.mail{max-width:260px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:normal}
+td.mail{max-width:250px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:normal}
 tbody tr:hover{background:rgba(164,147,240,.07)}
 .zero{color:var(--faint);text-align:left}
-button.del{font:inherit;font-size:.85rem;background:none;color:var(--faint);
-  border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
+button.del,button.vip{font:inherit;font-size:.82rem;background:none;color:var(--faint);
+  border:1px solid var(--line);border-radius:7px;padding:3px 10px;cursor:pointer}
 button.del:hover{color:#e9a0a0;border-color:#e9a0a0}
-button.vip{font:inherit;font-size:.85rem;background:none;color:var(--faint);
-  border:1px solid var(--line);border-radius:7px;padding:4px 11px;cursor:pointer}
 button.vip:hover{color:var(--ink);border-color:var(--ink)}
 button.vip.on{color:#c8b6ff;border-color:#c8b6ff}
 button.vip[disabled]{opacity:.5;cursor:default}
-td.owner{color:var(--faint);font-size:.85rem}
+td.owner{color:var(--faint);font-size:.84rem}
 .scroll{overflow-x:auto}
-.note{color:var(--faint);font-size:.92rem;margin:10px 0 0}
+.note{color:var(--faint);font-size:.85rem;margin:8px 0 0}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.tools button{font:inherit;font-size:.88rem;background:none;color:var(--muted);
+  border:1px solid var(--line);border-radius:9px;padding:6px 12px;cursor:pointer}
+.tools button:hover{color:var(--ink);border-color:var(--ink)}
+.fold{margin-top:12px}
+.fold>summary{cursor:pointer;color:var(--muted);font-size:.88rem;font-weight:700;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:'▸ ';color:var(--faint)}
+.fold[open]>summary::before{content:'▾ '}
+.foot{color:var(--faint);font-size:.83rem;margin:22px 0 0;max-width:70ch}
 
 .login{max-width:340px;margin:80px auto;padding:0 22px}
 .login h1{font-size:1.4rem;margin:0 0 2px}
@@ -160,93 +186,111 @@ td.owner{color:var(--faint);font-size:.85rem}
 </div>
 
 <div id="board" hidden>
-  <header class="top">
-    <div class="bar">
-      <h1>운영 현황</h1>
-      <p class="as" id="asOf"></p>
-      <button type="button" class="out" id="out">나가기</button>
-    </div>
-    <nav class="tabs" id="tabs">
-      <button data-tab="sum" class="on">한눈에</button>
-      <button data-tab="visit">방문자</button>
-      <button data-tab="member">회원</button>
-    </nav>
-  </header>
+  <nav class="rail" id="tabs">
+    <div class="brand">로드로그<span>운영 현황</span></div>
+    <button data-tab="sum" class="on">한눈에</button>
+    <button data-tab="visit">방문자</button>
+    <button data-tab="member">회원</button>
+    <button type="button" class="out" id="out">나가기</button>
+  </nav>
 
-  <div class="wrap">
+  <div class="main">
+    <div class="head">
+      <h1 id="pageName">한눈에</h1>
+      <p class="as" id="asOf"></p>
+    </div>
+
     <section data-page="sum">
-      <div class="cols">
-        <div>
-          <h2>방문자</h2>
-          <div class="tiles" id="tVisit"></div>
-        </div>
-        <div>
-          <h2 id="hMonth">이번 달</h2>
-          <div class="tiles" id="tMonth"></div>
-        </div>
-      </div>
-      <h2>누적</h2>
-      <div class="tiles" id="tTotal"></div>
-      <div class="cols">
-        <div>
-          <h2>매출</h2>
-          <div class="seg" id="segSales">
-            <button data-g="day" class="on">일별</button>
-            <button data-g="week">주간</button>
-            <button data-g="month">월별</button>
+      <div class="deck wide">
+        <div class="card">
+          <div class="hd">
+            <h2>매출</h2>
+            <div class="seg" id="segSales">
+              <button data-g="day" class="on">일별</button>
+              <button data-g="week">주간</button>
+              <button data-g="month">월별</button>
+            </div>
           </div>
           <div class="chart" id="cSales"></div>
         </div>
-        <div>
+        <div class="stats" id="statBox"></div>
+      </div>
+
+      <div class="deck half">
+        <div class="card">
           <h2>사람들이 많이 본 사주</h2>
-          <ol class="rank tight" id="rProd"></ol>
+          <p class="sub">최근 90일</p>
+          <ol class="rank" id="rProd"></ol>
+        </div>
+        <div class="card">
+          <h2>누적</h2>
+          <p class="sub">서비스를 연 뒤 전부</p>
+          <div class="stats" id="totalBox"></div>
+          <details class="fold">
+            <summary>월별 매출</summary>
+            <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
+          </details>
         </div>
       </div>
-      <details class="fold">
-        <summary>월별 매출</summary>
-        <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
-      </details>
     </section>
 
     <section data-page="visit" hidden>
-      <h2>방문자</h2>
-      <div class="seg" id="segVisit">
-        <button data-g="day" class="on">일별</button>
-        <button data-g="week">주간</button>
-        <button data-g="month">월별</button>
-      </div>
-      <div class="chart" id="cVisit"></div>
-      <p class="picked" id="visitPick">막대를 누르면 <b>그날</b> 들어온 길만 봅니다.</p>
-      <div class="split">
-        <div><h3>어디서 들어왔나</h3><ol class="rank tight" id="rSrc"></ol></div>
-        <div><h3>무엇으로 들어왔나</h3><ol class="rank tight" id="rClient"></ol></div>
-      </div>
-      <p class="note" id="humanNote"></p>
-
-      <h2>날짜별</h2>
-      <div class="scroll"><table>
-        <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>결제</th><th>매출</th></tr></thead>
-        <tbody id="tDaily"></tbody>
-      </table></div>
-
-      <details class="fold">
-        <summary>집계 손질</summary>
-        <div class="tools">
-          <button type="button" id="btnMe">내 방문 빼기</button>
-          <button type="button" id="btnWipeDay">오늘 기록 지우기</button>
-          <button type="button" id="btnWipeAll">전부 지우기</button>
+      <div class="deck">
+        <div class="card">
+          <div class="hd">
+            <h2>방문자</h2>
+            <div class="seg" id="segVisit">
+              <button data-g="day" class="on">일별</button>
+              <button data-g="week">주간</button>
+              <button data-g="month">월별</button>
+            </div>
+          </div>
+          <div class="chart" id="cVisit"></div>
+          <p class="picked" id="visitPick">막대를 누르면 <b>그날</b> 들어온 길만 봅니다.</p>
         </div>
-        <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
-      </details>
+      </div>
+
+      <div class="deck half">
+        <div class="card">
+          <h2>어디서 들어왔나</h2>
+          <ol class="rank" id="rSrc"></ol>
+        </div>
+        <div class="card">
+          <h2>무엇으로 들어왔나</h2>
+          <ol class="rank" id="rClient"></ol>
+        </div>
+      </div>
+
+      <div class="deck">
+        <div class="card">
+          <h2>날짜별</h2>
+          <p class="note" id="humanNote"></p>
+          <div class="scroll"><table>
+            <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>결제</th><th>매출</th></tr></thead>
+            <tbody id="tDaily"></tbody>
+          </table></div>
+          <details class="fold">
+            <summary>집계 손질</summary>
+            <div class="tools">
+              <button type="button" id="btnMe">내 방문 빼기</button>
+              <button type="button" id="btnWipeDay">오늘 기록 지우기</button>
+              <button type="button" id="btnWipeAll">전부 지우기</button>
+            </div>
+            <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
+          </details>
+        </div>
+      </div>
     </section>
 
     <section data-page="member" hidden>
-      <h2 id="hMem">가입한 회원</h2>
-      <div class="scroll"><table>
-        <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>VIP</th><th></th></tr></thead>
-        <tbody id="tMem"></tbody>
-      </table></div>
-      <p class="note" id="memNote"></p>
+      <div class="card">
+        <h2 id="hMem">가입한 회원</h2>
+        <div class="scroll"><table>
+          <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>VIP</th><th></th></tr></thead>
+          <tbody id="tMem"></tbody>
+        </table></div>
+        <p class="note" id="memNote"></p>
+      </div>
     </section>
 
     <p class="foot">
@@ -408,10 +452,37 @@ function drawHuman(h) {
   el.innerHTML = bits.join(' ');
 }
 
-function tiles(el, items) {
+/** 작은 잔물결 그림. 값이 없거나 다 0 이면 아무것도 안 그린다. */
+function spark(vals) {
+  const v = (vals || []).filter((x) => typeof x === 'number');
+  if (v.length < 2 || !v.some((x) => x)) return '';
+  const max = Math.max(...v) || 1, W = 120, H = 34, P = 3;
+  const pts = v.map((x, i) =>
+    (i / (v.length - 1) * W).toFixed(1) + ',' + (H - P - (H - P * 2) * (x / max)).toFixed(1));
+  return '<svg class="spark" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true">'
+    + '<polyline fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"'
+    + ' vector-effect="non-scaling-stroke" points="' + pts.join(' ') + '" /></svg>';
+}
+
+/** 「어제보다」 한 줄. 🛑 둥근 배지에 넣지 않는다 (전역 CLAUDE.md 12번) — 화살표와 글자로만. */
+function delta(now, before, unit) {
+  if (typeof before !== 'number' || !before) return '';
+  const d = now - before;
+  if (!d) return '<span class="dl">' + unit + '와 같아요</span>';
+  const pct = Math.round(Math.abs(d) / before * 100);
+  return '<span class="dl"><i class="' + (d > 0 ? 'up">▲' : 'down">▼') + ' ' + pct + '%</i> '
+    + unit + '보다 ' + (d > 0 ? '+' : '−') + num(Math.abs(d)) + '</span>';
+}
+
+/**
+ * 숫자 카드를 그린다.
+ * items: [이름, 큰 글자, 잔물결에 쓸 값들, 어제 대비 줄]
+ */
+function stats(el, items) {
+  if (!el) return;
   el.innerHTML = items.map((it) =>
-    '<div class="tile' + (it[2] ? ' hi' : '') + '"><b>' + it[0] + '</b><span>' + it[1] + '</span></div>'
-  ).join('');
+    '<div class="card stat"><span class="lb">' + it[0] + '</span><b>' + it[1] + '</b>'
+    + spark(it[2]) + (it[3] || '') + '</div>').join('');
 }
 
 const drawSales = () => chart($('cSales'), group(DATA.daily, gSales, 'sales'), gSales, won);
@@ -457,25 +528,22 @@ $('cVisit').addEventListener('click', (e) => {
 function paint() {
   const d = DATA;
   $('asOf').textContent = new Date().toLocaleString('ko-KR');
-  $('hMonth').textContent = d.month.month.replace('-', '년 ') + '월';
 
-  tiles($('tVisit'), [
-    [num(d.total.uv) + '명', '전체 방문자', true],
-    [num(d.today.uv) + '명', '오늘 방문자', true],
-    [num(d.today.pv) + '번', '오늘 페이지 열림'],
-    [num(d.total.members) + '명', '회원'],
+  // 잔물결·어제 대비는 날짜별 자료에서 바로 뽑는다. 없는 값은 안 그린다.
+  const dl = d.daily || [];
+  const last = (k, n) => dl.slice(-n).map((x) => x[k] || 0);
+  const prev = (k) => (dl.length > 1 ? dl[dl.length - 2][k] || 0 : null);
+  stats($('statBox'), [
+    ['오늘 방문자', num(d.today.uv) + '명', last('uv', 14), delta(d.today.uv, prev('uv'), '어제')],
+    ['오늘 페이지 열림', num(d.today.pv) + '번', last('pv', 14), delta(d.today.pv, prev('pv'), '어제')],
+    ['이번 달 매출', won(d.month.sales), last('sales', 14), ''],
+    ['회원', num(d.total.members) + '명', last('signups', 14), ''],
   ]);
-  tiles($('tMonth'), [
-    [won(d.month.sales), '매출', true],
-    [num(d.month.uv) + '명', '방문자'],
-    [num(d.month.signups) + '명', '가입'],
-    [num(d.month.opens) + '번', '사주 열람'],
-  ]);
-  tiles($('tTotal'), [
-    [won(d.total.sales), '매출', true],
-    [num(d.total.charges) + '건', '결제'],
-    [num(d.total.signups) + '명', '가입'],
-    [num(d.total.opens) + '번', '사주 열람'],
+  stats($('totalBox'), [
+    ['매출', won(d.total.sales), [], ''],
+    ['결제', num(d.total.charges) + '건', [], ''],
+    ['가입', num(d.total.signups) + '명', [], ''],
+    ['사주 열람', num(d.total.opens) + '번', [], ''],
   ]);
 
   const prod = (d.byProduct || []).map((p) => ({ product: p.product, n: p.opens }));
@@ -557,10 +625,13 @@ function seg(id, set) {
 seg('segSales', (g) => { gSales = g; drawSales(); });
 seg('segVisit', (g) => { gVisit = g; drawVisit(); });
 
+const TAB_NAME = { sum: '한눈에', visit: '방문자', member: '회원' };
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
-  [...$('tabs').children].forEach((x) => x.classList.toggle('on', x === b));
+  // 🛑 「나가기」도 같은 상자에 있다. data-tab 이 있는 것만 고른다
+  $('tabs').querySelectorAll('button[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== b.dataset.tab; });
+  $('pageName').textContent = TAB_NAME[b.dataset.tab] || '';
   window.scrollTo(0, 0);
 });
 
