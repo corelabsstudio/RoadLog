@@ -119,6 +119,18 @@ PREMIUM_WON = {
     "secret": 27800,
     "queer": 19800,
     "eros": 14800,
+
+    # 관상 — 얼굴 사진으로 보는 것 (roadlog-saju/gwansang.js 와 같아야 한다).
+    # 🛑 여기 없으면 결제창은 뜨는데 **서버가 값을 몰라 거절**한다.
+    #    화면엔 아무 설명도 안 나오고 그냥 안 열린다.
+    "face_first": 980,
+    "face_me": 5800,
+    "face_you": 5800,
+    "face_love": 5800,
+    "face_money": 5800,
+    "face_all": 19800,
+    "face_pair": 29800,
+    "face_king": 39800,
 }
 
 _PAIR_RE = re.compile(r"^[0-9a-f]{16,64}$")
