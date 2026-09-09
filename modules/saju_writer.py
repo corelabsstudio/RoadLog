@@ -242,7 +242,23 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
             "  · 이 항목에서 **실제로 나온 답**을 걸고 넘어지는 제목이어야 한다\n"
             "  · 열여섯 자 안쪽. 읽고 나서 「그래서 뭔데」가 들게\n"
             "  · 🛑 사주 용어를 쓰지 마라. 이모지·느낌표도 쓰지 마라\n"
-            "  · 🛑 답을 제목에서 다 말하지 마라. 본문을 열게 만드는 게 제목이 할 일이다")
+            "  · 🛑 답을 제목에서 다 말하지 마라. 본문을 열게 만드는 게 제목이 할 일이다"
+            "
+
+[맨 마지막 줄에 혼잣말을 쓴다]
+"
+            "`혼잣말: ` 으로 시작하는 줄을 하나 쓴다. 본문 끝에서 한 줄 띄우고.
+"
+            "  · 무냥이가 이 항목을 다 읽고 **옆에서 툭 던지는 한마디**다
+"
+            "  · 두 문장 안쪽·마흔 자 안쪽. 말풍선에 들어간다
+"
+            "  · 🛑 본문을 요약하지 마라. 요약은 손님이 방금 읽었다
+"
+            "  · 🛑 위로하거나 훈훈하게 맺지 마라. 한 발 물러선 자리에서 덧붙이는 말이다
+"
+            "  · 좋은 보기: 「이 자리 얘기 나오면 다들 한참 말이 없어져요」 "
+            "「저도 이건 조심해서 말해요」 「올해 글자는 올해만 써요. 내년엔 또 달라져요」")
     user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s%s"
             % (name, seen or "", head, fact, section, guide, hook))
     res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
@@ -258,7 +274,28 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
         res = res2
         res["left"] = check_counts(res["text"], saju)
     res["hook"], res["text"] = _split_hook(res.get("text") or "")
+    res["mutter"], res["text"] = _split_mutter(res["text"])
     return res
+
+
+_MUTTER_MAX = 60
+
+
+def _split_mutter(text: str) -> tuple[str, str]:
+    """맨 마지막 줄의 `혼잣말: …` 을 떼어 낸다. 없으면 빈 문자열."""
+    lines = (text or "").rstrip().split("
+")
+    for i in range(len(lines) - 1, max(-1, len(lines) - 4), -1):
+        line = lines[i].strip()
+        if not line.startswith("혼잣말:"):
+            continue
+        say = line[len("혼잣말:"):].strip().strip("「」\"' ")
+        if not say or len(say) > _MUTTER_MAX + 20:
+            return "", text
+        rest = "
+".join(lines[:i]).rstrip()
+        return say[:_MUTTER_MAX + 20], rest
+    return "", text
 
 
 _HOOK_MAX = 20          # 화면 한 줄에 들어가는 길이
@@ -341,6 +378,8 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
         blocks.append({"title": s, "text": d.get("text", ""),
                        # 화면에 보이는 제목. 비어 있으면 본래 제목을 쓴다
                        "hook": d.get("hook", ""),
+                       # 항목 끝에 붙는 무냥이 혼잣말 (2026-09-09 온해님 지시)
+                       "mutter": d.get("mutter", ""),
                        "left": d.get("left") or []})
     return {"model": model or MODEL, "blocks": blocks,
             "tokens": {"in": tin, "out": tout}, "fixed": fixed, "errors": errs}
