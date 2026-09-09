@@ -257,6 +257,16 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
         (admin_email or "").strip().lower(),
     }
 
+    # 🛑 **로그인 실패는 어느 경우에도 같은 말로 돌려준다** (2026-09-09 온해님 제보).
+    #    그전에는 「가입된 계정이 없습니다」와 「비밀번호가 올바르지 않습니다」를 갈라 놓아
+    #    아무 이메일이나 넣어 보면 **그 사람이 우리 회원인지 알 수 있었다.** 사주 서비스라
+    #    가입 사실 자체가 알려지면 안 된다 — 비밀번호 재설정(server.py)에는 이미 걸어 둔
+    #    원칙인데 로그인에만 빠져 있었다.
+    # 🛑 **내부 사정을 손님에게 적지 않는다.** 「클라우드·로컬 회원 DB」·「Secrets의
+    #    ADMIN_USERNAME」·관리자 ID 가 그대로 화면에 나가고 있었다.
+    #    무엇이 틀렸는지는 서버 로그에만 남긴다.
+    LOGIN_FAIL = "이메일이나 비밀번호가 맞지 않아요."
+
     ok_a, user_a, msg_a = authenticate_admin_credentials(email, password)
     if ok_a and user_a:
         from modules.admin_ops import enrich_user_flags
@@ -268,8 +278,7 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
         return (
             False,
             None,
-            f"관리자 비밀번호가 올바르지 않습니다. (ID: {admin_user}) "
-            "Secrets의 ADMIN_PASSWORD 와 같은지 확인하세요.",
+            LOGIN_FAIL,
         )
 
     if _sb.enabled:
@@ -285,11 +294,11 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
                 return (
                     False,
                     None,
-                    "가입된 계정이 없습니다. 클라우드에서는 로컬 계정이 공유되지 않으니 여기서 회원가입 해 주세요.",
+                    LOGIN_FAIL,
                 )
             u = res.data[0]
             if not _verify_password(password, u["password_hash"], u["salt"]):
-                return False, None, "비밀번호가 올바르지 않습니다."
+                return False, None, LOGIN_FAIL
             from modules.admin_ops import enrich_user_flags
 
             return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
@@ -301,15 +310,11 @@ def authenticate(email: str, password: str) -> tuple[bool, dict | None, str]:
     if not u:
         # 관리자 ID를 이메일처럼 친 경우 안내
         admin_user, _, admin_email = get_admin_credentials()
-        hint = ""
-        if email not in {(admin_user or "").lower(), (admin_email or "").lower()}:
-            hint = (
-                " 클라우드·로컬 회원 DB는 서로 다릅니다. "
-                "이 사이트에서 회원가입을 다시 하거나, 관리자는 Secrets의 ADMIN_USERNAME으로 로그인해 주세요."
-            )
-        return False, None, "가입된 계정이 없습니다." + hint
+        print("[login] 없는 계정:", email)          # 운영자만 보는 자리
+        return False, None, LOGIN_FAIL
     if not _verify_password(password, u["password_hash"], u["salt"]):
-        return False, None, "비밀번호가 올바르지 않습니다."
+        print("[login] 비밀번호 틀림:", email)          # 운영자만 보는 자리
+        return False, None, LOGIN_FAIL
     from modules.admin_ops import enrich_user_flags
 
     return True, enrich_user_flags(_normalize_user(u)), "로그인 성공"
