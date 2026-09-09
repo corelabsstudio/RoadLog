@@ -201,8 +201,17 @@ def read_face(product: str, shots: list[str], *, name: str = "",
     }
     url = (_URL % (model or MODEL)) + "?key=" + key
 
+    # 🛑 **짧게 나오면 한 번 더 쓰게 한다** (2026-09-09).
+    #    980원짜리가 200자로 나온 적이 있다. 길이는 눈으로 확인할 방법이 없어서
+    #    (사람 얼굴 사진이 있어야 시험이 된다) 코드가 스스로 잰다.
+    #    🛑 「이 사진으로는 보기 어려워요」처럼 **물러선 답은 다시 시키지 않는다.**
+    #       사진이 나쁜 것이지 글이 짧은 게 아니다.
+    want = chars * max(1, len(secs)) if secs else chars * 5
+    floor = int(want * 0.55)
+
     last = None
-    for _ in range(2):
+    tin = tout = 0
+    for turn in range(3):
         try:
             r = httpx.post(url, json=body, timeout=TIMEOUT)
             j = r.json()
@@ -212,9 +221,26 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                 text = "".join(p.get("text", "") for p in parts).strip()
                 if text:
                     u = j.get("usageMetadata") or {}
+                    tin += u.get("promptTokenCount") or 0
+                    tout += u.get("candidatesTokenCount") or 0
+                    plain = len(text.replace(" ", "").replace("\n", ""))
+                    short = plain < floor and len(text) > 60 and turn < 2
+                    if short and secs:
+                        # 자리를 몇 개나 빠뜨렸는지 짚어서 다시 시킨다
+                        got = text.count("## ")
+                        body["contents"][0]["parts"][-1] = {"text": ask + (
+                            "\n\n[🛑 다시 쓴다]\n"
+                            "방금 쓴 글이 **%d자**였다. **%d자**는 되어야 한다.\n"
+                            "소제목을 %d개 썼는데 **%d개**를 써야 한다.\n"
+                            "빠뜨린 자리를 채우고, 자리마다 **보이는 것 + 그래서 어떤 사람인지 + "
+                            "일상 장면 하나**를 다 적어라.\n"
+                            "🛑 같은 말을 늘려 쓰지 마라. 사진에서 아직 안 본 데를 봐라."
+                            % (plain, want, got, len(secs)))}
+                        last = "짧아서 다시 (%d자)" % plain
+                        continue
                     return {"text": text, "model": model or MODEL,
-                            "tokens": {"in": u.get("promptTokenCount"),
-                                       "out": u.get("candidatesTokenCount")}}
+                            "tokens": {"in": tin, "out": tout},
+                            "chars": plain, "want": want, "retried": turn}
                 last = "빈 답 (%s)" % c.get("finishReason", "")
             else:
                 last = str(j.get("error", {}).get("message", j))[:200]
