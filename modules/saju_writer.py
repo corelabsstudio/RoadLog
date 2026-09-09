@@ -447,6 +447,8 @@ SUMMARY_SYSTEM = """너는 사주 결과지를 읽고, 공유 카드에 넣을 �
 - 「당신은 ~한 사람입니다」 같은 설명문 말고, 읽은 사람이 뜨끔할 한마디로.
 - 존댓말. 「~해요」 「~거든요」 「~죠」. 이모지·느낌표 금지.
 - 좋은 말로 마무리하지 마라. 찌르고 끝낸다.
+- 🛑 **손님이 물은 것에 답해라.** 위에 물음이 적혀 있으면 그 물음의 답으로 두 줄을 쓴다.
+  풀이 과정·생김새를 늘어놓지 마라. 카드를 본 사람이 「나는 어떤 답일까」 싶어야 한다.
 
 [좋은 예]
 겉으로는 다 받아 주면서 속으로 명단을 적어 두는 사람이에요. 그 명단이 길어지면 조용히 문을 닫죠.
@@ -457,16 +459,25 @@ SUMMARY_SYSTEM = """너는 사주 결과지를 읽고, 공유 카드에 넣을 �
 좋은 기운이 함께하니 힘내세요.  (훈훈한 마무리)"""
 
 
-def summarize(blocks: list[dict[str, Any]], *, model: str | None = None) -> str:
-    """리포트 앞부분을 읽고 카드에 넣을 두 줄을 뽑는다."""
+def summarize(blocks: list[dict[str, Any]], *, question: str = "",
+              model: str | None = None) -> str:
+    """리포트를 읽고 카드에 넣을 두 줄을 뽑는다."""
     src = []
-    for b in blocks[:3]:
+    # 🛑 **앞 세 항목만 보지 않는다** (2026-09-10). 마지막 자리가 대개 종합이라
+    #    손님이 물은 것의 답은 거기 있다.
+    for b in (blocks[:2] + blocks[-1:] if len(blocks) > 2 else blocks):
         t = (b.get("text") or "").strip()
         if t:
             src.append(t[:900])
     if not src:
         return ""
-    user = "[결과지 앞부분]\n" + "\n\n".join(src)
+    user = "[결과지]\n" + "\n\n".join(src)
+    # 🛑 **물음을 같이 준다** (2026-09-10 온해님). 카드 제목이 상품의 질문인데
+    #    그걸 모른 채 요약하면 엉뚱한 답이 붙는다. 손님은 카드에서 질문과 답을
+    #    나란히 보고 「나는 어떤 답일까」 싶어서 QR 을 찍는다.
+    if question:
+        user = ("[손님이 물은 것 — 이 물음에 답해야 한다]" + chr(10)
+                + question.strip() + chr(10) + chr(10) + user)
     res = _call(SUMMARY_SYSTEM, user, model=model, temperature=0.9, max_tokens=300)
     txt = " ".join(res["text"].split())
     return txt[:90]
@@ -490,6 +501,13 @@ CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. �
   line  스무 자 안쪽. 그 사람이 어떻게 살았는지. 끝에 마침표를 찍지 마라
   tale  두 문장. 그 전생이 지금 나에게 무엇을 남겼는지로 닫는다
 
+[🛑 재료에 「손님이 물은 것」이 있으면 — 가장 중요하다]
+  line 과 tale 은 **그 물음의 답**이어야 한다. 2026-09-10 에 「나는 어떤 사람에게
+  끌리고 어떤 사람이 나에게 올까?」를 묻는 카드에 「둥근 눈매 아래 살집이
+  도톰해요」가 붙어 나갔다. 생김새를 늘어놓지 말고 **물음에 답해라.**
+  카드를 본 사람이 「나한테는 어떤 답이 나올까」 싶어야 QR 을 찍는다.
+  🛑 line 과 tale 에 **같은 말을 두 번 쓰지 마라** — 「도톰한 살집」이 두 번 나왔다.
+
 [🛑 「관상」이면 — 지난 일이 아니라 **지금 얼굴**이다]
   현재형으로 쓴다. 「~던 삶」·「그때의 눈빛」처럼 지난 일로 쓰지 마라.
   name  지금 그 사람을 한마디로 부르는 말 (예: 먼저 웃어 주는 얼굴)
@@ -512,20 +530,37 @@ CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. �
 _CARD_KEYS = ("name", "line", "tale")
 _CARD_MAX = {"name": 24, "line": 40, "tale": 160}
 
+# 🛑 이 이름으로 들어오는 재료는 **글**이라 길게 준다. 나머지는 80자면 넉넉하다.
+#    새 재료 이름을 쓰면 여기에도 넣을 것 — 안 넣으면 조용히 80자로 잘린다.
+_FACT_MAX = {"관멍이가 쓴 글": 2400, "무냥이가 쓴 글": 2400,
+             "결과지": 2400, "손님이 물은 것": 200}
+
 
 def write_card(kind: str, facts: dict[str, str], *,
                model: str | None = None) -> dict[str, str]:
     """계산에서 나온 재료를 주고 카드 문구를 받는다. 못 쓰면 빈 dict."""
-    rows = [f"  {k} : {str(v).strip()[:80]}" for k, v in (facts or {}).items()
-            if str(v or "").strip()]
+    # 🛑 **글 재료를 80자에서 자르면 안 된다** (2026-09-10 온해님 전수검사).
+    #    서버가 자리마다 걷어 1,800자를 넘기는데 여기서 80자로 잘려 들어갔다.
+    #    80자면 첫 자리의 첫 문장뿐이라, 「어떤 사람에게 끌릴까?」를 묻는 카드에
+    #    얼굴 생김새가 답으로 나왔다. 이름·값 같은 짧은 재료만 80자로 둔다.
+    rows = [f"  {k} : {str(v).strip()[:_FACT_MAX.get(k, 80)]}"
+            for k, v in (facts or {}).items() if str(v or "").strip()]
     if not rows:
         return {}
     user = ("[무엇에 대한 카드인가] " + (kind or "전생") + "\n"
             "[받은 재료]  ← 계산에서 나온 것. 이것 말고는 아무것도 모른다\n"
             + "\n".join(rows[:8]))
-    try:
-        res = _call(CARD_SYSTEM, user, model=model, temperature=1.0, max_tokens=400)
-    except Exception:                                    # noqa: BLE001
+    # 🛑 실패하면 화면이 **조용히 옛 방식**(글을 잘라 쓰기)으로 떨어진다.
+    #    2026-09-10 전수검사에서 서른여섯 중 하나가 그렇게 빈 값으로 나왔다.
+    #    한 번은 다시 시킨다 — 0.5원이고, 떨어지면 카드가 딴 얘기를 한다.
+    res = None
+    for _ in range(2):
+        try:
+            res = _call(CARD_SYSTEM, user, model=model, temperature=1.0, max_tokens=400)
+            break
+        except Exception:                                # noqa: BLE001
+            res = None
+    if res is None:
         return {}
     txt = (res.get("text") or "").strip()
     # ```json 울타리를 걷어낸다. 모델이 자주 붙인다

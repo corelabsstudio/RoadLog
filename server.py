@@ -1997,6 +1997,8 @@ class GwansangBody(BaseModel):
     shot: str = ""
     # 볼 자리. 정본은 `gwansang.js` 의 `sections` 다
     sections: list[str] = []
+    # 🛑 상품의 질문. 카드 제목이 이것이라 **문구도 이 물음에 답해야** 한다 (2026-09-10)
+    q: str = ""
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
@@ -2567,8 +2569,15 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     #    🛑 못 쓰면 빈 값을 준다 — 그때 화면은 지금처럼 잘라 쓴다.
     card = {}
     try:
-        head = " ".join(str(out["text"]).split())[:600]
+        # 🛑 **앞 600자만 주면 안 된다** (2026-09-10). 그건 첫 자리(첫인상)라
+        #    연애·재물 같은 상품의 답이 아직 안 나온다. 자리마다 앞을 조금씩
+        #    걷어서 글 전체를 훑게 한다.
+        parts = [x.strip() for x in str(out["text"]).split("##") if x.strip()]
+        head = " ".join(" ".join(x.split())[:180] for x in parts)[:1800]
+        if not head:
+            head = " ".join(str(out["text"]).split())[:900]
         card = saju_writer.write_card("관상", {
+            "손님이 물은 것": (body.q or "").strip(),
             "무엇을 본 것인가": product,
             "관멍이가 쓴 글": head,
         })
@@ -2828,6 +2837,8 @@ class SummaryBody(BaseModel):
     #    없으면 카드 문구를 만들지 않는다 — 그때 화면은 표로 떨어진다.
     kind: str | None = None
     facts: dict[str, str] | None = None
+    # 🛑 상품의 질문. 카드 제목이 이것이라 **문구도 이 물음에 답해야** 한다 (2026-09-10)
+    q: str = ""
 
 
 @app.post("/api/saju/summary")
@@ -2873,7 +2884,7 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     if not saju_writer.ready():
         return {"ok": True, "summary": ""}
     try:
-        line = saju_writer.summarize(data["blocks"])
+        line = saju_writer.summarize(data["blocks"], question=(body.q or "").strip())
     except Exception:                       # noqa: BLE001
         return {"ok": True, "summary": ""}
     if line:
