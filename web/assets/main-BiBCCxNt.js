@@ -105,7 +105,9 @@ Minimum version required to store current data is: `+c+`.
       ${t?`<img src="${t}" alt="" />`:``}
       <i class="p-mark banner-p" aria-label="프리미엄">PREMIUM</i>
       <div class="banner-copy">
-        <p class="banner-kicker">${Y(e.name)} · ${an(e.price)}</p>
+        <!-- 🛑 배너에 값을 적지 않는다 (2026-09-09 온해님). 사주 배너도 「N항목」처럼
+             규모만 적는다 — 값은 상품 상세에서 본다 -->
+        <p class="banner-kicker">${Y(e.name)} · ${e.mode===`two`?`사진 두 장`:`사진 한 장`}</p>
         <h2>${Y(e.q)}</h2>
         <p class="banner-cta">${Y(e.cta)}</p>
       </div>
