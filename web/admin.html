@@ -18,45 +18,45 @@
 }
 *{box-sizing:border-box}
 body{margin:0;background-color:var(--bg);background-image:var(--seal);background-size:300px 300px;background-repeat:repeat;color:var(--ink);font-family:var(--font);
-     font-size:17px;line-height:1.7;word-break:keep-all;-webkit-font-smoothing:antialiased}
+     font-size:15px;line-height:1.55;word-break:keep-all;-webkit-font-smoothing:antialiased}
 
 .top{position:sticky;top:0;z-index:5;background:rgba(16,14,21,.94);
      backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
-.top .bar{max-width:1060px;margin:0 auto;padding:16px 22px 0;
+.top .bar{max-width:1400px;margin:0 auto;padding:16px 22px 0;
           display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
 .top h1{font-size:1.35rem;margin:0;letter-spacing:-.02em}
 .top .as{color:var(--faint);font-size:.9rem;margin:0}
 .top .out{margin-left:auto;font:inherit;font-size:.95rem;background:none;border:0;
           color:var(--muted);cursor:pointer;text-decoration:underline}
-.tabs{max-width:1060px;margin:0 auto;padding:10px 22px 0;display:flex;gap:2px;overflow-x:auto}
+.tabs{max-width:1400px;margin:0 auto;padding:10px 22px 0;display:flex;gap:2px;overflow-x:auto}
 .tabs button{font:inherit;font-size:1.05rem;background:none;border:0;color:var(--muted);
   padding:9px 14px 12px;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap}
 .tabs button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
 
-.wrap{max-width:1060px;margin:0 auto;padding:8px 22px 80px}
-h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
-   margin:34px 0 0;padding-bottom:9px;border-bottom:1px solid var(--line)}
+.wrap{max-width:1400px;margin:0 auto;padding:8px 22px 80px}
+h2{font-size:.88rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
+   margin:20px 0 0;padding-bottom:6px;border-bottom:1px solid var(--line)}
 
-.tiles{display:grid;grid-template-columns:repeat(2,1fr);margin-top:16px}
-.tile{padding:18px 18px 20px;border-top:1px solid var(--line)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);margin-top:8px}
+.tile{padding:10px 14px 12px;border-top:1px solid var(--line)}
 .tile:nth-child(odd){border-right:1px solid var(--line)}
-.tile b{display:block;font-size:2.1rem;font-weight:800;letter-spacing:-.02em;
+.tile b{display:block;font-size:1.6rem;font-weight:800;letter-spacing:-.02em;
         font-variant-numeric:tabular-nums;line-height:1.15}
-.tile span{display:block;font-size:.95rem;color:var(--muted);margin-top:4px}
+.tile span{display:block;font-size:.86rem;color:var(--muted);margin-top:2px}
 .tile.hi b{color:var(--accent)}
 @media(min-width:820px){ .tiles{grid-template-columns:repeat(4,1fr)}
   .tile:nth-child(odd){border-right:0} .tile+.tile{border-left:1px solid var(--line)} }
 
-.seg{display:flex;margin:16px 0 0}
-.seg button{font:inherit;font-size:1rem;background:none;color:var(--muted);
-  border:1px solid var(--line);padding:8px 18px;cursor:pointer}
+.seg{display:flex;margin:10px 0 0}
+.seg button{font:inherit;font-size:.9rem;background:none;color:var(--muted);
+  border:1px solid var(--line);padding:5px 14px;cursor:pointer}
 .seg button:first-child{border-radius:9px 0 0 9px}
 .seg button:last-child{border-radius:0 9px 9px 0}
 .seg button+button{border-left:0}
-.seg button.on{color:#fff;background:var(--accent);border-color:var(--accent);font-weight:700}
+.seg button.on{color:#17151d;background:var(--accent);border-color:var(--accent);font-weight:700}
 
-.chart{margin-top:18px}
-.chart svg{display:block;width:100%;height:230px}
+.chart{margin-top:10px}
+.chart svg{display:block;width:100%;height:180px}
 .chart .gl{stroke:var(--line);stroke-width:1}
 .chart .bar{fill:var(--accent)}
 .chart .bar.z{fill:var(--line)}
@@ -64,12 +64,12 @@ h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
 .chart .vl{fill:var(--muted);font-size:16px}
 .chart-empty{color:var(--faint);font-size:1rem;padding:28px 0}
 
-.rank{list-style:none;padding:0;margin:12px 0 0}
-.rank li{display:grid;grid-template-columns:30px 1fr auto;align-items:center;gap:12px;
-  border-top:1px solid var(--line);padding:13px 2px}
+.rank{list-style:none;padding:0;margin:6px 0 0}
+.rank li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;
+  border-top:1px solid var(--line);padding:8px 2px}
 .rank .no{color:var(--faint);font-size:.98rem;font-variant-numeric:tabular-nums}
 .rank .nm{min-width:0}
-.rank .nm b{display:block;font-size:1.05rem;font-weight:700}
+.rank .nm b{display:block;font-size:.95rem;font-weight:700}
 .rank .track{display:block;height:6px;background:var(--line);border-radius:3px;
   margin-top:7px;overflow:hidden}
 .rank .fill{display:block;height:100%;background:var(--accent)}
@@ -79,7 +79,14 @@ h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
 
 /* 🛑 한 화면에 담는다 (2026-09-09 온해님 지적 — 스크롤을 계속 내려야 했다).
    목록 둘을 나란히 놓고 행 높이를 66px → 40px 으로 줄였다. */
+/* 넓은 화면에서는 옆으로 눕힌다. 좁으면 알아서 한 칸이 된다. */
 .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 28px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:0 32px;align-items:start}
+.fold{margin-top:20px;border-top:1px solid var(--line);padding-top:8px}
+.fold>summary{cursor:pointer;color:var(--muted);font-size:.88rem;letter-spacing:.1em;font-weight:700;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary::before{content:'▸ ';color:var(--faint)}
+.fold[open]>summary::before{content:'▾ '}
 .split h3{font-size:1.02rem;font-weight:700;margin:16px 0 0}
 .rank.tight li{grid-template-columns:22px 1fr auto;gap:10px;padding:7px 2px}
 .rank.tight .nm b{font-size:.98rem}
@@ -93,8 +100,8 @@ h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
 .chart .hit{fill:transparent;cursor:pointer}
 .chart .hit:hover{fill:rgba(164,147,240,.12)}
 .chart .bar.pick{fill:#ded6ff}
-table{width:100%;border-collapse:collapse;margin-top:8px;font-size:1rem}
-th,td{border-top:1px solid var(--line);padding:11px 10px;text-align:right;
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.9rem}
+th,td{border-top:1px solid var(--line);padding:6px 9px;text-align:right;
       font-variant-numeric:tabular-nums;white-space:nowrap}
 th{color:var(--faint);font-weight:600;font-size:.9rem}
 td:first-child,th:first-child{text-align:left}
@@ -161,35 +168,44 @@ td.owner{color:var(--faint);font-size:.85rem}
     </div>
     <nav class="tabs" id="tabs">
       <button data-tab="sum" class="on">한눈에</button>
-      <button data-tab="sales">매출</button>
       <button data-tab="visit">방문자</button>
-      <button data-tab="rank">인기 사주</button>
       <button data-tab="member">회원</button>
     </nav>
   </header>
 
   <div class="wrap">
     <section data-page="sum">
-      <h2>방문자</h2>
-      <div class="tiles" id="tVisit"></div>
-      <h2 id="hMonth">이번 달</h2>
-      <div class="tiles" id="tMonth"></div>
+      <div class="cols">
+        <div>
+          <h2>방문자</h2>
+          <div class="tiles" id="tVisit"></div>
+        </div>
+        <div>
+          <h2 id="hMonth">이번 달</h2>
+          <div class="tiles" id="tMonth"></div>
+        </div>
+      </div>
       <h2>누적</h2>
       <div class="tiles" id="tTotal"></div>
-      <h2>인기 사주</h2>
-      <ol class="rank" id="rTop"></ol>
-    </section>
-
-    <section data-page="sales" hidden>
-      <h2>매출</h2>
-      <div class="seg" id="segSales">
-        <button data-g="day" class="on">일별</button>
-        <button data-g="week">주간</button>
-        <button data-g="month">월별</button>
+      <div class="cols">
+        <div>
+          <h2>매출</h2>
+          <div class="seg" id="segSales">
+            <button data-g="day" class="on">일별</button>
+            <button data-g="week">주간</button>
+            <button data-g="month">월별</button>
+          </div>
+          <div class="chart" id="cSales"></div>
+        </div>
+        <div>
+          <h2>사람들이 많이 본 사주</h2>
+          <ol class="rank tight" id="rProd"></ol>
+        </div>
       </div>
-      <div class="chart" id="cSales"></div>
-      <h2>월별 매출</h2>
-      <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
+      <details class="fold">
+        <summary>월별 매출</summary>
+        <table><thead><tr><th>월</th><th>매출</th></tr></thead><tbody id="tMon"></tbody></table>
+      </details>
     </section>
 
     <section data-page="visit" hidden>
@@ -207,24 +223,21 @@ td.owner{color:var(--faint);font-size:.85rem}
       </div>
       <p class="note" id="humanNote"></p>
 
-      <h2>집계 손질</h2>
-      <div class="tools">
-        <button type="button" id="btnMe">내 방문 빼기</button>
-        <button type="button" id="btnWipeDay">오늘 기록 지우기</button>
-        <button type="button" id="btnWipeAll">전부 지우기</button>
-      </div>
-      <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
-
       <h2>날짜별</h2>
       <div class="scroll"><table>
         <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>열람</th><th>결제</th><th>매출</th></tr></thead>
         <tbody id="tDaily"></tbody>
       </table></div>
-    </section>
 
-    <section data-page="rank" hidden>
-      <h2>사람들이 많이 본 사주</h2>
-      <ol class="rank" id="rProd"></ol>
+      <details class="fold">
+        <summary>집계 손질</summary>
+        <div class="tools">
+          <button type="button" id="btnMe">내 방문 빼기</button>
+          <button type="button" id="btnWipeDay">오늘 기록 지우기</button>
+          <button type="button" id="btnWipeAll">전부 지우기</button>
+        </div>
+        <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
+      </details>
     </section>
 
     <section data-page="member" hidden>
@@ -298,6 +311,10 @@ const NAMES = {
   ox: '붙잡을까, 놓을까', year: '올해 운세', charm: '내 매력', luck: '흉살 풀이',
   money: '재물운', life: '평생 흐름', cool: '권태기 진단', again: '재회 행동 전략',
   marry: '결혼운', match: '궁합 종합',
+  past: '믿거나 말거나, 나의 전생', great: '무냥이 재회 대점',
+  face_first: '관상 · 첫인상', face_me: '관상 · 내 얼굴', face_you: '관상 · 그 사람 얼굴',
+  face_love: '관상 · 연애', face_money: '관상 · 재물', face_king: '관상 · 왕이 될 상인가',
+  face_all: '관상 · 전체', face_pair: '관상 · 둘이 보는',
   bed: '불 끄고 나면', divorce: '이 결혼, 여기까지일까', secret: '말 못 하는 사이', queer: '성별 빼고 보는 속궁합', eros: '밤의 나', first: '내 첫사랑', newlove: '새 사람이 있을까', think: '지금 날 생각할까', loop: '또 같은 이유로 헤어질까', block: '차단, 언제 풀릴까', hour: '나를 떠올리는 시간',
 };
 const asEmail = (v) => {
@@ -470,7 +487,6 @@ function paint() {
     }
     return NAMES[k] || k;
   };
-  rank($('rTop'), prod.slice(0, 5), label, '번');
   rank($('rProd'), prod, label, '번');
   drawHuman(d.crawlerHint);
 
