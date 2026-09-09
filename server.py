@@ -1995,6 +1995,8 @@ class GwansangBody(BaseModel):
     pair: str = ""
     # 사진 해시. 같은 표(pair) 로 사진 셋까지 본다
     shot: str = ""
+    # 볼 자리. 정본은 `gwansang.js` 의 `sections` 다
+    sections: list[str] = []
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
@@ -2541,7 +2543,8 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
-        out = gwansang_ops.read_face(product, clean, name=(body.name or "").strip())
+        out = gwansang_ops.read_face(product, clean, name=(body.name or "").strip(),
+                                     sections=body.sections or [])
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:                            # noqa: BLE001
