@@ -1991,6 +1991,8 @@ class GwansangBody(BaseModel):
        그래서 multipart(UploadFile) 가 아니라 base64 본문으로 받는다 —
        multipart 는 크면 임시 파일로 디스크에 떨어진다.
     """
+    # 🛑 사진으로 만든 해시. 사주쌍 자리에 쓴다 (관상은 생년월일이 없다)
+    pair: str = ""
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
@@ -2414,8 +2416,25 @@ GWAN_MAX_SHOTS = 2
 @app.post("/api/gwansang")
 def gwansang_read(body: GwansangBody, authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
-    if not _is_owner(user):
-        raise HTTPException(403, "관상은 아직 준비 중이에요.")
+    product = (body.product or "").strip()
+    pair = (body.pair or "").strip()
+    if not product or not pair:
+        raise HTTPException(400, "상품과 사진 값이 필요합니다.")
+    # 🛑 **복채를 낸 분만.** 한 건에 7원이 나가므로 열어 두면 잔액이 그대로 샌다
+    #    (잔액이 0 이 되면 사주 글·더 물어보기까지 같이 죽는다).
+    if not (_is_free(user) or lamps_ops.owns(user["email"], product, pair)):
+        raise HTTPException(402, "이 관상은 복채를 내셔야 볼 수 있어요.")
+
+    # 🛑 **한 번 읽은 것은 다시 읽지 않는다.** 같은 사진·같은 상품이면 저장한 것을 준다.
+    #    안 그러면 새로고침할 때마다 새로 뽑혀 돈이 계속 나간다.
+    try:
+        prev = saju_writer.load(product, pair)
+    except ValueError:
+        prev = None
+    if prev and prev.get("text"):
+        return {"ok": True, "text": prev["text"], "tokens": None,
+                "card": prev.get("card") or {}, "again": True}
+
     shots = body.shots or []
     if not shots or len(shots) > GWAN_MAX_SHOTS:
         raise HTTPException(400, "사진을 %d장까지 보낼 수 있어요." % GWAN_MAX_SHOTS)
@@ -2424,16 +2443,17 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
-        out = gwansang_ops.read_face(body.product.strip(), clean, name=(body.name or "").strip())
+        out = gwansang_ops.read_face(product, clean, name=(body.name or "").strip())
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:                            # noqa: BLE001
         # 🛑 **이유를 삼키지 않는다** (2026-09-09). 그전에는 「잠시 뒤 다시 해 주세요」만
         #    돌려주고 진짜 이유를 어디에도 안 남겨서, 실패했을 때 무엇을 고쳐야 할지
         #    알 길이 없었다. 서버 로그에 남기고, **아직 주인만 쓰는 기능이라** 화면에도 적는다.
-        # 🛑 손님에게 여는 날 이 줄을 손님용 문구로 되돌릴 것.
+        # 🛑 이유는 **서버 로그에만** 남긴다. 손님 화면에 내부 사정을 적지 않는다
+        #    (2026-09-09 손님에게 열면서 되돌렸다).
         print("[gwansang] 실패:", repr(e)[:400])
-        raise HTTPException(502, "관상을 읽지 못했어요 — %s" % str(e)[:220])
+        raise HTTPException(502, "관상을 읽지 못했어요. 잠시 뒤 다시 해 주세요.")
     # 🛑 **공유 카드 문구는 따로 쓴다** (2026-09-09 온해님 「모든 공유카드는 LLM으로」).
     #    전에는 관상 글의 앞 두 문장을 **잘라서** 카드에 박았다. 자른 문장은 문맥이
     #    끊겨서 카드에서만 읽으면 무슨 말인지 모른다.
@@ -2442,11 +2462,17 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     try:
         head = " ".join(str(out["text"]).split())[:600]
         card = saju_writer.write_card("관상", {
-            "무엇을 본 것인가": body.product.strip(),
+            "무엇을 본 것인가": product,
             "관멍이가 쓴 글": head,
         })
     except Exception:                                 # noqa: BLE001
         card = {}
+    # 🛑 **글은 남기고 사진은 안 남긴다.** 다시 볼 때 돈이 또 나가지 않게 글만 저장한다.
+    try:
+        saju_writer.save(product, pair, {"text": out["text"], "card": card,
+                                         "kind": "gwansang"})
+    except Exception:                                 # noqa: BLE001
+        pass                                          # 저장을 못 해도 글은 나가야 한다
     # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
     return {"ok": True, "text": out["text"], "tokens": out.get("tokens"), "card": card}
 
