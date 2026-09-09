@@ -2434,8 +2434,21 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         # 🛑 손님에게 여는 날 이 줄을 손님용 문구로 되돌릴 것.
         print("[gwansang] 실패:", repr(e)[:400])
         raise HTTPException(502, "관상을 읽지 못했어요 — %s" % str(e)[:220])
+    # 🛑 **공유 카드 문구는 따로 쓴다** (2026-09-09 온해님 「모든 공유카드는 LLM으로」).
+    #    전에는 관상 글의 앞 두 문장을 **잘라서** 카드에 박았다. 자른 문장은 문맥이
+    #    끊겨서 카드에서만 읽으면 무슨 말인지 모른다.
+    #    🛑 못 쓰면 빈 값을 준다 — 그때 화면은 지금처럼 잘라 쓴다.
+    card = {}
+    try:
+        head = " ".join(str(out["text"]).split())[:600]
+        card = saju_writer.write_card("관상", {
+            "무엇을 본 것인가": body.product.strip(),
+            "관멍이가 쓴 글": head,
+        })
+    except Exception:                                 # noqa: BLE001
+        card = {}
     # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
-    return {"ok": True, "text": out["text"], "tokens": out.get("tokens")}
+    return {"ok": True, "text": out["text"], "tokens": out.get("tokens"), "card": card}
 
 
 class ReferBody(BaseModel):

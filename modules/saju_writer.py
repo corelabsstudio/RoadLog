@@ -417,6 +417,16 @@ CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. �
   line  스무 자 안쪽. 그 사람이 어떻게 살았는지. 끝에 마침표를 찍지 마라
   tale  두 문장. 그 전생이 지금 나에게 무엇을 남겼는지로 닫는다
 
+[🛑 「관상」이면 — 지난 일이 아니라 **지금 얼굴**이다]
+  현재형으로 쓴다. 「~던 삶」·「그때의 눈빛」처럼 지난 일로 쓰지 마라.
+  name  지금 그 사람을 한마디로 부르는 말 (예: 먼저 웃어 주는 얼굴)
+  line  지금 어떻게 보이는지
+  tale  그 얼굴이 사람들 사이에서 어떻게 작용하는지. 지금 일로 닫는다
+
+[🛑 재료에 「정해진 이름」이 있으면]
+  그 이름을 name 에 **그대로** 쓴다. 한 글자도 바꾸지 마라.
+  실제로 모시는 신의 이름이라 지어내면 안 된다. line 과 tale 만 새로 쓴다.
+
 [🛑 하지 않는 것 — 하나라도 어기면 다시 쓴다]
 1. 재료에 없는 것을 보태지 않는다. 없는 사건·이름·지명을 지어내지 않는다
 2. 사주 용어를 쓰지 않는다 — 편재·화개·십이운성·양(養) 같은 말 금지
@@ -457,6 +467,8 @@ def write_card(kind: str, facts: dict[str, str], *,
     except Exception:                                    # noqa: BLE001
         return {}
     out = {}
+    # 🛑 정해진 이름은 **코드가 박는다.** 프롬프트로만 시키면 모델이 손댄다
+    fixed = str((facts or {}).get("정해진 이름") or "").strip()
     for k in _CARD_KEYS:
         v = " ".join(str(got.get(k) or "").split())
         # 🛑 이름·한 줄은 끝 마침표를 뗀다. 모델이 들쭉날쭉 붙여서 카드가 지저분해진다
@@ -464,6 +476,8 @@ def write_card(kind: str, facts: dict[str, str], *,
             v = v.rstrip(" .。")
         if v:
             out[k] = v[:_CARD_MAX[k]]
+    if fixed:
+        out["name"] = fixed[:_CARD_MAX["name"]]
     # 이름과 한 줄이 둘 다 있어야 쓸 수 있다. 하나만 오면 표가 낫다
     return out if out.get("name") and out.get("line") else {}
 
