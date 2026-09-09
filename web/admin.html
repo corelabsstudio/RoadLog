@@ -77,6 +77,22 @@ h2{font-size:.95rem;letter-spacing:.1em;color:var(--muted);font-weight:700;
 .rank li:nth-child(-n+3) .no{color:var(--accent);font-weight:800}
 .rank li.zero{display:block;color:var(--faint);font-size:1rem}
 
+/* 🛑 한 화면에 담는다 (2026-09-09 온해님 지적 — 스크롤을 계속 내려야 했다).
+   목록 둘을 나란히 놓고 행 높이를 66px → 40px 으로 줄였다. */
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px 28px}
+.split h3{font-size:1.02rem;font-weight:700;margin:16px 0 0}
+.rank.tight li{grid-template-columns:22px 1fr auto;gap:10px;padding:7px 2px}
+.rank.tight .nm b{font-size:.98rem}
+.rank.tight .track{height:4px;margin-top:5px}
+.rank.tight .ct{font-size:1rem}
+.rank.tight .no{font-size:.9rem}
+.picked{margin:6px 0 0;font-size:.95rem;color:var(--muted)}
+.picked b{color:var(--ink)}
+.picked button{margin-left:8px;font:inherit;font-size:.9rem;padding:3px 10px;cursor:pointer;
+  color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px}
+.chart .hit{fill:transparent;cursor:pointer}
+.chart .hit:hover{fill:rgba(164,147,240,.12)}
+.chart .bar.pick{fill:#ded6ff}
 table{width:100%;border-collapse:collapse;margin-top:8px;font-size:1rem}
 th,td{border-top:1px solid var(--line);padding:11px 10px;text-align:right;
       font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -184,11 +200,11 @@ td.owner{color:var(--faint);font-size:.85rem}
         <button data-g="month">월별</button>
       </div>
       <div class="chart" id="cVisit"></div>
-      <h2>어디서 들어왔나</h2>
-      <ol class="rank" id="rSrc"></ol>
-
-      <h2>무엇으로 들어왔나</h2>
-      <ol class="rank" id="rClient"></ol>
+      <p class="picked" id="visitPick">막대를 누르면 <b>그날</b> 들어온 길만 봅니다.</p>
+      <div class="split">
+        <div><h3>어디서 들어왔나</h3><ol class="rank tight" id="rSrc"></ol></div>
+        <div><h3>무엇으로 들어왔나</h3><ol class="rank tight" id="rClient"></ol></div>
+      </div>
       <p class="note" id="humanNote"></p>
 
       <h2>집계 손질</h2>
@@ -304,14 +320,18 @@ function group(daily, g, field) {
   const bag = new Map();
   (daily || []).forEach((x) => {
     const k = g === 'day' ? x.day : g === 'week' ? weekKey(x.day) : x.day.slice(0, 7);
-    bag.set(k, (bag.get(k) || 0) + (x[field] || 0));
+    const cur = bag.get(k) || { v: 0, days: [] };
+    cur.v += (x[field] || 0);
+    cur.days.push(x.day);          // 막대 하나를 누르면 이 날들의 유입을 더한다
+    bag.set(k, cur);
   });
-  const out = [...bag.entries()].map(([k, v]) => ({ k, v })).sort((a, b) => (a.k < b.k ? -1 : 1));
+  const out = [...bag.entries()].map(([k, c]) => ({ k, v: c.v, days: c.days }))
+    .sort((a, b) => (a.k < b.k ? -1 : 1));
   return g === 'day' ? out.slice(-30) : out.slice(-12);
 }
 const label = (k, g) => (g === 'month' ? k.slice(2) : k.slice(5)).replace('-', '/');
 
-function chart(el, rows, g, fmt) {
+function chart(el, rows, g, fmt, picked) {
   if (!rows.length || rows.every((r) => !r.v)) {
     el.innerHTML = '<p class="chart-empty">아직 쌓인 기록이 없습니다.</p>';
     return;
@@ -327,11 +347,15 @@ function chart(el, rows, g, fmt) {
     const x = i * (bw + gap);
     const y = r.v ? H - PB - h : H - PB - 2;
     const show = n <= 14 || i % step === 0;
-    return '<rect class="bar' + (r.v ? '' : ' z') + '" x="' + x + '" y="' + y
-      + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2">'
-      + '<title>' + label(r.k, g) + ' · ' + fmt(r.v) + '</title></rect>'
+    // 🛑 누르는 자리는 막대와 따로 둔다. 값이 0 인 날은 막대가 2px 이라 못 누른다.
+    const hit = '<rect class="hit" x="' + x + '" y="0" width="' + (bw + gap)
+      + '" height="' + (H - PB) + '" data-k="' + r.k + '">'
+      + '<title>' + label(r.k, g) + ' · ' + fmt(r.v) + '</title></rect>';
+    return '<rect class="bar' + (r.v ? '' : ' z') + (r.k === picked ? ' pick' : '')
+      + '" x="' + x + '" y="' + y
+      + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2" />'
       + (show ? '<text class="lb" x="' + (x + bw / 2) + '" y="' + (H - 11)
-        + '" text-anchor="middle">' + label(r.k, g) + '</text>' : '');
+        + '" text-anchor="middle">' + label(r.k, g) + '</text>' : '') + hit;
   }).join('');
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">'
     + '<line class="gl" x1="0" y1="' + (H - PB) + '" x2="' + W + '" y2="' + (H - PB) + '" />'
@@ -374,7 +398,44 @@ function tiles(el, items) {
 }
 
 const drawSales = () => chart($('cSales'), group(DATA.daily, gSales, 'sales'), gSales, won);
-const drawVisit = () => chart($('cVisit'), group(DATA.daily, gVisit, 'uv'), gVisit, (v) => num(v) + '명');
+let pickedKey = '';        // 고른 막대. 비어 있으면 최근 30일 전부
+
+/** 고른 날들의 `src`·`ua` 를 더해 [{name, n}] 로. */
+function sumBy(days, field) {
+  const bag = new Map();
+  (DATA.daily || []).forEach((x) => {
+    if (!days.includes(x.day)) return;
+    Object.entries(x[field] || {}).forEach(([k, v]) => bag.set(k, (bag.get(k) || 0) + v));
+  });
+  return [...bag.entries()].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n);
+}
+
+function drawVisit() {
+  const rows = group(DATA.daily, gVisit, 'uv');
+  if (pickedKey && !rows.some((r) => r.k === pickedKey)) pickedKey = '';   // 단위를 바꾸면 푼다
+  chart($('cVisit'), rows, gVisit, (v) => num(v) + '명', pickedKey);
+  const one = rows.find((r) => r.k === pickedKey);
+  const src = one ? sumBy(one.days, 'src') : (DATA.bySource || []).map((s) => ({ name: s.name, n: s.uv }));
+  const cli = one ? sumBy(one.days, 'ua') : (DATA.byClient || []).map((s) => ({ name: s.name, n: s.uv }));
+  rank($('rSrc'), src, (r) => r.name, '명');
+  rank($('rClient'), cli, (r) => r.name, '명');
+  const p = $('visitPick');
+  if (p) {
+    p.innerHTML = one
+      ? '<b>' + label(one.k, gVisit) + '</b> 하루에 들어온 길이에요.'
+        + '<button type="button" id="pickAll">전체로</button>'
+      : '막대를 누르면 <b>그날</b> 들어온 길만 봅니다.';
+    const all = $('pickAll');
+    if (all) all.addEventListener('click', () => { pickedKey = ''; drawVisit(); });
+  }
+}
+
+$('cVisit').addEventListener('click', (e) => {
+  const h = e.target.closest('.hit');
+  if (!h) return;
+  pickedKey = (pickedKey === h.dataset.k) ? '' : h.dataset.k;   // 같은 것을 또 누르면 푼다
+  drawVisit();
+});
 
 function paint() {
   const d = DATA;
@@ -411,8 +472,6 @@ function paint() {
   };
   rank($('rTop'), prod.slice(0, 5), label, '번');
   rank($('rProd'), prod, label, '번');
-  rank($('rSrc'), (d.bySource || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
-  rank($('rClient'), (d.byClient || []).map((s) => ({ name: s.name, n: s.uv })), (r) => r.name, '명');
   drawHuman(d.crawlerHint);
 
   drawSales(); drawVisit();

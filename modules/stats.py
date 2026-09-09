@@ -298,7 +298,12 @@ def overview(days: int = 30) -> dict[str, Any]:
         by_day[d]["uv"] = v["uv"]
         by_day[d]["pv"] = v["pv"]
 
-    daily = [{"day": d, **by_day[d]} for d in sorted(by_day) if d >= start]
+    # 🛑 날짜마다 **어디서·무엇으로** 들어왔는지를 같이 보낸다 (2026-09-09 온해님 요청).
+    #    자료는 원래 날짜별로 쌓여 있었는데 합계만 보내느라 화면에서 하루를 못 골랐다.
+    daily = [{"day": d, **by_day[d],
+              "src": dict((vis.get(d) or {}).get("src") or {}),
+              "ua": dict((vis.get(d) or {}).get("ua") or {})}
+             for d in sorted(by_day) if d >= start]
     daily.reverse()
 
     def _sum(keep) -> dict[str, int]:
