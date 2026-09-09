@@ -101,6 +101,7 @@ SYSTEM = """너는 사주 상담 사이트 「로드로그」의 글을 쓴다. 
   식상=밖으로 내보내는 기운 · 관성=나를 누르는 기운 · 인성=나를 받쳐 주는 기운
   재성=내가 쥐는 기운 · 비겁=나와 같은 기운
 - 🛑 아래 말은 **풀어 써도 쓰지 마라**: 원국·통근·투출·용신·희신·기신·격국·신강·신약·지장간·육친·십신·조후
+  무속 말도 마찬가지다: 몸주·좌보·우필. 각각 「나를 맡은 신」·「왼쪽」·「오른쪽」으로 쓴다
   ([사주]에 그 말이 있어도 마찬가지다. 손님이 읽을 글에는 넣지 않는다)
 
 [본문에 반드시 들어갈 것]
@@ -233,8 +234,17 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
     head = ("[이 상품이 답해야 할 것]\n%s\n\n🛑 아래 항목이 무엇이든, 결국 위 "
             "질문에 답하는 방향으로 쓴다.\n\n" % ask) if ask else ""
     # 🛑 앞서 읽은 편이 있으면 그것부터 알려 준다. 겹치면 2차 결제가 끊긴다
-    user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s"
-            % (name, seen or "", head, fact, section, guide))
+    # 🛑 **제목도 여기서 같이 받는다** (2026-09-09 온해님 「항목도 LLM이 뽑게」).
+    #    손님이 미리보기에서 보는 건 제목과 두세 줄이 전부다. 제목이 밋밋하면
+    #    아래를 안 읽는다. 다만 **본래 제목은 그대로 두고** 보이는 글자만 바꾼다.
+    hook = ("\n\n[맨 첫 줄에 제목을 쓴다]\n"
+            "`제목: ` 으로 시작하는 줄을 하나 쓰고, 한 줄 띄운 뒤에 본문을 쓴다.\n"
+            "  · 이 항목에서 **실제로 나온 답**을 걸고 넘어지는 제목이어야 한다\n"
+            "  · 열여섯 자 안쪽. 읽고 나서 「그래서 뭔데」가 들게\n"
+            "  · 🛑 사주 용어를 쓰지 마라. 이모지·느낌표도 쓰지 마라\n"
+            "  · 🛑 답을 제목에서 다 말하지 마라. 본문을 열게 만드는 게 제목이 할 일이다")
+    user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s%s"
+            % (name, seen or "", head, fact, section, guide, hook))
     res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
     bad = check_counts(res["text"], saju)
     if bad:
@@ -247,7 +257,28 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
         res2["retried"] = bad
         res = res2
         res["left"] = check_counts(res["text"], saju)
+    res["hook"], res["text"] = _split_hook(res.get("text") or "")
     return res
+
+
+_HOOK_MAX = 20          # 화면 한 줄에 들어가는 길이
+
+
+def _split_hook(text: str) -> tuple[str, str]:
+    """맨 첫 줄의 `제목: …` 을 떼어 낸다.
+
+    🛑 모델이 안 붙일 수도 있다. 그때는 빈 제목과 본문 그대로를 준다 —
+       화면은 본래 제목으로 떨어진다.
+    """
+    body = text.lstrip()
+    if not body.startswith("제목:"):
+        return "", text
+    line, _, rest = body.partition("\n")
+    hook = line[len("제목:"):].strip().strip("「」\"' .")
+    # 너무 길면 제목이 아니라 본문 첫 줄을 잘못 쓴 것이다. 그때는 안 쓴다
+    if not hook or len(hook) > _HOOK_MAX + 8:
+        return "", text
+    return hook[:_HOOK_MAX + 8], rest.lstrip()
 
 
 def write_report(name: str, saju: dict[str, Any], sections: list[str],
@@ -288,9 +319,13 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
                     out[futs[f]] = {"text": "", "in": 0, "out": 0, "error": str(e)[:200]}
         # 이 물결에서 나온 것을 다음 물결에 넘길 목록에 쌓는다
         for t in wave:
-            txt = (out.get(t) or {}).get("text") or ""
+            d = out.get(t) or {}
+            txt = d.get("text") or ""
             if txt:
-                wrote.append((t, _first_sentence(txt)))
+                # 🛑 **LLM 이 쓴 제목**을 넘긴다. 본래 제목만 넘기면 제목끼리 겹친다 —
+                #    2026-09-09 실측에서 「남의 짐까지 다 지고 서 있는 버릇」과
+                #    「남의 짐까지 지고 계시죠」가 한 편에 같이 나왔다.
+                wrote.append((d.get("hook") or t, _first_sentence(txt)))
         start += size
         size = min(size * 2, _WAVE_MAX)             # 🛑 상한을 둔다. 동시 호출이 너무 늘면 막힌다
 
@@ -304,6 +339,8 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
         if d.get("error"):
             errs.append("%s: %s" % (s, d["error"]))
         blocks.append({"title": s, "text": d.get("text", ""),
+                       # 화면에 보이는 제목. 비어 있으면 본래 제목을 쓴다
+                       "hook": d.get("hook", ""),
                        "left": d.get("left") or []})
     return {"model": model or MODEL, "blocks": blocks,
             "tokens": {"in": tin, "out": tout}, "fixed": fixed, "errors": errs}
