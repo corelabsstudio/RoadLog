@@ -2417,6 +2417,12 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
 GWAN_MAX_SHOTS = 2
 
 
+# 🛑 **글의 얼개가 바뀌면 저장해 둔 것을 버린다** (2026-09-09 실측).
+#    항목을 나눠 길게 쓰게 고쳤는데, 같은 사진으로 다시 열면 **예전 짧은 글**이 그대로 나왔다.
+#    「배포했는데 그대로인데?」의 진짜 이유가 이것이었다.
+#    얼개를 고치면 이 숫자를 올린다.
+GWAN_VER = 2
+
 GWAN_TRIES = 3          # 🛑 한 번 결제로 **서로 다른 사진 셋**까지. 사진을 잘못 올릴 수 있어서다
                         #    (2026-09-09 온해님). 같은 사진을 다시 보는 건 안 깎는다.
 
@@ -2521,7 +2527,7 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         prev = saju_writer.load(product, shot)
     except ValueError:
         prev = None
-    if prev and prev.get("text"):
+    if prev and prev.get("text") and prev.get("ver") == GWAN_VER:
         return {"ok": True, "text": _gwan_veil(prev["text"], paid), "paid": paid,
                 "tokens": None, "card": (prev.get("card") or {}) if paid else {},
                 "again": True,
@@ -2571,7 +2577,7 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     # 🛑 **글은 남기고 사진은 안 남긴다.** 다시 볼 때 돈이 또 나가지 않게 글만 저장한다.
     try:
         saju_writer.save(product, shot, {"text": out["text"], "card": card,
-                                         "kind": "gwansang"})
+                                         "kind": "gwansang", "ver": GWAN_VER})
     except Exception:                                 # noqa: BLE001
         pass                                          # 저장을 못 해도 글은 나가야 한다
     if paid and not free:
