@@ -550,7 +550,7 @@ def billing_upgrade(body: UpgradeBody, authorization: str | None = Header(defaul
     """
     요금제 업그레이드.
 
-    기본: 비활성 (결제 없이 plan 변경 불가).
+    기본: 비활성 (복채 없이 plan 변경 불가).
     로컬 데모에서만 ALLOW_DEMO_BILLING_UPGRADE=true 로 허용.
     운영에서는 결제 웹훅/관리자 수동 등록으로 plan을 변경하세요.
     """
@@ -2899,7 +2899,7 @@ CARD_HTML = """<!doctype html>
   <a class="card" href="%(go)s"><img src="%(img)s" alt="%(title)s" /></a>
   <p class="lede">%(line)s</p>
   <a class="go" href="%(go)s">나도 내 사주 보러 가기</a>
-  <p class="foot">사주로 길을 보고, 기록으로 남겨요<br />오늘의 운세는 결제 없이 보실 수 있어요</p>
+  <p class="foot">사주로 길을 보고, 기록으로 남겨요<br />오늘의 운세는 복채 없이 보실 수 있어요</p>
 </body></html>"""
 
 
