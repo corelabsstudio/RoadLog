@@ -1993,6 +1993,8 @@ class GwansangBody(BaseModel):
     """
     # 🛑 사진으로 만든 해시. 사주쌍 자리에 쓴다 (관상은 생년월일이 없다)
     pair: str = ""
+    # 사진 해시. 같은 표(pair) 로 사진 셋까지 본다
+    shot: str = ""
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
@@ -2413,6 +2415,85 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
 GWAN_MAX_SHOTS = 2
 
 
+GWAN_TRIES = 3          # 🛑 한 번 결제로 **서로 다른 사진 셋**까지. 사진을 잘못 올릴 수 있어서다
+                        #    (2026-09-09 온해님). 같은 사진을 다시 보는 건 안 깎는다.
+
+
+def _gwan_seen(email: str, ticket: str) -> list[str]:
+    """이 구매 표로 이미 읽은 사진 해시들."""
+    from pathlib import Path as _P
+    import json as _j
+    f = _P(DATA_DIR) / "gwansang_tries.json"
+    try:
+        data = _j.loads(f.read_text(encoding="utf-8"))
+    except Exception:                                 # noqa: BLE001
+        data = {}
+    return list(data.get("%s|%s" % (email, ticket)) or [])
+
+
+def _gwan_use(email: str, ticket: str, shot: str) -> None:
+    """이 사진을 이 표에 적어 둔다. 같은 사진이면 두 번 안 적는다."""
+    from pathlib import Path as _P
+    import json as _j
+    f = _P(DATA_DIR) / "gwansang_tries.json"
+    try:
+        data = _j.loads(f.read_text(encoding="utf-8"))
+    except Exception:                                 # noqa: BLE001
+        data = {}
+    k = "%s|%s" % (email, ticket)
+    got = list(data.get(k) or [])
+    if shot not in got:
+        got.append(shot)
+    data[k] = got[-GWAN_TRIES:]
+    try:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception:                                 # noqa: BLE001
+        pass
+
+
+def _gwan_veil(text: str, paid: bool) -> str:
+    """복채를 안 내셨으면 **앞 문단 하나만** 준다.
+
+    🛑 **서버에서 자른다.** 화면에서만 흐리면 개발자 도구로 다 보인다 —
+       사주 미리보기의 한계를 여기서는 되풀이하지 않는다 (2026-09-09).
+    """
+    if paid:
+        return text
+    paras = [p for p in str(text or "").split("\n\n") if p.strip()]
+    return paras[0] if paras else ""
+
+
+class GwanCheckBody(BaseModel):
+    """사진 점검 — 해석 전에 **무엇이 안 보이는지**만 본다."""
+    shots: list[str] = []
+
+
+@app.post("/api/gwansang/check")
+def gwansang_check(body: GwanCheckBody, authorization: str | None = Header(default=None)):
+    """사진이 관상을 보기에 괜찮은지 훑는다.
+
+    🛑 **여기서 해석하지 않는다.** 가려진 데를 말해 주고, 손님이 그걸 알고도
+       계속 볼지 정하게 한다. 그래야 「돈 냈는데 엉뚱한 소리」가 안 나온다.
+    🛑 로그인만 하면 쓸 수 있다. 출력이 짧아 한 번에 1원 안팎이다.
+    """
+    _token_user(authorization)
+    shots = body.shots or []
+    if not shots or len(shots) > GWAN_MAX_SHOTS:
+        raise HTTPException(400, "사진을 %d장까지 보낼 수 있어요." % GWAN_MAX_SHOTS)
+    try:
+        clean = [gwansang_ops.check_jpeg(x) for x in shots]
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        out = gwansang_ops.look_shot(clean)
+    except Exception as e:                            # noqa: BLE001
+        print("[gwansang/check] 실패:", repr(e)[:300])
+        # 🛑 점검을 못 했다고 막지 않는다. 그냥 통과시킨다 — 손님이 기다리는 자리다
+        return {"ok": True, "good": True, "miss": [], "say": ""}
+    return {"ok": True, **out}
+
+
 @app.post("/api/gwansang")
 def gwansang_read(body: GwansangBody, authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
@@ -2422,18 +2503,35 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         raise HTTPException(400, "상품과 사진 값이 필요합니다.")
     # 🛑 **복채를 낸 분만.** 한 건에 7원이 나가므로 열어 두면 잔액이 그대로 샌다
     #    (잔액이 0 이 되면 사주 글·더 물어보기까지 같이 죽는다).
-    if not (_is_free(user) or lamps_ops.owns(user["email"], product, pair)):
-        raise HTTPException(402, "이 관상은 복채를 내셔야 볼 수 있어요.")
+    # `pair` 는 **구매 표**다. `shot` 은 사진 해시다 — 표 하나로 사진 셋까지 본다.
+    shot = (body.shot or "").strip() or pair
+    free = _is_free(user)
+    paid = free or lamps_ops.owns(user["email"], product, pair)
+    # 🛑 **복채 전에도 앞부분은 보여 준다** (2026-09-09 온해님 「미리보기 둔다」).
+    #    다만 이건 돈이 나가는 자리라 사주와 **같은 하루 한도**를 쓴다 —
+    #    따로 두면 관상으로 한도를 우회할 수 있다.
+    if not paid:
+        _preview_quota(user["email"])
 
-    # 🛑 **한 번 읽은 것은 다시 읽지 않는다.** 같은 사진·같은 상품이면 저장한 것을 준다.
-    #    안 그러면 새로고침할 때마다 새로 뽑혀 돈이 계속 나간다.
+    # 🛑 **한 번 읽은 사진은 다시 읽지 않는다.** 저장한 것을 그대로 준다 —
+    #    안 그러면 새로고침할 때마다 새로 뽑혀 돈이 계속 나간다. 횟수도 안 깎는다.
     try:
-        prev = saju_writer.load(product, pair)
+        prev = saju_writer.load(product, shot)
     except ValueError:
         prev = None
     if prev and prev.get("text"):
-        return {"ok": True, "text": prev["text"], "tokens": None,
-                "card": prev.get("card") or {}, "again": True}
+        return {"ok": True, "text": _gwan_veil(prev["text"], paid), "paid": paid,
+                "tokens": None, "card": (prev.get("card") or {}) if paid else {},
+                "again": True,
+                "left": max(0, GWAN_TRIES - len(_gwan_seen(user["email"], pair)))}
+
+    # 🛑 **기회는 셋.** 사진을 잘못 올렸을 때를 위한 것이지 무제한이 아니다
+    if paid and not free:
+        used = _gwan_seen(user["email"], pair)
+        if shot not in used and len(used) >= GWAN_TRIES:
+            raise HTTPException(409,
+                "이 복채로는 사진 %d장까지 봐 드렸어요. 새로 보시려면 한 번 더 내셔야 해요."
+                % GWAN_TRIES)
 
     shots = body.shots or []
     if not shots or len(shots) > GWAN_MAX_SHOTS:
@@ -2469,12 +2567,16 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         card = {}
     # 🛑 **글은 남기고 사진은 안 남긴다.** 다시 볼 때 돈이 또 나가지 않게 글만 저장한다.
     try:
-        saju_writer.save(product, pair, {"text": out["text"], "card": card,
+        saju_writer.save(product, shot, {"text": out["text"], "card": card,
                                          "kind": "gwansang"})
     except Exception:                                 # noqa: BLE001
         pass                                          # 저장을 못 해도 글은 나가야 한다
+    if paid and not free:
+        _gwan_use(user["email"], pair, shot)
     # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
-    return {"ok": True, "text": out["text"], "tokens": out.get("tokens"), "card": card}
+    return {"ok": True, "text": _gwan_veil(out["text"], paid), "paid": paid,
+            "tokens": out.get("tokens"), "card": card if paid else {},
+            "left": max(0, GWAN_TRIES - len(_gwan_seen(user["email"], pair)))}
 
 
 class ReferBody(BaseModel):

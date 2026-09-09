@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import base64
+import json
 from typing import Any
 
 import httpx
@@ -85,6 +86,72 @@ ASK_DEFAULT = "이 얼굴을 관상으로 봐 주세요. 두드러지는 데 세
 
 def _part(b64: str) -> dict[str, Any]:
     return {"inline_data": {"mime_type": "image/jpeg", "data": b64}}
+
+
+# ── 사진 점검 ────────────────────────────────────────
+# 🛑 **해석하기 전에 무엇이 안 보이는지 먼저 말한다** (2026-09-09 온해님 지시).
+#    그전에는 사진이 어떻든 관멍이가 무조건 답을 냈다. 이마가 가려졌는데도
+#    이마 얘기를 하면 손님은 「돈 냈는데 엉뚱한 소리」로 읽는다.
+#    가려진 데를 먼저 말하고, **그걸 알고도 볼지** 손님이 정하게 한다.
+#
+# 🛑 여기서 관상을 보지 않는다. 출력이 짧아 한 번에 1원 안팎이다.
+
+LOOK_SYSTEM = """너는 얼굴 사진이 관상을 보기에 쓸 만한지 살피는 사람이다.
+관상을 보지 마라. 무엇이 보이고 무엇이 안 보이는지만 말한다.
+
+[내놓는 것 — JSON 하나만. 다른 말은 쓰지 마라]
+{"good": true, "miss": ["이마"], "say": "…"}
+
+  good  이대로 봐도 괜찮으면 true, 다시 올리는 게 나으면 false
+  miss  잘 안 보이는 자리만 골라 담는다. 쓸 수 있는 말:
+        이마 · 눈매 · 눈썹 · 코 · 입 · 턱 · 광대 · 귀 · 얼굴 윤곽
+        다 잘 보이면 빈 배열
+  say   손님에게 할 한두 문장. 마흔 자 안쪽
+
+[say 를 쓰는 법]
+  · 무냥이 말투. 「~해요」. 이모지·느낌표 금지
+  · 다 보이면: 「잘 보여요. 이대로 봐 드릴게요.」처럼 짧게
+  · 가려졌으면: 무엇이 왜 안 보이는지. 「앞머리에 이마가 가려서 그 자리는 흐리게 봐야 해요.」
+  · 🛑 다시 올리라고 명령하지 마라. 사실만 말한다 — 정하는 건 손님이다
+  · 🛑 얼굴 생김새를 평하지 마라. 잘생겼다·못생겼다 같은 말 금지
+
+[good 을 false 로 하는 때]
+  · 얼굴이 아예 없거나 너무 작아 이목구비를 못 알아볼 때
+  · 절반 넘게 가려졌을 때 (마스크·손·심한 역광)
+  그 밖에는 true 로 두고 miss 에만 적는다. 조금 가린 걸로 막지 마라."""
+
+
+def look_shot(shots: list[str], *, model: str | None = None) -> dict[str, Any]:
+    """사진을 훑고 {good, miss, say} 를 돌려준다. 🛑 관상은 보지 않는다."""
+    key = api_key()
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY 가 없다")
+    if not shots:
+        raise ValueError("사진이 없습니다.")
+
+    body = {
+        "systemInstruction": {"parts": [{"text": LOOK_SYSTEM}]},
+        "contents": [{"role": "user", "parts": [_part(b) for b in shots]
+                      + [{"text": "이 사진이 관상을 보기에 쓸 만한지 살펴 주세요."}]}],
+        "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400,
+                             "thinkingConfig": {"thinkingBudget": 0}},
+    }
+    r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
+    j = r.json()
+    if "candidates" not in j:
+        raise RuntimeError(str(j)[:200])
+    parts = (j["candidates"][0].get("content") or {}).get("parts") or []
+    txt = "".join(p.get("text", "") for p in parts).strip()
+    i, k = txt.find("{"), txt.rfind("}")
+    if i < 0 or k <= i:
+        return {"good": True, "miss": [], "say": ""}
+    try:
+        got = json.loads(txt[i:k + 1])
+    except Exception:                                 # noqa: BLE001
+        return {"good": True, "miss": [], "say": ""}
+    miss = [str(x)[:12] for x in (got.get("miss") or [])][:6]
+    return {"good": bool(got.get("good", True)), "miss": miss,
+            "say": " ".join(str(got.get("say") or "").split())[:80]}
 
 
 def read_face(product: str, shots: list[str], *, name: str = "",
