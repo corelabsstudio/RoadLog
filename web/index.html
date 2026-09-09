@@ -30,7 +30,7 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v2.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-BUAVJVcd.js"></script>
+  <script type="module" crossorigin src="/assets/main-D8T32WoQ.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/main-V9cKm787.css">
 </head>
 <body>
@@ -215,16 +215,10 @@
       <div class="sec-head"><h2>이 관상을 본 분들</h2><p id="gwanRevSum"></p></div>
       <ul class="rev-list" id="gwanRevList"></ul>
       <p class="empty" id="gwanRevEmpty" hidden>아직 첫 후기를 기다리고 있어요.</p>
-      <form class="rev-form" id="gwanRevForm" hidden>
-        <div class="rev-stars" id="gwanRevStars" role="radiogroup" aria-label="별점"></div>
-        <textarea id="gwanRevText" maxlength="300" rows="3"
-          placeholder="어떤 점이 도움이 됐는지 짧게 남겨 주세요."></textarea>
-        <div class="rev-send">
-          <span class="rev-count" id="gwanRevCount">0 / 300</span>
-          <button type="submit" class="btn btn-sm" id="gwanRevSend">후기 남기기</button>
-        </div>
-        <p class="form-error" id="gwanRevErr" hidden></p>
-      </form>
+      <!-- 🛑 후기 **쓰는** 폼은 두지 않는다. 서버가 관상 후기를 아직 안 받아서
+           붙여 놔도 누르면 오류만 난다 — 마크업만 옮기고 동작을 안 붙이는 게
+           2026-09-09 에 공유 SNS 에서 이미 한 번 사고였다 (`check_dead_ui.mjs`).
+           복채가 열려 후기를 받게 되면 사주 `.rev-form` 을 그대로 옮겨 온다. -->
       <p class="rev-note" id="gwanRevNote" hidden>이 관상을 열어 보신 분만 후기를 남길 수 있어요.</p>
     </section>
 
