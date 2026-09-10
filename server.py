@@ -2887,10 +2887,14 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
         return {"ok": True, "summary": data["summary"], "card": _card()}
     if not saju_writer.ready():
         return {"ok": True, "summary": ""}
+    # 🛑 **두 줄 요약이 실패해도 카드 문구는 준다** (2026-09-10).
+    #    전에는 여기서 그냥 돌아가 버려서 `card` 가 통째로 빠졌고, 그러면 카드가
+    #    이름·한 줄·이야기를 전부 **계산값**으로 그린다 — 무냥이가 쓴 글이 하나도
+    #    안 들어간 카드가 나온다. 온해님이 「똑같이 나오는데?」로 잡으신 화면이 이것이다.
     try:
         line = saju_writer.summarize(data["blocks"], question=(body.q or "").strip())
     except Exception:                       # noqa: BLE001
-        return {"ok": True, "summary": ""}
+        line = ""
     if line:
         data["summary"] = line
         saju_writer.save(product, pair, data)
