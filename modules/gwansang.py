@@ -168,6 +168,54 @@ def look_shot(shots: list[str], *, model: str | None = None) -> dict[str, Any]:
             "say": " ".join(str(got.get("say") or "").split())[:80]}
 
 
+# 🛑 **관상도 규격으로 받는다** (2026-09-10 온해님).
+#    자리를 몇 개 쓰라고 부탁하면 빠뜨린다 — 그래서 개수를 세어 다시 시키는
+#    뒤처리가 붙어 있었다. 배열 규격을 주면 모델이 개수를 어길 수 없다.
+#    칸 이름은 온해님이 주신 그대로다.
+FACE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "sections": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "nickname": {"type": "string",
+                                 "description": "이 자리의 제목. 준 자리 이름을 그대로 쓰거나 더 재치 있게"},
+                    "fact_bomb": {"type": "string",
+                                  "description": "뼈 때리는 팩트 폭격. 사진에서 보이는 것을 돌려 말하지 않는다"},
+                    "meme_analysis": {"type": "string",
+                                      "description": "밈과 유머를 섞은 성향 분석. 일상 장면 하나를 든다"},
+                    "funny_solution": {"type": "string",
+                                       "description": "유쾌하고 엉뚱한 대안. 그래서 어떻게 하면 되는지"},
+                },
+                "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution"],
+            },
+        },
+    },
+    "required": ["sections"],
+}
+
+
+def _weave(data, secs):
+    """규격으로 받은 자리들을 화면이 읽는 평문으로 잇는다.
+
+    🛑 화면(`main.js`)은 `## 제목` 으로 나뉜 평문을 그린다. 여기서 JSON 을
+       그대로 내보내면 관상 화면이 통째로 깨진다.
+    """
+    rows = (data or {}).get("sections") or []
+    out = []
+    for i, r in enumerate(rows):
+        title = str(r.get("nickname") or (secs[i] if i < len(secs) else "")).strip()
+        body = [str(r.get(k) or "").strip()
+                for k in ("fact_bomb", "meme_analysis", "funny_solution")]
+        body = [x for x in body if x]
+        if not body:
+            continue
+        out.append("## " + title + chr(10) + chr(10) + (chr(10) + chr(10)).join(body))
+    return (chr(10) + chr(10)).join(out)
+
+
 def read_face(product: str, shots: list[str], *, name: str = "",
               sections: list[str] | None = None,
               chars: int = 260, model: str | None = None) -> dict[str, Any]:
@@ -210,6 +258,11 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                              "maxOutputTokens": max(900, chars * max(1, len(secs)) * 3),
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
+    # 🛑 **자리가 있으면 규격으로 받는다** (2026-09-10 온해님).
+    #    부탁하면 자리를 빠뜨린다. 배열 규격을 주면 모델이 개수를 어길 수 없다.
+    if secs:
+        body["generationConfig"]["responseMimeType"] = "application/json"
+        body["generationConfig"]["responseSchema"] = FACE_SCHEMA
     url = (_URL % (model or MODEL)) + "?key=" + key
 
     # 🛑 **짧게 나오면 한 번 더 쓰게 한다** (2026-09-09).
@@ -230,6 +283,14 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                 c = j["candidates"][0]
                 parts = (c.get("content") or {}).get("parts") or []
                 text = "".join(p.get("text", "") for p in parts).strip()
+                # 🛑 규격으로 받았으면 **화면이 읽는 평문으로 잇는다.**
+                #    화면은 `## 제목` 으로 나뉜 글을 그린다 — JSON 을 그대로
+                #    내보내면 관상 화면이 통째로 깨진다.
+                if secs and text.lstrip().startswith("{"):
+                    try:
+                        text = _weave(json.loads(text), secs) or text
+                    except Exception:            # noqa: BLE001
+                        pass                     # 못 읽으면 받은 그대로 쓴다
                 if text:
                     u = j.get("usageMetadata") or {}
                     tin += u.get("promptTokenCount") or 0

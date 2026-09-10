@@ -191,8 +191,41 @@ def check_counts(text: str, saju: dict[str, Any]) -> list[str]:
     return bad
 
 
+# 🛑 **제미나이가 이 규격으로만 답한다** (2026-09-10 온해님).
+#    `responseSchema` 로 주면 모델이 어길 수 없다. 부탁이 아니라 규격이다.
+CARD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string", "description": "카드 제목. 열두 자 안쪽. 재치 있는 별명"},
+        "highlight_badge": {"type": "string", "description": "수치·뱃지 한 조각. 재료에 「상위 몇 %」가 있으면 그 숫자를 쓴다. 없으면 빈 문자열"},
+        "one_liner": {"type": "string", "description": "한 줄 요약. 스무 자 안쪽. 끝에 마침표를 찍지 않는다"},
+        "tale": {"type": "string", "description": "두 문장. 퍼뜨리고 싶은 두 줄로 닫는다"},
+    },
+    "required": ["title", "one_liner", "tale"],
+}
+
+SECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "nickname": {"type": "string", "description": "이 항목의 제목. 재치 있는 별명. 열여섯 자 안쪽"},
+        "fact_bomb": {"type": "string", "description": "뼈 때리는 팩트 폭격. 돌려 말하지 않는다"},
+        "meme_analysis": {"type": "string", "description": "밈과 유머를 섞은 성향 분석. 찰진 비유와 장면"},
+        "funny_solution": {"type": "string", "description": "유쾌하고 엉뚱한 대안. 그래서 어떻게 하면 되는지"},
+        "mutter": {"type": "string", "description": "무냥이 혼잣말 한 줄"},
+    },
+    "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution"],
+}
+
+
 def _call(system: str, user: str, *, model: str | None = None,
-          temperature: float = 1.0, max_tokens: int = 1400) -> dict[str, Any]:
+          temperature: float = 1.0, max_tokens: int = 1400,
+          schema: dict[str, Any] | None = None) -> dict[str, Any]:
+    """제미나이를 부른다.
+
+    🛑 `schema` 를 주면 **규격을 어길 수 없게** 된다 (2026-09-10 온해님).
+       그전에는 「JSON 하나만 내놔라」라고 부탁만 해서, ```json 울타리가 붙거나
+       칸이 빠지면 빈 값으로 떨어졌다 — 전수검수에서 두 번 그랬다.
+    """
     key = api_key()
     if not key:
         raise RuntimeError("GEMINI_API_KEY 가 없다")
@@ -205,6 +238,9 @@ def _call(system: str, user: str, *, model: str | None = None,
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
+    if schema:
+        body["generationConfig"]["responseMimeType"] = "application/json"
+        body["generationConfig"]["responseSchema"] = schema
     url = (_URL % (model or MODEL)) + "?key=" + key
     last = None
     for attempt in range(3):
@@ -565,13 +601,14 @@ CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. �
 5. 좋은 말로 훈훈하게 맺지 않는다
 6. 말투는 「~해요」. 단정하지 않는다 — 「그렇게 보여요」"""
 
-_CARD_KEYS = ("name", "line", "tale")
-_CARD_MAX = {"name": 24, "line": 40, "tale": 160}
+# 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
+_CARD_KEYS = ("name", "line", "tale", "badge")
+_CARD_MAX = {"name": 24, "line": 40, "tale": 160, "badge": 24}
 
 # 🛑 이 이름으로 들어오는 재료는 **글**이라 길게 준다. 나머지는 80자면 넉넉하다.
 #    새 재료 이름을 쓰면 여기에도 넣을 것 — 안 넣으면 조용히 80자로 잘린다.
 _FACT_MAX = {"관멍이가 쓴 글": 2400, "무냥이가 쓴 글": 2400,
-             "상위 몇 %": 40,
+             "상위 몇 %": 90,
              "결과지": 2400, "손님이 물은 것": 200}
 
 
@@ -595,7 +632,8 @@ def write_card(kind: str, facts: dict[str, str], *,
     res = None
     for _ in range(2):
         try:
-            res = _call(CARD_SYSTEM, user, model=model, temperature=1.0, max_tokens=400)
+            res = _call(CARD_SYSTEM, user, model=model, temperature=1.0,
+                        max_tokens=400, schema=CARD_SCHEMA)
             break
         except Exception:                                # noqa: BLE001
             res = None
@@ -613,6 +651,14 @@ def write_card(kind: str, facts: dict[str, str], *,
         got = json.loads(txt[i:j + 1])
     except Exception:                                    # noqa: BLE001
         return {}
+    # 🛑 온해님이 정한 칸 이름을 우리 칸으로 옮긴다 (2026-09-10).
+    #    화면(`main.js`)은 name·line·tale 을 읽는다. 규격만 바뀌고 화면은 그대로다.
+    got = {
+        "name": got.get("title") or got.get("name") or "",
+        "line": got.get("one_liner") or got.get("line") or "",
+        "tale": got.get("tale") or "",
+        "badge": got.get("highlight_badge") or "",
+    }
     out = {}
     # 🛑 정해진 이름은 **코드가 박는다.** 프롬프트로만 시키면 모델이 손댄다
     fixed = str((facts or {}).get("정해진 이름") or "").strip()
