@@ -59,6 +59,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .result{margin-top:18px;border-radius:12px;padding:14px 16px;font-size:.9rem;display:none}
 .result.ok{display:block;background:#e7f6ee;color:var(--good)}
 .result.err{display:block;background:#fbe3e3;color:var(--bad)}
+.result.warn{display:block;background:#fdf3e0;color:#8a5a12}
 .result pre{margin:8px 0 0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:inherit;opacity:.85}
 .biz{border-top:1px solid var(--line);margin-top:34px;padding:20px 22px;color:var(--muted);font-size:.8rem}
 .biz p{margin:0 0 4px}
@@ -222,6 +223,33 @@ $('methods').addEventListener('click', (e) => {
 
 function show(kind, html) { const r = $('result'); r.className = 'result ' + kind; r.innerHTML = html; }
 
+/** 결제가 안 됐을 때 손님에게 무엇을 보여 줄지 (2026-09-10 오픈 앞두고).
+ *
+ * 🛑 **PG 원문을 그대로 내놓지 않는다.** 「가맹점 미등록」 같은 전산 말투가 그대로
+ *    나오면 손님은 우리 사이트가 고장난 줄 알고 그냥 나간다.
+ * 🛑 **손님이 창을 닫은 것은 실패가 아니다.** 빨간 오류를 띄우면 겁을 준다.
+ * 🛑 카드사 등록이 **순서대로 열리는 중**이라 카드에 따라 막힐 수 있다. 그때는
+ *    **계좌이체 쪽으로 안내한다** — 계좌이체·가상계좌는 카드사 심사와 상관이 없다.
+ *    안 그러면 될 결제를 그냥 놓친다.
+ */
+function payFailed(code, message) {
+  const both = String(code || '') + ' ' + String(message || '');
+  if (/CANCEL|취소|사용자.*중단/i.test(both)) {
+    show('warn', '결제를 그만두셨어요. 다시 하시려면 아래 <b>결제하기</b>를 눌러 주세요.');
+    return;
+  }
+  const picked = document.querySelector('input[name=pm]:checked');
+  const card = !picked || picked.value === 'CARD' || picked.value === 'EASY_PAY';
+  show('err', '결제가 되지 않았어요.'
+    + (card
+      ? '<br />지금 <b>카드사가 순서대로 열리는 중</b>이라 카드에 따라 막힐 수 있어요.'
+        + ' <b>다른 카드</b>나 <b>실시간 계좌이체</b>로 해 보시겠어요?'
+      : '<br />잠시 뒤에 다시 해 보시거나 다른 결제 수단을 골라 주세요.')
+    + '<br />계속 안 되면 corelabs.studio@gmail.com 으로 알려 주세요. 바로 봐 드릴게요.'
+    + (message ? '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.86rem;opacity:.75">자세한 내용</summary><pre>'
+      + String(message) + '</pre></details>' : ''));
+}
+
 // 결제가 끝나면 서버가 포트원에 다시 물어 금액을 확인하고 등불을 넣는다
 async function claim(paymentId) {
   const token = localStorage.getItem(TKEY);
@@ -306,7 +334,7 @@ $('payBtn').addEventListener('click', async () => {
     });
 
     if (res && res.code) {
-      show('err', '결제가 완료되지 않았습니다.<pre>' + (res.message || res.code) + '</pre>');
+      payFailed(res.code, res.message);
     } else {
       show('ok', '결제를 확인하는 중입니다…');
       await claim(paymentId);
@@ -320,7 +348,7 @@ $('payBtn').addEventListener('click', async () => {
 
 // 모바일 결제창에서 돌아온 경우
 if (q.get('paymentId')) {
-  if (q.get('code')) show('err', '결제가 완료되지 않았습니다.<pre>' + (q.get('message') || q.get('code')) + '</pre>');
+  if (q.get('code')) payFailed(q.get('code'), q.get('message'));
   else { show('ok', '결제를 확인하는 중입니다…'); claim(q.get('paymentId')); }
 }
 </script>
