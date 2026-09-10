@@ -3178,8 +3178,17 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
                 done[b["title"]] = b
 
     left = PREVIEW_DAILY_CAP if _is_free(user) else max(0, PREVIEW_DAILY_CAP - _preview_used(user["email"]))
+    # 🛑🛑 **`hook` 과 `mutter` 를 같이 보낸다** (2026-09-11 온해님이 잡으심).
+    #    여기서 `text` 만 담고 있었다. 그래서 LLM 이 쓴 **항목 제목과 혼잣말이
+    #    전 상품에서 한 번도 화면에 안 나갔다** — 앞단은 `b.hook`·`b.mutter` 를
+    #    받을 준비가 되어 있었는데 서버가 안 보냈다. 화면에는 표에서 고른 옛
+    #    혼잣말과 본래 제목이 그대로 나왔고, 오류가 아니라서 아무도 못 봤다.
+    #    저장은 처음부터 되고 있었으므로 **이미 써 둔 글도 이 줄 하나로 살아난다.**
     return {"ok": True, "paid": paid, "ownerSkip": owner_skip, "left": left,
-            "blocks": [{"title": s, "text": done.get(s, {}).get("text", "")} for s in want],
+            "blocks": [{"title": s,
+                        "text": done.get(s, {}).get("text", ""),
+                        "hook": done.get(s, {}).get("hook", ""),
+                        "mutter": done.get(s, {}).get("mutter", "")} for s in want],
             "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
 
 
