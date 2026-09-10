@@ -257,8 +257,17 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         if not isinstance(u, dict):
             continue
         acc = lamp.get(email) or {}
+        # 🛑 **`charge` 만 세면 회원별 결제액이 영영 0 이다** (2026-09-10 온해님이 잡으심).
+        #    등불 판매는 2026-09-07 에 없앴고, 지금 돈이 들어오는 길은 `premium`
+        #    (리포트 건별 결제) 하나뿐이다. 매출 총액에서 이미 같은 사고를 한 번 겪고
+        #    `_charges()` 는 고쳤는데, **회원 표만 옛 조건으로 남아 있었다.**
+        #    실제로 47,500원을 쓰신 분이 화면에 「0원」으로 보였다.
+        # 🛑 매출 총액과 같은 잣대로 센다 — 테스트 채널 기간 건은 뺀다
+        #    (`lamps.REAL_PAY_FROM`). 안 그러면 총액과 회원별 합계가 안 맞는다.
         charged = sum(int(e.get("price") or 0)
-                      for e in acc.get("ledger", []) if e.get("type") == "charge")
+                      for e in acc.get("ledger", [])
+                      if e.get("type") in ("charge", "premium")
+                      and str(e.get("at", ""))[:10] >= lamps_ops.REAL_PAY_FROM)
         bal = sum(int(l.get("remain") or 0) for l in acc.get("lots", []))
         if email.endswith("@kakao.local"):
             how = "카카오"

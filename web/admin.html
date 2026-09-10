@@ -24,17 +24,22 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 
 /* ── 왼쪽 줄 ─────────────────────────────────────────
    🛑 아이콘을 손으로 그리지 않는다. 글자로 둔다 (전역 CLAUDE.md 「이미지는 제미나이」). */
-#board{display:grid;grid-template-columns:132px 1fr;min-height:100vh}
-.rail{position:sticky;top:0;align-self:start;height:100vh;padding:20px 12px;
-      background:var(--paper);border-right:1px solid var(--line);
-      display:flex;flex-direction:column;gap:4px}
-.rail .brand{font-size:.95rem;font-weight:800;letter-spacing:-.02em;padding:4px 10px 18px}
+/* 🛑 **상단바다** (2026-09-11 온해님 「메뉴 탭은 상단바로」). 전에는 왼쪽 세로줄이라
+   탭이 늘수록 좁아졌고, 넓은 화면에서 왼쪽 132px 이 늘 비어 있었다. */
+#board{min-height:100vh}
+.rail{position:sticky;top:0;z-index:20;padding:0 20px;
+      background:var(--paper);border-bottom:1px solid var(--line);
+      display:flex;align-items:center;gap:2px;overflow-x:auto}
+.rail .brand{font-size:.95rem;font-weight:800;letter-spacing:-.02em;
+  padding:12px 18px 12px 0;white-space:nowrap;flex:0 0 auto}
 .rail .brand span{display:block;font-size:.72rem;font-weight:600;color:var(--faint);letter-spacing:0}
-.rail button{font:inherit;font-size:.95rem;text-align:left;background:none;border:0;
-  color:var(--muted);padding:10px 12px;border-radius:10px;cursor:pointer}
-.rail button:hover{color:var(--ink);background:rgba(164,147,240,.08)}
-.rail button.on{color:var(--ink);font-weight:700;background:rgba(164,147,240,.16)}
-.rail .out{margin-top:auto;color:var(--faint);font-size:.88rem}
+.rail button{font:inherit;font-size:.95rem;background:none;border:0;white-space:nowrap;
+  color:var(--muted);padding:14px 14px;border-bottom:2px solid transparent;cursor:pointer}
+.rail button:hover{color:var(--ink)}
+/* 🛑 알약 배지를 쓰지 않는다 (전역 규칙 12번). 밑줄로만 지금 자리를 알린다 */
+.rail button.on{color:var(--ink);font-weight:700;border-bottom-color:var(--accent)}
+.rail .out{margin-left:auto;color:var(--faint);font-size:.88rem}
+@media (max-width:700px){ .rail{padding:0 12px} .rail .brand span{display:none} }
 
 /* ── 위쪽 줄 ───────────────────────────────────────── */
 .main{min-width:0;padding:0 26px 60px}
@@ -56,11 +61,7 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 .deck.half{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}
 @media(max-width:1080px){ .deck.wide{grid-template-columns:1fr} }
-@media(max-width:640px){ #board{grid-template-columns:1fr}
-  .rail{position:static;height:auto;flex-direction:row;overflow-x:auto;border-right:0;
-        border-bottom:1px solid var(--line)}
-  .rail .brand{display:none} .rail .out{margin-top:0}
-  .stats{grid-template-columns:1fr} .main{padding:0 16px 50px} }
+@media(max-width:640px){ .stats{grid-template-columns:1fr} .main{padding:0 16px 50px} }
 
 /* 숫자 카드 — 🛑 변화율을 둥근 배지에 넣지 않는다. 글자와 화살표로만. */
 .stat .lb{display:block;color:var(--muted);font-size:.86rem}
@@ -188,9 +189,12 @@ td.owner{color:var(--faint);font-size:.84rem}
 <div id="board" hidden>
   <nav class="rail" id="tabs">
     <div class="brand">로드로그<span>운영 현황</span></div>
-    <button data-tab="sum" class="on">한눈에</button>
-    <button data-tab="visit">방문자</button>
+    <button data-tab="sum" class="on">대시보드</button>
     <button data-tab="member">회원</button>
+    <button data-tab="ai">콘텐츠 · AI</button>
+    <button data-tab="pay">결제</button>
+    <button data-tab="mkt">마케팅</button>
+    <button data-tab="visit">유입</button>
     <button type="button" class="out" id="out">나가기</button>
   </nav>
 
@@ -262,18 +266,6 @@ td.owner{color:var(--faint);font-size:.84rem}
       </div>
 
       <div class="deck">
-        <!-- 🛑 **무엇이 팔렸는지** (2026-09-10 온해님 「뭘 결제했는지 알 수가 없네」).
-             그전에는 매출 총액만 있고 건별 내역이 없어서, 결제가 들어와도 어느 상품인지
-             알 길이 없었다. 원장에는 처음부터 다 있었는데 화면이 안 보여 준 것이다. -->
-        <div class="card">
-          <h2>무엇이 팔렸나</h2>
-          <p class="note">최근 50건. 원장에 남은 그대로예요.</p>
-          <div class="scroll"><table>
-            <thead><tr><th>때</th><th>상품</th><th>금액</th><th>산 사람</th></tr></thead>
-            <tbody id="tPaid"></tbody>
-          </table></div>
-        </div>
-
         <div class="card">
           <h2>날짜별</h2>
           <p class="note" id="humanNote"></p>
@@ -290,6 +282,57 @@ td.owner{color:var(--faint);font-size:.84rem}
             </div>
             <p class="note" id="toolNote">「내 방문 빼기」를 누르면 이 브라우저는 앞으로 방문자에 안 잡힙니다. 다른 기기·시크릿창에서는 다시 눌러야 합니다.</p>
           </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 결제 ─────────────────────────────────────────
+         🛑 **무엇이 팔렸는지** (2026-09-10 온해님 「뭘 결제했는지 알 수가 없네」).
+         매출 총액만 있고 건별 내역이 없어서 어느 상품인지 알 길이 없었다.
+         원장에는 처음부터 다 있었는데 화면이 안 보여 준 것이다. -->
+    <section data-page="pay" hidden>
+      <div class="deck half">
+        <div class="card">
+          <h2>단건과 묶음</h2>
+          <p class="sub">무엇으로 사시나</p>
+          <ol class="rank" id="rKind"></ol>
+        </div>
+        <div class="card">
+          <h2>값대별</h2>
+          <p class="sub">얼마짜리가 팔리나</p>
+          <ol class="rank" id="rBand"></ol>
+        </div>
+      </div>
+      <div class="deck">
+        <div class="card">
+          <h2>주문 내역</h2>
+          <p class="sub">최근 50건 · 원장에 남은 그대로</p>
+          <div class="scroll"><table>
+            <thead><tr><th>때</th><th>상품</th><th>금액</th><th>산 사람</th><th>결제번호</th></tr></thead>
+            <tbody id="tPaid"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 콘텐츠 · AI ─────────────────────────────────── -->
+    <section data-page="ai" hidden>
+      <div class="deck">
+        <div class="card">
+          <h2>준비 중</h2>
+          <p class="sub">무냥이·관멍이가 쓰는 말투를 여기서 고치고 시험합니다</p>
+          <p class="note">코드를 건드리지 않고 톤앤매너를 바꾸는 자리입니다. 다음 단계에서 켭니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 마케팅 ──────────────────────────────────────── -->
+    <section data-page="mkt" hidden>
+      <div class="deck">
+        <div class="card">
+          <h2>준비 중</h2>
+          <p class="sub">유입 링크 만들기 · 공유 통계</p>
+          <p class="note">스레드·인스타에 뿌릴 링크를 만들고 어디서 들어왔는지 셉니다. 다음 단계에서 켭니다.</p>
         </div>
       </div>
     </section>
@@ -563,11 +606,19 @@ function paint() {
     ['이번 달 매출', won(d.month.sales), last('sales', 14), ''],
     ['회원', num(d.total.members) + '명', last('signups', 14), ''],
   ]);
+  // 🛑 **전환율** (2026-09-11 온해님 명세). 방문자 중 몇이 가입하고, 가입자 중 몇이
+  //    복채를 내는지. 숫자만 늘어놓으면 「많이 왔다」로 끝나고 어디가 새는지 모른다.
+  const uv = Number(d.total.uv) || 0;
+  const mem = Number(d.total.members) || 0;
+  const buyers = new Set((d.recent || []).map((r) => r.email)).size;
+  const pct = (a, b) => (b ? (a / b * 100).toFixed(1) + '%' : '—');
   stats($('totalBox'), [
     ['매출', won(d.total.sales), [], ''],
     ['결제', num(d.total.charges) + '건', [], ''],
     ['가입', num(d.total.signups) + '명', [], ''],
     ['사주 열람', num(d.total.opens) + '번', [], ''],
+    ['가입 전환율', pct(mem, uv), [], '방문 ' + num(uv) + '명 중'],
+    ['결제 전환율', pct(buyers, mem), [], '회원 ' + num(mem) + '명 중 ' + num(buyers) + '명'],
   ]);
 
   const prod = (d.byProduct || []).map((p) => ({ product: p.product, n: p.opens }));
@@ -601,12 +652,57 @@ function paint() {
       const when = String(x.at || x.day || '').replace('T', ' ').slice(5, 16);
       const name = NAMES[x.product] || x.product || (x.kind === 'charge' ? '등불' : '(알 수 없음)');
       const who = String(x.email || '');
+      // 결제번호는 문의가 왔을 때 포트원에서 찾는 열쇠다. 뒤 12자만 보인다
+      const pid = String(x.payment_id || '');
       return '<tr><td>' + when + '</td><td>' + name + '</td><td>' + won(x.price)
-        + '</td><td>' + who + '</td></tr>';
+        + '</td><td>' + who + '</td><td class="mail">' + esc(pid.slice(-12)) + '</td></tr>';
     }).join('')
-    : '<tr><td colspan="4" class="zero">아직 결제가 없습니다.</td></tr>';
+    : '<tr><td colspan="5" class="zero">아직 결제가 없습니다.</td></tr>';
+
+  paintPayKinds();
 
   paintMembers();
+}
+
+/** 결제 탭 — 무엇으로 사시나 · 얼마짜리가 팔리나 (2026-09-11 온해님 명세).
+ *
+ *  🛑 **원장에 있는 것만 센다.** 결제 수단(카드·계좌이체)은 포트원에만 있고 우리
+ *     원장에는 안 남아서 여기서 못 보여 준다. 남기려면 결제 확정 때 같이 적어야 한다.
+ */
+function paintPayKinds() {
+  const rows = (DATA.recent || []);
+  const bar = (items, total) => items.length
+    ? items.map(([nm, cnt, sum], i) => {
+      const pc = total ? Math.round(cnt / total * 100) : 0;
+      return '<li><span class="no">' + (i + 1) + '</span>'
+        + '<span class="nm"><b>' + esc(nm) + '</b></span>'
+        + '<span class="ct">' + num(cnt) + '건 · ' + won(sum) + '</span>'
+        + '<span class="track"><i class="fill" style="width:' + pc + '%"></i></span></li>';
+    }).join('')
+    : '<li class="zero">아직 결제가 없습니다.</li>';
+
+  // ① 단건이냐 묶음이냐 — 묶음(duo)은 한 번에 두 편이 열린다
+  const kind = { 묶음: [0, 0], 단건: [0, 0] };
+  rows.forEach((r) => {
+    const k = r.product === 'duo' ? '묶음' : '단건';
+    kind[k][0] += 1; kind[k][1] += Number(r.price) || 0;
+  });
+  const kTotal = rows.length;
+  $('rKind').innerHTML = bar(
+    Object.entries(kind).filter(([, v]) => v[0]).map(([k, v]) => [k, v[0], v[1]]), kTotal);
+
+  // ② 값대별 — 어느 가격대가 실제로 팔리는지
+  const bands = [
+    ['5천원 아래', (p) => p < 5000],
+    ['5천~1만원', (p) => p >= 5000 && p < 10000],
+    ['1만~2만원', (p) => p >= 10000 && p < 20000],
+    ['2만원 이상', (p) => p >= 20000],
+  ];
+  const got = bands.map(([nm, f]) => {
+    const hit = rows.filter((r) => f(Number(r.price) || 0));
+    return [nm, hit.length, hit.reduce((a, b) => a + (Number(b.price) || 0), 0)];
+  }).filter((x) => x[1]);
+  $('rBand').innerHTML = bar(got, kTotal);
 }
 
 function paintMembers() {
@@ -661,7 +757,8 @@ function seg(id, set) {
 seg('segSales', (g) => { gSales = g; drawSales(); });
 seg('segVisit', (g) => { gVisit = g; drawVisit(); });
 
-const TAB_NAME = { sum: '한눈에', visit: '방문자', member: '회원' };
+const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
+                   pay: '결제', mkt: '마케팅', visit: '유입' };
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   // 🛑 「나가기」도 같은 상자에 있다. data-tab 이 있는 것만 고른다
