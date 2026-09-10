@@ -115,6 +115,58 @@ ASK_HEAD = {
 ASK_DEFAULT = "이 얼굴을 관상으로 봐 주세요."
 
 
+ASK_SYSTEM = """너는 관멍이다. 손님 얼굴을 이미 한 번 봐 주었고, 지금은 그 결과를 두고
+손님이 더 묻는 것에 답한다.
+
+[가장 중요]
+🛑 **아래 [관멍이가 본 것] 에 적힌 것만 쓴다.** 사진은 지금 없다. 새로 보지 못한다.
+   거기 없는 것을 물으면 「그건 사진에서 못 본 자리예요」라고 솔직히 말한다.
+🛑 사주를 보지 마라. 너는 얼굴만 본다.
+
+[말투]
+- 존댓말. 「~해요」가 기본. 손님을 이름+님으로 부른다(이름을 주면).
+- 팩트폭격 세 박자로 간다 — ① 뼈 때리는 한 줄 ② 찰진 비유 ③ 유쾌한 반전.
+- 이모지·느낌표를 쓰지 않는다.
+
+[길이]
+세 문단 안쪽. 400자 안팎. 물은 것에만 답하고 딴 데로 새지 않는다.
+
+[🛑 하지 않는 것]
+1. 병·건강을 말하지 않는다. 의료가 아니다.
+2. 미모를 평가하지 않는다.
+3. 없는 것을 지어내지 않는다."""
+
+
+def answer(name: str, seen: str, question: str, *, model: str | None = None) -> dict[str, Any]:
+    """관상 결과를 두고 더 묻는 것에 답한다 (2026-09-11).
+
+    🛑 사진을 다시 보지 않는다 — 저장하지 않기 때문이다. **써 둔 글**만 재료로 쓴다.
+    """
+    q = " ".join(str(question or "").split())
+    if not q:
+        raise ValueError("질문이 비었다")
+    key = api_key()
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY 가 없다")
+    user = ("손님 이름: %s%s%s[관멍이가 본 것]%s%s%s%s[손님이 묻는 것]%s%s"
+            % (name or "손님", chr(10), chr(10), chr(10),
+               str(seen or "")[:4000], chr(10), chr(10), chr(10), q[:400]))
+    body = {
+        "systemInstruction": {"parts": [{"text": _P("gwan_ask", ASK_SYSTEM)}]},
+        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "generationConfig": {"temperature": 1.0, "maxOutputTokens": 900,
+                             "thinkingConfig": {"thinkingBudget": 0}},
+    }
+    r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
+    j = r.json()
+    if "candidates" not in j:
+        raise RuntimeError(str(j)[:200])
+    parts = (j["candidates"][0].get("content") or {}).get("parts") or []
+    u = j.get("usageMetadata", {})
+    return {"text": "".join(p.get("text", "") for p in parts).strip(),
+            "in": u.get("promptTokenCount", 0), "out": u.get("candidatesTokenCount", 0)}
+
+
 def _part(b64: str) -> dict[str, Any]:
     return {"inline_data": {"mime_type": "image/jpeg", "data": b64}}
 

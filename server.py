@@ -2602,6 +2602,62 @@ def ask_open(body: AskBody, authorization: str | None = Header(default=None)):
         raise HTTPException(400, str(e))
 
 
+class GwanAskBody(BaseModel):
+    question: str
+    shot: str = ""
+    product: str = ""
+    name: str = ""
+
+
+@app.post("/api/gwan/ask")
+def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)):
+    """관멍이에게 더 묻는다. 🛑 **써 둔 결과지**를 재료로 쓴다 — 사진은 안 남긴다.
+
+    등불 규칙은 사주 쪽과 같다 (한 번에 ASK_LAMPS).
+    """
+    user = _token_user(authorization)
+    q = (body.question or "").strip()
+    shot = (body.shot or "").strip()
+    if not q:
+        raise HTTPException(400, "무엇이 궁금한지 적어 주세요.")
+    if len(q) > 300:
+        raise HTTPException(400, "질문이 너무 길어요. 300자 안으로 적어 주세요.")
+    if not shot:
+        raise HTTPException(400, "먼저 관상을 봐 주세요.")
+    if not saju_writer.ready():
+        raise HTTPException(503, "지금은 답을 못 드려요. 잠시 뒤에 다시 여쭤 주세요.")
+
+    # 🛑 그 사진으로 써 둔 글을 꺼낸다. 없으면 답할 재료가 없다
+    try:
+        data = saju_writer.load((body.product or "").strip(), shot) or {}
+    except ValueError:
+        data = {}
+    seen = str(data.get("text") or "").strip()
+    if not seen:
+        raise HTTPException(400, "그 관상 결과를 찾지 못했어요. 다시 봐 주세요.")
+
+    free = _is_free(user)
+    if not free and lamps_ops.balance(user["email"]) < lamps_ops.ASK_LAMPS:
+        raise HTTPException(402, "등불이 모자라요.")
+
+    from modules import gwansang as gwan_ops
+    try:
+        res = gwan_ops.answer(body.name or "", seen, q)
+    except (RuntimeError, ValueError):
+        raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.")
+
+    spent, balance = 0, 999999
+    if not free:
+        qid = "gwan-" + hashlib.sha1(q.encode("utf-8")).hexdigest()[:20]
+        try:
+            r = lamps_ops.ask(user["email"], qid, shot)
+            spent = r.get("spent", 0)
+            balance = r.get("balance", 0)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance}
+
+
 @app.post("/api/ask/free")
 def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)):
     """무냥이에게 **아무거나** 묻는다. 정해진 질문이 아니라 손님이 쓴 문장에 답한다.

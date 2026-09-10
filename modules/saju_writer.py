@@ -1121,7 +1121,7 @@ def answer(name: str, saju: dict[str, Any], question: str,
         raise ValueError("질문이 비었다")
     user = ("손님 이름: %s\n\n%s[사주]\n%s\n\n[손님이 묻는 것]\n%s"
             % (name or "손님", seen or "", facts(saju), q[:400]))
-    res = _call(ASK_SYSTEM, user, model=model, max_tokens=900)
+    res = _call(_P('ask', ASK_SYSTEM), user, model=model, max_tokens=900)
     bad = check_counts(res["text"], saju)
     if bad:
         # 개수를 틀리면 한 번만 다시. 리포트와 같은 방식이다.
