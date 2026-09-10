@@ -88,9 +88,18 @@ PRICES = {
 # 🛑 **프론트 products.js 의 premium:true 와 이 표가 반드시 같아야 한다.**
 #    한쪽만 고치면 결제창은 뜨는데 서버가 값을 몰라 거절한다.
 #    아래 8개는 폭스바니 상단 프리미엄 10개와 짝이 맞는 상품이다 (2026-09-07).
+# 🛑 **묶음 상품** — 한 번 결제로 여러 편이 열린다 (2026-09-10 온해님).
+#    「1,000원만 더 보태면 둘 다 보네?」로 객단가를 올리는 자리다.
+#    🛑 묶음 자체는 **리포트가 없다.** 값을 받고 안에 든 상품들을 열어 줄 뿐이다.
+#    🛑 값은 아래 PREMIUM_WON 에도 넣어야 한다 — 없으면 서버가 결제를 거절한다.
+BUNDLE = {
+    "duo": ["past", "god"],      # 전생 + 수호신 (따로 사면 5,800원)
+}
+
 PREMIUM_WON = {
-    "god": 980,
-    "past": 1980,
+    "duo": 3900,
+    "god": 2900,
+    "past": 2900,
     "solo": 12800,
     "week": 1800,
     "dday": 14800,
@@ -405,8 +414,12 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
         raise ValueError("이미 처리된 결제입니다.")
     now = _now()
     expires = now + timedelta(days=OWNED_DAYS)
-    if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
-        acc["owned"].append({"product": product, "pair": pair, "at": _iso(now), "expires": _iso(expires)})
+    # 🛑 묶음이면 **안에 든 상품을 전부** 연다. 묶음 자체는 리포트가 없어서,
+    #    묶음 이름만 적어 두면 복채를 내고도 아무것도 못 본다 (2026-09-10)
+    for pid in (BUNDLE.get(product) or [product]):
+        if not any(o["product"] == pid and o["pair"] == pair for o in _owned_live(acc, now)):
+            acc["owned"].append({"product": pid, "pair": pair,
+                                 "at": _iso(now), "expires": _iso(expires)})
     gift = bonus_lamps(won)
     if gift:
         _add_lot(acc, gift, GIFT_DAYS, now, "premium-gift", "%s 결제 선물" % product)
