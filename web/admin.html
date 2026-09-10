@@ -121,6 +121,15 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 .pr-out{margin-top:12px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);
   border-radius:12px;white-space:pre-wrap;line-height:1.8;font-size:.92rem}
 
+/* ── 유입 링크 만들기 (2026-09-11) ──────────────────── */
+.mk-form{display:grid;gap:10px;margin-top:8px}
+.mk-form label{display:grid;gap:4px;font-size:.86rem;color:var(--muted)}
+.mk-form select,.mk-form input{font:inherit;font-size:.92rem;padding:9px 11px;
+  background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px}
+.mk-out{margin-top:12px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);
+  border-radius:10px;word-break:break-all}
+.mk-out code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86rem;color:var(--accent)}
+
 /* ── 순위 목록 (참고 그림의 Top Platform 자리) ─────────── */
 .rank{list-style:none;padding:0;margin:4px 0 0}
 .rank li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 10px;padding:9px 0 0;
@@ -366,11 +375,50 @@ td.owner{color:var(--faint);font-size:.84rem}
 
     <!-- ── 마케팅 ──────────────────────────────────────── -->
     <section data-page="mkt" hidden>
-      <div class="deck">
+      <div class="deck half">
         <div class="card">
-          <h2>준비 중</h2>
-          <p class="sub">유입 링크 만들기 · 공유 통계</p>
-          <p class="note">스레드·인스타에 뿌릴 링크를 만들고 어디서 들어왔는지 셉니다. 다음 단계에서 켭니다.</p>
+          <h2>유입 링크 만들기</h2>
+          <p class="sub">게시글마다 다른 링크를 써야 무엇이 물어 왔는지 압니다</p>
+          <div class="mk-form">
+            <label>어디에 올리나
+              <select id="mkSrc">
+                <option value="threads">스레드</option>
+                <option value="instagram">인스타그램</option>
+                <option value="kakao">카카오톡</option>
+                <option value="x">X (트위터)</option>
+                <option value="blog">블로그</option>
+                <option value="youtube">유튜브</option>
+                <option value="etc">그 밖에</option>
+              </select>
+            </label>
+            <label>이 글의 이름
+              <input id="mkCamp" placeholder="예: 수호신카드-0911" />
+            </label>
+            <label>어느 화면으로
+              <select id="mkTo">
+                <option value="/">홈</option>
+                <option value="/#gwansang">관상</option>
+                <option value="/#p/god">수호신</option>
+                <option value="/#p/past">전생</option>
+                <option value="/#p/today">오늘 운세(무료)</option>
+                <option value="/gwan/index.html">관상 검색 페이지</option>
+              </select>
+            </label>
+          </div>
+          <div class="mk-out"><code id="mkLink">—</code></div>
+          <div class="pr-act">
+            <button type="button" id="mkCopy">링크 복사</button>
+            <span class="pr-msg" id="mkMsg"></span>
+          </div>
+          <p class="note">🛑 글의 이름은 <b>겹치지 않게</b> 지어 주세요. 같은 이름을 두 글에 쓰면
+             어느 글이 물어 왔는지 못 가립니다. 날짜를 붙이면 편해요.</p>
+        </div>
+        <div class="card">
+          <h2>어느 글이 물어 왔나</h2>
+          <p class="sub">최근 90일 · 링크에 붙인 이름으로 셉니다</p>
+          <ol class="rank" id="rCamp"></ol>
+          <p class="note">아직 비어 있으면 만든 링크로 아직 아무도 안 들어온 거예요.
+             링크 없이 그냥 주소를 올리면 여기 안 잡힙니다.</p>
         </div>
       </div>
     </section>
@@ -698,6 +746,7 @@ function paint() {
     : '<tr><td colspan="5" class="zero">아직 결제가 없습니다.</td></tr>';
 
   paintPayKinds();
+  paintCampaigns();
 
   paintMembers();
 }
@@ -828,6 +877,50 @@ $('prTry')?.addEventListener('click', async () => {
     $('prOut').textContent = e.message;
   } finally { b.disabled = false; b.textContent = '시험해 보기'; }
 });
+
+// ── 유입 링크 만들기 (2026-09-11 온해님) ────────────────
+// 🛑 **게시글마다 다른 링크**를 써야 무엇이 물어 왔는지 안다. 같은 주소를 여기저기
+//    올리면 나중에 「스레드가 됐나 인스타가 됐나」를 영영 못 가린다.
+function mkLink() {
+  const src = $('mkSrc').value;
+  const camp = ($('mkCamp').value || '').trim().replace(/\s+/g, '-');
+  const to = $('mkTo').value || '/';
+  const base = 'https://roadlog.co.kr';
+  // 해시(#) 앞에 쿼리를 넣어야 서버가 읽는다 — 해시는 서버로 안 간다
+  const [path, hash] = to.split('#');
+  const q = 'utm_source=' + encodeURIComponent(src)
+    + (camp ? '&utm_campaign=' + encodeURIComponent(camp) : '');
+  const url = base + (path || '/') + '?' + q + (hash ? '#' + hash : '');
+  $('mkLink').textContent = url;
+  return url;
+}
+['mkSrc', 'mkCamp', 'mkTo'].forEach((id) => {
+  $(id)?.addEventListener('input', mkLink);
+  $(id)?.addEventListener('change', mkLink);
+});
+$('mkCopy')?.addEventListener('click', async () => {
+  const url = mkLink();
+  try {
+    await navigator.clipboard.writeText(url);
+    $('mkMsg').textContent = '복사했어요. 게시글에 붙여 넣으세요.';
+  } catch {
+    $('mkMsg').textContent = '복사가 막혔어요. 위 링크를 직접 긁어 주세요.';
+  }
+});
+
+function paintCampaigns() {
+  const rows = DATA.byCampaign || [];
+  const top = rows.length ? rows[0].uv : 0;
+  $('rCamp').innerHTML = rows.length
+    ? rows.map((r, i) => {
+      const pc = top ? Math.round(r.uv / top * 100) : 0;
+      return '<li><span class="no">' + (i + 1) + '</span>'
+        + '<span class="nm"><b>' + esc(r.name) + '</b></span>'
+        + '<span class="ct">' + num(r.uv) + '명</span>'
+        + '<span class="track"><i class="fill" style="width:' + pc + '%"></i></span></li>';
+    }).join('')
+    : '<li class="zero">아직 들어온 사람이 없습니다.</li>';
+}
 
 function paintMembers() {
   const d = DATA;

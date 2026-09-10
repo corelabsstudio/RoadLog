@@ -135,11 +135,19 @@ def client_of(ua: str) -> str:
     return f"{app} · {osn}"
 
 
-def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
-    """페이지 한 번 열림. 화면(HTML)만 세고 자산·API 는 안 센다."""
+def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
+        utm: str = "", campaign: str = "") -> None:
+    """페이지 한 번 열림. 화면(HTML)만 세고 자산·API 는 안 센다.
+
+    🛑 **`utm_source` 가 있으면 그게 우선이다** (2026-09-11). 링크에 대놓고 적어
+       보낸 것이라 referrer 추측보다 정확하다. 카카오톡·인스타처럼 referrer 를
+       안 주거나 뭉개는 데서도 이건 남는다.
+    """
     day = _today()
     fp = _fingerprint(ip or "", ua or "", day)
-    src = source_of(ref, host)
+    utm = " ".join(str(utm or "").split())[:24]
+    campaign = " ".join(str(campaign or "").split())[:32]
+    src = utm or source_of(ref, host)
     with _LOCK:
         data = _read(VISITS_JSON, {})
         d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
@@ -150,6 +158,12 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "") -> None:
             d["uv"].append(fp)
             # 유입경로·기기는 그날 처음 온 사람만 센다 — 안 그러면 새로고침이 다 잡힌다
             d["src"][src] = int(d["src"].get(src, 0)) + 1
+            # 🛑 캠페인은 **게시글 하나하나**다. 같은 스레드라도 어느 글이 물어 왔는지
+            #    알아야 다음에 무엇을 또 쓸지 정할 수 있다.
+            if campaign:
+                d.setdefault("camp", {})
+                key = ("%s · %s" % (utm, campaign)) if utm else campaign
+                d["camp"][key] = int(d["camp"].get(key, 0)) + 1
             cl = client_of(ua or "")
             d["ua"][cl] = int(d["ua"].get(cl, 0)) + 1
         # 오래된 날짜는 버린다
@@ -180,6 +194,7 @@ def _visits() -> dict[str, dict[str, Any]]:
             "pv": int(d.get("pv", 0)),
             "uv": len(d.get("uv", [])),
             "src": dict(d.get("src", {})),
+            "camp": dict(d.get("camp", {})),
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
         }
     return out
@@ -348,6 +363,7 @@ def overview(days: int = 30) -> dict[str, Any]:
     src_month: dict[str, int] = defaultdict(int)
     src_recent: dict[str, int] = defaultdict(int)
     ua_recent: dict[str, int] = defaultdict(int)
+    camp: dict[str, int] = defaultdict(int)
     for d, v in vis.items():
         for name, c in (v.get("src") or {}).items():
             if d.startswith(month):
@@ -357,6 +373,9 @@ def overview(days: int = 30) -> dict[str, Any]:
         if d >= start:
             for name, c in (v.get("ua") or {}).items():
                 ua_recent[name] += c
+            # 캠페인은 최근 N일치만 본다 — 지난 게시글까지 섞이면 지금 뭐가 되는지 흐려진다
+            for name, c in (v.get("camp") or {}).items():
+                camp[name] += c
 
     # 🛑 사람 수와 페이지 수가 거의 1:1 이면 사람이 아니다.
     #    사람은 한 명이 여러 페이지를 본다. 1:1 은 서로 다른 IP 에서 한 번씩 찍고 간 것 —
@@ -403,4 +422,9 @@ def overview(days: int = 30) -> dict[str, Any]:
         "byProduct": sorted(
             [{"product": p, "opens": c} for p, c in prod.items()],
             key=lambda x: x["opens"], reverse=True),
+        # 캠페인별 유입 — 링크에 붙여 보낸 utm_campaign 으로 센다.
+        # 같은 스레드라도 어느 글이 사람을 물어 왔는지 알아야 다음 글을 정한다.
+        "byCampaign": sorted(
+            [{"name": n, "uv": c} for n, c in camp.items()],
+            key=lambda x: x["uv"], reverse=True)[:30],
     }

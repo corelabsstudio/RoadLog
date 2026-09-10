@@ -1767,10 +1767,15 @@ async def _count_visit(request: Request, call_next):
             # 진짜 브라우저는 UA 에 Mozilla 가 들어 있다. 크롤러 대부분은 없다.
             looks_browser = "mozilla" in low
             if ua and looks_browser and not any(b in low for b in _BOT):
+                # 🛑 **링크에 붙여 보낸 utm 이 referrer 보다 정확하다** (2026-09-11).
+                #    카카오톡·인스타는 referrer 를 안 주거나 뭉갠다.
+                q = request.query_params
                 stats_ops.hit(
                     _client_ip(request), ua, p,
                     request.headers.get("referer", "") or "",
                     request.url.hostname or "",
+                    utm=q.get("utm_source", "") or "",
+                    campaign=q.get("utm_campaign", "") or "",
                 )
     except Exception:
         pass          # 통계 때문에 화면이 막히면 안 된다
