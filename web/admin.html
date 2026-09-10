@@ -421,6 +421,19 @@ td.owner{color:var(--faint);font-size:.84rem}
              링크 없이 그냥 주소를 올리면 여기 안 잡힙니다.</p>
         </div>
       </div>
+
+      <div class="deck">
+        <div class="card">
+          <h2>어디서 온 사람이 샀나</h2>
+          <p class="sub">가입할 때 적힌 유입 경로로 묶었습니다</p>
+          <div class="scroll"><table>
+            <thead><tr><th>어디서</th><th>가입</th><th>산 사람</th><th>매출</th><th>결제 전환율</th></tr></thead>
+            <tbody id="tVia"></tbody>
+          </table></div>
+          <p class="note">🛑 「바로 들어옴」은 주소를 직접 치고 오셨거나 링크에 표시가 없던 분들이에요.
+             앞으로 <b>유입 링크 만들기</b>로 만든 링크만 쓰시면 여기가 갈라집니다.</p>
+        </div>
+      </div>
     </section>
 
     <section data-page="member" hidden>
@@ -747,6 +760,7 @@ function paint() {
 
   paintPayKinds();
   paintCampaigns();
+  paintVia();
 
   paintMembers();
 }
@@ -907,6 +921,18 @@ $('mkCopy')?.addEventListener('click', async () => {
     $('mkMsg').textContent = '복사가 막혔어요. 위 링크를 직접 긁어 주세요.';
   }
 });
+
+// 🛑 **유입 → 가입 → 결제.** 「누가 왔나」로 끝나면 어느 글을 또 쓸지 못 정한다.
+function paintVia() {
+  const rows = DATA.byVia || [];
+  $('tVia').innerHTML = rows.length
+    ? rows.map((r) => {
+      const cvr = r.signups ? (r.buyers / r.signups * 100).toFixed(0) + '%' : '—';
+      return '<tr><td>' + esc(r.name) + '</td><td>' + num(r.signups) + '명</td><td>'
+        + num(r.buyers) + '명</td><td>' + won(r.sales) + '</td><td>' + cvr + '</td></tr>';
+    }).join('')
+    : '<tr><td colspan="5" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+}
 
 function paintCampaigns() {
   const rows = DATA.byCampaign || [];

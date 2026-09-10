@@ -359,6 +359,13 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
     """
     data = _read()
     acc = _account(data, email)
+    # 🛑 **어디서 오셨는지를 계정에 남긴다** (2026-09-11). 전에는 원장 메모에만 적어서
+    #    「스레드에서 온 사람이 얼마 썼나」를 셀 수가 없었다. 유입까지만 알고
+    #    결제까지 못 이으면 어느 글을 또 써야 할지 정할 수 없다.
+    #    🛑 개인을 가리키는 값은 안 담는다 — 매체 이름과 어느 링크였는지까지다.
+    if via and not acc.get("via"):
+        acc["via"] = str(via)[:80]
+        _write(data)
     if any(e.get("type") == "welcome" for e in acc.get("ledger", [])):
         return {"given": 0, "balance": sum(l["remain"] for l in _live_lots(acc))}
     now = _now()

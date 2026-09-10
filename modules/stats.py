@@ -296,6 +296,7 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         used = bool(opens or acc.get("ledger"))
         legacy = (how == "관리자") or not (used or (at and at >= SAJU_SINCE))
         out.append({
+            "via": str(acc.get("via") or ""),
             "email": email,
             "name": u.get("name") or "",
             "at": at,
@@ -427,4 +428,30 @@ def overview(days: int = 30) -> dict[str, Any]:
         "byCampaign": sorted(
             [{"name": n, "uv": c} for n, c in camp.items()],
             key=lambda x: x["uv"], reverse=True)[:30],
+        # 🛑 **유입 → 가입 → 결제**를 한 줄로 잇는다 (2026-09-11 온해님).
+        #    「누가 왔나」까지만 알고 「누가 샀나」를 모르면 어느 글을 또 쓸지 정할 수 없다.
+        #    가입할 때 계정에 적어 둔 `via` 로 묶는다.
+        "byVia": _via_funnel(),
     }
+
+
+def _via_funnel() -> list[dict[str, Any]]:
+    """어디서 온 사람이 가입하고 얼마를 썼나."""
+    from modules import lamps as lamps_ops
+
+    lamp = lamps_ops._read() or {}
+    out: dict[str, dict[str, Any]] = {}
+    for m in members():
+        if m.get("legacy") and m.get("how") == "관리자":
+            continue
+        name = str(m.get("via") or "").strip() or "바로 들어옴"
+        row = out.setdefault(name, {"name": name, "signups": 0, "buyers": 0, "sales": 0})
+        row["signups"] += 1
+        acc = lamp.get(m["email"]) or {}
+        paid = sum(int(e.get("price") or 0) for e in acc.get("ledger", [])
+                   if e.get("type") in ("charge", "premium")
+                   and str(e.get("at", ""))[:10] >= lamps_ops.REAL_PAY_FROM)
+        if paid:
+            row["buyers"] += 1
+            row["sales"] += paid
+    return sorted(out.values(), key=lambda x: (-x["sales"], -x["signups"]))[:30]
