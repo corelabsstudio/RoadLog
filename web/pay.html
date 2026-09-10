@@ -60,6 +60,7 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .result.ok{display:block;background:#e7f6ee;color:var(--good)}
 .result.err{display:block;background:#fbe3e3;color:var(--bad)}
 .result.warn{display:block;background:#fdf3e0;color:#8a5a12}
+.cardsoon{margin:0 0 14px;padding:12px 14px;border-left:3px solid #d9a441;background:rgba(217,164,65,.09);font-size:.9rem;line-height:1.55;color:var(--ink)}
 .result pre{margin:8px 0 0;font-size:.78rem;white-space:pre-wrap;word-break:break-all;color:inherit;opacity:.85}
 .biz{border-top:1px solid var(--line);margin-top:34px;padding:20px 22px;color:var(--muted);font-size:.8rem}
 .biz p{margin:0 0 4px}
@@ -129,6 +130,8 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
         <label class="method"><input type="radio" name="pm" value="EASY_PAY" />간편결제</label>
       </div>
 
+      <p class="cardsoon" id="cardSoon" hidden></p>
+
       <button type="button" class="btn" id="payBtn">결제하기</button>
 
       <p class="agree">
@@ -153,6 +156,17 @@ const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 // NHN KCP 실채널 (2026-09-08 계약 승인 · 사이트코드 IPB5Z · 포트원 채널 「RoadLog NHN KCP」)
 // 🛑 이 값은 브라우저에 노출되는 공개값이다. 비밀은 KCP 개인키(.pem)와 그 비밀번호이고,
 //    그 둘은 포트원 콘솔에만 있다. 이 저장소에 넣지 말 것.
+// 🛑 **아직 열리지 않은 카드사** (2026-09-10 오픈).
+//    카드사 등록은 한꺼번에 안 끝나고 **순서대로** 열린다. 그동안 그 카드로
+//    결제하면 승인이 안 나는데, 손님은 우리 사이트가 고장난 줄 안다.
+//
+//    🛑 **여는 곳은 KCP 뿐이고 온해님만 보실 수 있다** —
+//       partner.kcp.co.kr → 상점정보관리 → 카드사심사 등록현황
+//    카드가 하나 열릴 때마다 이 배열에서 그 이름을 지운다.
+//    **다 열리면 `CARD_OPENING` 을 false 로 바꾼다** — 그러면 안내가 사라진다.
+const CARD_OPENING = true;
+const CARD_SOON = [];          // 예: ['국민', '삼성', '현대']
+
 const CHANNEL_KEY = 'channel-key-e985315c-202d-4b36-b2c5-278f55a24e60';
 
 // 🛑 등불 유료 충전은 없앴다 (2026-09-07). 이 화면은 **건별 결제 전용**이다.
@@ -345,6 +359,18 @@ $('payBtn').addEventListener('click', async () => {
     btn.disabled = false; btn.textContent = '결제하기';
   }
 });
+
+// 아직 안 열린 카드사를 미리 알린다 — 결제창을 띄우고 나서 막히면 손님은 이미 카드를 꺼낸 뒤다
+(function tellCardSoon() {
+  const box = $('cardSoon');
+  if (!box || !CARD_OPENING) return;
+  box.innerHTML = CARD_SOON.length
+    ? `지금 <b>${CARD_SOON.join('·')}</b> 카드는 아직 준비 중이에요.`
+      + ' 다른 카드나 <b>실시간 계좌이체</b>로 해 주시면 바로 열려요.'
+    : '카드사 등록이 순서대로 열리는 중이라, 카드에 따라 결제가 막힐 수 있어요.'
+      + ' 그럴 땐 <b>실시간 계좌이체</b>로 해 주시면 바로 열려요.';
+  box.hidden = false;
+})();
 
 // 모바일 결제창에서 돌아온 경우
 if (q.get('paymentId')) {
