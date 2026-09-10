@@ -25,6 +25,15 @@ from modules.saju_writer import MODEL, _URL, api_key
 TIMEOUT = 120
 MAX_BYTES = 1_500_000          # 브라우저에서 긴 변 768px 로 줄여 보내면 200KB 안쪽이다
 
+def _P(key: str, fallback: str) -> str:
+    """관리자 화면에서 고친 말투가 있으면 그것을 쓴다 (2026-09-11)."""
+    try:
+        from modules import prompts as _pr
+        return _pr.get(key) or fallback
+    except Exception:                                # noqa: BLE001
+        return fallback
+
+
 SYSTEM = """너는 사주 상담 사이트 「로드로그」의 관상을 본다. 화자는 **관멍이**라는 강아지 도령이다.
 갓을 쓰고 돋보기를 든 어린 진돗개다. 사주는 무냥이가 보고, 얼굴은 네가 본다.
 
@@ -257,7 +266,8 @@ def read_face(product: str, shots: list[str], *, name: str = "",
         ask += "\n\n분량은 %d자 안팎으로." % (chars * 5)
 
     body = {
-        "systemInstruction": {"parts": [{"text": SYSTEM}]},
+        # 🛑 말투는 관리자 화면에서 고칠 수 있다 (modules/prompts.py)
+        "systemInstruction": {"parts": [{"text": _P("gwan", SYSTEM)}]},
         "contents": [{"role": "user", "parts": [_part(b) for b in shots] + [{"text": ask}]}],
         # 🛑 thinkingBudget 을 0 으로 안 두면 **생각 토큰이 답 예산을 다 먹고 글이 잘린다.**
         #    2026-09-09 에 실제로 27토큰(한 문장 반)에서 끊겼다. saju_writer 와 같은 설정이다.

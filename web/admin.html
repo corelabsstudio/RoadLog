@@ -98,6 +98,29 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 .picked button{margin-left:8px;font:inherit;font-size:.83rem;padding:2px 10px;cursor:pointer;
   color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px}
 
+/* ── 프롬프트 관리 (2026-09-11) ─────────────────────── */
+.pr-deck{grid-template-columns:minmax(0,260px) minmax(0,1fr)}
+@media(max-width:900px){ .pr-deck{grid-template-columns:1fr} }
+.pr-list{list-style:none;padding:0;margin:6px 0 0}
+.pr-list button{display:block;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:none;border:0;border-radius:10px;padding:10px 12px;color:var(--muted)}
+.pr-list button:hover{background:rgba(164,147,240,.08);color:var(--ink)}
+.pr-list button.on{background:rgba(164,147,240,.16);color:var(--ink);font-weight:700}
+.pr-list b{display:block;font-weight:inherit}
+/* 고친 것은 점 하나로만 알린다 — 🛑 알약 배지를 쓰지 않는다 (전역 규칙 12번) */
+.pr-list i{font-style:normal;color:var(--accent);font-size:.78rem}
+#prText{width:100%;min-height:340px;margin-top:8px;padding:12px 14px;resize:vertical;
+  background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.86rem;line-height:1.65}
+.pr-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.pr-act button{font:inherit;font-size:.9rem;cursor:pointer;padding:8px 16px;border-radius:10px;
+  background:var(--accent);color:#17151d;border:0;font-weight:700}
+.pr-act button.ghost{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:500}
+.pr-act button[disabled]{opacity:.5;cursor:default}
+.pr-msg{font-size:.88rem;color:var(--muted)}
+.pr-out{margin-top:12px;padding:14px 16px;background:var(--bg);border:1px solid var(--line);
+  border-radius:12px;white-space:pre-wrap;line-height:1.8;font-size:.92rem}
+
 /* ── 순위 목록 (참고 그림의 Top Platform 자리) ─────────── */
 .rank{list-style:none;padding:0;margin:4px 0 0}
 .rank li{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 10px;padding:9px 0 0;
@@ -317,11 +340,26 @@ td.owner{color:var(--faint);font-size:.84rem}
 
     <!-- ── 콘텐츠 · AI ─────────────────────────────────── -->
     <section data-page="ai" hidden>
-      <div class="deck">
+      <div class="deck pr-deck">
         <div class="card">
-          <h2>준비 중</h2>
-          <p class="sub">무냥이·관멍이가 쓰는 말투를 여기서 고치고 시험합니다</p>
-          <p class="note">코드를 건드리지 않고 톤앤매너를 바꾸는 자리입니다. 다음 단계에서 켭니다.</p>
+          <h2>무엇을 고칠까요</h2>
+          <p class="sub">고른 것을 오른쪽에서 손봅니다</p>
+          <ul class="pr-list" id="prList"></ul>
+        </div>
+        <div class="card">
+          <div class="hd"><h2 id="prName">—</h2></div>
+          <p class="sub" id="prWhy"></p>
+          <textarea id="prText" spellcheck="false" placeholder="프롬프트를 고르면 여기에 나옵니다"></textarea>
+          <div class="pr-act">
+            <button type="button" id="prSave">저장</button>
+            <button type="button" id="prTry">시험해 보기</button>
+            <button type="button" class="ghost" id="prReset">기본값으로</button>
+            <span class="pr-msg" id="prMsg"></span>
+          </div>
+          <p class="note">🛑 고친 말투는 <b>그 뒤에 새로 쓰는 글부터</b> 나와요.
+             이미 써 둔 리포트는 그대로예요. 「시험해 보기」는 저장하지 않고 한 번 돌려만 봐요
+             (한 번에 1원 안팎).</p>
+          <div class="pr-out" id="prOut" hidden></div>
         </div>
       </div>
     </section>
@@ -705,6 +743,92 @@ function paintPayKinds() {
   $('rBand').innerHTML = bar(got, kTotal);
 }
 
+// ── 프롬프트 관리 (2026-09-11 온해님) ──────────────────
+// 🛑 **기본값을 들고 다닌다.** 「기본값으로」를 눌렀을 때 서버를 다시 안 물어도 되고,
+//    무엇을 얼마나 바꿨는지 눈으로 견줄 수 있다.
+let PROMPTS = [];
+let prAt = '';
+
+async function loadPrompts() {
+  try {
+    const r = await fetch('/api/admin/prompts', { headers: { Authorization: 'Bearer ' + token() } });
+    if (!r.ok) return;
+    PROMPTS = (await r.json()).items || [];
+  } catch { PROMPTS = []; }
+  paintPromptList();
+  if (PROMPTS.length && !prAt) pickPrompt(PROMPTS[0].key);
+}
+
+function paintPromptList() {
+  $('prList').innerHTML = PROMPTS.map((p) =>
+    '<li><button type="button" data-pr="' + esc(p.key) + '"'
+    + (p.key === prAt ? ' class="on"' : '') + '><b>' + esc(p.name) + '</b>'
+    + (p.edited ? '<i>고쳤어요 · ' + esc(p.at) + '</i>' : '') + '</button></li>').join('');
+}
+
+function pickPrompt(key) {
+  const p = PROMPTS.find((x) => x.key === key); if (!p) return;
+  prAt = key;
+  $('prName').textContent = p.name;
+  $('prWhy').textContent = p.why;
+  $('prText').value = p.text;
+  $('prOut').hidden = true;
+  $('prMsg').textContent = p.edited ? '고친 것을 쓰는 중이에요.' : '기본값을 쓰는 중이에요.';
+  paintPromptList();
+}
+
+$('prList')?.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-pr]'); if (b) pickPrompt(b.dataset.pr);
+});
+
+async function prCall(url, opt) {
+  const r = await fetch(url, Object.assign({
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+  }, opt));
+  const d = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((d && d.detail) || ('오류 ' + r.status));
+  return d;
+}
+
+$('prSave')?.addEventListener('click', async () => {
+  if (!prAt) return;
+  $('prMsg').textContent = '저장하는 중…';
+  try {
+    await prCall('/api/admin/prompts/' + prAt, {
+      method: 'PUT', body: JSON.stringify({ text: $('prText').value }),
+    });
+    $('prMsg').textContent = '저장했어요. 다음에 쓰는 글부터 이 말투로 나와요.';
+    await loadPrompts(); pickPrompt(prAt);
+  } catch (e) { $('prMsg').textContent = e.message; }
+});
+
+$('prReset')?.addEventListener('click', async () => {
+  if (!prAt) return;
+  if (!confirm('기본값으로 되돌릴까요? 고친 내용은 사라져요.')) return;
+  try {
+    await prCall('/api/admin/prompts/' + prAt, { method: 'DELETE' });
+    await loadPrompts(); pickPrompt(prAt);
+    $('prMsg').textContent = '기본값으로 되돌렸어요.';
+  } catch (e) { $('prMsg').textContent = e.message; }
+});
+
+$('prTry')?.addEventListener('click', async () => {
+  if (!prAt) return;
+  const b = $('prTry'); b.disabled = true; b.textContent = '돌려 보는 중…';
+  $('prMsg').textContent = '';
+  try {
+    const d = await prCall('/api/admin/prompts/' + prAt + '/try', {
+      method: 'POST', body: JSON.stringify({ text: $('prText').value }),
+    });
+    $('prOut').hidden = false;
+    $('prOut').textContent = d.text || '(빈 답이 왔어요)';
+    $('prMsg').textContent = d.note || '';
+  } catch (e) {
+    $('prOut').hidden = false;
+    $('prOut').textContent = e.message;
+  } finally { b.disabled = false; b.textContent = '시험해 보기'; }
+});
+
 function paintMembers() {
   const d = DATA;
   const mem = d.members || [];
@@ -765,6 +889,9 @@ $('tabs').addEventListener('click', (e) => {
   $('tabs').querySelectorAll('button[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== b.dataset.tab; });
   $('pageName').textContent = TAB_NAME[b.dataset.tab] || '';
+  // 🛑 프롬프트는 **그 탭을 열 때** 불러온다. 처음부터 부르면 안 볼 사람도
+  //    서버를 두드리고, 목록이 길어 화면이 늦게 뜬다.
+  if (b.dataset.tab === 'ai' && !PROMPTS.length) loadPrompts();
   window.scrollTo(0, 0);
 });
 

@@ -355,6 +355,18 @@ SECTION_SCHEMA = {
 }
 
 
+# 🛑 **말투는 관리자 화면에서 고칠 수 있다** (2026-09-11 온해님).
+#    아래 상수들은 **기본값**이고, 고친 것이 있으면 `prompts.get()` 이 그것을 준다.
+#    부를 때마다 조회하므로 고치자마자 다음 글부터 바뀐다 (재배포 필요 없음).
+#    🛑 상수를 지우지 말 것 — 「기본값으로 되돌리기」의 기준이다.
+def _P(key: str, fallback: str) -> str:
+    try:
+        from modules import prompts as _pr
+        return _pr.get(key) or fallback
+    except Exception:                                # noqa: BLE001
+        return fallback
+
+
 def _call(system: str, user: str, *, model: str | None = None,
           temperature: float = 1.0, max_tokens: int = 1400,
           schema: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -445,13 +457,13 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
         "「저도 이건 조심해서 말해요」 「올해 글자는 올해만 써요. 내년엔 또 달라져요」")
     user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s%s"
             % (name, seen or "", head, fact, section, guide, hook))
-    res = _call(SYSTEM, user, model=model, max_tokens=max(1400, int(chars * 2.2)))
+    res = _call(_P('saju', SYSTEM), user, model=model, max_tokens=max(1400, int(chars * 2.2)))
     bad = check_counts(res["text"], saju)
     if bad:
         fix = user + ("\n\n[다시 쓴다]\n앞서 쓴 글에서 개수를 틀렸다: %s\n"
                       "[사주]에 적힌 개수를 그대로 옮겨라. 헷갈리면 개수를 아예 말하지 마라."
                       % " / ".join(bad))
-        res2 = _call(SYSTEM, fix, model=model, temperature=0.7)
+        res2 = _call(_P('saju', SYSTEM), fix, model=model, temperature=0.7)
         res2["in"] += res["in"]
         res2["out"] += res["out"]
         res2["retried"] = bad
@@ -700,7 +712,7 @@ def summarize(blocks: list[dict[str, Any]], *, question: str = "",
     txt = ""
     for _ in range(2):
         try:
-            res = _call(SUMMARY_SYSTEM, user, model=model,
+            res = _call(_P('summary', SUMMARY_SYSTEM), user, model=model,
                         temperature=0.9, max_tokens=300)
             txt = " ".join((res.get("text") or "").split())
         except Exception:                            # noqa: BLE001
@@ -887,7 +899,9 @@ def write_card(kind: str, facts: dict[str, str], *,
     # 🛑 전생은 규격이 다르다 — 세 칸짜리 표를 LLM 이 채운다 (2026-09-10 온해님)
     k = str(kind or "").strip()
     past, god = k in ("past", "전생"), k in ("god", "수호신")
-    sysmsg = PAST_SYSTEM if past else GOD_SYSTEM if god else CARD_SYSTEM
+    sysmsg = (_P('past', PAST_SYSTEM) if past
+              else _P('god', GOD_SYSTEM) if god
+              else _P('card', CARD_SYSTEM))
     schema = PAST_CARD_SCHEMA if past else GOD_CARD_SCHEMA if god else CARD_SCHEMA
     res = None
     for _ in range(2):

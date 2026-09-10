@@ -1834,6 +1834,96 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
         raise HTTPException(400, str(e)) from e
 
 
+# ── 프롬프트 관리 ──────────────────────────────────────
+# 🛑 **말투를 코드 배포 없이 고친다** (2026-09-11 온해님 명세).
+#    무냥이·관멍이가 쓰는 글의 결을 관리자 화면에서 고치고 그 자리에서 시험해 본다.
+#    저장은 `DATA_DIR/prompts.json` — 이 서비스는 DB 없이 JSON 으로 돈다.
+#
+# 🛑 **이미 써 둔 글은 안 바뀐다.** 리포트는 한 번 쓰면 저장하고 다시 안 쓰기 때문이다.
+#    고친 말투는 **그 뒤에 새로 쓰는 글부터** 나온다.
+
+
+class PromptBody(BaseModel):
+    text: str
+
+
+@app.get("/api/admin/prompts")
+def admin_prompts(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import prompts as prompts_ops
+    return {"items": prompts_ops.listing()}
+
+
+@app.put("/api/admin/prompts/{key}")
+def admin_prompt_put(key: str, body: PromptBody,
+                     authorization: str | None = Header(default=None)):
+    admin = _require_admin(authorization)
+    from modules import prompts as prompts_ops
+    try:
+        got = prompts_ops.put(key, body.text, who=admin.get("email") or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "saved": got}
+
+
+@app.delete("/api/admin/prompts/{key}")
+def admin_prompt_reset(key: str, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import prompts as prompts_ops
+    prompts_ops.reset(key)
+    return {"ok": True}
+
+
+@app.post("/api/admin/prompts/{key}/try")
+def admin_prompt_try(key: str, body: PromptBody,
+                     authorization: str | None = Header(default=None)):
+    """🛑 **진짜로 한 번 돌려 본다.** 저장하지 않고, 준 글로만 시험한다.
+
+    값이 든다(한 번에 1원 안팎). 저장 전에 결과를 보고 정하시라고 둔 자리다.
+    """
+    _require_admin(authorization)
+    from modules import prompts as prompts_ops
+    from modules import saju_writer
+
+    text = str(body.text or "").strip()
+    if len(text) < 40:
+        raise HTTPException(400, "프롬프트가 너무 짧습니다.")
+    if not saju_writer.ready():
+        raise HTTPException(503, "Gemini 키가 없어 시험할 수 없어요.")
+
+    # 시험용 재료 — 실제 손님 자료를 쓰지 않는다
+    SAMPLE = {
+        "saju": "[사주]\n나를 뜻하는 글자: 무쇠(경금)\n곁을 내주는 자리: 술토\n"
+                "넘치는 것: 흙\n비어 있는 것: 물\n\n[이 항목] 연애에서 넘치는 것과 비는 것\n"
+                "[길이] 300자 안팎",
+        "card": "[무엇에 대한 카드인가] 내 연애 사주\n[받은 재료]\n"
+                "  손님이 물은 것 : 나는 왜 늘 같은 이별을 할까?\n"
+                "  무냥이가 쓴 글 : 먼저 다가서고 먼저 지치는 자리가 뚜렷해요.",
+        "past": "[무엇에 대한 카드인가] 전생\n[받은 재료]\n"
+                "  전생의 일 : 나루터에서 짐을 나르던 사람\n  그때의 결 : 부탁을 못 거절했어요\n"
+                "  어떻게 마쳤나 : 빚을 남기고 떠났다\n  못다 한 것 : 제 몫의 삯\n"
+                "  남은 버릇 : 남 먼저 챙기는 편",
+        "god": "[무엇에 대한 카드인가] 수호신\n[받은 재료]\n"
+               "  정해진 등급 : A급\n  이 등급이 뜻하는 것 : A급 — 똥차·사기꾼을 걸러 주는 팩폭형\n"
+               "  정해진 이름 : 대신할머니\n  왼쪽에 서는 이 : 바리공주\n"
+               "  오른쪽에 서는 이 : 선녀\n  짐승 : 돼지",
+        "summary": "[결과지]\n먼저 다가서고 먼저 지치는 자리가 뚜렷해요. 마음을 다 준 뒤에야 "
+                   "상대의 온도를 확인하는 편이라, 끝날 때마다 혼자 남은 기분이 들어요.",
+        "gwan": "[손님이 물은 것] 금사빠일까, 팍 식어서 덤덤해지는 스타일일까?\n"
+                "[볼 자리] 연애할 때 나오는 얼굴 / 가까워질 때의 속도\n"
+                "(사진 없이 말투만 시험합니다. 자리 이름에 맞춰 두 문단만 써 주세요.)",
+    }
+    user = SAMPLE.get(key) or "시험 삼아 두 문단만 써 주세요."
+    try:
+        res = saju_writer._call(text, user, temperature=1.0, max_tokens=700)
+    except Exception as e:                               # noqa: BLE001
+        raise HTTPException(502, "돌려 보지 못했어요: %s" % str(e)[:160])
+    out = str(res.get("text") or "").strip()
+    return {"ok": True, "text": out,
+            "in": res.get("in", 0), "out": res.get("out", 0),
+            "note": "저장하지 않았습니다. 마음에 들면 「저장」을 눌러 주세요."}
+
+
 @app.get("/api/admin/freepass")
 def admin_freepass_list(authorization: str | None = Header(default=None)):
     """복채를 내지 않고 다 보시는 분들. 관리자 화면은 열리지 않는다."""
