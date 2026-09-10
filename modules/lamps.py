@@ -131,6 +131,10 @@ PREMIUM_WON = {
     "face_all": 19800,
     "face_pair": 29800,
     "face_king": 39800,
+    "face_flag": 5980,
+    "face_read": 4980,
+    "face_fix": 3980,
+    "face_luck": 2980,
 }
 
 _PAIR_RE = re.compile(r"^[0-9a-f]{16,64}$")
