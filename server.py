@@ -2812,14 +2812,22 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
         have = saju_writer.load(product, pair) or {"blocks": []}
     except ValueError:
         raise HTTPException(400, "사주 값이 올바르지 않습니다.")
+    # 🛑 **글의 결이 바뀌었으면 저장해 둔 것을 버린다** (saju_writer.WRITE_VER 참고).
+    #    관상은 GWAN_VER 로 이미 하고 있었는데 사주 본문에만 없어서, 말투를 갈아도
+    #    이미 열어 본 리포트는 옛 글이 그대로 나왔다 (2026-09-10 온해님이 잡으심).
+    stale = int(have.get("ver") or 0) < saju_writer.WRITE_VER
+    if stale:
+        have = {"blocks": []}
     done = {b["title"]: b for b in have.get("blocks", []) if b.get("text")}
     todo = [s for s in want if s not in done]
 
     # 🛑 주인(관리자)은 화면을 보려고 수없이 열어 본다. 그때마다 새로 뽑으면
     #    파는 것도 없이 돈만 나간다. 이미 써 둔 것만 보여 주고, 새로 뽑지 않는다.
     #    정말 새로 뽑아야 할 때만 주소에 ?write=1 을 붙인다.
+    #    🛑 다만 **글의 결이 바뀐 경우(stale)에는 주인에게도 새로 쓴다.** 안 그러면
+    #       말투를 갈아 놓고 정작 확인하는 사람만 옛 글을 본다.
     owner_skip = False
-    if todo and _is_owner(user) and not body.force:
+    if todo and _is_owner(user) and not body.force and not stale:
         todo = []
         owner_skip = True
 

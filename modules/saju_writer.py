@@ -618,7 +618,11 @@ def merge(product: str, pair: str, blocks: list[dict[str, Any]]) -> dict[str, An
     for b in blocks:
         if b.get("text"):
             by[b["title"]] = b
-    data = {"blocks": list(by.values())}
+    # 🛑 **card·summary 를 함께 남긴다.** 전에는 blocks 만 남기고 덮어써서,
+    #    글을 이어 쓸 때마다 카드 문구가 사라지고 다시 만들어졌다 (0.5원씩).
+    data = {k: v for k, v in (old or {}).items() if k in ("card", "summary")}
+    data["blocks"] = list(by.values())
+    data["ver"] = WRITE_VER
     save(product, pair, data)
     return data
 
@@ -820,6 +824,15 @@ GOD_SYSTEM = """너는 2030 여성들의 심리와 게임/연애 밈(Meme)에 �
 #    나왔다 — 온해님이 「똑같이 나오는데?」로 잡으셨다.
 #    판이 낮으면 서버가 한 번만 다시 만든다 (0.5원). 그 뒤로는 다시 고정된다.
 CARD_VER = 2
+
+# 🛑🛑 **본문 글의 판.** 말투나 얼개를 바꾸면 이 수를 올린다 (2026-09-10).
+#    항목은 한 번 쓰면 저장하고 다시 안 쓴다 — 손님이 다시 열 때 글이 바뀌면
+#    안 되기 때문이다. 그런데 그 규칙 때문에 **프롬프트를 바꿔도 이미 저장된
+#    리포트는 영원히 옛 글이 나왔다.**
+#    2026-09-10 에 해설을 「팩트폭격」 말투로 갈았는데 화면에는 진지한 옛 글이
+#    그대로 나왔다 — 온해님이 「예전이랑 달라진게 없어」로 잡으셨다.
+#    🛑 관상은 `GWAN_VER` 로 이미 같은 장치를 쓰고 있었다. 사주 본문에만 없었다.
+WRITE_VER = 2
 
 # 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
 #    `job`·`habit`·`karma` 는 전생 카드의 세 칸이다 (다른 상품에는 안 온다)
