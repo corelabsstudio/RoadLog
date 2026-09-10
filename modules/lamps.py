@@ -140,7 +140,7 @@ PREMIUM_WON = {
     # 관상 — 얼굴 사진으로 보는 것 (roadlog-saju/gwansang.js 와 같아야 한다).
     # 🛑 여기 없으면 결제창은 뜨는데 **서버가 값을 몰라 거절**한다.
     #    화면엔 아무 설명도 안 나오고 그냥 안 열린다.
-    "face_first": 980,
+    "face_first": 2900,
     "face_me": 5800,
     "face_you": 5800,
     "face_love": 5800,
