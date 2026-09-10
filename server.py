@@ -1839,6 +1839,25 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
         raise HTTPException(400, str(e)) from e
 
 
+# ── 공유 눌림 세기 ────────────────────────────────────
+# 🛑 카드가 퍼져야 손님이 온다. 몇 번 저장하고 몇 번 공유했는지가 **바이럴의 온도**다.
+#    로그인 없이도 받는다 — 누가 눌렀는지는 안 남긴다.
+
+
+class TapBody(BaseModel):
+    what: str
+    product: str = ""
+
+
+@app.post("/api/tap")
+def tap_event(body: TapBody):
+    try:
+        stats_ops.tap(body.what or "", body.product or "")
+    except Exception:                                    # noqa: BLE001
+        pass                                             # 통계 때문에 화면이 막히면 안 된다
+    return {"ok": True}
+
+
 # ── 환불 ──────────────────────────────────────────────
 # 🛑 **되돌릴 수 없는 일이다.** 주인만 부를 수 있고, 까닭을 반드시 적게 한다.
 #    포트원에 취소를 넣고 → 원장에 남기고 → **열어 둔 리포트를 닫는다.**

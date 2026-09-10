@@ -422,7 +422,13 @@ td.owner{color:var(--faint);font-size:.84rem}
         </div>
       </div>
 
-      <div class="deck">
+      <div class="deck half">
+        <div class="card">
+          <h2>얼마나 퍼뜨렸나</h2>
+          <p class="sub">최근 90일 · 카드를 저장하거나 공유 단추를 누른 횟수</p>
+          <ol class="rank" id="rTap"></ol>
+          <p class="note">카드가 퍼져야 손님이 오는 구조라, 이 숫자가 곧 퍼짐의 온도예요.</p>
+        </div>
         <div class="card">
           <h2>어디서 온 사람이 샀나</h2>
           <p class="sub">가입할 때 적힌 유입 경로로 묶었습니다</p>
@@ -767,6 +773,7 @@ function paint() {
   paintPayKinds();
   paintCampaigns();
   paintVia();
+  paintTaps();
 
   paintMembers();
 }
@@ -966,6 +973,20 @@ function paintVia() {
         + num(r.buyers) + '명</td><td>' + won(r.sales) + '</td><td>' + cvr + '</td></tr>';
     }).join('')
     : '<tr><td colspan="5" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+}
+
+function paintTaps() {
+  const rows = DATA.byTap || [];
+  const top = rows.length ? rows[0].n : 0;
+  $('rTap').innerHTML = rows.length
+    ? rows.map((r, i) => {
+      const pc = top ? Math.round(r.n / top * 100) : 0;
+      return '<li><span class="no">' + (i + 1) + '</span>'
+        + '<span class="nm"><b>' + esc(r.name) + '</b></span>'
+        + '<span class="ct">' + num(r.n) + '번</span>'
+        + '<span class="track"><i class="fill" style="width:' + pc + '%"></i></span></li>';
+    }).join('')
+    : '<li class="zero">아직 아무도 안 눌렀습니다.</li>';
 }
 
 function paintCampaigns() {

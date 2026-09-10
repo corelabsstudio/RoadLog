@@ -174,6 +174,25 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
         _write(VISITS_JSON, data)
 
 
+def tap(what: str, product: str = "") -> None:
+    """카드를 저장했거나 공유했다. 날짜별로 세기만 한다 (2026-09-11).
+
+    🛑 **누가 눌렀는지는 안 남긴다.** 몇 번 눌렸는지만 안다.
+    """
+    what = " ".join(str(what or "").split())[:24]
+    if what not in ("save", "share", "sns", "copy"):
+        return
+    product = " ".join(str(product or "").split())[:24]
+    day = _today()
+    with _LOCK:
+        data = _read(VISITS_JSON, {})
+        d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
+        t = d.setdefault("tap", {})
+        key = ("%s:%s" % (what, product)) if product else what
+        t[key] = int(t.get(key, 0)) + 1
+        _write(VISITS_JSON, data)
+
+
 def forget_visits(day: str | None = None) -> int:
     """방문 기록을 지운다. 잘못 센 날을 털어낼 때 쓴다."""
     with _LOCK:
@@ -195,6 +214,7 @@ def _visits() -> dict[str, dict[str, Any]]:
             "uv": len(d.get("uv", [])),
             "src": dict(d.get("src", {})),
             "camp": dict(d.get("camp", {})),
+            "tap": dict(d.get("tap", {})),
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
         }
     return out
@@ -433,7 +453,26 @@ def overview(days: int = 30) -> dict[str, Any]:
         #    「누가 왔나」까지만 알고 「누가 샀나」를 모르면 어느 글을 또 쓸지 정할 수 없다.
         #    가입할 때 계정에 적어 둔 `via` 로 묶는다.
         "byVia": _via_funnel(),
+        # 🛑 **공유 통계** — 카드를 저장했거나 공유 단추를 누른 횟수 (2026-09-11).
+        #    카드가 퍼져야 손님이 오는 구조라, 이 숫자가 곧 바이럴의 온도다.
+        "byTap": _tap_sum(vis, start),
     }
+
+
+def _tap_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:
+    """최근 N일 공유 눌림. 무엇을 · 어느 상품에서."""
+    LABEL = {"save": "이미지로 저장", "share": "공유하기",
+             "sns": "SNS 로 바로", "copy": "링크 복사"}
+    got: dict[str, int] = {}
+    for day, v in vis.items():
+        if day < start:
+            continue
+        for key, c in (v.get("tap") or {}).items():
+            what, _, prod = str(key).partition(":")
+            name = LABEL.get(what, what) + ((" · " + prod) if prod else "")
+            got[name] = got.get(name, 0) + int(c)
+    return sorted([{"name": n, "n": c} for n, c in got.items()],
+                  key=lambda x: x["n"], reverse=True)[:20]
 
 
 def _via_funnel() -> list[dict[str, Any]]:
