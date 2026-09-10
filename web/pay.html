@@ -164,8 +164,13 @@ const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
 //       partner.kcp.co.kr → 상점정보관리 → 카드사심사 등록현황
 //    카드가 하나 열릴 때마다 이 배열에서 그 이름을 지운다.
 //    **다 열리면 `CARD_OPENING` 을 false 로 바꾼다** — 그러면 안내가 사라진다.
+//    🛑 **되는 카드를 먼저 적는다.** 「안 되는 것」만 늘어놓으면 손님은 자기 카드가
+//       없는 목록을 보고도 되는지 확신을 못 한다.
+//    2026-09-10 09:51 KCP 실측 — 완료 5 · 심사중 5
+//    (하나카드는 일반·외환 둘로 나뉘어 있지만 손님에게는 「하나」 하나로 적는다)
 const CARD_OPENING = true;
-const CARD_SOON = [];          // 예: ['국민', '삼성', '현대']
+const CARD_OK = ['삼성', '신한', 'BC', '롯데', 'NH농협'];
+const CARD_SOON = ['국민', '현대', '하나', '우리'];
 
 const CHANNEL_KEY = 'channel-key-e985315c-202d-4b36-b2c5-278f55a24e60';
 
@@ -256,8 +261,8 @@ function payFailed(code, message) {
   const card = !picked || picked.value === 'CARD' || picked.value === 'EASY_PAY';
   show('err', '결제가 되지 않았어요.'
     + (card
-      ? '<br />지금 <b>카드사가 순서대로 열리는 중</b>이라 카드에 따라 막힐 수 있어요.'
-        + ' <b>다른 카드</b>나 <b>실시간 계좌이체</b>로 해 보시겠어요?'
+      ? '<br />지금은 <b>' + CARD_OK.join('·') + '</b> 카드만 열려 있어요.'
+        + ' 그 카드가 없으시면 <b>실시간 계좌이체</b>로 해 주시면 바로 보실 수 있어요.'
       : '<br />잠시 뒤에 다시 해 보시거나 다른 결제 수단을 골라 주세요.')
     + '<br />계속 안 되면 corelabs.studio@gmail.com 으로 알려 주세요. 바로 봐 드릴게요.'
     + (message ? '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.86rem;opacity:.75">자세한 내용</summary><pre>'
@@ -364,9 +369,12 @@ $('payBtn').addEventListener('click', async () => {
 (function tellCardSoon() {
   const box = $('cardSoon');
   if (!box || !CARD_OPENING) return;
-  box.innerHTML = CARD_SOON.length
-    ? `지금 <b>${CARD_SOON.join('·')}</b> 카드는 아직 준비 중이에요.`
-      + ' 다른 카드나 <b>실시간 계좌이체</b>로 해 주시면 바로 열려요.'
+  box.innerHTML = CARD_OK.length
+    ? `지금은 <b>${CARD_OK.join('·')}</b> 카드로 결제하실 수 있어요.`
+      + (CARD_SOON.length
+        ? ` <b>${CARD_SOON.join('·')}</b> 카드는 등록이 끝나는 대로 열려요 —`
+          + ' 그전에는 <b>실시간 계좌이체</b>로 해 주시면 바로 보실 수 있어요.'
+        : '')
     : '카드사 등록이 순서대로 열리는 중이라, 카드에 따라 결제가 막힐 수 있어요.'
       + ' 그럴 땐 <b>실시간 계좌이체</b>로 해 주시면 바로 열려요.';
   box.hidden = false;
