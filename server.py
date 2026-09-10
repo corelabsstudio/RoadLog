@@ -2975,6 +2975,12 @@ PREVIEW_SECTIONS = 1        # 복채를 내기 전에 무냥이 글로 보여 �
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
                             # 🛑 폭스바니는 2회다. 헐렁하게 두면 원가만 나가고
                             #    「몇 번 안 남았다」는 압박도 사라진다
+FREE_DAILY_CAP = 3          # 무료 상품(오늘의 운세)을 하루에 새로 뽑는 횟수
+                            # 🛑 미리보기 한도와 **따로 센다.** 같이 세면 오늘 운세를
+                            #    한 번 본 것만으로 값 있는 상품 맛보기가 한 번 준다 —
+                            #    미끼가 미끼를 잡아먹는다.
+                            # 🛑 같은 사주·같은 날은 저장분을 그대로 쓰므로 여기 안 센다.
+                            #    이 한도는 **사주를 바꿔 가며 뽑는 것**만 막는다
 
 
 class AskFreeBody(BaseModel):
@@ -2995,8 +3001,13 @@ class WriteBody(BaseModel):
     force: bool = False     # 주인이 일부러 새로 뽑을 때만 참
 
 
-def _preview_used(email: str) -> int:
-    """오늘 이 계정이 미리보기를 몇 번 뽑았나."""
+def _quota_key(email: str, kind: str) -> str:
+    """세는 칸 이름. 🛑 미리보기는 **옛 이름 그대로** 둔다 — 오늘 센 것이 날아간다."""
+    return email if kind == "preview" else "%s:%s" % (kind, email)
+
+
+def _preview_used(email: str, kind: str = "preview") -> int:
+    """오늘 이 계정이 몇 번 뽑았나."""
     from pathlib import Path as _P
     import json as _j
     import datetime as _dt
@@ -3008,26 +3019,28 @@ def _preview_used(email: str) -> int:
         return 0
     if data.get("day") != today:
         return 0
-    return int(data.get("by", {}).get(email, 0))
+    return int(data.get("by", {}).get(_quota_key(email, kind), 0))
 
 
-def _preview_quota(email: str) -> None:
-    """미리보기는 복채를 내기 전에 나가는 원가다. 하루 한도를 둔다."""
+def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
+                   msg: str = "") -> None:
+    """복채를 내기 전에 나가는 원가에 하루 한도를 둔다."""
     from pathlib import Path as _P
     import json as _j
     import datetime as _dt
     f = _P(DATA_DIR) / "saju_preview_count.json"
     today = _dt.date.today().isoformat()
+    key = _quota_key(email, kind)
     try:
         data = _j.loads(f.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         data = {}
     if data.get("day") != today:
         data = {"day": today, "by": {}}
-    n = int(data["by"].get(email, 0))
-    if n >= PREVIEW_DAILY_CAP:
-        raise HTTPException(429, "오늘 무료로 볼 수 있는 사주를 다 보셨어요. 내일 0시부터 다시 열려요.")
-    data["by"][email] = n + 1
+    n = int(data["by"].get(key, 0))
+    if n >= (cap or PREVIEW_DAILY_CAP):
+        raise HTTPException(429, msg or "오늘 무료로 볼 수 있는 사주를 다 보셨어요. 내일 0시부터 다시 열려요.")
+    data["by"][key] = n + 1
     try:
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError:
@@ -3111,7 +3124,12 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
         raise HTTPException(400, "쓸 항목이 없습니다.")
 
     # 복채를 낸 사람인가. 아니면 앞 몇 항목만 준다.
-    paid = _is_free(user) or lamps_ops.owns(user["email"], product, pair)
+    # 🛑 **무료 상품은 산 사람이 없다** (2026-09-11 온해님이 잡으심). 결제를 안 거치니
+    #    `owned` 에 아무것도 안 담기고, 그래서 `owns()` 가 영원히 거짓이었다. 앞단은
+    #    글을 정상적으로 청했는데 여기서 402 로 튕겨 냈고, 화면은 조용히 「쓰는 중」만
+    #    지웠다 — 오늘의 운세가 **계산 문장만으로** 나가고 있었다. 미끼 상품인데.
+    free_product = product in lamps_ops.FREE_PRODUCTS
+    paid = free_product or _is_free(user) or lamps_ops.owns(user["email"], product, pair)
     if not body.preview and not paid:
         raise HTTPException(402, "이 리포트는 아직 열려 있지 않아요.")
     if not paid:
@@ -3143,6 +3161,10 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     if todo:
         if not paid:
             _preview_quota(user["email"])
+        elif free_product and not _is_free(user):
+            # 🛑 무료 상품도 뽑을 때마다 원가가 나간다. 사주를 바꿔 가며 긁는 것만 막는다
+            _preview_quota(user["email"], kind="free", cap=FREE_DAILY_CAP,
+                           msg="오늘 무료로 볼 수 있는 만큼 다 보셨어요. 내일 0시부터 다시 열려요.")
         try:
             chars = min(max(int(body.chars or 420), 300), 1600)   # 프론트 값을 그대로 믿지 않는다
             res = saju_writer.write_report(
@@ -3184,7 +3206,10 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
     # 🛑 복채를 낸 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.
-    if not (_is_free(user) or lamps_ops.owns(user["email"], product, pair)):
+    # 🛑 **무료 상품은 예외다** (2026-09-11). 여기도 `owns()` 로만 봐서 오늘의 운세는
+    #    공유 카드 두 줄이 늘 비어 있었다. 퍼뜨리라고 만든 카드인데 알맹이가 없었다.
+    if not (product in lamps_ops.FREE_PRODUCTS
+            or _is_free(user) or lamps_ops.owns(user["email"], product, pair)):
         return {"ok": True, "summary": "", "paid": False}
     try:
         data = saju_writer.load(product, pair)

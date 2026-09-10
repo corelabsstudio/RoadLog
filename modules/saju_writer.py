@@ -211,6 +211,16 @@ def facts(saju: dict[str, Any]) -> str:
         L.append("지금 지나는 대운: %s" % saju["대운"])
     if saju.get("성별"):
         L.append("성별: %s" % saju["성별"])
+    # 🛑 **오늘의 운세에만 온다** (2026-09-11 온해님). 위까지는 전부 태어난 사주라,
+    #    이 셋이 없으면 오늘 얘기를 쓸 재료가 없어 평생 성격 풀이로 샌다.
+    #    화면의 글자 표(`todayBlock`)와 **같은 값**이다 — 어긋나면 한 화면에서
+    #    무냥이와 표가 서로 다른 말을 한다.
+    if saju.get("오늘"):
+        L.append("오늘 날짜와 일진: %s" % str(saju["오늘"])[:60])
+    if saju.get("오늘십성"):
+        L.append("오늘 글자가 나에게 무엇인가: %s" % str(saju["오늘십성"])[:80])
+    if saju.get("오늘걸림"):
+        L.append("오늘 글자가 내 사주에 걸리는 자리: %s" % str(saju["오늘걸림"])[:120])
     return "\n".join("- " + x for x in L)
 
 
@@ -537,6 +547,14 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
     #    순차로 바꾸면 확실하지만 12항목에 1분이 넘는다 — 손님이 기다린다.
     #    물결은 **뒤로 갈수록 키운다.** 앞쪽이 기준을 만들고, 뒤쪽은 참고할 게 이미 많다.
     #    6 → 12 → 12 … 로 가면 51항목 대점이 아홉 물결에서 다섯 물결로 준다.
+    #    🛑 **항목이 셋 이하면 순차로 쓴다** (2026-09-11 실측). 오늘의 운세는 항목이
+    #       셋인데 재료가 「오늘 일진」 하나뿐이라, 한꺼번에 던지면 서로 뭘 쓰는지 몰라
+    #       셋이 거의 같은 말을 한다 — 실제로 세 항목이 전부 「말이 뾰족하게 나간다」로
+    #       나왔다. 스물 중 둘이 겹치는 것(10%)과 셋 중 둘이 겹치는 것(66%)은
+    #       손님에게 전혀 다른 일이다. 짧은 편은 겹침이 곧 전부다.
+    if len(sections) <= 3:
+        workers = 1
+
     out: dict[str, Any] = {}
     wrote: list[tuple[str, str]] = []               # 이 편에서 이미 쓴 (제목, 첫 문장)
     start, size = 0, workers
@@ -562,7 +580,10 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
                 #    「남의 짐까지 지고 계시죠」가 한 편에 같이 나왔다.
                 wrote.append((d.get("hook") or t, _first_sentence(txt)))
         start += size
-        size = min(size * 2, _WAVE_MAX)             # 🛑 상한을 둔다. 동시 호출이 너무 늘면 막힌다
+        # 🛑 순차로 가기로 했으면 계속 하나씩이다. 여기서 키우면 셋째 항목이
+        #    둘째를 못 보고, 순차로 쓰는 뜻이 사라진다
+        if workers > 1:
+            size = min(size * 2, _WAVE_MAX)         # 🛑 상한을 둔다. 동시 호출이 너무 늘면 막힌다
 
     blocks, tin, tout, errs, fixed = [], 0, 0, [], 0
     for s in sections:
@@ -589,6 +610,17 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
 
 _SAFE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 
+# 🛑 **날마다 값이 바뀌는 상품** (2026-09-11 온해님). 여기 있는 상품은 그날 쓴 글만
+#    쓴다. 저장 키가 `상품|사주` 뿐이라, 이걸 안 두면 어제 쓴 글이 내년까지 그대로
+#    나온다 — 「오늘의 운세」에서 그건 상품이 거짓말을 하는 것이다.
+# 🛑 파일 이름에 날짜를 붙이지 않는다. 그러면 사람마다 날마다 파일이 하나씩 쌓인다.
+#    같은 파일을 덮어쓰고 **안에 적힌 날짜**로 가른다.
+DATED = {"today"}
+
+
+def _day() -> str:
+    return time.strftime("%Y-%m-%d")
+
 
 def _store_dir():
     from pathlib import Path
@@ -609,14 +641,20 @@ def load(product: str, pair: str) -> dict[str, Any] | None:
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
+    # 🛑 어제 쓴 「오늘의 운세」는 오늘 것이 아니다. 없는 셈 치면 새로 쓴다
+    if product in DATED and str(data.get("day") or "") != _day():
+        return None
+    return data
 
 
 def save(product: str, pair: str, data: dict[str, Any]) -> None:
     p = _path(product, pair)
     data = dict(data)
+    if product in DATED:
+        data["day"] = _day()
     data["savedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S")
     tmp = p.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
