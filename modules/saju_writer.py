@@ -204,6 +204,46 @@ CARD_SCHEMA = {
     "required": ["title", "one_liner", "tale"],
 }
 
+# 🛑 **전생 카드는 규격이 다르다** (2026-09-10 온해님).
+#    전생 카드에는 세 칸짜리 표가 들어간다. 그 세 칸을 계산이 채우고 있었는데,
+#    계산은 「맨몸으로 시작한 편」 같은 말밖에 못 만든다. 스레드·인스타에 퍼뜨릴
+#    카드라 **그 세 칸이 웃겨야** 한다 — 그래서 세 칸도 LLM 이 쓴다.
+#
+#    🛑 **글자 수가 화면에 맞아야 한다.** 세 칸은 한 칸 폭이 300px 이고 30px 글자로
+#       두 줄까지 그린다 — **열여덟 자를 넘으면 잘린다.** 넘으면 코드가 자른다.
+PAST_CARD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "title": {"type": "string",
+                  "description": "메인 타이틀. 역사 속 직업이 아니라 현대인의 성향과 연결되는 "
+                                 "위트 있는 밈 타이틀. 열두 자 안쪽 "
+                                 "(예: 조선의 은둔 재벌, 방구석 도령, 주막 호구 삼돌이)"},
+        "subtitle": {"type": "string",
+                     "description": "팩트를 유쾌하게 찌르는 한 줄. 열다섯 자 이내. "
+                                    "끝에 마침표를 찍지 않는다"},
+        "keywords": {
+            "type": "object",
+            "properties": {
+                "type_job": {"type": "string",
+                             "description": "전생의 특징이나 직업. **열여덟 자 안쪽** "
+                                            "(예: 짚신 팔아 한양 건물주 됨)"},
+                "habit": {"type": "string",
+                          "description": "현생까지 남은 웃픈 버릇. **열여덟 자 안쪽** "
+                                         "(예: 잔고 없어도 일단 장바구니 담음)"},
+                "karma": {"type": "string",
+                          "description": "전생이 남긴 억울한 업보나 현타 포인트. "
+                                         "**열여덟 자 안쪽** (예: 돈은 버는데 쓸 데가 없었음)"},
+            },
+            "required": ["type_job", "habit", "karma"],
+        },
+        "summary": {"type": "string",
+                    "description": "보자마자 「이거 완전 나잖아」 하고 공감해서 스레드에 "
+                                   "올리고 싶어지는, 뼈 때리는 두세 문장. "
+                                   "🛑 **백이십 자 안쪽** — 넘으면 카드에서 잘린다"},
+    },
+    "required": ["title", "subtitle", "keywords", "summary"],
+}
+
 SECTION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -601,9 +641,40 @@ CARD_SYSTEM = """너는 사주 상담 사이트 로드로그의 무냥이다. �
 5. 좋은 말로 훈훈하게 맺지 않는다
 6. 말투는 「~해요」. 단정하지 않는다 — 「그렇게 보여요」"""
 
+# 🛑 **전생 카드 전용 페르소나** (2026-09-10 온해님이 그대로 주신 지시문).
+#    카드가 스레드·인스타로 퍼져야 손님이 온다. 잔잔하면 아무도 안 퍼뜨린다.
+PAST_SYSTEM = """너는 2030 여성들의 심리와 연애/인간관계 밈(Meme)을 완벽하게 파악하고 있는 \
+'위트 있고 뼈 때리는 도사' 페르소나야.
+유저의 생년월일시와 사주 데이터를 바탕으로 전생 유형을 분석하되, 잔잔하거나 진지한 표현 대신 \
+현대적인 밈과 유머를 결합해서 출력해줘.
+
+주요 규칙:
+1. 메인 타이틀(title): 역사 속 직업이 아닌, 현대인의 성향과 연결되는 위트 있는 밈 타이틀로 작성할 것
+   (예: "조선의 은둔 재벌", "방구석 도령", "주막 호구 삼돌이")
+2. 소제목(subtitle): 15자 이내로 팩트를 유쾌하게 찌르는 한 줄
+3. 3가지 키워드 (type_job, habit, karma):
+   - 전생의 특징/직업
+   - 현생까지 남은 웃픈 버릇
+   - 전생이 남긴 억울한 업보/현타 포인트
+4. 한 줄 요약(summary): 유저가 보자마자 "ㅋㅋㅋ 이거 완전 나잖아?" 하고 공감하며 \
+스토리/스레드에 공유하고 싶어지는 뼈 때리는 2~3문장
+
+[🛑 우리 쪽에서 지킬 것]
+· 화자는 로드로그의 **무냥이**다. 말끝은 「~해요」로 맺는다
+· 🛑 **받은 재료에 없는 것을 지어내지 않는다.** 없는 사건·지명·숫자를 만들지 마라.
+  재료가 곧 그 사람의 전생이고, 카드 밖 결과지에도 같은 내용이 적혀 있다
+· 🛑 **사주 용어를 쓰지 않는다** — 편재·화개·십이운성·양(養)·공망 같은 말 금지
+· 🛑 **이모지·느낌표를 쓰지 않는다.** 카드는 그림으로 그려지는데 이모지가 깨진다
+  (규칙 4의 「ㅋㅋㅋ」은 손님의 반응을 적은 것이지 글에 쓰라는 말이 아니다)
+· 🛑 **외모 비하가 아니라 상황·성향을 웃긴다**
+· 🛑 keywords 세 칸은 **열여덟 자를 넘기면 카드에서 잘린다.** 짧게 끊어라
+· 세 칸과 summary 에 **같은 말을 두 번 쓰지 마라**"""
+
 # 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
-_CARD_KEYS = ("name", "line", "tale", "badge")
-_CARD_MAX = {"name": 24, "line": 40, "tale": 160, "badge": 24}
+#    `job`·`habit`·`karma` 는 전생 카드의 세 칸이다 (다른 상품에는 안 온다)
+_CARD_KEYS = ("name", "line", "tale", "badge", "job", "habit", "karma")
+_CARD_MAX = {"name": 24, "line": 40, "tale": 200, "badge": 24,
+             "job": 22, "habit": 22, "karma": 22}
 
 # 🛑 이 이름으로 들어오는 재료는 **글**이라 길게 준다. 나머지는 80자면 넉넉하다.
 #    새 재료 이름을 쓰면 여기에도 넣을 것 — 안 넣으면 조용히 80자로 잘린다.
@@ -629,11 +700,15 @@ def write_card(kind: str, facts: dict[str, str], *,
     # 🛑 실패하면 화면이 **조용히 옛 방식**(글을 잘라 쓰기)으로 떨어진다.
     #    2026-09-10 전수검사에서 서른여섯 중 하나가 그렇게 빈 값으로 나왔다.
     #    한 번은 다시 시킨다 — 0.5원이고, 떨어지면 카드가 딴 얘기를 한다.
+    # 🛑 전생은 규격이 다르다 — 세 칸짜리 표를 LLM 이 채운다 (2026-09-10 온해님)
+    past = str(kind or "").strip() in ("past", "전생")
+    sysmsg = PAST_SYSTEM if past else CARD_SYSTEM
+    schema = PAST_CARD_SCHEMA if past else CARD_SCHEMA
     res = None
     for _ in range(2):
         try:
-            res = _call(CARD_SYSTEM, user, model=model, temperature=1.0,
-                        max_tokens=400, schema=CARD_SCHEMA)
+            res = _call(sysmsg, user, model=model, temperature=1.0,
+                        max_tokens=600 if past else 400, schema=schema)
             break
         except Exception:                                # noqa: BLE001
             res = None
@@ -653,11 +728,16 @@ def write_card(kind: str, facts: dict[str, str], *,
         return {}
     # 🛑 온해님이 정한 칸 이름을 우리 칸으로 옮긴다 (2026-09-10).
     #    화면(`main.js`)은 name·line·tale 을 읽는다. 규격만 바뀌고 화면은 그대로다.
+    kw = got.get("keywords") if isinstance(got.get("keywords"), dict) else {}
     got = {
         "name": got.get("title") or got.get("name") or "",
-        "line": got.get("one_liner") or got.get("line") or "",
-        "tale": got.get("tale") or "",
+        # 전생은 subtitle, 나머지는 one_liner 가 한 줄이다
+        "line": got.get("subtitle") or got.get("one_liner") or got.get("line") or "",
+        "tale": got.get("summary") or got.get("tale") or "",
         "badge": got.get("highlight_badge") or "",
+        "job": kw.get("type_job") or "",
+        "habit": kw.get("habit") or "",
+        "karma": kw.get("karma") or "",
     }
     out = {}
     # 🛑 정해진 이름은 **코드가 박는다.** 프롬프트로만 시키면 모델이 손댄다
@@ -665,7 +745,7 @@ def write_card(kind: str, facts: dict[str, str], *,
     for k in _CARD_KEYS:
         v = " ".join(str(got.get(k) or "").split())
         # 🛑 이름·한 줄은 끝 마침표를 뗀다. 모델이 들쭉날쭉 붙여서 카드가 지저분해진다
-        if k in ("name", "line"):
+        if k in ("name", "line", "job", "habit", "karma"):
             v = v.rstrip(" .。")
         if v:
             out[k] = v[:_CARD_MAX[k]]
