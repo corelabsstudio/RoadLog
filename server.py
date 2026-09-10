@@ -2906,7 +2906,12 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
         return made
 
     if data.get("summary"):
-        return {"ok": True, "summary": data["summary"], "card": _card()}
+        # 🛑 **이미 저장된 요약도 다듬어 내보낸다** (2026-09-10). 예전에 90자로
+        #    무조건 잘라 저장한 것들이 있어서, 그대로 주면 카드에 「…했어요. 나라」
+        #    같은 조각이 계속 나간다. 다시 만드는 게 아니라 끝만 자르는 것이라 값이 안 든다.
+        return {"ok": True,
+                "summary": saju_writer._cut_sentence(data["summary"], 90),
+                "card": _card()}
     if not saju_writer.ready():
         return {"ok": True, "summary": ""}
     # 🛑 **두 줄 요약이 실패해도 카드 문구는 준다** (2026-09-10).
