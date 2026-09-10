@@ -211,6 +211,11 @@ button.vip[disabled]{opacity:.5;cursor:default}
 td.owner{color:var(--faint);font-size:.84rem}
 .scroll{overflow-x:auto}
 .note{color:var(--faint);font-size:.85rem;margin:8px 0 0}
+/* 배지 — 🛑 알약을 쓰지 않는다 (전역 규칙 12번). 글자와 색으로만 가른다 */
+.bdg{font-style:normal;font-size:.78rem;font-weight:800;letter-spacing:-.02em}
+.bdg-금{color:#e2b06a}
+.bdg-은{color:#c3c8d4}
+.bdg-동{color:#c98a63}
 /* 🛑 **`.btn`·`.mk-row` 가 없었다** (2026-09-11). 손님 화면에서 쓰던 이름을 그대로
    옮겨 적어서, 여기 단추들이 스타일 없이 나오고 안내 글은 묻혀 안 보였다.
    온해님이 폰에서 「어디서 다운받아?」로 잡으셨다. `.pr-act button` 과 같은 결로 맞춘다. */
@@ -565,7 +570,7 @@ td.owner{color:var(--faint);font-size:.84rem}
       <div class="card">
         <h2 id="hMem">가입한 회원</h2>
         <div class="scroll"><table>
-          <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>VIP</th><th></th></tr></thead>
+          <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>데려온 친구</th><th>VIP</th><th></th></tr></thead>
           <tbody id="tMem"></tbody>
         </table></div>
         <p class="note" id="memNote"></p>
@@ -1250,13 +1255,17 @@ function paintMembers() {
     ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
       + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.legacy && m.how !== '관리자' ? '옛 계정' : m.how) + '</td><td>' + num(m.lamps)
       + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td>'
+      // 🛑 데려온 사람 수와 배지 (2026-09-11 온해님). 배지는 **등불이 아니라 초대 수**로 준다
+      + '<td>' + (m.refer ? '<b>' + num(m.refer) + '명</b>'
+        + (m.badge ? ' <i class="bdg bdg-' + esc(m.badge) + '">' + esc(m.badge) + '</i>' : '')
+        : '<span class="zero">—</span>') + '</td>'
       + '<td>' + (m.how === '관리자' ? '<span class=\'owner\'>주인</span>'
         : '<button type="button" class="vip' + (FREE.has(String(m.email).toLowerCase()) ? ' on' : '')
           + '" data-vip="' + esc(m.email) + '">' + (FREE.has(String(m.email).toLowerCase()) ? 'VIP' : '승격') + '</button>') + '</td>'
       + '<td>' + (m.how === '관리자' ? ''
         : '<button type="button" class="del" data-email="' + esc(m.email) + '">삭제</button>')
       + '</td></tr>').join('')
-    : '<tr><td colspan="9" class="zero">아직 가입한 분이 없습니다.</td></tr>';
+    : '<tr><td colspan="10" class="zero">아직 가입한 분이 없습니다.</td></tr>';
 }
 
 // 회원 삭제 — 되돌릴 수 없으니 아이디를 보여 주고 한 번 더 묻는다

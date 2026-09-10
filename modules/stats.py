@@ -316,6 +316,9 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         # 사주를 쓴 적이 있거나, 사주 시작일 이후에 가입했으면 사주 손님이다
         used = bool(opens or acc.get("ledger"))
         legacy = (how == "관리자") or not (used or (at and at >= SAJU_SINCE))
+        # 🛑 **데려온 사람 수** (2026-09-11 온해님). 원장에 `refer` 항목이 하나씩
+        #    쌓이므로 세기만 하면 된다 — 누구를 데려왔는지는 안 남는다(개인정보).
+        refer = sum(1 for e in acc.get("ledger", []) if e.get("type") == "refer")
         out.append({
             "via": str(acc.get("via") or ""),
             "email": email,
@@ -325,6 +328,8 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
             "lamps": bal,
             "spent": charged,
             "opens": opens,
+            "refer": refer,
+            "badge": lamps_ops.badge_of(refer).get("name", ""),
             "legacy": legacy,
         })
     out.sort(key=lambda m: m["at"], reverse=True)

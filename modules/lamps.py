@@ -44,8 +44,35 @@ PAY_PER_REPORT = False
 WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지 않는다
 
 # 데려온 분·따라온 분 양쪽에 준다. 광고비 없이 손님이 오게 하는 유일한 장치다.
-REFER_LAMPS = 30        # 무냥이에게 한 번 더 묻는 값과 같게 맞췄다
+# 🛑 **친구를 데려오는 값을 올렸다** (2026-09-11 온해님 「30개는 효과 없을 것 같아」).
+#    30개는 무냥이에게 **한 번** 묻는 값이라 친구를 부를 이유가 안 됐다.
+#    데려온 분 120개(네 번) · 따라온 분 60개(두 번)로 나눈다 — 수고한 쪽이 더 받는다.
+#    원가는 초대 한 건에 **6원**이다 (등불 30개가 질문 한 번, 한 번이 1원 안팎).
+REFER_LAMPS = 120       # 데려온 분
+REFER_IN_LAMPS = 60     # 따라 들어온 분
 REFER_DAYS = 30
+
+# ── 배지 (2026-09-11 온해님) ──────────────────────────
+# 🛑 **등불 보유량이 아니라 데려온 사람 수로 준다.** 등불로 순위를 매기면
+#    「모으는 재화」로 보여서 포인트 충전 업종으로 읽힌다 — KG이니시스가 그 이유로
+#    거절했고 지금도 카드사 심사 중이다. 그리고 등불은 결제만 해도 쌓여서,
+#    정작 시키려는 행동(초대)과 상관없는 사람이 1등이 된다.
+# 🛑 **순위가 아니라 문턱이다.** 1등은 한 명뿐이라 2등부터는 그만둔다.
+#    문턱이면 누구나 「두 명만 더」가 된다.
+BADGES = [(5, "gold", "금"), (3, "silver", "은"), (1, "bronze", "동")]
+
+
+def badge_of(count: int) -> dict[str, str]:
+    """데려온 사람 수로 배지를 정한다. 한 명도 없으면 빈 값."""
+    for need, key, name in BADGES:
+        if count >= need:
+            nxt = next((b for b in BADGES if b[0] > need), None)
+            return {"key": key, "name": name, "need": need,
+                    "next": nxt[2] if nxt else "", "nextAt": nxt[0] if nxt else 0}
+    nxt = BADGES[-1]
+    return {"key": "", "name": "", "need": 0, "next": nxt[2], "nextAt": nxt[0]}
+
+
 GIFT_DAYS = 90          # 복채를 내신 분께 얹어 드리는 등불. 선물이라 넉넉히 둔다
 REFER_MAX = 20          # 한 계정이 받을 수 있는 횟수. 장난을 막는 선이다
 
@@ -328,7 +355,9 @@ def refer_stats(email: str) -> dict:
         "count": len(got),
         "lamps": sum(e.get("lamps", 0) for e in got),
         "per": REFER_LAMPS,
+        "perIn": REFER_IN_LAMPS,
         "max": REFER_MAX,
+        "badge": badge_of(len(got)),
     }
 
 
@@ -387,8 +416,8 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
         if iacc is not None:
             done = sum(1 for e in iacc.get("ledger", []) if e.get("type") == "refer")
             if done < REFER_MAX:
-                bonus = REFER_LAMPS
-                _add_lot(acc, REFER_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
+                bonus = REFER_IN_LAMPS
+                _add_lot(acc, REFER_IN_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
                 _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
 
     _write(data)
