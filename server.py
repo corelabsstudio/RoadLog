@@ -2866,8 +2866,12 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
     def _card() -> dict:
         if not body.facts:
             return {}
-        if isinstance(data.get("card"), dict) and data["card"].get("name"):
-            return data["card"]
+        # 🛑 **규격 판이 낮으면 다시 만든다** (2026-09-10). 그러지 않으면 카드
+        #    규격을 갈아도 이미 열어 본 사주는 영원히 옛 문구가 나온다.
+        saved = data.get("card")
+        if (isinstance(saved, dict) and saved.get("name")
+                and int(saved.get("ver") or 0) >= saju_writer.CARD_VER):
+            return saved
         if not saju_writer.ready():
             return {}
         try:
