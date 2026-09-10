@@ -244,6 +244,47 @@ PAST_CARD_SCHEMA = {
     "required": ["title", "subtitle", "keywords", "summary"],
 }
 
+# 🛑 **수호신 카드도 규격이 다르다** (2026-09-10 온해님 가챠 규칙).
+#    🛑🛑 여기서 **LLM 이 지어내면 안 되는 값이 넷**이다 — 등급·신 이름 셋.
+#       등급은 계산(`godOdds`)이 정하고, 최영 장군·바리공주·용왕은 실제로 모시는
+#       신명이라 지어내면 안 된다. 스키마에는 있지만 **서버가 계산값으로 덮어쓴다.**
+#       그래도 스키마에 두는 이유는, 받아 쓸 자리를 알려 줘야 나머지 글이 그 값에
+#       맞게 나오기 때문이다.
+GOD_CARD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "rank": {"type": "string",
+                 "description": "S급·A급·B급·C급·D급 중 하나. "
+                                "🛑 재료의 「정해진 등급」을 **그대로** 쓴다. 올리거나 내리지 마라"},
+        "title": {"type": "string",
+                  "description": "등급 + 현대적 별명 + 신 이름 "
+                                 "(예: S급 | 멱살 견인 전문 대신할머니). "
+                                 "🛑 신 이름은 재료의 「정해진 이름」을 한 글자도 안 바꾸고 쓴다"},
+        "nick": {"type": "string",
+                 "description": "신 이름 앞에 붙일 **현대적 별명만** 따로. 등급도 신 이름도 "
+                                "빼고 별명만 (예: 멱살 견인 전문, 똥차 감별 전담). "
+                                "🛑 **열두 자 안쪽** — 카드에서 등급과 한 줄에 붙는다"},
+        "subtitle": {"type": "string",
+                     "description": "수호신 능력을 유쾌하게 요약한 한 줄. 스무 자 이내. "
+                                    "끝에 마침표를 찍지 않는다 "
+                                    "(예: 내 똥고집과 액운까지 멱살 잡고 견인 중)"},
+        "god_details": {
+            "type": "object",
+            "properties": {
+                "left_god": {"type": "string", "description": "왼쪽에 선 신. 🛑 재료 값 그대로"},
+                "right_god": {"type": "string", "description": "오른쪽에 선 신. 🛑 재료 값 그대로"},
+                "animal": {"type": "string", "description": "띠 짐승. 🛑 재료 값 그대로"},
+            },
+            "required": ["left_god", "right_god", "animal"],
+        },
+        "summary": {"type": "string",
+                    "description": "스토리에 올려 자랑하거나 공감할 두세 문장. "
+                                   "지금 상황과 수호신의 케미를 유머러스하게. "
+                                   "🛑 **백 자 안쪽** — 넘으면 카드에서 잘린다"},
+    },
+    "required": ["rank", "title", "nick", "subtitle", "summary"],
+}
+
 SECTION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -670,11 +711,52 @@ PAST_SYSTEM = """너는 2030 여성들의 심리와 연애/인간관계 밈(Meme
 · 🛑 keywords 세 칸은 **열여덟 자를 넘기면 카드에서 잘린다.** 짧게 끊어라
 · 세 칸과 summary 에 **같은 말을 두 번 쓰지 마라**"""
 
+# 🛑 **수호신 카드 전용 페르소나** (2026-09-10 온해님이 그대로 주신 지시문).
+#    가챠 인증 카드라, 손님이 스크린샷을 올려 서로 등급을 견주게 만드는 것이 목적이다.
+GOD_SYSTEM = """너는 2030 여성들의 심리와 게임/연애 밈(Meme)에 통달한 \
+'위트 있고 뼈 때리는 도사' 페르소나야.
+유저의 사주 데이터를 바탕으로 수호신 결과를 뽑되, 진지한 무속 용어 대신 현지화된 밈과 \
+위트 있는 표현으로 구성해줘.
+
+[수호신 등급 시스템]
+- S급: 인생을 멱살 잡고 하드캐리해 주는 최강 수호신
+- A급: 똥차나 사기꾼을 귀신같이 걸러주는 팩폭형 수호신
+- B급: 큰 재물은 못 줘도 소소한 액운을 막아주는 방어형 수호신
+- C급/D급: 유저가 사고 칠 때 옆에서 같이 당황하거나 어리버리 타는 웃픈 수호신
+
+주요 규칙:
+1. rank: S급, A급, B급, C급, D급 중 하나 선택
+2. title: 수호신의 이름과 현대적 별명 (예: "S급 | 멱살 견인 전문 대신할머니")
+3. subtitle: 20자 이내의 유쾌한 수호신 능력 요약 (예: "내 똥고집과 액운까지 멱살 잡고 견인 중")
+4. left_god / right_god / animal: 좌측/우측 보조 신과 띠 짐승 이름
+5. summary: 유저가 스토리에 올려서 "나 S급 수호신 떠서 인생 하드캐리 당하는 중 ㅋㅋㅋ" 하고 \
+자랑하거나 공감할 수 있는 2~3문장 (유저의 현재 상황과 수호신의 케미를 유머러스하게 표현)
+
+[🛑🛑 지어내면 안 되는 것 넷 — 이건 이미 정해져서 온다]
+1. **등급**은 재료의 「정해진 등급」이 전부다. 사주 284,892가지를 다 세어서 낸 값이고
+   화면에도 같은 등급이 떠 있다. **올리지도 내리지도 마라.** 어기면 손님 화면에
+   S급이라고 떠 있는데 카드에는 B급이 박힌다
+2. **신 이름**(정해진 이름)·**왼쪽에 서는 이**·**오른쪽에 서는 이**·**짐승**은
+   실제로 모시는 신명이라 지어내면 안 된다. 재료에 온 이름을 **한 글자도 바꾸지 마라**
+   (최영 장군·바리공주·용왕·삼신할머니 같은 이름이다)
+🛑 별명은 지어도 된다. **이름을 바꾸지 말라는 것**이지 별명을 붙이지 말라는 게 아니다.
+
+[🛑 우리 쪽에서 지킬 것]
+· 화자는 로드로그의 **무냥이**다. 말끝은 「~해요」로 맺는다
+· 🛑 **받은 재료에 없는 것을 지어내지 않는다**
+· 🛑 **사주 용어를 쓰지 않는다** — 십성·오행·신살·공망 같은 말 금지.
+  「몸주」·「좌보」·「우필」도 금지다. 손님이 모르는 말이다
+· 🛑 **이모지·느낌표를 쓰지 않는다.** 카드는 그림으로 그려지는데 이모지가 깨진다
+  (규칙 5의 「ㅋㅋㅋ」은 손님의 반응을 적은 것이지 글에 쓰라는 말이 아니다)
+· 🛑 **낮은 등급이어도 손님을 깎지 않는다.** C급·D급은 **수호신이 어리바리한 것**이지
+  손님이 못난 게 아니다. 웃기는 대상은 신이고, 손님은 같이 웃는 편이다
+· subtitle 과 summary 에 **같은 말을 두 번 쓰지 마라**"""
+
 # 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
 #    `job`·`habit`·`karma` 는 전생 카드의 세 칸이다 (다른 상품에는 안 온다)
-_CARD_KEYS = ("name", "line", "tale", "badge", "job", "habit", "karma")
+_CARD_KEYS = ("name", "line", "tale", "badge", "job", "habit", "karma", "nick", "rank")
 _CARD_MAX = {"name": 24, "line": 40, "tale": 200, "badge": 24,
-             "job": 22, "habit": 22, "karma": 22}
+             "job": 22, "habit": 22, "karma": 22, "nick": 16, "rank": 4}
 
 # 🛑 이 이름으로 들어오는 재료는 **글**이라 길게 준다. 나머지는 80자면 넉넉하다.
 #    새 재료 이름을 쓰면 여기에도 넣을 것 — 안 넣으면 조용히 80자로 잘린다.
@@ -701,14 +783,15 @@ def write_card(kind: str, facts: dict[str, str], *,
     #    2026-09-10 전수검사에서 서른여섯 중 하나가 그렇게 빈 값으로 나왔다.
     #    한 번은 다시 시킨다 — 0.5원이고, 떨어지면 카드가 딴 얘기를 한다.
     # 🛑 전생은 규격이 다르다 — 세 칸짜리 표를 LLM 이 채운다 (2026-09-10 온해님)
-    past = str(kind or "").strip() in ("past", "전생")
-    sysmsg = PAST_SYSTEM if past else CARD_SYSTEM
-    schema = PAST_CARD_SCHEMA if past else CARD_SCHEMA
+    k = str(kind or "").strip()
+    past, god = k in ("past", "전생"), k in ("god", "수호신")
+    sysmsg = PAST_SYSTEM if past else GOD_SYSTEM if god else CARD_SYSTEM
+    schema = PAST_CARD_SCHEMA if past else GOD_CARD_SCHEMA if god else CARD_SCHEMA
     res = None
     for _ in range(2):
         try:
             res = _call(sysmsg, user, model=model, temperature=1.0,
-                        max_tokens=600 if past else 400, schema=schema)
+                        max_tokens=600 if (past or god) else 400, schema=schema)
             break
         except Exception:                                # noqa: BLE001
             res = None
@@ -738,6 +821,9 @@ def write_card(kind: str, facts: dict[str, str], *,
         "job": kw.get("type_job") or "",
         "habit": kw.get("habit") or "",
         "karma": kw.get("karma") or "",
+        "nick": got.get("nick") or "",
+        # 🛑 등급은 아래에서 **계산값으로 덮어쓴다.** 여기 값은 참고일 뿐이다
+        "rank": got.get("rank") or "",
     }
     out = {}
     # 🛑 정해진 이름은 **코드가 박는다.** 프롬프트로만 시키면 모델이 손댄다
@@ -751,6 +837,16 @@ def write_card(kind: str, facts: dict[str, str], *,
             out[k] = v[:_CARD_MAX[k]]
     if fixed:
         out["name"] = fixed[:_CARD_MAX["name"]]
+    # 🛑 **등급은 계산이 정한다.** 재료로 준 값을 그대로 덮어쓴다 — LLM 이 한 글자라도
+    #    다르게 쓰면 화면 눈금과 카드가 어긋나고, 손님은 그걸 바로 알아본다.
+    rank = str((facts or {}).get("정해진 등급") or "").strip()
+    if rank:
+        out["rank"] = rank[:_CARD_MAX["rank"]]
+    # 🛑 별명이 신 이름을 삼켜 버리면 카드에 이름이 두 번 나온다. 떼어 낸다
+    if out.get("nick") and fixed:
+        out["nick"] = out["nick"].replace(fixed, "").strip(" ·|-")
+        if not out["nick"]:
+            out.pop("nick")
     # 이름과 한 줄이 둘 다 있어야 쓸 수 있다. 하나만 오면 표가 낫다
     return out if out.get("name") and out.get("line") else {}
 
