@@ -90,6 +90,8 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 .chart .bar.pick{fill:#ded6ff}
 .chart .lb{fill:var(--faint);font-size:15px}
 .chart .vl{fill:var(--muted);font-size:16px}
+/* 막대 위 금액. 🛑 viewBox 가 가로로 늘어나므로 글자도 늘어난다 — .lb 와 같은 결로 */
+.chart .bv{fill:var(--ink);font-size:15px;font-weight:700}
 .chart .hit{fill:transparent;cursor:pointer}
 .chart .hit:hover{fill:rgba(164,147,240,.12)}
 .chart-empty{color:var(--faint);font-size:.95rem;padding:24px 0}
@@ -613,7 +615,9 @@ function chart(el, rows, g, fmt, picked) {
     el.innerHTML = '<p class="chart-empty">아직 쌓인 기록이 없습니다.</p>';
     return;
   }
-  const W = 1000, H = 230, PB = 34, PT = 24;
+  // 🛑 PT(위 여백)는 **막대 위 숫자가 들어갈 자리**다. 24 로 두면 가장 높은
+  //    막대의 숫자가 그래프 밖으로 잘려 나간다.
+  const W = 1000, H = 230, PB = 34, PT = 42;
   const max = Math.max(...rows.map((r) => r.v)) || 1;
   const n = rows.length;
   const gap = n > 20 ? 3 : 9;
@@ -628,9 +632,16 @@ function chart(el, rows, g, fmt, picked) {
     const hit = '<rect class="hit" x="' + x + '" y="0" width="' + (bw + gap)
       + '" height="' + (H - PB) + '" data-k="' + r.k + '">'
       + '<title>' + label(r.k, g) + ' · ' + fmt(r.v) + '</title></rect>';
+    // 🛑 **막대 위에 금액을 적는다** (2026-09-11 온해님). 막대만 있으면 얼마인지
+    //    알려고 마우스를 올려야 하는데, 폰에서는 그것도 안 된다.
+    //    0 인 날은 안 적는다 — 「0원」이 잔뜩 찍히면 그래프가 지저분해진다.
+    const val = (r.v && show)
+      ? '<text class="bv" x="' + (x + bw / 2) + '" y="' + (y - 8)
+        + '" text-anchor="middle">' + fmt(r.v) + '</text>'
+      : '';
     return '<rect class="bar' + (r.v ? '' : ' z') + (r.k === picked ? ' pick' : '')
       + '" x="' + x + '" y="' + y
-      + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2" />'
+      + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2" />' + val
       + (show ? '<text class="lb" x="' + (x + bw / 2) + '" y="' + (H - 11)
         + '" text-anchor="middle">' + label(r.k, g) + '</text>' : '') + hit;
   }).join('');
