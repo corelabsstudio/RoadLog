@@ -211,7 +211,15 @@ def _charges() -> list[dict[str, Any]]:
                 continue
             rows.append({
                 "day": at,
+                # 🛑 **무엇을 샀는지 담는다** (2026-09-10 온해님 「뭘 결제했는지
+                #    알 수가 없네」). 전에는 날짜·이메일·금액만 뽑아서, 운영 화면이
+                #    매출 총액은 아는데 **무슨 상품이 팔렸는지는 못 보여 줬다.**
+                "at": str(e.get("at", "")),
                 "email": email,
+                "product": str(e.get("product") or ""),
+                "pair": str(e.get("pair") or ""),
+                "payment_id": str(e.get("payment_id") or ""),
+                "kind": str(e.get("type") or ""),
                 "price": int(e.get("price") or 0),
                 "lamps": int(e.get("lamps") or 0),
             })
@@ -349,7 +357,10 @@ def overview(days: int = 30) -> dict[str, Any]:
     r_pv = sum(v["pv"] for v in real)
     per = round(r_pv / r_uv, 2) if r_uv else 0.0
 
+    # 🛑 **건별 내역을 함께 준다.** 총액만으로는 무엇이 팔렸는지 알 수 없다
+    recent = sorted(ch, key=lambda r: r.get("at") or r["day"], reverse=True)[:50]
     return {
+        "recent": recent,
         "today": {"day": today, **_sum(lambda d: d == today)},
         "month": {"month": month, **_sum(lambda d: d.startswith(month))},
         "total": {
