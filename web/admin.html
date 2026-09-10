@@ -210,6 +210,19 @@ button.vip[disabled]{opacity:.5;cursor:default}
 td.owner{color:var(--faint);font-size:.84rem}
 .scroll{overflow-x:auto}
 .note{color:var(--faint);font-size:.85rem;margin:8px 0 0}
+/* 🛑 **`.btn`·`.mk-row` 가 없었다** (2026-09-11). 손님 화면에서 쓰던 이름을 그대로
+   옮겨 적어서, 여기 단추들이 스타일 없이 나오고 안내 글은 묻혀 안 보였다.
+   온해님이 폰에서 「어디서 다운받아?」로 잡으셨다. `.pr-act button` 과 같은 결로 맞춘다. */
+.mk-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px}
+.btn{font:inherit;font-size:.92rem;cursor:pointer;padding:9px 18px;border-radius:10px;
+  background:var(--accent);color:#17151d;border:0;font-weight:700}
+.btn:hover{filter:brightness(1.06)}
+.btn-line{background:transparent;color:var(--muted);border:1px solid var(--line);font-weight:600}
+.btn-line:hover{color:var(--ink);border-color:var(--ink)}
+.btn[disabled]{opacity:.5;cursor:default}
+/* 설치 안내는 **묻히면 안 된다.** 여기가 지금 무엇을 눌러야 하는지 알려 주는 줄이다 */
+.how{color:var(--ink);font-size:.92rem;line-height:1.75;margin:10px 0 0}
+.how b{color:var(--accent)}
 .tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .tools button{font:inherit;font-size:.88rem;background:none;color:var(--muted);
   border:1px solid var(--line);border-radius:9px;padding:6px 12px;cursor:pointer}
@@ -287,10 +300,11 @@ td.owner{color:var(--faint);font-size:.84rem}
         <div class="card">
           <h2>폰에 깔아 두기</h2>
           <p class="sub" id="pwaSub">홈 화면에서 바로 열려요. 주소를 칠 필요가 없어요</p>
+          <p class="how" id="pwaHow">기기를 살펴보는 중이에요…</p>
           <div class="mk-row">
-            <button type="button" class="btn" id="pwaGo" hidden>설치</button>
+            <button type="button" class="btn" id="pwaGo" hidden>지금 설치</button>
+            <button type="button" class="btn btn-line" id="pwaCopy">주소 복사</button>
           </div>
-          <p class="note" id="pwaHow"></p>
         </div>
       </div>
       <div class="deck wide">
@@ -1361,6 +1375,16 @@ window.addEventListener('beforeinstallprompt', (e) => {
 window.addEventListener('appinstalled', () => { pwaEvent = null; wireInstall(); });
 
 function wireInstall() {
+  // 🛑 **여기서 죽으면 카드가 빈 채로 남는다** (2026-09-11). 한 줄이라도 틀리면
+  //    「폰에 깔아 두기」 제목만 보이고 무엇을 눌러야 하는지가 사라진다.
+  try { paintInstall(); } catch (e) {
+    const how = $('pwaHow');
+    if (how) how.innerHTML = '크롬 오른쪽 위 <b>점 세 개</b> → <b>앱 설치</b>를 고르세요.';
+    const w = $('pwaWrap'); if (w) w.hidden = false;
+  }
+}
+
+function paintInstall() {
   const wrap = $('pwaWrap');
   if (!wrap) return;
   const ua = navigator.userAgent || '';
@@ -1375,16 +1399,32 @@ function wireInstall() {
   const how = $('pwaHow');
   go.hidden = !pwaEvent;
   if (pwaEvent) {
-    how.textContent = '누르면 바로 깔려요. 홈 화면에 「로드로그 운영」으로 섭니다.';
+    how.innerHTML = '<b>「지금 설치」</b>를 누르면 바로 깔려요. 홈 화면에 '
+      + '<b>「로드로그 운영」</b>으로 섭니다.';
   } else if (inApp) {
-    how.innerHTML = '지금은 카카오톡·네이버 같은 <b>앱 안 브라우저</b>라 설치가 안 돼요. '
-      + '오른쪽 위 점 세 개 → <b>다른 브라우저로 열기</b>로 크롬이나 사파리에서 여신 뒤에 다시 봐 주세요.';
+    how.innerHTML = '지금은 카카오톡·네이버 같은 <b>앱 안 브라우저</b>라 설치가 막혀 있어요.<br />'
+      + '오른쪽 위 점 세 개 → <b>다른 브라우저로 열기</b>로 크롬에서 여신 뒤에 다시 봐 주세요. '
+      + '아래 <b>주소 복사</b>를 눌러 크롬 주소창에 붙여 넣으셔도 돼요.';
   } else if (iOS) {
     how.innerHTML = '사파리 아래 <b>공유</b>를 누르고 <b>홈 화면에 추가</b>를 고르세요.';
   } else {
-    how.innerHTML = '크롬 오른쪽 위 <b>점 세 개</b> → <b>앱 설치</b>(또는 홈 화면에 추가)를 고르세요.';
+    how.innerHTML = '크롬 오른쪽 위 <b>점 세 개</b> → <b>앱 설치</b>를 고르세요.<br />'
+      + '그 줄이 없으면 <b>홈 화면에 추가</b>도 같습니다.';
   }
 }
+
+// 설치가 막힌 기기에서 크롬에 붙여 넣을 수 있게. 🛑 설치 단추가 있어도 남겨 둔다 —
+// 크롬이 설치를 안 물어보는 기기가 있고, 그때 이 단추가 유일한 길이다.
+$('pwaCopy')?.addEventListener('click', async () => {
+  const url = location.origin + '/admin';
+  const say = (t) => { const el = $('pwaHow'); if (el) el.textContent = t; };
+  try {
+    await navigator.clipboard.writeText(url);
+    say('주소를 복사했어요. 크롬 주소창에 붙여 넣으세요 — ' + url);
+  } catch {
+    say('여기 주소를 크롬 주소창에 그대로 쳐 주세요 — ' + url);
+  }
+});
 
 $('pwaGo')?.addEventListener('click', async () => {
   if (!pwaEvent) return;
