@@ -216,6 +216,7 @@ td.owner{color:var(--faint);font-size:.84rem}
 .bdg-금{color:#e2b06a}
 .bdg-은{color:#c3c8d4}
 .bdg-동{color:#c98a63}
+.tk{font-size:.76rem;color:var(--muted)}
 /* 🛑 **`.btn`·`.mk-row` 가 없었다** (2026-09-11). 손님 화면에서 쓰던 이름을 그대로
    옮겨 적어서, 여기 단추들이 스타일 없이 나오고 안내 글은 묻혀 안 보였다.
    온해님이 폰에서 「어디서 다운받아?」로 잡으셨다. `.pr-act button` 과 같은 결로 맞춘다. */
@@ -1257,7 +1258,8 @@ function paintMembers() {
       + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td>'
       // 🛑 데려온 사람 수와 배지 (2026-09-11 온해님). 배지는 **등불이 아니라 초대 수**로 준다
       + '<td>' + (m.refer ? '<b>' + num(m.refer) + '명</b>'
-        + (m.badge ? ' <i class="bdg bdg-' + esc(m.badge) + '">' + esc(m.badge) + '</i>' : '')
+        + (m.badge ? ' <i class="bdg bdg-' + esc(m.badge) + '">' + esc(m.rank) + '위 ' + esc(m.badge) + '</i>' : '')
+        + (m.ticket ? ' <span class="tk">이용권 ' + num(m.ticket) + '</span>' : '')
         : '<span class="zero">—</span>') + '</td>'
       + '<td>' + (m.how === '관리자' ? '<span class=\'owner\'>주인</span>'
         : '<button type="button" class="vip' + (FREE.has(String(m.email).toLowerCase()) ? ' on' : '')

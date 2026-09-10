@@ -288,6 +288,11 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
     from modules import lamps as lamps_ops
 
     lamp = lamps_ops._read() or {}
+    # 🛑 **순위표를 한 번만 만든다** (2026-09-11). 회원마다 다시 계산하면 300명이면
+    #    장부를 300번 훑는다. 배지는 1·2·3위에만 붙는다.
+    _board = lamps_ops.refer_board(3)
+    rank_of = {b["email"]: b["rank"] for b in _board}
+    rank_name = {b["email"]: b["name"] for b in _board}
     out = []
     for email, u in (_read(Path(USERS_JSON), {}) or {}).items():
         if not isinstance(u, dict):
@@ -319,6 +324,9 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         # 🛑 **데려온 사람 수** (2026-09-11 온해님). 원장에 `refer` 항목이 하나씩
         #    쌓이므로 세기만 하면 된다 — 누구를 데려왔는지는 안 남는다(개인정보).
         refer = sum(1 for e in acc.get("ledger", []) if e.get("type") == "refer")
+        # 남은 무료 이용권 — 받은 것에서 쓴 것을 뺀다 (장수를 따로 저장하지 않는다)
+        ticket_left = max(0, sum(1 for e in acc.get("ledger", []) if e.get("type") == "ticket")
+                          - sum(1 for e in acc.get("ledger", []) if e.get("type") == "ticket-use"))
         out.append({
             "via": str(acc.get("via") or ""),
             "email": email,
@@ -329,7 +337,9 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
             "spent": charged,
             "opens": opens,
             "refer": refer,
-            "badge": lamps_ops.badge_of(refer).get("name", ""),
+            "rank": rank_of.get(email, 0),
+            "badge": rank_name.get(email, ""),
+            "ticket": ticket_left,
             "legacy": legacy,
         })
     out.sort(key=lambda m: m["at"], reverse=True)

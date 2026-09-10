@@ -52,25 +52,94 @@ REFER_LAMPS = 120       # 데려온 분
 REFER_IN_LAMPS = 60     # 따라 들어온 분
 REFER_DAYS = 30
 
-# ── 배지 (2026-09-11 온해님) ──────────────────────────
-# 🛑 **등불 보유량이 아니라 데려온 사람 수로 준다.** 등불로 순위를 매기면
-#    「모으는 재화」로 보여서 포인트 충전 업종으로 읽힌다 — KG이니시스가 그 이유로
-#    거절했고 지금도 카드사 심사 중이다. 그리고 등불은 결제만 해도 쌓여서,
-#    정작 시키려는 행동(초대)과 상관없는 사람이 1등이 된다.
-# 🛑 **순위가 아니라 문턱이다.** 1등은 한 명뿐이라 2등부터는 그만둔다.
-#    문턱이면 누구나 「두 명만 더」가 된다.
-BADGES = [(5, "gold", "금"), (3, "silver", "은"), (1, "bronze", "동")]
+# ── 배지 — 친구를 많이 데려온 순 1·2·3위 (2026-09-11 온해님) ──────────
+# 🛑 **등불 보유량으로 매기지 않는다.** 등불로 순위를 매기면 「모으는 재화」로 보여서
+#    포인트 충전 업종으로 읽힌다 — KG이니시스가 그 이유로 거절했다. 그리고 등불은
+#    결제만 해도 쌓여서, 정작 초대를 안 한 사람이 1등이 된다.
+# 🛑 **동점이면 먼저 도달한 쪽이 앞선다.** 안 그러면 순위가 새로고침마다 흔들린다.
+RANK_BADGES = [("gold", "금"), ("silver", "은"), ("bronze", "동")]
 
 
-def badge_of(count: int) -> dict[str, str]:
-    """데려온 사람 수로 배지를 정한다. 한 명도 없으면 빈 값."""
-    for need, key, name in BADGES:
-        if count >= need:
-            nxt = next((b for b in BADGES if b[0] > need), None)
-            return {"key": key, "name": name, "need": need,
-                    "next": nxt[2] if nxt else "", "nextAt": nxt[0] if nxt else 0}
-    nxt = BADGES[-1]
-    return {"key": "", "name": "", "need": 0, "next": nxt[2], "nextAt": nxt[0]}
+def _refer_board(data: dict) -> list[tuple[int, str, str]]:
+    """(데려온 수, 마지막 시각, 이메일) 을 순위대로. 한 명도 안 데려온 계정은 뺀다."""
+    rows = []
+    for em, acc in data.items():
+        if not isinstance(acc, dict) or not isinstance(acc.get("ledger"), list):
+            continue
+        got = [e for e in acc["ledger"] if e.get("type") == "refer"]
+        if got:
+            rows.append((len(got), str(got[-1].get("at") or ""), em))
+    rows.sort(key=lambda r: (-r[0], r[1]))
+    return rows
+
+
+def refer_board(limit: int = 3) -> list[dict[str, Any]]:
+    """윗자리 몇 분. 🛑 이메일을 그대로 내보내지 않는다 — 부르는 쪽에서 가린다."""
+    out = []
+    for i, (n, _at, em) in enumerate(_refer_board(_read())[:limit]):
+        key, name = RANK_BADGES[i] if i < len(RANK_BADGES) else ("", "")
+        out.append({"rank": i + 1, "count": n, "email": em, "key": key, "name": name})
+    return out
+
+
+def badge_of(email: str, data: dict | None = None) -> dict[str, Any]:
+    """내 순위와 배지. 윗자리 셋 밖이면 배지가 없다."""
+    board = _refer_board(data if data is not None else _read())
+    em = (email or "").strip().lower()
+    for i, (n, _at, who) in enumerate(board):
+        if who != em:
+            continue
+        key, name = RANK_BADGES[i] if i < len(RANK_BADGES) else ("", "")
+        # 한 자리 위로 가려면 몇 명이 더 필요한가
+        need = 0
+        if i > 0:
+            need = max(1, board[i - 1][0] - n + 1)
+        return {"key": key, "name": name, "rank": i + 1, "count": n,
+                "upNeed": need, "upTo": i}
+    # 아직 한 명도 안 데려온 분. 셋째 자리에 들려면 몇 명이 필요한가
+    third = board[2][0] if len(board) > 2 else 0
+    return {"key": "", "name": "", "rank": 0, "count": 0,
+            "upNeed": max(1, third + 1), "upTo": 3}
+
+
+# ── 무료 이용권 (2026-09-11 온해님 「친구 초대하면 1회 무료 보기권」) ─────
+# 🛑 **깎아 주는 쿠폰이 아니다.** 한 편을 통째로 열어 준다 — 결제 금액이 화면과
+#    달라지면 카드사 심사 「노출 금액 = 결제창 금액」에 걸린다 (`coupons.py` 와 같은 규칙).
+# 🛑 **장수를 따로 저장하지 않는다.** 원장에 받은 것(`ticket`)과 쓴 것(`ticket-use`)이
+#    남으므로 그 차가 남은 장수다. 값을 따로 두면 둘이 어긋난다.
+TICKET_DAYS = 90
+
+
+def tickets(email: str) -> dict[str, int]:
+    acc = _account(_read(), email)
+    led = acc.get("ledger", [])
+    got = sum(1 for e in led if e.get("type") == "ticket")
+    used = sum(1 for e in led if e.get("type") == "ticket-use")
+    return {"got": got, "used": used, "left": max(0, got - used)}
+
+
+def use_ticket(email: str, product: str, pair: str) -> dict:
+    """무료 이용권 한 장으로 한 편을 연다."""
+    if not _PAIR_RE.match(pair or ""):
+        raise ValueError("잘못된 요청입니다.")
+    data = _read()
+    acc = _account(data, email)
+    led = acc.get("ledger", [])
+    left = (sum(1 for e in led if e.get("type") == "ticket")
+            - sum(1 for e in led if e.get("type") == "ticket-use"))
+    if left <= 0:
+        raise ValueError("무료 이용권이 없어요. 친구를 데려오시면 한 장 드려요.")
+    now = _now()
+    expires = now + timedelta(days=OWNED_DAYS)
+    if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
+        acc["owned"].append({"product": product, "pair": pair,
+                             "at": _iso(now), "expires": _iso(expires)})
+    acc["ledger"].append({
+        "at": _iso(now), "type": "ticket-use", "product": product, "pair": pair,
+        "lamps": 0, "price": 0, "note": "친구 초대 무료 이용권", "expires": _iso(expires),
+    })
+    _write(data)
+    return {"ok": True, "product": product, "expires": _iso(expires), "left": left - 1}
 
 
 GIFT_DAYS = 90          # 복채를 내신 분께 얹어 드리는 등불. 선물이라 넉넉히 둔다
@@ -357,7 +426,8 @@ def refer_stats(email: str) -> dict:
         "per": REFER_LAMPS,
         "perIn": REFER_IN_LAMPS,
         "max": REFER_MAX,
-        "badge": badge_of(len(got)),
+        "badge": badge_of(email, data),
+        "tickets": tickets(email),
     }
 
 
@@ -409,6 +479,7 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
                        f"가입 선물 · {via}" if via else "가입 선물")
 
     bonus = 0
+    ticket = 0
     inviter = _email_of_code(data, ref) if ref else None
     # 내 코드로 내가 들어오는 것은 안 된다. 데려온 쪽도 이미 있는 계정이어야 한다.
     if inviter and inviter != email.strip().lower():
@@ -419,11 +490,26 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
                 bonus = REFER_IN_LAMPS
                 _add_lot(acc, REFER_IN_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
                 _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
+                # 🛑 **무료 이용권 한 장도 같이** (2026-09-11 온해님). 등불은 더 묻는
+                #    자리에만 쓰는데, 이용권은 **리포트 한 편**을 통째로 연다.
+                #    데려온 쪽에만 준다 — 수고한 사람에게 가는 값이다.
+                iacc.setdefault("ledger", []).append({
+                    "at": _iso(now), "type": "ticket", "lamps": 0, "price": 0,
+                    "note": "친구를 데려온 선물 · 무료 이용권",
+                    "expires": _iso(now + timedelta(days=TICKET_DAYS)),
+                })
+                ticket = 1
 
     _write(data)
     return {
         "given": WELCOME_LAMPS + bonus,
         "referred": bonus,
+        # 🛑 **누가 데려왔는지 돌려준다** (2026-09-11). 서버가 그분께도 알림을 보내야
+        #    한다 — 받은 줄 모르면 준 게 아니다. 여기서 알림을 직접 보내지 않는 것은
+        #    등불 모듈이 알림 모듈을 물면 서로 물려 돌아가기 때문이다.
+        "inviter": inviter if bonus else "",
+        "inviterLamps": REFER_LAMPS if bonus else 0,
+        "inviterTicket": ticket,
         "balance": sum(l["remain"] for l in _live_lots(acc, now)),
         "expires": expires,
     }

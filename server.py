@@ -637,6 +637,23 @@ def register(body: AuthBody, request: Request):
         _welcome_inbox(body.email, gift)
     except Exception as e:                      # noqa: BLE001
         log.error("가입 알림 실패 (%s): %s", body.email, e)
+    # 🛑 **데려오신 분께도 알린다** (2026-09-11 온해님 「각자 알림으로」).
+    #    그전에는 등불만 조용히 들어가서, 친구가 들어온 줄도 모르고 넘어갔다.
+    #    받은 줄 모르면 준 게 아니다 — 그러면 또 데려올 이유도 안 생긴다.
+    try:
+        who = (gift.get("inviter") or "").strip()
+        if who:
+            got = int(gift.get("inviterLamps") or 0)
+            tk = int(gift.get("inviterTicket") or 0)
+            inbox.push(
+                who, "친구가 들어왔어요",
+                "초대 링크로 한 분이 가입하셨어요. 등불 %d개%s를 드렸습니다. "
+                "이용권은 리포트 한 편을 복채 없이 여는 데 쓰세요."
+                % (got, " 와 무료 이용권 1장" if tk else ""),
+                key="refer-in:%s" % body.email.strip().lower(),
+            )
+    except Exception as e:                      # noqa: BLE001
+        log.error("초대 알림 실패: %s", e)
     return {"ok": True, "message": msg, "welcome": gift.get("given", 0), "referred": gift.get("referred", 0)}
 
 
@@ -654,8 +671,9 @@ def _welcome_inbox(email: str, gift: dict) -> None:
     if gift.get("referred"):
         inbox.push(
             email,
-            "친구 따라 들어오셔서 등불을 더 드렸어요",
-            "데려오신 분께도 같이 드렸어요. 고맙습니다.",
+            "친구 따라 들어오셔서 등불 %d개를 더 드렸어요" % int(gift.get("referred") or 0),
+            "데려오신 분께도 등불과 무료 이용권을 드렸어요. 고맙습니다. "
+            "친구를 데려오시면 등불 120개와 이용권 한 장을 받으실 수 있어요.",
             key="refer_in", icon="lamp",
         )
     # 선착순 자리를 받으셨는지
@@ -2445,6 +2463,42 @@ def gift_state(authorization: str | None = Header(default=None)):
 class GiftBody(BaseModel):
     product: str
     pair: str
+
+
+class TicketBody(BaseModel):
+    product: str
+    pair: str
+
+
+@app.get("/api/tickets")
+def tickets_left(authorization: str | None = Header(default=None)):
+    """남은 무료 이용권. 친구를 데려오면 한 장씩 쌓인다 (2026-09-11 온해님)."""
+    user = _token_user(authorization)
+    return lamps_ops.tickets(user["email"])
+
+
+@app.post("/api/tickets/use")
+def ticket_use(body: TicketBody, authorization: str | None = Header(default=None)):
+    """무료 이용권 한 장으로 리포트 한 편을 연다.
+
+    🛑 **깎아 주는 것이 아니라 통째로 여는 것이다.** 결제 금액이 화면과 달라지면
+       카드사 심사 「노출 금액 = 결제창 금액」에 걸린다 (`coupons.py` 와 같은 규칙).
+    """
+    user = _token_user(authorization)
+    product = (body.product or "").strip()[:24]
+    if not lamps_ops.won_of(product) and product not in lamps_ops.PRICES:
+        raise HTTPException(400, "없는 상품이에요.")
+    try:
+        out = lamps_ops.use_ticket(user["email"], product, (body.pair or "").strip())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        inbox.push(user["email"], "무료 이용권을 쓰셨어요",
+                   "리포트 한 편을 복채 없이 열었어요. 남은 이용권 %d장." % out.get("left", 0),
+                   key="ticket-use:%s" % product)
+    except Exception:                            # noqa: BLE001
+        pass
+    return out
 
 
 @app.post("/api/gift/open")
