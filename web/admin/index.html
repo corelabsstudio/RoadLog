@@ -1426,7 +1426,7 @@ function paintInstall() {
 // 설치가 막힌 기기에서 크롬에 붙여 넣을 수 있게. 🛑 설치 단추가 있어도 남겨 둔다 —
 // 크롬이 설치를 안 물어보는 기기가 있고, 그때 이 단추가 유일한 길이다.
 $('pwaCopy')?.addEventListener('click', async () => {
-  const url = location.origin + '/admin';
+  const url = location.origin + '/admin/';
   const say = (t) => { const el = $('pwaHow'); if (el) el.textContent = t; };
   try {
     await navigator.clipboard.writeText(url);

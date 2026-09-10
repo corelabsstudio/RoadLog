@@ -3663,6 +3663,16 @@ def spa_fallback(path: str):
     if path.startswith("api/") or path in {"health", "healthz"}:
         raise HTTPException(404, "Not Found")
 
+    # 🛑 **운영 화면은 끝에 슬래시가 있어야 한다** (2026-09-11 온해님
+    #    「관리자 앱을 일반 유저 앱으로 연동 안 되게」).
+    #    손님 앱의 manifest 는 `scope: "/"` 라 **사이트 전체를 덮는다.** 그래서
+    #    `/admin` 을 홈 화면에 담아도 이미 깔린 손님 앱이 그 주소를 가로챘다.
+    #    운영 앱은 `scope: "/admin/"` 으로 **더 좁게** 잡아 두었다 — 크롬은 겹치면
+    #    **더 긴 scope** 를 쓰므로 그때만 운영 앱이 이긴다.
+    #    그러려면 문서 주소가 반드시 `/admin/` 이어야 한다. `/admin` 은 그 밖이다.
+    if path in {"admin", "admin.html"}:
+        return RedirectResponse("/admin/", status_code=308)
+
     # 🛑 옛 주소 정리보다 **실제 파일이 먼저다.** 2026-09-07 에 사주 블로그를
     #    /blog 아래에 냈는데, 운행일지 시절 규칙이 그걸 통째로 홈으로 보냈다.
     safe = _safe_web_file(path)

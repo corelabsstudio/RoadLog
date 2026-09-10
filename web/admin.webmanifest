@@ -1,10 +1,10 @@
 {
-  "id": "/admin",
+  "id": "/admin/",
   "name": "로드로그 운영",
   "short_name": "로드로그 운영",
   "description": "매출·회원·유입·프롬프트를 폰에서 본다. 관리자만 들어갈 수 있다.",
-  "start_url": "/admin",
-  "scope": "/admin",
+  "start_url": "/admin/",
+  "scope": "/admin/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0d0b12",
