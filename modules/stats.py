@@ -205,6 +205,10 @@ def _charges() -> list[dict[str, Any]]:
             at = str(e.get("at", ""))[:10]
             if not at:
                 continue
+            # 🛑 테스트 채널 기간 건은 매출이 아니다 (lamps.REAL_PAY_FROM 참고).
+            #    원장에는 남아 있고 여기서 세지만 않는다.
+            if at < lamps_ops.REAL_PAY_FROM:
+                continue
             rows.append({
                 "day": at,
                 "email": email,

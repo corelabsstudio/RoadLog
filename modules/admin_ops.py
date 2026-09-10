@@ -367,6 +367,10 @@ def _parse_ymd(s: str | None) -> str:
         return ""
 
 
+# 🛑 테스트 채널 기간 건은 매출에서 뺀다. 까닭은 `modules/lamps.py` 의 REAL_PAY_FROM 에 있다.
+from modules.lamps import REAL_PAY_FROM   # 🛑 정본은 lamps.py 한 곳이다
+
+
 def revenue_dashboard(
     date_from: str | None = None,
     date_to: str | None = None,
@@ -377,7 +381,11 @@ def revenue_dashboard(
     date_from / date_to: YYYY-MM-DD (포함 구간)
     미지정 시 기본 = 이번 달 1일 ~ 오늘
     """
-    all_p = db.get_all_payments()
+    # 🛑 테스트 채널 기간 건을 갈라낸다 (위 REAL_PAY_FROM 참고)
+    all_p, voided = [], []
+    for _p in db.get_all_payments():
+        _d = _parse_day(_p.get("paid_at") or "")
+        (voided if (_d and _d < REAL_PAY_FROM) else all_p).append(_p)
     now = datetime.now()
     month_key = now.strftime("%Y-%m")
     today = now.strftime("%Y-%m-%d")
@@ -503,6 +511,14 @@ def revenue_dashboard(
         "total_users": len(users),
         "pro_users": pro_count,
         "vip_count": len(vip_list),
+        # 🛑 매출에서 뺀 것 — 테스트 채널 기간이라 **입금이 없던** 건이다.
+        #    빼 놓고 말을 안 하면 나중에 「왜 매출이 줄었지」가 된다.
+        "voided": {
+            "count": len(voided),
+            "amount": sum(int(v.get("amount") or 0) for v in voided),
+            "until": REAL_PAY_FROM,
+            "why": "테스트 채널이 걸려 있던 기간이라 실제 입금이 없었어요",
+        },
         "billing": load_billing_config(),
         "vip_members": vip_list,
         "usage": usage_stats,
