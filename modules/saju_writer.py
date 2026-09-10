@@ -656,6 +656,26 @@ SUMMARY_SYSTEM = """너는 사주 결과지를 읽고, 공유 카드에 넣을 �
 좋은 기운이 함께하니 힘내세요.  (훈훈한 마무리)"""
 
 
+def _cut_sentence(t: str, n: int) -> str:
+    """길이를 맞추되 **문장 중간에서 끊지 않는다** (2026-09-10 온해님이 잡으심).
+
+    전에는 `txt[:90]` 으로 잘랐다. 그래서 카드에 **「…구경만 했어요. 나라」**처럼
+    뜻 없는 조각이 박혔다. 카드는 손님이 스크린샷을 찍어 퍼뜨리는 물건이라
+    그 조각이 그대로 돌아다닌다.
+    """
+    import re as _re
+    t = " ".join((t or "").split())
+    if len(t) <= n:
+        return t
+    head = t[:n]
+    ends = list(_re.finditer(r"[.!?](?:\s|$)", head))
+    if ends and ends[-1].end() > n * 0.4:
+        return head[:ends[-1].end()].strip()
+    # 문장 끝을 못 찾으면 어절 단위로라도 끊는다
+    i = head.rfind(" ")
+    return (head[:i] if i > n * 0.5 else head).strip()
+
+
 def summarize(blocks: list[dict[str, Any]], *, question: str = "",
               model: str | None = None) -> str:
     """리포트를 읽고 카드에 넣을 두 줄을 뽑는다."""
@@ -687,7 +707,7 @@ def summarize(blocks: list[dict[str, Any]], *, question: str = "",
             txt = ""
         if txt:
             break
-    return txt[:90]
+    return _cut_sentence(txt, 90)
 
 
 # ── 공유 카드 문구 ────────────────────────────────────────
