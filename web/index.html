@@ -31,8 +31,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-BPKd8W_I.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-CYlA5ot9.css">
+  <script type="module" crossorigin src="/assets/main-DL9kIkBc.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-CbsXI_Nb.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -280,10 +280,10 @@
         <!-- 🛑 결과는 사주와 같은 `.report` 다. 관상만의 클래스를 두지 않는다 -->
         <div class="report" id="gwanOut" hidden></div>
 
-        <!-- 🛑 **「관멍이에게 더 물어보기」 칸을 걷어냈다** (2026-09-11 온해님 지시).
-             무냥이·관멍이와 대화하는 **채팅을 따로 만들기로 해서**, 상품 안에 붙어 있던
-             물음 칸은 전부 뺀다. 서버 길(`/api/gwan/ask`)과 답을 쓰는 코드는 그대로
-             둔다 — 새 채팅이 같은 길을 쓴다. 되살릴 일이 있으면 이 커밋을 보면 된다. -->
+        <!-- 🛑 **관멍이와 1:1 채팅방** (2026-09-11 온해님 2단계 명세).
+             속은 `talkroom.js` 가 만든다 — 캐릭터·말풍선·시각·전송 단추가 거기 다 있다.
+             여기는 자리만 비워 둔다. 🛑 관상 화면이므로 `kind` 는 **gwan** 이다. -->
+        <div class="talk-host" id="talkGwan" hidden></div>
 
         <!-- 다 읽고 나서 한마디 — 사주 `.wrap-up` 그대로 -->
         <div class="wrap-up" id="gwanWrapUp" hidden>
@@ -736,13 +736,12 @@
       <p class="full-tools-note">인쇄 창에서 <b>대상</b>을 「PDF로 저장」으로 고르시면 돼요.</p>
     </div>
 
-    <!-- 🛑 **「무냥이에게 더 물어보기」 칸을 걷어냈다** (2026-09-11 온해님 지시).
-         무냥이·관멍이와 대화하는 **채팅을 따로 만들기로 해서**, 상품 리포트 안에 붙어
-         있던 물음 칸·예시 칩·채팅 기록을 전부 뺀다.
-         🛑 **서버는 그대로 둔다** (`/api/ask/free`). 답을 쓰는 코드와 말투 프롬프트는
-            새 채팅이 같은 길로 쓴다. 여기서 뺀 것은 화면뿐이다.
-         🛑 **등불이 다시 쓸 데가 없어진다.** 등불을 쓰는 자리는 이 칸 하나였다 —
-            새 채팅이 서기 전까지 가입 선물 300개는 쓸 곳이 없다. -->
+    <!-- 🛑 **무냥이와 1:1 채팅방** (2026-09-11 온해님 2단계 명세).
+         속은 `talkroom.js` 가 만든다 — 캐릭터·말풍선·시각·전송 단추가 거기 다 있다.
+         여기는 자리만 비워 둔다. 🛑 사주 화면이므로 `kind` 는 **saju** 다.
+         🛑 **등불을 쓰는 곳은 여기 하나다.** 가입 선물 300개가 쓰이는 자리라,
+            이 칸이 안 보이면 등불이 다시 쓸 데가 없어진다. -->
+    <div class="talk-host" id="talkSaju" hidden></div>
 
     <div class="first-line">
     <h3 class="full-h">그날 보낼 첫 문장</h3>
