@@ -349,17 +349,20 @@ const ASK_NAMES = {
   q_hidden: '겉으로 안 보이는 제 글자는 뭔가요?',
   q_today: '오늘은 저에게 어떤 날인가요?'
 };
+// 🛑 **`products.js` 가 정본이다.** 이 화면은 그 파일을 못 읽어서 여기 적어 둔다.
+//    상품 이름을 바꾸면 `python tools/sync_admin_names.py` 로 다시 맞춘다 (2026-09-10).
 const NAMES = {
-  today: '오늘의 운세', god: '내 수호신', solo: '내 연애 사주', week: '이번 주 7일',
-  dday: '연락 D-DAY', mind: '그 사람 속마음', full: '재회운 종합', bond: '다시 만날 필연',
-  ox: '붙잡을까, 놓을까', year: '올해 운세', charm: '내 매력', luck: '흉살 풀이',
-  money: '재물운', life: '평생 흐름', cool: '권태기 진단', again: '재회 행동 전략',
-  marry: '결혼운', match: '궁합 종합',
-  past: '믿거나 말거나, 나의 전생', great: '무냥이 재회 대점',
-  face_first: '관상 · 첫인상', face_me: '관상 · 내 얼굴', face_you: '관상 · 그 사람 얼굴',
-  face_love: '관상 · 연애', face_money: '관상 · 재물', face_king: '관상 · 왕이 될 상인가',
-  face_all: '관상 · 전체', face_pair: '관상 · 둘이 보는',
-  bed: '불 끄고 나면', divorce: '이 결혼, 여기까지일까', secret: '말 못 하는 사이', queer: '성별 빼고 보는 속궁합', eros: '밤의 나', first: '내 첫사랑', newlove: '새 사람이 있을까', think: '지금 날 생각할까', loop: '또 같은 이유로 헤어질까', block: '차단, 언제 풀릴까', hour: '나를 떠올리는 시간',
+  today: '오늘 운세 한 조각', past: '전생 신원조회', god: '내 등 뒤 보디가드', solo: '이별 루틴 분석기',
+  week: '이번 주 연락 요일표', dday: '읽씹 안 당할 날짜', newlove: '환승 여부 감별', think: '내 생각 하는지 스캔',
+  loop: '같은 이별 재방송 확률', block: '차단 해제 D-DAY', hour: '내 생각 나는 시간표', first: '첫사랑 근황 추적',
+  mind: '그 사람 속마음 해독', great: '재회 종합 대점', full: '재회 가능성 종합', bond: '인연 두께 측정',
+  ox: '붙잡을까 놓을까 판정', year: '올해 운세 브리핑', charm: '내 매력 취급설명서', luck: '내 사주 지뢰 탐지',
+  money: '통장 잔고 사용설명서', life: '내 인생 전체 스포', cool: '식은 이유 부검', again: '재회 공략집',
+  marry: '결혼 각인지 판정', match: '궁합 종합 검진', bed: '불 끄고 난 뒤 궁합', divorce: '여기서 끝낼까 판정',
+  secret: '말 못 하는 사이 상담', queer: '성별 뺀 속궁합', eros: '밤에 켜지는 나', face_first: '관상 · 첫인상 온도',
+  face_me: '관상 · 내 얼굴 사용법', face_you: '관상 · 그 사람 판독기', face_love: '관상 · 밀당 성향 판독기',
+  face_money: '관상 · 통장 수호 지수', face_king: '관상 · 내가 왕이 될 상인가', face_all: '관상 · 얼굴 전부 읽기',
+  face_pair: '관상 · 둘이 맞는 얼굴인가'
 };
 const asEmail = (v) => {
   const t = (v || '').trim();
