@@ -1940,6 +1940,38 @@ class RefundBody(BaseModel):
     why: str = ""
 
 
+class RegiftBody(BaseModel):
+    # 🛑 기본은 **세어만 본다.** 얼마가 나가는지 보고 나서 켠다
+    apply: bool = False
+
+
+@app.post("/api/admin/lamps/regift")
+def admin_regift(body: RegiftBody, authorization: str | None = Header(default=None)):
+    """등불 계단을 올렸을 때 **이미 복채를 내신 분께 차액을 드린다** (2026-09-11 온해님).
+
+    🛑 두 번 눌러도 두 번 주지 않는다 — 원장에 준 표시를 남긴다.
+    """
+    _require_admin(authorization)
+    try:
+        got = lamps_ops.regift(apply=bool(body.apply))
+    except Exception as e:                              # noqa: BLE001
+        raise HTTPException(500, "차액을 드리다 막혔어요: %s" % str(e)[:120])
+    # 🛑 **받은 줄 모르면 준 게 아니다.** 알림함에 한 줄 남긴다 (`modules/inbox.py`)
+    if body.apply:
+        for r in got.get("rows", []):
+            try:
+                inbox.push(
+                    r["email"], "등불을 더 드렸어요",
+                    "복채를 내신 분께 드리는 등불을 늘렸어요. 이미 결제하신 분께도 "
+                    "차액 %d개를 얹어 드렸습니다. 무냥이에게 더 물어보실 때 쓰시면 돼요."
+                    % r["more"],
+                    key="regift-%s-%s" % (r.get("product") or "", r["more"]),
+                )
+            except Exception:                           # noqa: BLE001
+                pass                                    # 알림이 막혀도 등불은 이미 나갔다
+    return got
+
+
 @app.post("/api/admin/refund")
 def admin_refund(body: RefundBody, authorization: str | None = Header(default=None)):
     admin = _require_admin(authorization)
@@ -1978,7 +2010,7 @@ def admin_refund(body: RefundBody, authorization: str | None = Header(default=No
 
     # ③ 손님에게 알린다 — 말없이 닫으면 「글이 사라졌다」가 된다
     try:
-        inbox_ops.push(
+        inbox.push(
             email, "복채를 돌려드렸어요",
             "%s원 결제를 취소했어요. 카드사에 따라 며칠 걸릴 수 있어요. "
             "열어 두었던 글은 닫혔습니다." % format(int(got.get("price") or 0), ","),

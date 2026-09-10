@@ -340,6 +340,19 @@ td.owner{color:var(--faint);font-size:.84rem}
       </div>
       <div class="deck">
         <div class="card">
+          <h2>등불 차액 드리기</h2>
+          <p class="sub">사은품 등불 계단을 올렸을 때, 이미 복채를 내신 분께 차액을 얹어 드립니다</p>
+          <div class="mk-row">
+            <button type="button" class="btn btn-line" id="reCount">얼마나 나가는지 세어 보기</button>
+            <button type="button" class="btn" id="reGive" hidden>차액 드리기</button>
+          </div>
+          <p class="note" id="reOut">🛑 <b>두 번 눌러도 두 번 드리지 않아요.</b> 원장에 드린
+             표시를 남기고, 새 계단이 더 클 때만 <b>차액</b>만 얹습니다. 환불된 결제는 건너뜁니다.
+             드리고 나면 손님 알림함에도 한 줄 남습니다.</p>
+        </div>
+      </div>
+      <div class="deck">
+        <div class="card">
           <h2>주문 내역</h2>
           <p class="sub">최근 50건 · 원장에 남은 그대로</p>
           <div class="scroll"><table>
@@ -840,6 +853,44 @@ function paint() {
  *     원장에는 안 남아서 여기서 못 보여 준다. 남기려면 결제 확정 때 같이 적어야 한다.
  */
 // 🛑 **되돌릴 수 없다.** 까닭을 받고, 무엇을 얼마나 돌려주는지 한 번 더 보여 준다.
+// ── 등불 차액 드리기 (2026-09-11 온해님) ─────────────────
+// 🛑 **세어 보기를 먼저 시킨다.** 얼마가 나가는지 보고 나서 드린다 —
+//    등불은 되돌릴 수 없다.
+async function regift(apply) {
+  const out = $('reOut');
+  const btn = apply ? $('reGive') : $('reCount');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/admin/lamps/regift', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ apply: !!apply }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || '막혔어요.');
+    if (!d.count) {
+      out.textContent = '더 드릴 것이 없습니다. 이미 다 맞춰 드렸어요.';
+      $('reGive').hidden = true;
+      return;
+    }
+    out.innerHTML = (apply ? '<b>드렸습니다.</b> ' : '<b>세어 봤습니다.</b> ')
+      + esc(d.people) + '명 · 결제 ' + esc(d.count) + '건 · 등불 <b>'
+      + esc(Number(d.lamps).toLocaleString('ko-KR')) + '개</b>'
+      + (apply ? ' — 손님 알림함에도 남겼습니다.' : ' 가 나갑니다.')
+      + '<br />' + (d.rows || []).slice(0, 8).map((x) =>
+        esc(x.email) + ' · ' + esc(x.product) + ' ' + esc(x.had) + '→' + esc(x.want)).join('<br />');
+    $('reGive').hidden = !!apply;
+  } catch (err) {
+    out.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('reCount')?.addEventListener('click', () => regift(false));
+$('reGive')?.addEventListener('click', () => {
+  if (confirm('이미 결제하신 분께 등불 차액을 드립니다. 되돌릴 수 없어요. 진행할까요?')) regift(true);
+});
+
 $('tPaid')?.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-rf]'); if (!b) return;
   const pid = b.dataset.rf;

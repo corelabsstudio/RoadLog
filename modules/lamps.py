@@ -412,13 +412,35 @@ def won_of(product: str) -> int:
 def bonus_lamps(won: int) -> int:
     """복채를 내면 등불도 함께 드린다.
 
-    폭스바니는 결제할 때 「질문 5회권」을 얹어 준다. 우리 등불 30개가 한 번 묻는 값이니
-    같은 셈으로 맞췄다. 등불은 파는 물건이 아니라 원가가 없다 — 얹어 주기만 하면 된다."""
+    🛑 **2026-09-11 온해님 지시로 넉넉하게 올렸다** (「가격별로 등불을 넉넉히 줘도
+       될 것 같아」). 그전에는 30·60·150 이라 29,800원을 내고도 다섯 번밖에 못 물었다.
+       1:1 채팅이 재미있어야 다시 오는데, 다섯 번이면 재미를 보기도 전에 끝난다.
+
+    등불은 파는 물건이 아니라 **정해진 현금 가치가 없다.** 다만 한 번 물을 때마다
+    LLM 원가가 1원쯤 나가므로, 실제로 드는 돈은 아래 「원가」 칸이다.
+
+        복채            등불     몇 번    원가
+        ~4,900원         90      3번      3원
+        5,000~9,900     180      6번      6원
+        10,000~19,900   300     10번     10원
+        20,000~29,900   600     20번     20원
+        30,000원~     1,200     40번     40원
+
+    가장 비싼 59,800원 상품에서도 원가가 40원이라 원가율에 0.07%p 남짓 붙는다.
+
+    🛑 **세 곳이 같아야 한다** — 여기 · `products.js:giftLamps` · `pay.html:giftFor`.
+       한 곳만 고치면 화면에 적힌 수와 실제로 들어오는 수가 달라진다.
+       → `node tools/check_gift.mjs`
+    """
+    if won >= 30000:
+        return 1200
     if won >= 20000:
-        return 150      # 다섯 번 더 물어볼 수 있는 양
+        return 600
+    if won >= 10000:
+        return 300
     if won >= 5000:
-        return 60       # 두 번
-    return 30           # 한 번
+        return 180
+    return 90
 
 
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
@@ -451,6 +473,52 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     })
     _write(data)
     return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
+
+
+def regift(*, apply: bool = False) -> dict:
+    """등불 계단을 올렸을 때 **이미 복채를 내신 분께 차액을 드린다** (2026-09-11 온해님).
+
+    > 이미 결제한 사람도 그에 맞춰서 올려주고
+
+    🛑 **멱등하다.** 원장의 그 결제 항목에 `regift` 표시를 남기므로 두 번 돌려도
+       두 번 주지 않는다. 표시가 없고 새 계단이 더 클 때만 **차액**을 얹는다.
+    🛑 **`apply=False` 면 세어만 본다.** 얼마가 나가는지 보고 나서 실행한다.
+    🛑 **환불된 결제는 건너뛴다.** 돌려받은 결제에 선물을 더 얹을 이유가 없다.
+    """
+    data = _read()
+    now = _now()
+    rows = []
+    total = 0
+    # 🛑 계정은 **맨 위에 이메일을 열쇠로** 놓여 있다 (`_account` 참고).
+    #    `data["accounts"]` 같은 칸은 없다 — 있는 줄 알고 짜면 조용히 0명이 나온다.
+    for email, acc in list(data.items()):
+        if not isinstance(acc, dict) or not isinstance(acc.get("ledger"), list):
+            continue
+        led = acc["ledger"]
+        # 환불된 결제 번호는 미리 모아 둔다
+        back = {e.get("payment_id") for e in led if e.get("type") == "refund"}
+        for e in led:
+            if e.get("type") != "premium" or e.get("regift"):
+                continue
+            if e.get("payment_id") in back:
+                continue
+            want = bonus_lamps(won_of(e.get("product") or "") or int(e.get("price") or 0))
+            had = int(e.get("lamps") or 0)
+            if want <= had:
+                continue
+            more = want - had
+            rows.append({"email": email, "product": e.get("product"),
+                         "had": had, "want": want, "more": more})
+            total += more
+            if apply:
+                _add_lot(acc, more, GIFT_DAYS, now, "premium-gift",
+                         "%s 결제 선물 더하기" % e.get("product"))
+                e["regift"] = _iso(now)
+                e["lamps"] = want
+    if apply and rows:
+        _write(data)
+    return {"applied": bool(apply), "people": len({r["email"] for r in rows}),
+            "count": len(rows), "lamps": total, "rows": rows[:50]}
 
 
 def refund(email: str, payment_id: str, *, why: str = "") -> dict:
