@@ -31,7 +31,7 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-BT3eaNYP.js"></script>
+  <script type="module" crossorigin src="/assets/main-waiXZahI.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/main-BzkjSTgp.css">
 </head>
 <body>
@@ -280,21 +280,10 @@
         <!-- 🛑 결과는 사주와 같은 `.report` 다. 관상만의 클래스를 두지 않는다 -->
         <div class="report" id="gwanOut" hidden></div>
 
-        <!-- 🛑 **관상에도 대화가 있어야 한다** (2026-09-11 온해님 「각 상품마다 그 안에
-             무냥이랑 대화하는 기능이 있어야 돼」). 사주 `.ask-wrap` 과 같은 짜임이다.
-             관멍이는 **써 둔 결과지**를 보고 답한다 — 사진은 안 남기기 때문이다. -->
-        <div class="ask-wrap" id="gwanAskWrap" hidden>
-          <h3 class="full-h">관멍이에게 더 물어보기</h3>
-          <p class="ask-lede">얼굴을 보고 남은 게 있으면 그냥 물어보세요. <b>한 번에 등불 30개</b>예요.</p>
-          <div class="chat" id="gwanChatBox">
-            <div class="chat-log" id="gwanChatLog"></div>
-            <form class="chat-row" id="gwanChatForm">
-              <input type="text" id="gwanChatIn" maxlength="300" autocomplete="off"
-                     placeholder="관멍이에게 물어보세요" />
-              <button type="submit" class="btn">묻기</button>
-            </form>
-          </div>
-        </div>
+        <!-- 🛑 **「관멍이에게 더 물어보기」 칸을 걷어냈다** (2026-09-11 온해님 지시).
+             무냥이·관멍이와 대화하는 **채팅을 따로 만들기로 해서**, 상품 안에 붙어 있던
+             물음 칸은 전부 뺀다. 서버 길(`/api/gwan/ask`)과 답을 쓰는 코드는 그대로
+             둔다 — 새 채팅이 같은 길을 쓴다. 되살릴 일이 있으면 이 커밋을 보면 된다. -->
 
         <!-- 다 읽고 나서 한마디 — 사주 `.wrap-up` 그대로 -->
         <div class="wrap-up" id="gwanWrapUp" hidden>
@@ -747,28 +736,13 @@
       <p class="full-tools-note">인쇄 창에서 <b>대상</b>을 「PDF로 저장」으로 고르시면 돼요.</p>
     </div>
 
-    <div class="ask-wrap" id="askWrap" hidden>
-      <h3 class="full-h">무냥이에게 더 물어보기</h3>
-      <p class="ask-lede">다 읽으셨는데 남은 게 있으면 그냥 물어보세요. <b>한 번에 등불 30개</b>예요.
-        무냥이가 손님 사주를 보고 그 자리에서 답을 써 드려요.</p>
-
-      <!-- 🛑 **정해진 답 목록은 걷어냈다** (2026-09-09 온해님 지시).
-           스무 줄 넘는 목록이 화면을 다 먹었고, 그건 계산 블록을 꺼내 보여 줄 뿐이라
-           무냥이가 쓰는 글이 아니었다. 이제 **무엇을 묻든 무냥이(LLM)가 답한다.**
-           목록에 있던 물음은 아래 「이런 것도 물어보세요」 칩으로 남아, 누르면
-           그 문장이 입력칸에 들어가 같은 길로 간다. -->
-      <div class="chat" id="chatBox">
-        <div class="chat-log" id="chatLog"></div>
-        <form class="chat-row" id="chatForm">
-          <input type="text" id="chatIn" maxlength="300" autocomplete="off"
-                 placeholder="궁금한 걸 그냥 적어 보세요" />
-          <button type="submit" class="btn btn-sm" id="chatSend">묻기</button>
-        </form>
-        <ul class="ask-list" id="askList"></ul>
-        <p class="chat-note">한 번 여쭐 때마다 <b>등불 30개</b>를 써요. 사주로 답할 수 있는 것만 답해 드려요.</p>
-        <p class="form-error" id="chatErr" hidden></p>
-      </div>
-    </div>
+    <!-- 🛑 **「무냥이에게 더 물어보기」 칸을 걷어냈다** (2026-09-11 온해님 지시).
+         무냥이·관멍이와 대화하는 **채팅을 따로 만들기로 해서**, 상품 리포트 안에 붙어
+         있던 물음 칸·예시 칩·채팅 기록을 전부 뺀다.
+         🛑 **서버는 그대로 둔다** (`/api/ask/free`). 답을 쓰는 코드와 말투 프롬프트는
+            새 채팅이 같은 길로 쓴다. 여기서 뺀 것은 화면뿐이다.
+         🛑 **등불이 다시 쓸 데가 없어진다.** 등불을 쓰는 자리는 이 칸 하나였다 —
+            새 채팅이 서기 전까지 가입 선물 300개는 쓸 곳이 없다. -->
 
     <div class="first-line">
     <h3 class="full-h">그날 보낼 첫 문장</h3>
