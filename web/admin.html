@@ -378,9 +378,10 @@ td.owner{color:var(--faint);font-size:.84rem}
       <div class="deck">
         <div class="card">
           <h2>캐릭터 그림</h2>
-          <p class="sub">상품마다 카드 그림(세로)과 배너(가로)가 있는지</p>
+          <p class="sub">상품마다 카드 그림(세로)과 배너(가로)가 몇 종류 있는지</p>
+          <p class="sub" id="aSum"></p>
           <div class="scroll"><table>
-            <thead><tr><th>갈래</th><th>상품</th><th>카드 그림</th><th>배너</th></tr></thead>
+            <thead><tr><th>갈래</th><th>상품</th><th>공유 카드</th><th>배너(가로)</th><th>무엇으로 갈리나</th></tr></thead>
             <tbody id="tAsset"></tbody>
           </table></div>
           <p class="note">🛑 <b>그림은 여기서 올리지 않습니다.</b> 무냥이·관멍이 그림은
@@ -905,14 +906,25 @@ function paintPayKinds() {
 // ── 캐릭터 그림 현황 (2026-09-11) ──────────────────────
 // 🛑 목록은 배포할 때 `node tools/dump_assets.mjs` 가 찍는다. 파일이 실제로 있는지를
 //    그때 확인하므로, 그림을 지우고 배포하면 여기서 바로 드러난다.
-const ASSETS = [{"k": "사주", "n": "오늘 운세 한 조각", "c": true, "h": false, "p": false}, {"k": "사주", "n": "전생 신원조회", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 등 뒤 보디가드", "c": true, "h": true, "p": false}, {"k": "사주", "n": "이별 루틴 분석기", "c": true, "h": false, "p": false}, {"k": "사주", "n": "이번 주 연락 요일표", "c": true, "h": false, "p": false}, {"k": "사주", "n": "읽씹 안 당할 날짜", "c": true, "h": false, "p": false}, {"k": "사주", "n": "환승 여부 감별", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 생각 하는지 스캔", "c": true, "h": false, "p": false}, {"k": "사주", "n": "같은 이별 재방송 확률", "c": true, "h": false, "p": false}, {"k": "사주", "n": "차단 해제 D-DAY", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 생각 나는 시간표", "c": true, "h": false, "p": false}, {"k": "사주", "n": "첫사랑 근황 추적", "c": true, "h": false, "p": false}, {"k": "사주", "n": "그 사람 속마음 해독", "c": true, "h": true, "p": false}, {"k": "사주", "n": "재회 종합 대점", "c": true, "h": true, "p": true}, {"k": "사주", "n": "재회 가능성 종합", "c": true, "h": true, "p": true}, {"k": "사주", "n": "인연 두께 측정", "c": true, "h": true, "p": true}, {"k": "사주", "n": "붙잡을까 놓을까 판정", "c": true, "h": true, "p": true}, {"k": "사주", "n": "올해 운세 브리핑", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 매력 취급설명서", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 사주 지뢰 탐지", "c": true, "h": false, "p": false}, {"k": "사주", "n": "통장 잔고 사용설명서", "c": true, "h": false, "p": false}, {"k": "사주", "n": "내 인생 전체 스포", "c": true, "h": false, "p": false}, {"k": "사주", "n": "식은 이유 부검", "c": true, "h": false, "p": false}, {"k": "사주", "n": "재회 공략집", "c": true, "h": true, "p": false}, {"k": "사주", "n": "결혼 각인지 판정", "c": true, "h": true, "p": true}, {"k": "사주", "n": "궁합 종합 검진", "c": true, "h": false, "p": false}, {"k": "사주", "n": "불 끄고 난 뒤 궁합", "c": true, "h": true, "p": false}, {"k": "사주", "n": "여기서 끝낼까 판정", "c": true, "h": true, "p": true}, {"k": "사주", "n": "말 못 하는 사이 상담", "c": true, "h": true, "p": true}, {"k": "사주", "n": "성별 뺀 속궁합", "c": true, "h": false, "p": false}, {"k": "사주", "n": "밤에 켜지는 나", "c": true, "h": false, "p": false}, {"k": "관상", "n": "첫인상 온도", "c": true, "h": false, "p": false}, {"k": "관상", "n": "내 얼굴 사용법", "c": true, "h": false, "p": false}, {"k": "관상", "n": "그 사람 판독기", "c": true, "h": false, "p": false}, {"k": "관상", "n": "밀당 성향 판독기", "c": true, "h": false, "p": false}, {"k": "관상", "n": "통장 수호 지수", "c": true, "h": false, "p": false}, {"k": "관상", "n": "내가 왕이 될 상인가", "c": true, "h": true, "p": true}, {"k": "관상", "n": "얼굴 전부 읽기", "c": true, "h": true, "p": true}, {"k": "관상", "n": "둘이 맞는 얼굴인가", "c": true, "h": true, "p": true}, {"k": "관상", "n": "똥차 필터링", "c": true, "h": false, "p": false}, {"k": "관상", "n": "속마음 감지", "c": true, "h": false, "p": false}, {"k": "관상", "n": "성형·시술 운세", "c": true, "h": false, "p": false}, {"k": "관상", "n": "벼락부자 가능성", "c": true, "h": false, "p": false}];
+const ASSETS = [{"k":"사주","n":"오늘 운세 한 조각","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"전생 신원조회","c":20,"w":"십성 10갈래 × 사람·짐승","h":0,"p":false},{"k":"사주","n":"내 등 뒤 보디가드","c":10,"w":"신 10분 중 하나","h":1,"p":false},{"k":"사주","n":"이별 루틴 분석기","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"이번 주 연락 요일표","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"읽씹 안 당할 날짜","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"환승 여부 감별","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"내 생각 하는지 스캔","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"같은 이별 재방송 확률","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"차단 해제 D-DAY","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"내 생각 나는 시간표","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"첫사랑 근황 추적","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"그 사람 속마음 해독","c":1,"w":"","h":1,"p":false},{"k":"사주","n":"재회 종합 대점","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"재회 가능성 종합","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"인연 두께 측정","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"붙잡을까 놓을까 판정","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"올해 운세 브리핑","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"내 매력 취급설명서","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"내 사주 지뢰 탐지","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"통장 잔고 사용설명서","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"내 인생 전체 스포","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"식은 이유 부검","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"재회 공략집","c":1,"w":"","h":1,"p":false},{"k":"사주","n":"결혼 각인지 판정","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"궁합 종합 검진","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"불 끄고 난 뒤 궁합","c":1,"w":"","h":1,"p":false},{"k":"사주","n":"여기서 끝낼까 판정","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"말 못 하는 사이 상담","c":1,"w":"","h":1,"p":true},{"k":"사주","n":"성별 뺀 속궁합","c":1,"w":"","h":0,"p":false},{"k":"사주","n":"밤에 켜지는 나","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"첫인상 온도","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"내 얼굴 사용법","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"그 사람 판독기","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"밀당 성향 판독기","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"통장 수호 지수","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"내가 왕이 될 상인가","c":1,"w":"","h":1,"p":true},{"k":"관상","n":"얼굴 전부 읽기","c":1,"w":"","h":1,"p":true},{"k":"관상","n":"둘이 맞는 얼굴인가","c":1,"w":"","h":1,"p":true},{"k":"관상","n":"똥차 필터링","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"속마음 감지","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"성형·시술 운세","c":1,"w":"","h":0,"p":false},{"k":"관상","n":"벼락부자 가능성","c":1,"w":"","h":0,"p":false}];
 function paintAssets() {
   const box = $('tAsset'); if (!box) return;
-  const yes = '<b>있음</b>';
   const no = '<span class="zero">없음</span>';
+  // 🛑 **장수를 적는다** (2026-09-11 온해님). 상품 대부분은 한 장이지만 수호신·전생은
+  //    손님마다 다른 그림이 나간다 — 몇 장까지 나올 수 있는지가 여기서 보여야 한다
+  const cnt = (n) => (n ? '<b>' + n + '장</b>' : no);
   box.innerHTML = ASSETS.map((a) =>
-    '<tr><td>' + esc(a.k) + '</td><td>' + esc(a.n) + '</td><td>' + (a.c ? yes : no)
-    + '</td><td>' + (a.h ? yes : (a.p ? no : '—')) + '</td></tr>').join('');
+    '<tr><td>' + esc(a.k) + '</td><td>' + esc(a.n) + '</td><td>' + cnt(a.c)
+    + '</td><td>' + (a.h ? '<b>' + a.h + '장</b>' : (a.p ? no : '—')) + '</td>'
+    + '<td>' + (a.w ? esc(a.w) : '—') + '</td></tr>').join('');
+  const sheets = ASSETS.reduce((s, a) => s + (a.c || 0) + (a.h || 0), 0);
+  const many = ASSETS.filter((a) => a.c > 1);
+  const sum = $('aSum');
+  if (sum) {
+    sum.innerHTML = '상품 <b>' + ASSETS.length + '개</b> · 그림 <b>' + sheets + '장</b>'
+      + (many.length ? ' · 손님마다 갈리는 상품 ' + many.map((a) =>
+        esc(a.n) + ' ' + a.c + '장').join(' · ') : '');
+  }
 }
 
 // ── 프롬프트 관리 (2026-09-11 온해님) ──────────────────
