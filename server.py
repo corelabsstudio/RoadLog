@@ -2031,8 +2031,19 @@ def _verify_payment(payment_id: str) -> dict:
 
 @app.get("/api/lamps/ready")
 def lamps_ready():
-    """결제 확인용 시크릿이 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다."""
-    return {"portone_secret_set": bool(PORTONE_API_SECRET), "pay_open": PAY_OPEN, "sale_until": SALE_UNTIL}
+    """결제 확인용 시크릿이 서버에 들어와 있는지만 알려 준다. 값은 내보내지 않는다.
+
+    🛑 **글이 안 써지면 복채를 받지 않는다** (2026-09-10 온해님). 무냥이 글은
+       Gemini 가 쓰는데, 잔액이 0이 되면 그 키가 통째로 멈춘다. 그래도 계산 글은
+       나가기 때문에 **복채를 내고 무냥이 글이 빠진 리포트**를 받게 된다.
+       그게 안 파는 것보다 나쁘다. 그래서 막히면 스스로 닫는다.
+    🛑 충전하시면 **저절로 다시 열린다** — 다음 호출이 성공하는 순간 풀린다.
+    """
+    busy = saju_writer.down()
+    return {"portone_secret_set": bool(PORTONE_API_SECRET),
+            "pay_open": PAY_OPEN and not busy,
+            "busy": busy,
+            "sale_until": SALE_UNTIL}
 
 
 def _is_owner(user: dict) -> bool:
@@ -2400,6 +2411,9 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
     if not PAY_OPEN:
         # 🛑 앞단만 막으면 우회된다. 서버가 마지막으로 거절한다.
         raise HTTPException(503, "결제를 준비하고 있어요. 열리면 알려 드릴게요.")
+    # 🛑 글이 안 써지는 동안은 받지 않는다. 받아 두고 못 써 드리면 환불 사태가 된다
+    if saju_writer.down():
+        raise HTTPException(503, "지금은 주문이 몰려서 잠시 닫았어요. 곧 다시 열려요.")
     user = _token_user(authorization)
     paid = _verify_payment(body.paymentId.strip())
     amount = int((paid.get("amount") or {}).get("total") or 0)

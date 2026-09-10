@@ -322,9 +322,17 @@ fetch('/api/lamps/ready')
   .then((r) => r.json())
   .then((d) => {
     if (d.pay_open) return;                 // 열렸으면 안내문도 안 띄운다
-    $('testNote').hidden = false;
     const b = $('payBtn');
     b.disabled = true;
+    // 🛑 **닫힌 까닭이 둘이다** (2026-09-10). 카드사 심사로 아직 안 연 것과,
+    //    무냥이가 글을 못 쓰는 중이라 잠시 닫은 것. 손님에게 할 말이 다르다.
+    if (d.busy) {
+      b.textContent = '잠시 뒤에 다시 열려요';
+      show('warn', '지금은 <b>주문이 몰려서</b> 잠시 닫았어요. 곧 다시 열려요.<br />'
+        + '잠시 뒤에 새로고침해 주시면 열립니다.');
+      return;
+    }
+    $('testNote').hidden = false;
     b.textContent = '결제 준비 중이에요';
     show('warn', '결제를 준비하고 있어요. 열리면 알려 드릴게요.<br />그동안 <b>오늘의 운세</b>는 그냥 보실 수 있어요.');
   })

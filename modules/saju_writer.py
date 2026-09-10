@@ -46,6 +46,63 @@ def ready() -> bool:
     return bool(api_key())
 
 
+# ── 글이 안 써지면 팔지 않는다 (2026-09-10 온해님) ─────────────
+# 🛑 **잔액이 0이 되면 그 계정의 API 키가 전부 즉시 멈춘다.** 그런데 지금 구조에서는
+#    LLM 이 멈춰도 **계산 글은 나가서**, 손님이 복채를 내고 무냥이 글이 빠진 리포트를
+#    받게 된다. 그게 안 파는 것보다 나쁘다.
+#
+# 🛑 **잔액을 물어보는 API 가 없다.** 그래서 잔액이 아니라 **실패를 센다** — 원인이
+#    잔액이든 구글 장애든, 글이 안 나오면 팔면 안 되는 건 같다.
+#
+# 🛑 성공하면 그 자리에서 0으로 돌아간다. 충전하시면 **저절로 다시 열린다.**
+_FAIL_FILE = "llm_fail.json"
+_FAIL_MAX = 3            # 이만큼 잇따라 실패하면 닫는다
+_FAIL_HOLD = 600         # 마지막 실패로부터 이 초가 지나면 한 번 더 해 본다
+
+
+def _fail_path():
+    from pathlib import Path
+    return Path(os.getenv("DATA_DIR") or ".") / _FAIL_FILE
+
+
+def _fail_read() -> dict:
+    try:
+        return json.loads(_fail_path().read_text(encoding="utf-8"))
+    except Exception:                                    # noqa: BLE001
+        return {}
+
+
+def _fail_write(d: dict) -> None:
+    try:
+        f = _fail_path()
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    except Exception:                                    # noqa: BLE001
+        pass                                             # 못 적어도 글은 나가야 한다
+
+
+def note_fail(why: str = "") -> None:
+    d = _fail_read()
+    d["n"] = int(d.get("n") or 0) + 1
+    d["at"] = time.time()
+    d["why"] = str(why)[:200]
+    _fail_write(d)
+
+
+def note_ok() -> None:
+    if _fail_read().get("n"):
+        _fail_write({"n": 0, "at": time.time(), "why": ""})
+
+
+def down() -> bool:
+    """글쓰기가 막혀 있나. 막혔으면 복채를 받지 않는다."""
+    d = _fail_read()
+    if int(d.get("n") or 0) < _FAIL_MAX:
+        return False
+    # 시간이 꽤 지났으면 한 번 더 해 볼 기회를 준다 (충전하셨을 수 있다)
+    return (time.time() - float(d.get("at") or 0)) < _FAIL_HOLD
+
+
 # ── 문장 형식을 항목마다 돌린다 ──────────────────────────────
 # 열두 항목이 전부 「이름, ~죠」로 시작해서 「오늘 ~ 세어 보세요」로 끝나면
 # 항목 하나는 사람 같아도 한 편은 여전히 기계다.
@@ -331,6 +388,7 @@ def _call(system: str, user: str, *, model: str | None = None,
             if "candidates" in j:
                 txt = "".join(p.get("text", "") for p in j["candidates"][0]["content"]["parts"])
                 u = j.get("usageMetadata", {})
+                note_ok()          # 되면 그 자리에서 다시 연다
                 return {"text": txt.strip(),
                         "in": u.get("promptTokenCount", 0),
                         "out": u.get("candidatesTokenCount", 0)}
@@ -338,6 +396,8 @@ def _call(system: str, user: str, *, model: str | None = None,
         except httpx.HTTPError as e:
             last = str(e)[:200]
         time.sleep(1.5 * (attempt + 1))
+    # 🛑 세 번 다 실패했다. 잔액이 바닥났을 수 있으니 세어 둔다 (위 note_fail 참고)
+    note_fail(last or "")
     raise RuntimeError("생성 실패: %s" % last)
 
 
