@@ -101,7 +101,7 @@ def kind(question: str, *, model: str | None = None) -> str:
         #    길이에 걸려 `parts` 가 통째로 빠지고, 그러면 아래 `except` 로 떨어져
         #    **전부 그냥 하는 말**이 된다 — 돈 낼 물음까지 공짜가 됐다.
         res = _call(_P("intent", SYSTEM), str(question)[:300], model=model,
-                    temperature=0.0, max_tokens=24)
+                    temperature=0.0, max_tokens=128)
         return READ if "read" in (res.get("text") or "").lower() else TALK
     except Exception:                                   # noqa: BLE001
         return TALK                                     # 🛑 막히면 안 받는다
@@ -131,3 +131,56 @@ def small_talk(who: str, name: str, question: str, *,
     user = "손님 이름: %s%s%s손님이 한 말: %s" % (
         name or "손님", chr(10), chr(10), str(question or "")[:300])
     return _call(sys_txt, user, model=model, max_tokens=200)
+
+
+# ── 여태 물은 것을 보고 무슨 고민인지 (2026-09-11 온해님 4단계) ─────────
+#
+# 🛑 **여기서 상품을 고르지 않는다.** 상품 정본은 앞단 `products.js`·`gwansang.js` 다.
+#    서버가 상품 목록을 또 들고 있으면 이름·값을 고칠 때마다 두 곳이 어긋난다.
+#    여기서는 **주제 낱말만** 정하고, 어떤 상품이 그 주제인지는 앞단이 고른다.
+#
+# 🛑 **목록을 마음대로 늘리지 않는다.** 앞단 `reco.js` 의 `TOPICS` 와 같아야 한다.
+#    어긋나면 골라 준 주제에 맞는 상품이 하나도 안 나온다.
+TOPICS = ["재회", "이별", "속마음", "연락", "궁합", "결혼", "재물", "액운",
+          "올해", "매력", "전생", "수호신", "얼굴", "첫사랑", "권태기", "밤"]
+
+TOPIC_SYSTEM = """손님이 무냥이에게 물어 온 것들을 보고 **무슨 고민인지** 고른다.
+
+아래 목록에서 **가장 가까운 것 하나, 많아야 둘**을 고른다. 쉼표로 나눠 쓴다.
+
+  재회 · 이별 · 속마음 · 연락 · 궁합 · 결혼 · 재물 · 액운
+  올해 · 매력 · 전생 · 수호신 · 얼굴 · 첫사랑 · 권태기 · 밤
+
+  · 재회 = 다시 만나고 싶다 · 이별 = 끝낼까 붙잡을까
+  · 속마음 = 그 사람이 나를 어떻게 보나 · 연락 = 언제 어떻게 연락하나
+  · 액운 = 왜 자꾸 꼬이나 · 매력 = 나는 어떤 사람으로 보이나
+  · 얼굴 = 관상으로 답할 것 · 밤 = 잠자리·몸의 결
+
+🛑 목록에 없는 낱말을 지어내지 마라.
+🛑 딱 맞는 것이 없으면 **아무것도 쓰지 마라.** 빈 줄로 답한다.
+   엉뚱한 상품을 권하는 것보다 아무것도 안 권하는 편이 낫다.
+🛑 낱말만 쓴다. 설명하지 마라."""
+
+
+def topic(questions: list[str], *, model: str | None = None) -> list[str]:
+    """여태 물어본 것들을 보고 주제를 고른다. 못 고르면 빈 목록.
+
+    🛑 **못 고르면 아무것도 안 권한다.** 억지로 하나 붙이면 엉뚱한 상품이 나가고,
+       그건 안 권하느니만 못하다.
+    """
+    qs = [" ".join(str(q or "").split()) for q in (questions or [])]
+    qs = [q[:200] for q in qs if q][-6:]
+    if not qs:
+        return []
+    user = "[손님이 물어본 것]" + chr(10) + chr(10).join("- " + q for q in qs)
+    try:
+        res = _call(_P("topic", TOPIC_SYSTEM), user, model=model,
+                    temperature=0.0, max_tokens=256)
+    except Exception:                                   # noqa: BLE001
+        return []
+    got = []
+    for part in re.split(r"[\s,·]+", res.get("text") or ""):
+        w = part.strip()
+        if w in TOPICS and w not in got:
+            got.append(w)
+    return got[:2]

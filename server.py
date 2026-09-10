@@ -2619,6 +2619,9 @@ class GwanAskBody(BaseModel):
     shot: str = ""
     product: str = ""
     name: str = ""
+    # 사주 쪽과 같다 (2026-09-11 4단계). 카드를 붙일 차례일 때만 주제를 고른다
+    asked: list[str] = []
+    wantReco: bool = False
 
 
 @app.post("/api/gwan/ask")
@@ -2679,7 +2682,7 @@ def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)
         except ValueError as e:
             raise HTTPException(400, str(e))
     return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance,
-            "kind": "read"}
+            "kind": "read", "topic": _topic_if_wanted(body.wantReco, body.asked, q)}
 
 
 class AskFreeBody(BaseModel):
@@ -2687,6 +2690,11 @@ class AskFreeBody(BaseModel):
     pair: str
     saju: dict = {}
     name: str = ""
+    # 🛑 여태 물어본 것들 (2026-09-11 4단계). **무슨 고민인지 고르는 데만** 쓴다 —
+    #    답을 쓸 때는 안 넘긴다. 넘기면 물음마다 입력 토큰이 계속 불어난다.
+    asked: list[str] = []
+    # 이번 답 아래에 상품 카드를 붙일 차례인가. 몇 번째인지는 화면이 센다
+    wantReco: bool = False
 
 
 @app.post("/api/ask/free")
@@ -2745,7 +2753,7 @@ def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)
         except ValueError as e:
             raise HTTPException(400, str(e))
     return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance,
-            "kind": "read"}
+            "kind": "read", "topic": _topic_if_wanted(body.wantReco, body.asked, q)}
 
 
 @app.post("/api/premium/buy")
@@ -3077,6 +3085,24 @@ def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass
+
+
+def _topic_if_wanted(want: bool, asked: list[str] | None, now_q: str) -> list[str]:
+    """카드를 붙일 차례일 때만 무슨 고민인지 고른다 (2026-09-11 온해님 4단계).
+
+    🛑 **매번 고르지 않는다.** 한 번에 0.1원이고, 무엇보다 답마다 상품이 붙으면
+       대화가 아니라 광고가 된다. 화면이 세 번에 한 번만 청한다.
+    🛑 **여기서 상품을 고르지 않는다.** 상품 정본은 앞단에 있다 — 주제만 준다.
+    """
+    if not want:
+        return []
+    qs = [x for x in (asked or []) if isinstance(x, str)][-5:]
+    if now_q:
+        qs.append(now_q)
+    try:
+        return intent_ops.topic(qs)
+    except Exception:                                   # noqa: BLE001
+        return []                                       # 못 골라도 답은 나가야 한다
 
 
 def _small_quota(email: str, free: bool) -> None:
