@@ -71,6 +71,13 @@ SPEC: list[dict[str, Any]] = [
     {"key": "gwan", "name": "관상 해설",
      "why": "관멍이가 얼굴 사진을 보고 쓰는 글입니다.",
      "mod": "gwansang", "attr": "SYSTEM"},
+    {"key": "intent", "name": "무엇에 등불을 받나",
+     "why": "손님이 쓴 말이 봐 달라는 것인지 그냥 건네는 말인지 가릅니다. "
+            "🛑 봐 달라는 것으로 갈리면 등불 30개가 나갑니다.",
+     "mod": "intent", "attr": "SYSTEM"},
+    {"key": "small", "name": "가벼운 말 받기",
+     "why": "인사·잡담에 짧게 답하는 말투입니다. 여기서는 등불을 안 받아요.",
+     "mod": "intent", "attr": "SMALL_SYSTEM"},
 ]
 _BY = {x["key"]: x for x in SPEC}
 

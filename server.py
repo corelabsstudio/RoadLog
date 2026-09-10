@@ -93,6 +93,8 @@ from modules.generator import generate_driving_log, scrub_submission_log
 from modules import style_learn
 from modules import admin_ops
 from modules import reviews as reviews_ops
+# 손님이 쓴 말이 봐 달라는 것인지 그냥 건네는 말인지 가른다 (2026-09-11 3단계)
+from modules import intent as intent_ops
 from modules import saju_writer
 from modules.rate_limit import (
     AUTH_LIMIT,
@@ -2647,6 +2649,17 @@ def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)
         raise HTTPException(400, "그 관상 결과를 찾지 못했어요. 다시 봐 주세요.")
 
     free = _is_free(user)
+    # 🛑 사주 쪽과 **같은 규칙**이다 (2026-09-11 3단계). 인사에는 등불을 안 받는다 —
+    #    한쪽만 공짜로 두면 손님이 어느 쪽에서 값이 나가는지 못 외운다.
+    if intent_ops.kind(q) == intent_ops.TALK:
+        _small_quota(user["email"], free)
+        try:
+            res = intent_ops.small_talk("관멍이", body.name or "", q)
+        except (RuntimeError, ValueError) as e:
+            raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.") from e
+        return {"ok": True, "text": res.get("text", ""), "spent": 0, "kind": "talk",
+                "balance": 999999 if free else lamps_ops.balance(user["email"])}
+
     if not free and lamps_ops.balance(user["email"]) < lamps_ops.ASK_LAMPS:
         raise HTTPException(402, "등불이 모자라요.")
 
@@ -2665,7 +2678,8 @@ def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)
             balance = r.get("balance", 0)
         except ValueError as e:
             raise HTTPException(400, str(e))
-    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance}
+    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance,
+            "kind": "read"}
 
 
 class AskFreeBody(BaseModel):
@@ -2698,6 +2712,18 @@ def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)
         raise HTTPException(503, "지금은 답을 못 드려요. 잠시 뒤에 다시 여쭤 주세요.")
 
     free = _is_free(user)
+    # 🛑 **인사에는 등불을 안 받는다** (2026-09-11 온해님 3단계). 「안녕하세요」에
+    #    30개를 받으면 손님은 두 번째 말을 안 건다 — 대화가 아니라 자판기가 된다.
+    #    가르는 일은 **서버가 한다.** 화면에서 정하면 개발자 도구로 우회된다.
+    if intent_ops.kind(q) == intent_ops.TALK:
+        _small_quota(user["email"], free)
+        try:
+            res = intent_ops.small_talk("무냥이", body.name or "", q)
+        except (RuntimeError, ValueError) as e:
+            raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.") from e
+        return {"ok": True, "text": res.get("text", ""), "spent": 0, "kind": "talk",
+                "balance": 999999 if free else lamps_ops.balance(user["email"])}
+
     # 같은 질문을 다시 열면 등불을 안 쓴다 — 기존 ask 와 같은 규칙이라 키만 맞춘다
     qid = "free-" + hashlib.sha1(q.encode("utf-8")).hexdigest()[:20]
     if not free:
@@ -2718,7 +2744,8 @@ def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)
             balance = r.get("balance", 0)
         except ValueError as e:
             raise HTTPException(400, str(e))
-    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance}
+    return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance,
+            "kind": "read"}
 
 
 @app.post("/api/premium/buy")
@@ -2982,6 +3009,11 @@ PREVIEW_SECTIONS = 1        # 복채를 내기 전에 무냥이 글로 보여 �
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
                             # 🛑 폭스바니는 2회다. 헐렁하게 두면 원가만 나가고
                             #    「몇 번 안 남았다」는 압박도 사라진다
+SMALL_DAILY_CAP = 20        # 등불을 안 받는 가벼운 말에 답하는 하루 횟수
+                            # 🛑 공짜라고 열어 두면 로그인만 해서 계속 말을 걸 수 있다.
+                            #    한 번에 0.2원이라 스무 번이면 4원 — 그쯤에서 끊는다.
+                            #    🛑 여기 걸려도 **봐 달라는 물음은 그대로 열려 있다.**
+                            #       등불을 내는 손님을 막으면 안 된다
 FREE_DAILY_CAP = 3          # 무료 상품(오늘의 운세)을 하루에 새로 뽑는 횟수
                             # 🛑 미리보기 한도와 **따로 센다.** 같이 세면 오늘 운세를
                             #    한 번 본 것만으로 값 있는 상품 맛보기가 한 번 준다 —
@@ -3045,6 +3077,14 @@ def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass
+
+
+def _small_quota(email: str, free: bool) -> None:
+    """가벼운 말은 등불을 안 받는다. 그래서 하루 횟수로만 막는다 (2026-09-11)."""
+    if free:
+        return
+    _preview_quota(email, kind="small", cap=SMALL_DAILY_CAP,
+                   msg="가벼운 얘기는 오늘 여기까지만 받을게요. 사주로 물으시면 바로 답해 드려요.")
 
 
 @app.get("/api/saju/quota")

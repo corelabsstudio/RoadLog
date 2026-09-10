@@ -408,13 +408,23 @@ def _call(system: str, user: str, *, model: str | None = None,
             r = httpx.post(url, json=body, timeout=TIMEOUT)
             j = r.json()
             if "candidates" in j:
-                txt = "".join(p.get("text", "") for p in j["candidates"][0]["content"]["parts"])
-                u = j.get("usageMetadata", {})
-                note_ok()          # 되면 그 자리에서 다시 연다
-                return {"text": txt.strip(),
-                        "in": u.get("promptTokenCount", 0),
-                        "out": u.get("candidatesTokenCount", 0)}
-            last = json.dumps(j, ensure_ascii=False)[:300]
+                # 🛑 **글이 없는 답이 온다** (2026-09-11 실측). 길이에 걸리거나 안전
+                #    검사에 막히면 `candidates[0]` 은 오는데 그 안에 `parts` 가 없다.
+                #    전에는 여기서 `KeyError` 가 나면서 **되풀이 고리를 통째로 건너뛰고**
+                #    바로 죽었다 — 아래 `except` 가 httpx 오류만 받기 때문이다.
+                #    그러면 손님은 다시 해 보면 될 일에 「막혔어요」를 받는다.
+                cand = j["candidates"][0] or {}
+                parts = (cand.get("content") or {}).get("parts") or []
+                txt = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+                if txt.strip():
+                    u = j.get("usageMetadata", {})
+                    note_ok()      # 되면 그 자리에서 다시 연다
+                    return {"text": txt.strip(),
+                            "in": u.get("promptTokenCount", 0),
+                            "out": u.get("candidatesTokenCount", 0)}
+                last = "빈 답 (%s)" % (cand.get("finishReason") or "이유 없음")
+            else:
+                last = json.dumps(j, ensure_ascii=False)[:300]
         except httpx.HTTPError as e:
             last = str(e)[:200]
         time.sleep(1.5 * (attempt + 1))
