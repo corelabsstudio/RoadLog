@@ -1839,6 +1839,67 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
         raise HTTPException(400, str(e)) from e
 
 
+# ── 환불 ──────────────────────────────────────────────
+# 🛑 **되돌릴 수 없는 일이다.** 주인만 부를 수 있고, 까닭을 반드시 적게 한다.
+#    포트원에 취소를 넣고 → 원장에 남기고 → **열어 둔 리포트를 닫는다.**
+#    셋 중 하나라도 빠지면 돈만 나가거나 글만 사라진다.
+
+
+class RefundBody(BaseModel):
+    email: str
+    paymentId: str
+    why: str = ""
+
+
+@app.post("/api/admin/refund")
+def admin_refund(body: RefundBody, authorization: str | None = Header(default=None)):
+    admin = _require_admin(authorization)
+    pid = (body.paymentId or "").strip()
+    email = (body.email or "").strip().lower()
+    why = (body.why or "").strip()
+    if not pid or not email:
+        raise HTTPException(400, "결제번호와 이메일이 필요합니다.")
+    if len(why) < 2:
+        raise HTTPException(400, "환불 까닭을 적어 주세요. 나중에 왜 돌려줬는지 알아야 합니다.")
+    if not PORTONE_API_SECRET:
+        raise HTTPException(503, "결제 설정이 안 되어 있어 취소를 넣을 수 없어요.")
+
+    # ① 포트원에 취소를 넣는다
+    try:
+        r = httpx.post(
+            f"https://api.portone.io/payments/{quote(pid, safe='')}/cancel",
+            headers={"Authorization": f"PortOne {PORTONE_API_SECRET}",
+                     "Content-Type": "application/json"},
+            json={"reason": why[:200]},
+            timeout=20.0,
+        )
+    except Exception:                                    # noqa: BLE001
+        raise HTTPException(502, "포트원에 닿지 못했습니다. 잠시 뒤 다시 해 주세요.")
+    if r.status_code not in (200, 201):
+        # 🛑 이미 취소된 건은 그냥 넘어간다 — 원장 정리는 해야 하기 때문이다
+        msg = str(r.text)[:200]
+        if "ALREADY_CANCELLED" not in msg.upper().replace("_", "").replace(" ", ""):
+            raise HTTPException(400, "취소하지 못했습니다: %s" % msg)
+
+    # ② 원장에 남기고 열어 둔 것을 닫는다
+    try:
+        got = lamps_ops.refund(email, pid, why=why)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # ③ 손님에게 알린다 — 말없이 닫으면 「글이 사라졌다」가 된다
+    try:
+        inbox_ops.push(
+            email, "복채를 돌려드렸어요",
+            "%s원 결제를 취소했어요. 카드사에 따라 며칠 걸릴 수 있어요. "
+            "열어 두었던 글은 닫혔습니다." % format(int(got.get("price") or 0), ","),
+            key="refund:%s" % pid)
+    except Exception:                                    # noqa: BLE001
+        pass
+
+    return {"ok": True, "by": admin.get("email") or "", **got}
+
+
 # ── 프롬프트 관리 ──────────────────────────────────────
 # 🛑 **말투를 코드 배포 없이 고친다** (2026-09-11 온해님 명세).
 #    무냥이·관멍이가 쓰는 글의 결을 관리자 화면에서 고치고 그 자리에서 시험해 본다.

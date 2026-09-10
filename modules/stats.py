@@ -215,7 +215,8 @@ def _charges() -> list[dict[str, Any]]:
         if not isinstance(acc, dict):
             continue
         for e in acc.get("ledger", []):
-            if e.get("type") not in ("charge", "premium"):
+            # 🛑 환불도 센다 — 금액이 음수라 매출이 저절로 준다 (2026-09-11)
+            if e.get("type") not in ("charge", "premium", "refund"):
                 continue
             at = str(e.get("at", ""))[:10]
             if not at:
@@ -281,7 +282,7 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         #    (`lamps.REAL_PAY_FROM`). 안 그러면 총액과 회원별 합계가 안 맞는다.
         charged = sum(int(e.get("price") or 0)
                       for e in acc.get("ledger", [])
-                      if e.get("type") in ("charge", "premium")
+                      if e.get("type") in ("charge", "premium", "refund")
                       and str(e.get("at", ""))[:10] >= lamps_ops.REAL_PAY_FROM)
         bal = sum(int(l.get("remain") or 0) for l in acc.get("lots", []))
         if email.endswith("@kakao.local"):
@@ -449,7 +450,7 @@ def _via_funnel() -> list[dict[str, Any]]:
         row["signups"] += 1
         acc = lamp.get(m["email"]) or {}
         paid = sum(int(e.get("price") or 0) for e in acc.get("ledger", [])
-                   if e.get("type") in ("charge", "premium")
+                   if e.get("type") in ("charge", "premium", "refund")
                    and str(e.get("at", ""))[:10] >= lamps_ops.REAL_PAY_FROM)
         if paid:
             row["buyers"] += 1

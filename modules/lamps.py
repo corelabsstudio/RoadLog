@@ -446,6 +446,43 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
 
 
+def refund(email: str, payment_id: str, *, why: str = "") -> dict:
+    """돌려준 것을 원장에 남기고, 열어 둔 리포트를 닫는다 (2026-09-11).
+
+    🛑 **원장에서 지우지 않는다.** 지우면 무슨 일이 있었는지가 사라진다.
+       `refund` 항목을 하나 더 얹어서 **금액을 음수로** 적는다 — 매출이 저절로 준다.
+    """
+    data = _read()
+    acc = _account(data, email)
+    got = None
+    for e in acc.get("ledger", []):
+        if e.get("payment_id") == payment_id and e.get("type") in ("charge", "premium"):
+            got = e
+            break
+    if not got:
+        raise ValueError("그 결제를 찾지 못했습니다.")
+    if any(e.get("type") == "refund" and e.get("payment_id") == payment_id
+           for e in acc.get("ledger", [])):
+        raise ValueError("이미 환불한 결제입니다.")
+
+    now = _now()
+    price = int(got.get("price") or 0)
+    product = str(got.get("product") or "")
+    pair = str(got.get("pair") or "")
+    # 🛑 **열어 둔 것을 닫는다.** 돈은 돌려주고 글은 그대로 두면 안 된다.
+    #    묶음이면 안에 든 것까지 다 닫는다.
+    close = set(BUNDLE.get(product) or [product])
+    acc["owned"] = [o for o in acc.get("owned", [])
+                    if not (o.get("pair") == pair and o.get("product") in close)]
+    acc["ledger"].append({
+        "at": _iso(now), "type": "refund", "product": product, "pair": pair,
+        "lamps": 0, "price": -price, "payment_id": payment_id,
+        "note": (why or "관리자 환불")[:200],
+    })
+    _write(data)
+    return {"ok": True, "product": product, "price": price}
+
+
 def gift_used(email: str) -> dict | None:
     """선착순 이벤트로 이미 한 편을 여셨나. 열었으면 그 기록을 준다."""
     acc = _account(_read(), email)

@@ -340,7 +340,7 @@ td.owner{color:var(--faint);font-size:.84rem}
           <h2>주문 내역</h2>
           <p class="sub">최근 50건 · 원장에 남은 그대로</p>
           <div class="scroll"><table>
-            <thead><tr><th>때</th><th>상품</th><th>금액</th><th>산 사람</th><th>결제번호</th></tr></thead>
+            <thead><tr><th>때</th><th>상품</th><th>금액</th><th>산 사람</th><th>결제번호</th><th></th></tr></thead>
             <tbody id="tPaid"></tbody>
           </table></div>
         </div>
@@ -753,10 +753,16 @@ function paint() {
       const who = String(x.email || '');
       // 결제번호는 문의가 왔을 때 포트원에서 찾는 열쇠다. 뒤 12자만 보인다
       const pid = String(x.payment_id || '');
+      // 🛑 환불한 건은 금액이 음수로 들어온다. 단추를 다시 주지 않는다
+      const back = Number(x.price) < 0 || x.kind === 'refund';
+      const btn = (back || !pid) ? (back ? '<span class="zero">환불</span>' : '')
+        : '<button type="button" class="del" data-rf="' + esc(pid)
+          + '" data-rfmail="' + esc(who) + '">환불</button>';
       return '<tr><td>' + when + '</td><td>' + name + '</td><td>' + won(x.price)
-        + '</td><td>' + who + '</td><td class="mail">' + esc(pid.slice(-12)) + '</td></tr>';
+        + '</td><td>' + who + '</td><td class="mail">' + esc(pid.slice(-12))
+        + '</td><td>' + btn + '</td></tr>';
     }).join('')
-    : '<tr><td colspan="5" class="zero">아직 결제가 없습니다.</td></tr>';
+    : '<tr><td colspan="6" class="zero">아직 결제가 없습니다.</td></tr>';
 
   paintPayKinds();
   paintCampaigns();
@@ -770,6 +776,34 @@ function paint() {
  *  🛑 **원장에 있는 것만 센다.** 결제 수단(카드·계좌이체)은 포트원에만 있고 우리
  *     원장에는 안 남아서 여기서 못 보여 준다. 남기려면 결제 확정 때 같이 적어야 한다.
  */
+// 🛑 **되돌릴 수 없다.** 까닭을 받고, 무엇을 얼마나 돌려주는지 한 번 더 보여 준다.
+$('tPaid')?.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-rf]'); if (!b) return;
+  const pid = b.dataset.rf;
+  const mail = b.dataset.rfmail;
+  const row = (DATA.recent || []).find((x) => x.payment_id === pid) || {};
+  const why = prompt(
+    '환불 까닭을 적어 주세요. (나중에 왜 돌려줬는지 알아야 합니다)\n\n'
+    + (NAMES[row.product] || row.product || '') + ' · ' + won(row.price || 0) + '\n' + mail);
+  if (why === null) return;
+  if (!confirm('정말 돌려드릴까요?\n\n돈이 나가고 열어 둔 글이 닫힙니다. 되돌릴 수 없어요.')) return;
+  b.disabled = true; b.textContent = '처리 중';
+  try {
+    const r = await fetch('/api/admin/refund', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ email: mail, paymentId: pid, why }),
+    });
+    const d = await r.json().catch(() => null);
+    if (!r.ok) throw new Error((d && d.detail) || ('오류 ' + r.status));
+    alert('돌려드렸어요. 카드사에 따라 며칠 걸릴 수 있어요.');
+    load();
+  } catch (err) {
+    alert(err.message);
+    b.disabled = false; b.textContent = '환불';
+  }
+});
+
 function paintPayKinds() {
   const rows = (DATA.recent || []);
   const bar = (items, total) => items.length
