@@ -1194,6 +1194,10 @@ def me(authorization: str | None = Header(default=None)):
     }
 
 
+class NameBody(BaseModel):
+    name: str
+
+
 @app.put("/api/me/name")
 def me_set_name(body: NameBody, authorization: str | None = Header(default=None)):
     """결과 화면에서 부를 이름을 바꾼다.
@@ -1579,10 +1583,6 @@ class BillingBody(BaseModel):
     enterprise_base_seats: int | None = None
     enterprise_seat_price_krw: int | None = None
     enterprise_seat_annual_price_krw: int | None = None
-
-
-class NameBody(BaseModel):
-    name: str
 
 
 class FreePassBody(BaseModel):
@@ -2668,6 +2668,13 @@ def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)
     return {"ok": True, "text": res.get("text", ""), "spent": spent, "balance": balance}
 
 
+class AskFreeBody(BaseModel):
+    question: str
+    pair: str
+    saju: dict = {}
+    name: str = ""
+
+
 @app.post("/api/ask/free")
 def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)):
     """무냥이에게 **아무거나** 묻는다. 정해진 질문이 아니라 손님이 쓴 문장에 답한다.
@@ -2981,13 +2988,6 @@ FREE_DAILY_CAP = 3          # 무료 상품(오늘의 운세)을 하루에 새�
                             #    미끼가 미끼를 잡아먹는다.
                             # 🛑 같은 사주·같은 날은 저장분을 그대로 쓰므로 여기 안 센다.
                             #    이 한도는 **사주를 바꿔 가며 뽑는 것**만 막는다
-
-
-class AskFreeBody(BaseModel):
-    question: str
-    pair: str
-    saju: dict = {}
-    name: str = ""
 
 
 class WriteBody(BaseModel):
