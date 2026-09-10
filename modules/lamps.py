@@ -29,9 +29,12 @@ OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
 WELCOME_LAMPS = 300     # 가입 선물. 질문 열 번을 할 수 있는 양
 ASK_LAMPS = 30          # 무냥이에게 한 번 더 물어보기 (askmenu.js 와 같은 값)
-FREE_ASKS = 1           # 🛑 복채를 내지 않은 분이 물어볼 수 있는 횟수.
-                        #    가입 선물 300개로 열 번을 공짜로 묻고 나가 버리면
-                        #    결제할 이유가 없다 (2026-09-07 실제로 그런 분이 있었다)
+# 🛑 **등불이 있는 만큼 다 쓰게 한다** (2026-09-11 온해님 「무한으로 쓰게해도 돼 등불」).
+#    그전에는 복채를 낸 적 없는 분을 **평생 한 번**으로 막았다(FREE_ASKS = 1).
+#    가입 선물 300개는 열 번짜리인데 한 번 쓰면 270개가 남은 채로 계속 막혔고,
+#    화면 어디에도 그 말이 없어서 「등불이 왜 있는지 모르겠다」가 됐다.
+#    이제 막는 것은 **잔액 하나**다. 300개면 열 번이고, 다 쓰면 그때 멈춘다.
+#    🛑 인사·잡담은 등불을 안 쓴다(`modules/intent.py`). 남용은 그쪽에서 하루 20번으로 막는다.
 ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
 
 # 🛑 결제가 열리는 날 True 로. 그때부터 리포트는 전부 단건 결제가 되고,
@@ -537,14 +540,7 @@ def ask(email: str, qid: str, pair: str) -> dict:
     if any(o["product"] == key and o["pair"] == pair for o in _owned_live(acc, now)):
         return {"ok": True, "spent": 0, "balance": sum(l["remain"] for l in _live_lots(acc, now)), "reopened": True}
 
-    # 복채를 낸 적이 없는 분은 한 번만. 등불이 남아 있어도 그렇다.
-    led = acc.get("ledger", [])
-    if not any(e.get("type") == "premium" for e in led):
-        used = sum(1 for e in led if e.get("type") == "ask")
-        if used >= FREE_ASKS:
-            raise ValueError(
-                "사주를 하나 열어 보시면 더 여쭤보실 수 있어요. "
-                "복채를 내기 전에는 한 번까지만 답해 드려요.")
+    # 🛑 **횟수로 막지 않는다** (2026-09-11 온해님). 막는 것은 잔액 하나다.
     live = _live_lots(acc, now)
     have = sum(l["remain"] for l in live)
     if have < ASK_LAMPS:
