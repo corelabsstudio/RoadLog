@@ -1839,6 +1839,74 @@ def admin_billing(body: BillingBody, authorization: str | None = Header(default=
         raise HTTPException(400, str(e)) from e
 
 
+# ── 쿠폰 ──────────────────────────────────────────────
+# 🛑 **깎아 주는 쿠폰은 만들지 않는다.** 결제 금액이 화면과 달라지면 카드사 심사의
+#    「노출 금액 = 결제창 금액」에 걸린다. 대신 **한 편을 열어 주는** 방식이다 —
+#    선착순 이벤트가 이미 같은 방식으로 돌고 있다.
+
+
+class CouponMake(BaseModel):
+    code: str
+    cap: int = 50
+    note: str = ""
+
+
+class CouponUse(BaseModel):
+    code: str
+    product: str
+    pair: str
+
+
+@app.get("/api/admin/coupons")
+def admin_coupons(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import coupons as coupons_ops
+    return {"items": coupons_ops.listing()}
+
+
+@app.post("/api/admin/coupons")
+def admin_coupon_make(body: CouponMake, authorization: str | None = Header(default=None)):
+    admin = _require_admin(authorization)
+    from modules import coupons as coupons_ops
+    try:
+        got = coupons_ops.make(body.code, cap=body.cap, note=body.note,
+                               by=admin.get("email") or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True, "coupon": got}
+
+
+@app.delete("/api/admin/coupons/{code}")
+def admin_coupon_drop(code: str, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import coupons as coupons_ops
+    coupons_ops.drop(code)
+    return {"ok": True}
+
+
+@app.post("/api/coupon/use")
+def coupon_use(body: CouponUse, authorization: str | None = Header(default=None)):
+    """손님이 코드를 넣어 한 편을 연다. 🛑 복채를 받지 않는다."""
+    user = _token_user(authorization)
+    from modules import coupons as coupons_ops
+
+    product = (body.product or "").strip()[:24]
+    pair = (body.pair or "").strip()
+    if not lamps_ops.won_of(product) and product not in lamps_ops.PRICES:
+        raise HTTPException(400, "없는 상품이에요.")
+    try:
+        coupons_ops.check(body.code, user["email"])
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        out = lamps_ops.gift_open(user["email"], product, pair,
+                                  note="쿠폰 %s" % (body.code or "").strip().upper())
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    got = coupons_ops.use(body.code, user["email"])
+    return {"ok": True, **out, **got}
+
+
 # ── 공유 눌림 세기 ────────────────────────────────────
 # 🛑 카드가 퍼져야 손님이 온다. 몇 번 저장하고 몇 번 공유했는지가 **바이럴의 온도**다.
 #    로그인 없이도 받는다 — 누가 눌렀는지는 안 남긴다.
