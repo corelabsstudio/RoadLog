@@ -324,18 +324,25 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
             <!-- 🛑 **진짜 잔액은 여기서만 본다** (2026-09-11 온해님). 구글이 잔액 API 를
                  안 주므로, 한 번에 갈 수 있게 길을 열어 둔다. 새 탭으로 연다 —
                  운영 화면을 벗어나면 다시 로그인해야 한다. -->
-            <a class="btn" id="acGo" href="https://aistudio.google.com/billing"
-               target="_blank" rel="noopener" style="margin:0 0 0 auto">AI Studio 에서 잔액 보기 ↗</a>
-            <button type="button" class="btn btn-line" id="acSet">단가·잔액 적기</button>
+            <span id="acTools" style="margin:0 0 0 auto;display:flex;gap:12px">
+              <a class="btn" id="acGo" href="https://aistudio.google.com/billing"
+                 target="_blank" rel="noopener">AI Studio 에서 잔액 보기 ↗</a>
+              <button type="button" class="btn btn-line" id="acSet">단가·잔액 적기</button>
+            </span>
+            <!-- 접기 (2026-09-11 온해님). 매일 볼 값이 아니라 자리만 차지한다.
+                 🛑 접힌 상태를 브라우저에 남긴다 — 새로 고칠 때마다 다시 접게 하면 안 된다. -->
+            <button type="button" class="btn btn-line" id="acFold">접기</button>
           </div>
-          <div class="stats" id="acStats"></div>
-          <p class="note" id="acNote"></p>
-          <form class="mk-row" id="acForm" hidden>
-            <label>들어간 토큰 100만개당<input type="number" id="acIn" step="1" min="0" /></label>
-            <label>나온 토큰 100만개당<input type="number" id="acOut" step="1" min="0" /></label>
-            <label>지금 잔액(원)<input type="number" id="acStart" step="1" min="0" /></label>
-            <button type="submit" class="btn">저장</button>
-          </form>
+          <div id="acBody">
+            <div class="stats" id="acStats"></div>
+            <p class="note" id="acNote"></p>
+            <form class="mk-row" id="acForm" hidden>
+              <label>들어간 토큰 100만개당<input type="number" id="acIn" step="1" min="0" /></label>
+              <label>나온 토큰 100만개당<input type="number" id="acOut" step="1" min="0" /></label>
+              <label>지금 잔액(원)<input type="number" id="acStart" step="1" min="0" /></label>
+              <button type="submit" class="btn">저장</button>
+            </form>
+          </div>
         </div>
       </div>
       <div class="deck wide">
@@ -988,6 +995,38 @@ function paintApiCost() {
     + 'rel="noopener">AI Studio 결제 화면</a>에서 보시고, 충전하시면 여기 '
     + '<b>잔액을 새로 적어</b> 주세요.';
 }
+
+// 🛑 **접힌 상태는 이 브라우저에만 남긴다.** 서버에 둘 만한 값이 아니고, 폰과 PC 에서
+//    각각 접고 펼 수 있는 게 맞다.
+const AC_FOLD = 'rl.admin.acFold';
+
+// 🛑 **접힘 여부는 이 변수가 정본이고, 저장은 되면 하는 것이다.** localStorage 를
+//    막아 둔 브라우저(사생활 보호 창·저장 차단)에서는 읽기·쓰기가 예외를 던지는데,
+//    그때 저장소를 정본으로 삼으면 단추를 눌러도 **아무 일도 안 일어난다.**
+let acShut = false;
+try { acShut = localStorage.getItem(AC_FOLD) === '1'; } catch { /* 막아 둔 브라우저 */ }
+
+function paintAcFold() {
+  const body = $('acBody'); const tools = $('acTools'); const btn = $('acFold');
+  if (!body || !btn) return;
+  body.hidden = acShut;
+  // 🛑 **`hidden` 속성은 인라인 `display:flex` 에 진다.** 속성은 브라우저 기본 스타일
+  //    (`display:none`)일 뿐이라 인라인이 이긴다 — 접었는데 오른쪽 단추 두 개가 그대로
+  //    남아 있었다 (2026-09-11 화면을 열어 보고 잡았다). display 를 직접 준다.
+  if (tools) tools.style.display = acShut ? 'none' : 'flex';
+  // 접으면 오른쪽 단추들이 사라지므로 이 단추가 오른쪽 끝을 맡는다
+  btn.style.margin = acShut ? '0 0 0 auto' : '0';
+  btn.textContent = acShut ? '펴기' : '접기';
+  btn.setAttribute('aria-expanded', acShut ? 'false' : 'true');
+}
+
+$('acFold')?.addEventListener('click', () => {
+  acShut = !acShut;
+  try { localStorage.setItem(AC_FOLD, acShut ? '1' : '0'); } catch { /* 막아 둔 브라우저 */ }
+  if (acShut) $('acForm').hidden = true;     // 접을 때 열려 있던 적는 칸도 닫는다
+  paintAcFold();
+});
+paintAcFold();
 
 $('acSet')?.addEventListener('click', () => {
   const f = $('acForm');
