@@ -80,6 +80,36 @@ SOURCES = [
 ]
 
 
+# 링크에 붙어 오는 `utm_source` 는 영문이 많다. 우리 표 이름으로 맞춰 준다.
+# 🛑 **안 맞추면 같은 곳이 두 줄로 갈린다** (2026-09-11 온해님 「한글 스레드랑 영문
+#    스레드는 무슨 차이야?」 — 「스레드 9명」과 「threads 1명」이 따로 서 있었다).
+UTM_ALIAS = {
+    "threads": "스레드", "instagram": "인스타그램", "ig": "인스타그램",
+    "tiktok": "틱톡", "youtube": "유튜브", "yt": "유튜브", "shorts": "유튜브",
+    "dcinside": "디시인사이드", "디시": "디시인사이드", "dc": "디시인사이드",
+    "naver": "네이버", "kakao": "카카오", "kakaotalk": "카카오",
+    "google": "구글", "bing": "빙", "daum": "다음",
+    "x": "X", "twitter": "X", "facebook": "페이스북", "fb": "페이스북",
+    "band": "밴드", "theqoo": "더쿠", "fmkorea": "에펨코리아",
+    "ruliweb": "루리웹", "clien": "클리앙", "tistory": "티스토리",
+}
+
+
+def _tidy_map(d: dict) -> dict:
+    """이름을 맞춰 같은 곳끼리 더한다."""
+    out: dict[str, int] = {}
+    for k, v in (d or {}).items():
+        n = tidy_source(k)
+        out[n] = int(out.get(n, 0)) + int(v or 0)
+    return out
+
+
+def tidy_source(name: str) -> str:
+    """유입경로 이름을 하나로 맞춘다. **읽을 때도 부른다** — 이미 쌓인 기록까지 합쳐진다."""
+    s = " ".join(str(name or "").split())
+    return UTM_ALIAS.get(s.lower(), s)
+
+
 def source_of(ref: str, host: str = "") -> str:
     """유입경로 한 줄. 광고 파라미터(utm_source)가 있으면 그것을 우선한다."""
     r = (ref or "").strip().lower()
@@ -153,7 +183,7 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
     fp = _fingerprint(ip or "", ua or "", day)
     utm = " ".join(str(utm or "").split())[:24]
     campaign = " ".join(str(campaign or "").split())[:32]
-    src = utm or source_of(ref, host)
+    src = tidy_source(utm) if utm else source_of(ref, host)
     with _LOCK:
         data = _read(VISITS_JSON, {})
         d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
@@ -380,7 +410,8 @@ def overview(days: int = 30) -> dict[str, Any]:
     # 🛑 날짜마다 **어디서·무엇으로** 들어왔는지를 같이 보낸다 (2026-09-09 온해님 요청).
     #    자료는 원래 날짜별로 쌓여 있었는데 합계만 보내느라 화면에서 하루를 못 골랐다.
     daily = [{"day": d, **by_day[d],
-              "src": dict((vis.get(d) or {}).get("src") or {}),
+              # 이미 쌓인 기록도 읽을 때 이름을 맞춘다
+              "src": _tidy_map((vis.get(d) or {}).get("src") or {}),
               "ua": dict((vis.get(d) or {}).get("ua") or {})}
              for d in sorted(by_day) if d >= start]
     daily.reverse()
@@ -408,7 +439,7 @@ def overview(days: int = 30) -> dict[str, Any]:
     ua_recent: dict[str, int] = defaultdict(int)
     camp: dict[str, int] = defaultdict(int)
     for d, v in vis.items():
-        for name, c in (v.get("src") or {}).items():
+        for name, c in _tidy_map(v.get("src") or {}).items():
             if d.startswith(month):
                 src_month[name] += c
             if d >= start:
