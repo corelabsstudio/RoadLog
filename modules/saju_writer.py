@@ -730,13 +730,23 @@ def _cut_sentence(t: str, n: int) -> str:
     t = " ".join((t or "").split())
     if len(t) <= n:
         return t
+    # 🛑 **문장을 앞에서부터 이어 붙이며 길이를 넘지 않는 데까지** (2026-09-11).
+    #    그전에는 「마침표가 앞쪽(40% 이전)에 있으면」 문장 컷을 포기하고 어절로
+    #    잘랐다. 그래서 「구하긴 했어요. 남 비위 안 맞추」처럼 **뒷문장이 중간에서
+    #    끊긴 채** 카드에 박혔다 — 온해님이 전생 카드에서 잡으셨다.
+    #    짧아지더라도 온전한 문장이 낫다. 카드는 스크린샷으로 퍼지는 물건이다.
+    out = ""
+    for part in _re.findall(r"[^.!?]+[.!?]*", t):
+        if len(out) + len(part) > n:
+            break
+        out += part
+    out = out.strip()
+    if out:
+        return out
+    # 첫 문장 하나도 길이를 넘으면 그때만 어절로 끊고 말줄임을 붙인다
     head = t[:n]
-    ends = list(_re.finditer(r"[.!?](?:\s|$)", head))
-    if ends and ends[-1].end() > n * 0.4:
-        return head[:ends[-1].end()].strip()
-    # 문장 끝을 못 찾으면 어절 단위로라도 끊는다
     i = head.rfind(" ")
-    return (head[:i] if i > n * 0.5 else head).strip()
+    return (head[:i] if i > n * 0.5 else head).strip() + "…"
 
 
 def summarize(blocks: list[dict[str, Any]], *, question: str = "",
@@ -910,7 +920,7 @@ GOD_SYSTEM = """너는 2030 여성들의 심리와 게임/연애 밈(Meme)에 �
 #    2026-09-10 에 전생·수호신 카드를 밈 규격으로 갈았는데 화면에는 옛 글이 그대로
 #    나왔다 — 온해님이 「똑같이 나오는데?」로 잡으셨다.
 #    판이 낮으면 서버가 한 번만 다시 만든다 (0.5원). 그 뒤로는 다시 고정된다.
-CARD_VER = 3
+CARD_VER = 4
 
 # 🛑🛑 **본문 글의 판.** 말투나 얼개를 바꾸면 이 수를 올린다 (2026-09-10).
 #    항목은 한 번 쓰면 저장하고 다시 안 쓴다 — 손님이 다시 열 때 글이 바뀌면
