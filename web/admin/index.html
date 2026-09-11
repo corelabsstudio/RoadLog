@@ -123,7 +123,8 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 .seg button.on{color:#17151d;background:var(--accent);border-color:var(--accent);font-weight:700}
 
 /* ── 차트 ──────────────────────────────────────────── */
-.chart svg{display:block;width:100%;height:200px}
+/* 🛑 viewBox 높이(230)와 **같아야** 세로도 1:1 이라 글자가 안 눌린다 */
+.chart svg{display:block;width:100%;height:230px}
 .chart .gl{stroke:var(--line);stroke-width:1}
 .chart .bar{fill:var(--accent)}
 .chart .bar.z{fill:var(--line)}
@@ -738,7 +739,14 @@ function chart(el, rows, g, fmt, picked) {
   }
   // 🛑 PT(위 여백)는 **막대 위 숫자가 들어갈 자리**다. 24 로 두면 가장 높은
   //    막대의 숫자가 그래프 밖으로 잘려 나간다.
-  const W = 1000, H = 230, PB = 34, PT = 42;
+  // 🛑 **그리는 칸의 진짜 픽셀 크기로 그린다** (2026-09-11 온해님 「글자가 옆으로
+  //    퍼진다」). 전에는 가로 1000 짜리 그림을 `preserveAspectRatio="none"` 으로
+  //    칸 폭(1330px)까지 **늘려서** 그렸다. 가로 1.33배·세로 0.87배로 늘어나니
+  //    **그 안의 글자까지 같이 납작하게 퍼졌다.** 막대를 몇 개 그리든 이 비율은 같아서,
+  //    날짜를 더 넣는다고 고쳐지지 않는다.
+  //    → 칸 폭을 재서 그대로 쓰면 1:1 이라 글자가 안 퍼진다. 칸 폭이 바뀌면
+  //      (창 크기·폰 돌리기) 다시 그려야 한다 — 맨 아래 resize 를 본다.
+  const W = Math.max(300, Math.round(el.clientWidth || 1000)), H = 230, PB = 34, PT = 42;
   const max = Math.max(...rows.map((r) => r.v)) || 1;
   const n = rows.length;
   const gap = n > 20 ? 3 : 9;
@@ -751,7 +759,9 @@ function chart(el, rows, g, fmt, picked) {
   const MAXBW = 36;
   const slot = W / n;
   const bw = Math.max(3, Math.min(slot - gap, MAXBW));
-  const step = Math.ceil(n / 10);
+  // 🛑 **날짜 글자는 칸 폭에 맞춰 솎는다.** 이제 진짜 픽셀이라, 폰처럼 좁은 칸에서
+  //    열 개를 다 적으면 글자끼리 겹친다.
+  const step = Math.ceil(n / Math.max(3, Math.floor(W / 64)));
   const bars = rows.map((r, i) => {
     const h = Math.round((H - PB - PT) * (r.v / max));
     const x = i * slot + (slot - bw) / 2;
@@ -766,15 +776,24 @@ function chart(el, rows, g, fmt, picked) {
     // 🛑 **막대 위에 금액을 적는다** (2026-09-11 온해님). 막대만 있으면 얼마인지
     //    알려고 마우스를 올려야 하는데, 폰에서는 그것도 안 된다.
     //    0 인 날은 안 적는다 — 「0원」이 잔뜩 찍히면 그래프가 지저분해진다.
-    const val = (r.v && show)
-      ? '<text class="bv" x="' + (x + bw / 2) + '" y="' + (y - 8)
-        + '" text-anchor="middle">' + fmt(r.v) + '</text>'
+    // 🛑 **가장자리 글자가 잘린다** (2026-09-11 폰에서 확인 — 「08/01」이 「3/01」로
+    //    보였다). 맨 왼쪽·오른쪽 칸은 가운데 맞춤을 버리고 안쪽으로 붙인다.
+    const cx = x + bw / 2;
+    const ax = cx < 30 ? 'start' : (cx > W - 30 ? 'end' : 'middle');
+    const tx = cx < 30 ? 0 : (cx > W - 30 ? W : cx);
+    // 🛑 **막대가 얇으면 숫자를 안 적는다** (2026-09-11 폰에서 확인). 30일치를
+    //    폰으로 보면 막대가 7px 이라, 숫자가 옆 막대를 타고 올라가 읽히지도 않는다.
+    const val = (r.v && show && bw >= 16)
+      ? '<text class="bv" x="' + tx + '" y="' + (y - 8)
+        + '" text-anchor="' + ax + '">' + fmt(r.v) + '</text>'
       : '';
     return '<rect class="bar' + (r.v ? '' : ' z') + (r.k === picked ? ' pick' : '')
       + '" x="' + x + '" y="' + y
       + '" width="' + bw + '" height="' + (r.v ? h : 2) + '" rx="2" />' + val
-      + (show ? '<text class="lb" x="' + (x + bw / 2) + '" y="' + (H - 11)
-        + '" text-anchor="middle">' + label(r.k, g) + '</text>' : '') + hit;
+      // 🛑 **날짜는 숫자와 따로 솎는다.** 둘을 같은 조건으로 묶었더니, 폰에서
+      //    날짜를 솎으면 막대 위 숫자까지 같이 사라졌다 (2026-09-11).
+      + (i % step === 0 ? '<text class="lb" x="' + tx + '" y="' + (H - 11)
+        + '" text-anchor="' + ax + '">' + label(r.k, g) + '</text>' : '') + hit;
   }).join('');
   el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img">'
     + '<line class="gl" x1="0" y1="' + (H - PB) + '" x2="' + W + '" y2="' + (H - PB) + '" />'
@@ -1459,6 +1478,15 @@ function seg(id, set) {
 }
 seg('segSales', (g) => { gSales = g; drawSales(); });
 seg('segVisit', (g) => { gVisit = g; drawVisit(); });
+
+// 🛑 **칸 폭이 바뀌면 그래프를 다시 그린다.** 이제 그릴 때의 픽셀 폭을 그대로 쓰므로,
+//    창을 줄이거나 폰을 돌리면 그림만 옛 폭으로 남아 글자가 다시 퍼진다.
+//    🛑 자료가 아직 없을 때는 부르지 않는다 — `DATA` 가 비면 그리다 죽는다.
+let reFlow = 0;
+window.addEventListener('resize', () => {
+  clearTimeout(reFlow);
+  reFlow = setTimeout(() => { if (DATA && DATA.daily) { drawSales(); drawVisit(); } }, 180);
+});
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
                    pay: '결제', mkt: '마케팅', visit: '유입' };
