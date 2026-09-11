@@ -221,6 +221,8 @@ td.owner{color:var(--faint);font-size:.84rem}
 .re-one{padding:7px 0;border-top:1px solid var(--line);font-size:.88rem}
 .re-one span{display:block;margin-top:2px;font-size:.78rem;color:var(--faint)}
 .stat .sub2{display:block;margin-top:2px;font-style:normal;font-size:.78rem;color:var(--faint)}
+a.btn{display:inline-flex;align-items:center;text-decoration:none}
+.note a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 #acForm{flex-wrap:wrap;align-items:flex-end}
 #acForm label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
 #acForm input{font:inherit;font-size:.9rem;width:150px;color:var(--ink);background:var(--bg);
@@ -319,7 +321,12 @@ td.owner{color:var(--faint);font-size:.84rem}
         <div class="card">
           <div class="hd">
             <h2>제미나이에 쓴 것</h2>
-            <button type="button" class="btn btn-line" id="acSet" style="margin:0 0 0 auto">단가·잔액 적기</button>
+            <!-- 🛑 **진짜 잔액은 여기서만 본다** (2026-09-11 온해님). 구글이 잔액 API 를
+                 안 주므로, 한 번에 갈 수 있게 길을 열어 둔다. 새 탭으로 연다 —
+                 운영 화면을 벗어나면 다시 로그인해야 한다. -->
+            <a class="btn" id="acGo" href="https://aistudio.google.com/billing"
+               target="_blank" rel="noopener" style="margin:0 0 0 auto">AI Studio 에서 잔액 보기 ↗</a>
+            <button type="button" class="btn btn-line" id="acSet">단가·잔액 적기</button>
           </div>
           <div class="stats" id="acStats"></div>
           <p class="note" id="acNote"></p>
@@ -977,7 +984,8 @@ function paintApiCost() {
            AC.start ? '적어 둔 잔액 ' + won(AC.start) : '잔액을 적어 주세요');
   $('acNote').innerHTML = '🛑 <b>추정입니다.</b> 구글은 잔액을 알려 주는 API 를 내놓지 않아서, '
     + '우리가 부른 횟수와 토큰을 세어 계산합니다. 그림 생성과 실패한 호출은 안 세어져요. '
-    + '진짜 잔액은 <b>aistudio.google.com/billing</b> 에서 보시고, 충전하시면 여기 '
+    + '진짜 잔액은 <a href="https://aistudio.google.com/billing" target="_blank" '
+    + 'rel="noopener">AI Studio 결제 화면</a>에서 보시고, 충전하시면 여기 '
     + '<b>잔액을 새로 적어</b> 주세요.';
 }
 
