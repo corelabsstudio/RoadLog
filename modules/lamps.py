@@ -630,6 +630,47 @@ def regift(*, apply: bool = False) -> dict:
                          "%s 결제 선물 더하기" % e.get("product"))
                 e["regift"] = _iso(now)
                 e["lamps"] = want
+
+        # 🛑 **친구 초대 보상도 소급한다** (2026-09-11 온해님 「등불 30개씩 생긴 회원
+        #    있던데」). 옛 규칙은 양쪽 30개였다. 지금은 데려온 분 120·따라온 분 60이고
+        #    데려온 분에게는 **무료 이용권 한 장**도 드린다.
+        #    🛑 이용권은 그때 아예 없던 것이라 **차액이 아니라 한 장을 새로 드린다.**
+        # 🛑 **돌면서 그 목록에 넣지 않는다.** 이용권 한 줄을 `led` 에 바로 붙였더니
+        #    순회가 끝나지 않았다 (2026-09-11 실측 · 무한 루프). 모아 뒀다 밖에서 붙인다.
+        add_later = []
+        for e in list(led):
+            if e.get("regift"):
+                continue
+            kind = e.get("type")
+            if kind == "refer":
+                want, tag = REFER_LAMPS, "친구를 데려온 선물 더하기"
+            elif kind == "refer_in":
+                want, tag = REFER_IN_LAMPS, "친구 따라 들어온 선물 더하기"
+            else:
+                continue
+            had = int(e.get("lamps") or 0)
+            more = want - had
+            if more <= 0 and kind != "refer":
+                continue
+            rows.append({"email": email, "product": kind,
+                         "had": had, "want": want, "more": max(0, more)})
+            total += max(0, more)
+            if apply:
+                if more > 0:
+                    # 🛑 **타입을 `-more` 로 둔다** (2026-09-11 실측). `refer` 로 넣었더니
+                    #    ① 그 줄에 `regift` 표시가 없어 **두 번째 실행에서 또 걸렸고**
+                    #    ② `refer` 를 세는 초대 횟수·순위가 **부풀려졌다.**
+                    _add_lot(acc, more, REFER_DAYS, now, kind + "-more", tag)
+                if kind == "refer":
+                    # 그때는 이용권이 없었다. 한 장 드린다
+                    add_later.append({
+                        "at": _iso(now), "type": "ticket", "lamps": 0, "price": 0,
+                        "note": "친구를 데려온 선물 · 무료 이용권 (소급)",
+                        "expires": _iso(now + timedelta(days=TICKET_DAYS)),
+                    })
+                e["regift"] = _iso(now)
+                e["lamps"] = want
+        led.extend(add_later)
     if apply and rows:
         _write(data)
     return {"applied": bool(apply), "people": len({r["email"] for r in rows}),
