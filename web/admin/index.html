@@ -742,15 +742,25 @@ function chart(el, rows, g, fmt, picked) {
   const max = Math.max(...rows.map((r) => r.v)) || 1;
   const n = rows.length;
   const gap = n > 20 ? 3 : 9;
-  const bw = Math.max(3, (W - gap * (n - 1)) / n);
+  // 🛑 **막대를 살찌우지 않는다** (2026-09-11 온해님 「그래프가 너무 뚱뚱해」).
+  //    전에는 남는 폭을 막대가 전부 나눠 가져서, 이레치만 그리면 막대 하나가
+  //    170px 넘게 뚱뚱해졌다. 자리(slot)는 그대로 나누되 **막대는 MAXBW 까지만**
+  //    두껍게 하고 그 자리 **가운데**에 세운다. 남는 폭은 여백으로 둔다.
+  //    🛑 `preserveAspectRatio="none"` 이라 이 값은 픽셀이 아니다 —
+  //       가로 1000 이 칸 너비로 늘어난다. 36 이면 PC 에서 50px 안팎이다.
+  const MAXBW = 36;
+  const slot = W / n;
+  const bw = Math.max(3, Math.min(slot - gap, MAXBW));
   const step = Math.ceil(n / 10);
   const bars = rows.map((r, i) => {
     const h = Math.round((H - PB - PT) * (r.v / max));
-    const x = i * (bw + gap);
+    const x = i * slot + (slot - bw) / 2;
     const y = r.v ? H - PB - h : H - PB - 2;
     const show = n <= 14 || i % step === 0;
     // 🛑 누르는 자리는 막대와 따로 둔다. 값이 0 인 날은 막대가 2px 이라 못 누른다.
-    const hit = '<rect class="hit" x="' + x + '" y="0" width="' + (bw + gap)
+    // 🛑 누르는 자리는 **칸 전체**다. 막대를 얇게 했다고 누르는 자리까지 얇아지면
+    //    폰에서 못 누른다 (2026-09-11).
+    const hit = '<rect class="hit" x="' + (i * slot) + '" y="0" width="' + slot
       + '" height="' + (H - PB) + '" data-k="' + r.k + '">'
       + '<title>' + label(r.k, g) + ' · ' + fmt(r.v) + '</title></rect>';
     // 🛑 **막대 위에 금액을 적는다** (2026-09-11 온해님). 막대만 있으면 얼마인지
