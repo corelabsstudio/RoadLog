@@ -2470,6 +2470,43 @@ class TicketBody(BaseModel):
     pair: str
 
 
+def _mask_name(name: str, email: str) -> str:
+    """이름 가운데를 가린다. 🛑 공개 화면에 나가므로 누구인지 알 수 없어야 한다."""
+    nm = " ".join(str(name or "").split())
+    if len(nm) >= 3:
+        return nm[0] + "○" * (len(nm) - 2) + nm[-1]
+    if len(nm) == 2:
+        return nm[0] + "○"
+    if nm:
+        return nm
+    head = str(email or "").split("@")[0][:2] or "손님"
+    return head + "○○"
+
+
+@app.get("/api/refer/top")
+def refer_top():
+    """친구를 많이 데려온 분 셋 (2026-09-11 온해님).
+
+    🛑 **로그인 없이 본다.** 홈에 걸리는 줄이라 손님도 봐야 초대할 마음이 생긴다.
+    🛑 **이름을 가리고, 초대 수만 준다.** 이메일·등불은 내보내지 않는다 —
+       등불로 겨루는 화면처럼 보이면 포인트 충전 업종으로 읽힌다 (카드사 심사 중).
+    """
+    out = []
+    try:
+        for b in lamps_ops.refer_board(3):
+            em = b.get("email") or ""
+            try:
+                u = db.get_user(em) or {}
+            except Exception:                            # noqa: BLE001
+                u = {}
+            out.append({"rank": b["rank"], "count": b["count"],
+                        "key": b["key"], "name": b["name"],
+                        "who": _mask_name(u.get("name") or "", em)})
+    except Exception:                                    # noqa: BLE001
+        return {"top": []}
+    return {"top": out}
+
+
 @app.get("/api/tickets")
 def tickets_left(authorization: str | None = Header(default=None)):
     """남은 무료 이용권. 친구를 데려오면 한 장씩 쌓인다 (2026-09-11 온해님)."""
