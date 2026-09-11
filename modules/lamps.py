@@ -451,10 +451,13 @@ def claim_refer(email: str, code: str) -> dict:
     if sum(1 for e in iacc.get("ledger", []) if e.get("type") == "refer") >= REFER_MAX:
         return {"given": 0, "why": "이 코드는 다 쓰였어요."}
     now = _now()
-    _add_lot(acc, REFER_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
+    # 🛑 **따라 들어온 분은 REFER_IN_LAMPS 다** (2026-09-11 고침).
+    #    여기서 두 분 모두 REFER_LAMPS 를 주고 있었다 — 화면 안내(perIn)는 60인데
+    #    소셜 로그인으로 들어오신 분은 120을 받았다. `welcome()` 쪽은 처음부터 맞았다.
+    _add_lot(acc, REFER_IN_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
     _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
     _write(data)
-    return {"given": REFER_LAMPS, "balance": sum(l["remain"] for l in _live_lots(acc, now))}
+    return {"given": REFER_IN_LAMPS, "balance": sum(l["remain"] for l in _live_lots(acc, now))}
 
 
 def welcome(email: str, ref: str = "", via: str = "") -> dict:
