@@ -3486,7 +3486,10 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
             saju_writer.save(product, pair, data)
         return made
 
-    if data.get("summary"):
+    # 🛑 **옛 방식으로 쓴 요약은 다시 만든다** (2026-09-11). 재료를 앞 두 자리 +
+    #    마지막만 주던 때에 쓴 글은 **물음의 답이 아니다** — 답이 든 자리를 LLM 이
+    #    본 적이 없다. 저장된 것을 그대로 내보내면 그 카드가 계속 돌아다닌다.
+    if data.get("summary") and int(data.get("summary_ver") or 0) >= saju_writer.SUM_VER:
         # 🛑 **이미 저장된 요약도 다듬어 내보낸다** (2026-09-10). 예전에 90자로
         #    무조건 잘라 저장한 것들이 있어서, 그대로 주면 카드에 「…했어요. 나라」
         #    같은 조각이 계속 나간다. 다시 만드는 게 아니라 끝만 자르는 것이라 값이 안 든다.
@@ -3505,6 +3508,7 @@ def saju_summary(body: SummaryBody, authorization: str | None = Header(default=N
         line = ""
     if line:
         data["summary"] = line
+        data["summary_ver"] = saju_writer.SUM_VER
         saju_writer.save(product, pair, data)
     return {"ok": True, "summary": line, "card": _card()}
 
