@@ -2491,17 +2491,26 @@ def refer_top():
     🛑 **이름을 가리고, 초대 수만 준다.** 이메일·등불은 내보내지 않는다 —
        등불로 겨루는 화면처럼 보이면 포인트 충전 업종으로 읽힌다 (카드사 심사 중).
     """
+    # 🛑 **주인·VIP·테스트 계정은 순위에서 뺀다** (2026-09-11). 선착순 이벤트에서도
+    #    같은 계정들을 뺐다 — 우리가 우리 화면에서 1등을 하면 손님이 겨룰 마음이
+    #    안 생기고, 「관○자」가 메인에 걸린 꼴도 이상하다.
+    #    그래서 넉넉히 받아 걸러 낸 뒤 앞에서 셋만 쓴다.
     out = []
     try:
-        for b in lamps_ops.refer_board(3):
+        for b in lamps_ops.refer_board(20):
             em = b.get("email") or ""
             try:
                 u = db.get_user(em) or {}
             except Exception:                            # noqa: BLE001
                 u = {}
-            out.append({"rank": b["rank"], "count": b["count"],
-                        "key": b["key"], "name": b["name"],
+            if not u or _is_free(u):
+                continue
+            n = len(out) + 1
+            key, nm = lamps_ops.RANK_BADGES[n - 1] if n <= len(lamps_ops.RANK_BADGES) else ("", "")
+            out.append({"rank": n, "count": b["count"], "key": key, "name": nm,
                         "who": _mask_name(u.get("name") or "", em)})
+            if len(out) >= 3:
+                break
     except Exception:                                    # noqa: BLE001
         return {"top": []}
     return {"top": out}
