@@ -173,8 +173,16 @@ def answer(name: str, seen: str, question: str, *, model: str | None = None) -> 
         raise RuntimeError(str(j)[:200])
     parts = (j["candidates"][0].get("content") or {}).get("parts") or []
     u = j.get("usageMetadata", {})
+    tin = u.get("promptTokenCount", 0)
+    tout = u.get("candidatesTokenCount", 0)
+    # 🛑 얼마나 썼는지 적어 둔다 (2026-09-11). 관상 대화도 같은 지갑에서 나간다
+    try:
+        from modules import apicost
+        apicost.note(tin, tout)
+    except Exception:                                # noqa: BLE001
+        pass
     return {"text": "".join(p.get("text", "") for p in parts).strip(),
-            "in": u.get("promptTokenCount", 0), "out": u.get("candidatesTokenCount", 0)}
+            "in": tin, "out": tout}
 
 
 def _part(b64: str) -> dict[str, Any]:
@@ -373,8 +381,15 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                         pass                     # 못 읽으면 받은 그대로 쓴다
                 if text:
                     u = j.get("usageMetadata") or {}
-                    tin += u.get("promptTokenCount") or 0
-                    tout += u.get("candidatesTokenCount") or 0
+                    _i = u.get("promptTokenCount") or 0
+                    _o = u.get("candidatesTokenCount") or 0
+                    tin += _i
+                    tout += _o
+                    try:
+                        from modules import apicost
+                        apicost.note(_i, _o)
+                    except Exception:                # noqa: BLE001
+                        pass
                     plain = len(text.replace(" ", "").replace("\n", ""))
                     short = plain < floor and len(text) > 60 and turn < 2
                     if short and secs:

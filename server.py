@@ -1963,6 +1963,33 @@ class RegiftBody(BaseModel):
     apply: bool = False
 
 
+class ApiCostBody(BaseModel):
+    wonIn: float = 0        # 들어간 토큰 백만 개당 원
+    wonOut: float = 0       # 나온 토큰 백만 개당 원
+    start: float = 0        # 지금 잔액(원) — 충전할 때마다 적어 둔다
+
+
+@app.get("/api/admin/apicost")
+def admin_apicost(authorization: str | None = Header(default=None)):
+    """제미나이에 얼마나 썼나 (2026-09-11 온해님).
+
+    🛑 **구글은 잔액 API 를 안 준다.** 우리가 쓴 만큼을 세어 **추정**을 보여 준다.
+       진짜 잔액은 aistudio.google.com/billing 에서 봐야 한다.
+    """
+    _require_admin(authorization)
+    from modules import apicost
+    return apicost.summary()
+
+
+@app.post("/api/admin/apicost")
+def admin_apicost_put(body: ApiCostBody, authorization: str | None = Header(default=None)):
+    """단가와 지금 잔액을 적는다. 잔액을 새로 적으면 그날부터 다시 센다."""
+    _require_admin(authorization)
+    from modules import apicost
+    apicost.put_settings(won_in=body.wonIn, won_out=body.wonOut, start=body.start)
+    return apicost.summary()
+
+
 @app.post("/api/admin/lamps/regift")
 def admin_regift(body: RegiftBody, authorization: str | None = Header(default=None)):
     """등불 계단을 올렸을 때 **이미 복채를 내신 분께 차액을 드린다** (2026-09-11 온해님).

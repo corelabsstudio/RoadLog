@@ -421,9 +421,17 @@ def _call(system: str, user: str, *, model: str | None = None,
                 if txt.strip():
                     u = j.get("usageMetadata", {})
                     note_ok()      # 되면 그 자리에서 다시 연다
-                    return {"text": txt.strip(),
-                            "in": u.get("promptTokenCount", 0),
-                            "out": u.get("candidatesTokenCount", 0)}
+                    tin = u.get("promptTokenCount", 0)
+                    tout = u.get("candidatesTokenCount", 0)
+                    # 🛑 **얼마나 썼는지 적어 둔다** (2026-09-11 온해님 「API 잔액을
+                    #    실시간으로 보게」). 구글은 잔액 API 를 안 준다 — 그래서
+                    #    우리가 쓴 만큼을 우리가 센다. 그동안 이 값을 받아 놓고 버렸다.
+                    try:
+                        from modules import apicost
+                        apicost.note(tin, tout)
+                    except Exception:              # noqa: BLE001
+                        pass                       # 세는 일로 손님 글을 막지 않는다
+                    return {"text": txt.strip(), "in": tin, "out": tout}
                 last = "빈 답 (%s)" % (cand.get("finishReason") or "이유 없음")
             else:
                 last = json.dumps(j, ensure_ascii=False)[:300]

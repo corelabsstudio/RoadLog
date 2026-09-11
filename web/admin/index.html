@@ -220,6 +220,11 @@ td.owner{color:var(--faint);font-size:.84rem}
 .re-list{margin-top:10px;max-height:280px;overflow-y:auto}
 .re-one{padding:7px 0;border-top:1px solid var(--line);font-size:.88rem}
 .re-one span{display:block;margin-top:2px;font-size:.78rem;color:var(--faint)}
+.stat .sub2{display:block;margin-top:2px;font-style:normal;font-size:.78rem;color:var(--faint)}
+#acForm{flex-wrap:wrap;align-items:flex-end}
+#acForm label{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted)}
+#acForm input{font:inherit;font-size:.9rem;width:150px;color:var(--ink);background:var(--bg);
+  border:1px solid var(--line);border-radius:9px;padding:8px 10px}
 /* 🛑 **`.btn`·`.mk-row` 가 없었다** (2026-09-11). 손님 화면에서 쓰던 이름을 그대로
    옮겨 적어서, 여기 단추들이 스타일 없이 나오고 안내 글은 묻혀 안 보였다.
    온해님이 폰에서 「어디서 다운받아?」로 잡으셨다. `.pr-act button` 과 같은 결로 맞춘다. */
@@ -308,6 +313,24 @@ td.owner{color:var(--faint);font-size:.84rem}
     <section data-page="sum">
       <!-- 설치 안내 칸은 걷어냈다 (2026-09-11 온해님). 운영 앱을 따로 깔지 않고
            손님 앱 안에서 상단바 단추로 오간다. -->
+      <!-- 🛑 **구글은 잔액 API 를 안 준다** (2026-09-11 확인). 그래서 우리가 쓴 만큼을
+           우리가 세어 추정한다. 진짜 잔액은 aistudio.google.com/billing 에서 본다. -->
+      <div class="deck">
+        <div class="card">
+          <div class="hd">
+            <h2>제미나이에 쓴 것</h2>
+            <button type="button" class="btn btn-line" id="acSet" style="margin:0 0 0 auto">단가·잔액 적기</button>
+          </div>
+          <div class="stats" id="acStats"></div>
+          <p class="note" id="acNote"></p>
+          <form class="mk-row" id="acForm" hidden>
+            <label>들어간 토큰 100만개당<input type="number" id="acIn" step="1" min="0" /></label>
+            <label>나온 토큰 100만개당<input type="number" id="acOut" step="1" min="0" /></label>
+            <label>지금 잔액(원)<input type="number" id="acStart" step="1" min="0" /></label>
+            <button type="submit" class="btn">저장</button>
+          </form>
+        </div>
+      </div>
       <div class="deck wide">
         <div class="card">
           <div class="hd">
@@ -915,6 +938,7 @@ function paint() {
   paintTaps();
 
   paintMembers();
+  loadApiCost();
 }
 
 /** 결제 탭 — 무엇으로 사시나 · 얼마짜리가 팔리나 (2026-09-11 온해님 명세).
@@ -923,6 +947,67 @@ function paint() {
  *     원장에는 안 남아서 여기서 못 보여 준다. 남기려면 결제 확정 때 같이 적어야 한다.
  */
 // 🛑 **되돌릴 수 없다.** 까닭을 받고, 무엇을 얼마나 돌려주는지 한 번 더 보여 준다.
+// ── 제미나이에 쓴 것 (2026-09-11 온해님 「API 잔액 실시간으로」) ──────
+// 🛑 **구글은 잔액 API 를 안 준다** (2026-09-11 확인). 우리가 쓴 만큼을 세어 **추정**한다.
+//    단가는 모델·시점에 따라 달라서 코드에 안 박는다 — 주인이 넣는다.
+let AC = null;
+
+async function loadApiCost() {
+  try {
+    const r = await fetch('/api/admin/apicost', { headers: { Authorization: 'Bearer ' + token() } });
+    if (!r.ok) return;
+    AC = await r.json();
+  } catch { return; }
+  paintApiCost();
+}
+
+function paintApiCost() {
+  if (!AC) return;
+  const box = $('acStats'); if (!box) return;
+  const priced = !!(AC.wonIn || AC.wonOut);
+  const w = (v) => (priced ? won(Math.round(v || 0)) : '—');
+  const cell = (lb, v, sub) => '<div class="stat"><span class="lb">' + lb + '</span><b>' + v
+    + '</b>' + (sub ? '<i class="sub2">' + sub + '</i>' : '') + '</div>';
+  box.innerHTML =
+    cell('오늘 쓴 것', w(AC.today.won),
+         num(AC.today.calls) + '번 · 토큰 ' + num((AC.today.in || 0) + (AC.today.out || 0)))
+    + cell('이번 달', w(AC.month.won), num(AC.month.calls) + '번')
+    + cell('잔액 적은 뒤로', w(AC.since.won), AC.startAt ? AC.startAt + '부터' : '전체')
+    + cell('남은 것(추정)', AC.left == null ? '—' : won(Math.round(AC.left)),
+           AC.start ? '적어 둔 잔액 ' + won(AC.start) : '잔액을 적어 주세요');
+  $('acNote').innerHTML = '🛑 <b>추정입니다.</b> 구글은 잔액을 알려 주는 API 를 내놓지 않아서, '
+    + '우리가 부른 횟수와 토큰을 세어 계산합니다. 그림 생성과 실패한 호출은 안 세어져요. '
+    + '진짜 잔액은 <b>aistudio.google.com/billing</b> 에서 보시고, 충전하시면 여기 '
+    + '<b>잔액을 새로 적어</b> 주세요.';
+}
+
+$('acSet')?.addEventListener('click', () => {
+  const f = $('acForm');
+  f.hidden = !f.hidden;
+  if (!f.hidden && AC) {
+    $('acIn').value = AC.wonIn || '';
+    $('acOut').value = AC.wonOut || '';
+    $('acStart').value = AC.start || '';
+  }
+});
+
+$('acForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  try {
+    const r = await fetch('/api/admin/apicost', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ wonIn: Number($('acIn').value || 0),
+                             wonOut: Number($('acOut').value || 0),
+                             start: Number($('acStart').value || 0) }),
+    });
+    if (!r.ok) throw new Error('저장하지 못했습니다.');
+    AC = await r.json();
+    $('acForm').hidden = true;
+    paintApiCost();
+  } catch (err) { $('acNote').textContent = err.message; }
+});
+
 // ── 등불 차액 드리기 (2026-09-11 온해님) ─────────────────
 // 🛑 **세어 보기를 먼저 시킨다.** 얼마가 나가는지 보고 나서 드린다 —
 //    등불은 되돌릴 수 없다.
