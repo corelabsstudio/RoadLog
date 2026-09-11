@@ -84,6 +84,8 @@ SOURCES = [
 # 🛑 **안 맞추면 같은 곳이 두 줄로 갈린다** (2026-09-11 온해님 「한글 스레드랑 영문
 #    스레드는 무슨 차이야?」 — 「스레드 9명」과 「threads 1명」이 따로 서 있었다).
 UTM_ALIAS = {
+    # 옛 기록의 이름을 지금 이름으로 — 읽을 때 합쳐진다
+    "사이트 안": "이어서 보기",
     "threads": "스레드", "instagram": "인스타그램", "ig": "인스타그램",
     "tiktok": "틱톡", "youtube": "유튜브", "yt": "유튜브", "shorts": "유튜브",
     "dcinside": "디시인사이드", "디시": "디시인사이드", "dc": "디시인사이드",
@@ -124,7 +126,10 @@ def source_of(ref: str, host: str = "") -> str:
     if not h:
         return "직접 · 앱"
     if host and host.lower() in h:
-        return "사이트 안"
+        # 🛑 **밖에서 들어온 게 아니다.** 우리 페이지에서 다른 페이지로 넘어간 것이다
+        #    (홈 → 결제 화면, 홈 → 상품 안내 …). 이름이 「사이트 안」이라 유입처럼
+        #    읽혀서 2026-09-12 에 온해님이 「정확히 어디서 유입되는 거야」라고 물으셨다.
+        return "이어서 보기"
     for key, name in SOURCES:
         if key in h:
             return name
