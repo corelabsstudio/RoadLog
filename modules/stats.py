@@ -71,6 +71,12 @@ SOURCES = [
     ("tistory.", "티스토리"), ("youtube.", "유튜브"), ("youtu.be", "유튜브"),
     ("bing.", "빙"), ("x.com", "X"), ("twitter.", "X"), ("facebook.", "페이스북"),
     ("t.co", "X"), ("chatgpt.com", "챗GPT"), ("perplexity.", "퍼플렉시티"),
+    # 🛑 한국 커뮤니티 (2026-09-11 디시 사주팔자 연구 갤러리에 올리면서 넣음).
+    #    없으면 `gall.dcinside.com` 처럼 주소가 그대로 찍혀서, 같은 곳에서 온 것인데
+    #    갤러리마다 다른 줄로 흩어진다.
+    ("dcinside", "디시인사이드"), ("theqoo.", "더쿠"), ("pann.nate", "네이트판"),
+    ("fmkorea.", "에펨코리아"), ("ruliweb.", "루리웹"), ("clien.", "클리앙"),
+    ("tiktok.", "틱톡"), ("band.us", "밴드"),
 ]
 
 
