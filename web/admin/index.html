@@ -615,20 +615,30 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
            한 줄로 쌓여 있어서, 오늘 누가 왔는지 보려면 끝까지 내려야 했다.
            🛑 승격·삭제는 여기 두지 않는다 — 아래 표에 있고, 두 곳에 두면 헷갈린다. -->
       <div class="card">
-        <h2 id="hNew">새로 오신 분</h2>
-        <div class="scroll"><table>
-          <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th></tr></thead>
-          <tbody id="tNew"></tbody>
-        </table></div>
+        <div class="hd">
+          <h2 id="hNew">새로 오신 분</h2>
+          <button type="button" class="btn btn-line" id="newFold">접기</button>
+        </div>
+        <div id="newBody">
+          <div class="scroll"><table>
+            <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th></tr></thead>
+            <tbody id="tNew"></tbody>
+          </table></div>
+        </div>
       </div>
 
       <div class="card">
-        <h2 id="hMem">가입한 회원</h2>
-        <div class="scroll"><table>
-          <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>데려온 친구</th><th>VIP</th><th></th></tr></thead>
-          <tbody id="tMem"></tbody>
-        </table></div>
-        <p class="note" id="memNote"></p>
+        <div class="hd">
+          <h2 id="hMem">가입한 회원</h2>
+          <button type="button" class="btn btn-line" id="memFold">접기</button>
+        </div>
+        <div id="memBody">
+          <div class="scroll"><table>
+            <thead><tr><th>아이디</th><th>이름</th><th>가입</th><th>방식</th><th>등불</th><th>결제</th><th>열람</th><th>데려온 친구</th><th>VIP</th><th></th></tr></thead>
+            <tbody id="tMem"></tbody>
+          </table></div>
+          <p class="note" id="memNote"></p>
+        </div>
       </div>
     </section>
 
@@ -1038,35 +1048,45 @@ function paintApiCost() {
 
 // 🛑 **접힌 상태는 이 브라우저에만 남긴다.** 서버에 둘 만한 값이 아니고, 폰과 PC 에서
 //    각각 접고 펼 수 있는 게 맞다.
-const AC_FOLD = 'rl.admin.acFold';
+/** 카드 하나에 접기·펴기를 단다 (2026-09-11 온해님).
+ *
+ * 🛑 **접힘 여부는 변수가 정본이고, 저장은 되면 하는 것이다.** localStorage 를 막아 둔
+ *    브라우저(사생활 보호 창·저장 차단)에서는 읽기·쓰기가 예외를 던지는데, 그때
+ *    저장소를 정본으로 삼으면 단추를 눌러도 **아무 일도 안 일어난다.**
+ * 🛑 **`hidden` 속성은 인라인 `display` 에 진다.** 속성은 브라우저 기본 스타일
+ *    (`display:none`)일 뿐이라 인라인이 이긴다 — 접었는데 단추 두 개가 그대로 남아
+ *    있었다 (2026-09-11 화면을 열어 보고 잡았다). `tools` 는 display 를 직접 준다.
+ * 🛑 **폰과 PC 는 따로 기억한다.** 서버에 둘 값이 아니다.
+ */
+function wireFold(key, btnId, bodyId, opt) {
+  const btn = $(btnId); const body = $(bodyId);
+  if (!btn || !body) return;
+  const o = opt || {};
+  const K = 'rl.admin.' + key;
+  let shut = false;
+  try { shut = localStorage.getItem(K) === '1'; } catch { /* 막아 둔 브라우저 */ }
 
-// 🛑 **접힘 여부는 이 변수가 정본이고, 저장은 되면 하는 것이다.** localStorage 를
-//    막아 둔 브라우저(사생활 보호 창·저장 차단)에서는 읽기·쓰기가 예외를 던지는데,
-//    그때 저장소를 정본으로 삼으면 단추를 눌러도 **아무 일도 안 일어난다.**
-let acShut = false;
-try { acShut = localStorage.getItem(AC_FOLD) === '1'; } catch { /* 막아 둔 브라우저 */ }
-
-function paintAcFold() {
-  const body = $('acBody'); const tools = $('acTools'); const btn = $('acFold');
-  if (!body || !btn) return;
-  body.hidden = acShut;
-  // 🛑 **`hidden` 속성은 인라인 `display:flex` 에 진다.** 속성은 브라우저 기본 스타일
-  //    (`display:none`)일 뿐이라 인라인이 이긴다 — 접었는데 오른쪽 단추 두 개가 그대로
-  //    남아 있었다 (2026-09-11 화면을 열어 보고 잡았다). display 를 직접 준다.
-  if (tools) tools.style.display = acShut ? 'none' : 'flex';
-  // 접으면 오른쪽 단추들이 사라지므로 이 단추가 오른쪽 끝을 맡는다
-  btn.style.margin = acShut ? '0 0 0 auto' : '0';
-  btn.textContent = acShut ? '펴기' : '접기';
-  btn.setAttribute('aria-expanded', acShut ? 'false' : 'true');
+  const paint = () => {
+    body.hidden = shut;
+    const tools = o.tools ? $(o.tools) : null;
+    if (tools) tools.style.display = shut ? 'none' : 'flex';
+    // 접으면 오른쪽 묶음이 사라지므로 이 단추가 오른쪽 끝을 맡는다
+    btn.style.margin = (shut || !o.tools) ? '0 0 0 auto' : '0';
+    btn.textContent = shut ? '펴기' : '접기';
+    btn.setAttribute('aria-expanded', shut ? 'false' : 'true');
+  };
+  btn.addEventListener('click', () => {
+    shut = !shut;
+    try { localStorage.setItem(K, shut ? '1' : '0'); } catch { /* 막아 둔 브라우저 */ }
+    if (shut && o.alsoShut) { const x = $(o.alsoShut); if (x) x.hidden = true; }
+    paint();
+  });
+  paint();
 }
 
-$('acFold')?.addEventListener('click', () => {
-  acShut = !acShut;
-  try { localStorage.setItem(AC_FOLD, acShut ? '1' : '0'); } catch { /* 막아 둔 브라우저 */ }
-  if (acShut) $('acForm').hidden = true;     // 접을 때 열려 있던 적는 칸도 닫는다
-  paintAcFold();
-});
-paintAcFold();
+wireFold('acFold', 'acFold', 'acBody', { tools: 'acTools', alsoShut: 'acForm' });
+wireFold('newFold', 'newFold', 'newBody');
+wireFold('memFold', 'memFold', 'memBody');
 
 $('acSet')?.addEventListener('click', () => {
   const f = $('acForm');
