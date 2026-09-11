@@ -590,7 +590,7 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
 
 
-def regift(*, apply: bool = False) -> dict:
+def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
     """등불 계단을 올렸을 때 **이미 복채를 내신 분께 차액을 드린다** (2026-09-11 온해님).
 
     > 이미 결제한 사람도 그에 맞춰서 올려주고
@@ -606,8 +606,15 @@ def regift(*, apply: bool = False) -> dict:
     total = 0
     # 🛑 계정은 **맨 위에 이메일을 열쇠로** 놓여 있다 (`_account` 참고).
     #    `data["accounts"]` 같은 칸은 없다 — 있는 줄 알고 짜면 조용히 0명이 나온다.
+    # 🛑 **주인·VIP 는 뺀다** (2026-09-11 온해님 「내 관리자 계정은 빼야지」).
+    #    이분들은 복채를 안 내고 다 보시므로 차액을 드릴 것이 없고, 목록에 줄줄이
+    #    뜨면 정작 봐야 할 손님이 묻힌다. 누가 그 계정인지는 서버가 넘겨 준다 —
+    #    등불 모듈은 관리자 여부를 모른다.
+    skip = {str(x).strip().lower() for x in (skip or set())}
     for email, acc in list(data.items()):
         if not isinstance(acc, dict) or not isinstance(acc.get("ledger"), list):
+            continue
+        if str(email).strip().lower() in skip:
             continue
         led = acc["ledger"]
         # 환불된 결제 번호는 미리 모아 둔다

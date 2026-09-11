@@ -1970,8 +1970,21 @@ def admin_regift(body: RegiftBody, authorization: str | None = Header(default=No
     🛑 두 번 눌러도 두 번 주지 않는다 — 원장에 준 표시를 남긴다.
     """
     _require_admin(authorization)
+    # 🛑 **주인·VIP 는 대상에서 뺀다** (2026-09-11 온해님). 복채를 안 내고 다 보시는
+    #    분들이라 드릴 차액이 없고, 목록에 줄줄이 뜨면 손님이 묻힌다.
+    skip = set(_free_pass())
     try:
-        got = lamps_ops.regift(apply=bool(body.apply))
+        for em in list(lamps_ops._read().keys()):
+            try:
+                u = db.get_user(em)
+            except Exception:                            # noqa: BLE001
+                u = None
+            if u and _is_free(u):
+                skip.add(str(em).strip().lower())
+    except Exception:                                    # noqa: BLE001
+        pass
+    try:
+        got = lamps_ops.regift(apply=bool(body.apply), skip=skip)
     except Exception as e:                              # noqa: BLE001
         raise HTTPException(500, "차액을 드리다 막혔어요: %s" % str(e)[:120])
     # 🛑 **받은 줄 모르면 준 게 아니다.** 알림함에 한 줄 남긴다 (`modules/inbox.py`)

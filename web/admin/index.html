@@ -217,6 +217,9 @@ td.owner{color:var(--faint);font-size:.84rem}
 .bdg-은{color:#c3c8d4}
 .bdg-동{color:#c98a63}
 .tk{font-size:.76rem;color:var(--muted)}
+.re-list{margin-top:10px;max-height:280px;overflow-y:auto}
+.re-one{padding:7px 0;border-top:1px solid var(--line);font-size:.88rem}
+.re-one span{display:block;margin-top:2px;font-size:.78rem;color:var(--faint)}
 /* 🛑 **`.btn`·`.mk-row` 가 없었다** (2026-09-11). 손님 화면에서 쓰던 이름을 그대로
    옮겨 적어서, 여기 단추들이 스타일 없이 나오고 안내 글은 묻혀 안 보였다.
    온해님이 폰에서 「어디서 다운받아?」로 잡으셨다. `.pr-act button` 과 같은 결로 맞춘다. */
@@ -944,8 +947,20 @@ async function regift(apply) {
       + esc(d.people) + '명 · 결제 ' + esc(d.count) + '건 · 등불 <b>'
       + esc(Number(d.lamps).toLocaleString('ko-KR')) + '개</b>'
       + (apply ? ' — 손님 알림함에도 남겼습니다.' : ' 가 나갑니다.')
-      + '<br />' + (d.rows || []).slice(0, 8).map((x) =>
-        esc(x.email) + ' · ' + esc(x.product) + ' ' + esc(x.had) + '→' + esc(x.want)).join('<br />');
+      // 🛑 **여덟 줄만 보이면 누가 빠졌는지 알 수 없다** (2026-09-11 온해님
+      //    「에스텔라는 차액 왜 안 줘」 — 실은 목록이 잘려 안 보였을 뿐이다).
+      //    사람별로 묶어 세고, 낱건은 접어 둔다.
+      + '<div class="re-list">' + (() => {
+        const by = {};
+        (d.rows || []).forEach((x) => {
+          (by[x.email] = by[x.email] || []).push(x);
+        });
+        return Object.entries(by).map(([em, xs]) =>
+          '<div class="re-one"><b>' + esc(em) + '</b> · ' + xs.length + '건 · 등불 '
+          + num(xs.reduce((a, x) => a + Number(x.more || 0), 0)) + '개'
+          + '<span>' + xs.map((x) => esc(x.product) + ' ' + esc(x.had) + '→' + esc(x.want)).join(' / ')
+          + '</span></div>').join('');
+      })() + '</div>';
     $('reGive').hidden = !!apply;
   } catch (err) {
     out.textContent = err.message;
