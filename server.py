@@ -257,8 +257,13 @@ def _token_user(authorization: str | None) -> dict:
         _sessions[token] = user
     # 🛑 **오늘 들어온 회원**을 남긴다 (2026-09-12 온해님 「기존 회원이 재방문하는건지
     #    궁금해서」). 하루에 한 사람당 한 번만 디스크를 만진다.
+    # 🛑 **관리자는 세지 않는다** (2026-09-13 온해님 「오늘 들어온 회원이 계속
+    #    1명으로 뜨는데 회원 유입이 없는 건가?」). 그 1명이 온해님 본인이었다 —
+    #    관리자 화면을 열어 두면 매일 1명으로 찍혀서, 손님이 하나도 안 돌아와도
+    #    「1명은 왔다」로 읽혔다. 여기는 **손님이 다시 왔나**를 보는 자리다.
     try:
-        stats_ops.seen_member(user.get("email", ""))
+        if not user.get("is_admin"):
+            stats_ops.seen_member(user.get("email", ""))
     except Exception:
         pass
     return user

@@ -1577,7 +1577,9 @@ async function paintLive() {
       '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0);
     // 🛑 「회원이 안 느는데 방문은 늘었다」에 답하는 자리다. 어제와 나란히 둔다
     const t = (S[0] && S[0].members) || 0, y = (S[1] && S[1].members) || 0;
-    $('liveSeen').textContent = '오늘 들어온 회원 ' + t + '명 (어제 ' + y + ')';
+    // 🛑 **가입이 아니라 「다시 온 회원」이다** (2026-09-13 온해님이 가입으로 읽으심).
+    //    이름을 바꿔 둔다. 관리자는 서버에서 빼고 센다.
+    $('liveSeen').textContent = '오늘 다시 온 회원 ' + t + '명 (어제 ' + y + ')';
     $('live').hidden = false;
   } catch { /* 못 받아도 화면은 그대로 둔다 */ }
 }
