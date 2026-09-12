@@ -1581,8 +1581,11 @@ async function paintLive() {
     const d = await r.json();
     const L = d.live || {}, S = d.seen || [];
     $('liveAll').textContent = L.all ?? 0;
+    // 🛑 **기기를 같이 적는다** (2026-09-12 온해님 「죄다 비회원이야」 · 「이게 맞는건지
+    //    모르겠네」). 숫자만으로는 사람인지 크롤러인지 모른다. 「기타」가 많으면 봇이다.
+    const by = (L.by || []).map((x) => x[0] + ' ' + x[1]).join(' · ');
     $('liveSplit').textContent =
-      '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0);
+      '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0) + (by ? ' — ' + by : '');
     // 🛑 「회원이 안 느는데 방문은 늘었다」에 답하는 자리다. 어제와 나란히 둔다
     const t = (S[0] && S[0].members) || 0, y = (S[1] && S[1].members) || 0;
     $('liveSeen').textContent = '오늘 들어온 회원 ' + t + '명 (어제 ' + y + ')';

@@ -1789,9 +1789,13 @@ async def _count_visit(request: Request, call_next):
             low0 = ua0.lower()
             if ("mozilla" in low0 and not any(b in low0 for b in _BOT)
                     and not p.startswith("/assets") and "admin" not in p):
-                stats_ops.live_touch(
-                    _client_ip(request), ua0,
-                    bool(request.headers.get("authorization")))
+                # 🛑 **토큰이 살아 있을 때만 회원으로 센다** (2026-09-12 온해님
+                #    「지금 접속중 회원이 4명으로 뜨는데?」). 헤더만 보고 세면
+                #    **만료된 토큰이 남은 브라우저**까지 회원이 된다.
+                #    서버가 401 을 돌려줬으면 그 토큰은 죽은 것이다.
+                _tok = bool(request.headers.get("authorization"))
+                stats_ops.live_touch(_client_ip(request), ua0,
+                                     _tok and resp.status_code != 401)
         except Exception:
             pass
         if (

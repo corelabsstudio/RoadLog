@@ -230,28 +230,37 @@ LIVE_MIN = 5           # 이 시간 안에 움직였으면 「지금 있는 사�
 
 
 def live_touch(ip: str, ua: str, member: bool) -> None:
-    """요청 하나가 왔다. 지문과 시각을 메모리에 남긴다."""
+    """요청 하나가 왔다. 지문·시각·기기를 메모리에 남긴다."""
     fp = _fingerprint(ip or "", ua or "", _today())
     now = datetime.now(KST).timestamp()
+    # 🛑 **기기를 같이 남긴다** (2026-09-12 온해님 「5명 접속중인데 죄다 비회원이야」).
+    #    숫자만으로는 사람인지 크롤러인지 모른다. `client_of` 가 「크롬·안드로이드」
+    #    같은 이름을 내는데, 정체를 모르는 것은 「기타」로 떨어진다 — 그게 많으면 봇이다.
+    cl = client_of(ua or "")
     with _LIVE_LOCK:
         was = _LIVE.get(fp)
         # 🛑 한 번이라도 회원으로 들어왔으면 회원으로 둔다. 화면 하나를 여는 동안
         #    토큰이 붙는 요청과 안 붙는 요청이 섞여서, 덮어쓰면 숫자가 깜박인다.
-        _LIVE[fp] = (now, bool(member) or bool(was and was[1]))
+        _LIVE[fp] = (now, bool(member) or bool(was and was[1]), cl)
         if len(_LIVE) > 4000:                    # 쌓이면 오래된 것부터 버린다
             cut = now - LIVE_MIN * 60
             for k in [k for k, v in _LIVE.items() if v[0] < cut]:
                 _LIVE.pop(k, None)
 
 
-def live(minutes: int = LIVE_MIN) -> dict[str, int]:
-    """지금 있는 사람 — 전부 · 회원 · 비회원."""
+def live(minutes: int = LIVE_MIN) -> dict[str, Any]:
+    """지금 있는 사람 — 전부 · 회원 · 비회원 · 기기별."""
     cut = datetime.now(KST).timestamp() - minutes * 60
     with _LIVE_LOCK:
         rows = [v for v in _LIVE.values() if v[0] >= cut]
-    mem = sum(1 for _, m in rows if m)
+    mem = sum(1 for r in rows if r[1])
+    by: dict[str, int] = {}
+    for r in rows:
+        k = (r[2] if len(r) > 2 else "") or "기타"
+        by[k] = by.get(k, 0) + 1
     return {"all": len(rows), "members": mem, "guests": len(rows) - mem,
-            "minutes": minutes}
+            "minutes": minutes,
+            "by": sorted(by.items(), key=lambda x: -x[1])[:5]}
 
 
 # ── 오늘 들어온 회원 (2026-09-12 온해님) ────────────────────────
