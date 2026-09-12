@@ -3302,7 +3302,15 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
 # 왜: 코드에 박아 둔 문장은 같은 십성인 사람에게 늘 같은 글을 준다.
 # 계산은 프론트가 끝내서 보내고, 여기서는 그 값을 글로 옮기기만 시킨다.
 
-PREVIEW_SECTIONS = 1        # 복채를 내기 전에 무냥이 글로 보여 주는 항목 수
+# 🛑 **미리보기도 전 항목을 무냥이가 쓴다** (2026-09-13 온해님 「모든 상품에 결제
+#    안 하고 미리 보는 해설에도 LLM 을 붙여」). 0 이면 「전부」다.
+#    그전에는 1 이라 **첫 자리만 무냥이 글이고 나머지는 계산 문장**이 나갔다 —
+#    손님이 보는 미리보기 대부분이 「일지(곁을 내주는 자리)는 술 이고」 같은 딱딱한
+#    문장이었다. 2026-09-07 에 「미리보기도 무냥이가 쓴 문장으로」라고 하셨는데
+#    그때 첫 자리만 하고 끝냈다.
+# 🛑 **원가가 는다.** 미리보기 한 번이 리포트 한 편과 같아진다(23원).
+#    막는 것은 `PREVIEW_DAILY_CAP`(하루 3번) 하나다.
+PREVIEW_SECTIONS = 0        # 0 = 전부. 복채 전에 무냥이 글로 보여 주는 항목 수
 #   🛑 첫 자리 하나만이다 (2026-09-07 지시). 셋이면 상품에 따라 2장까지 열려 버렸다.
 #   🛑 main.js:PREVIEW_ITEMS 와 같아야 한다 — 화면이 그 수만큼 자리를 잡아 둔다.
 PREVIEW_DAILY_CAP = 3       # 한 계정이 하루에 뽑을 수 있는 미리보기
@@ -3490,7 +3498,9 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     if not body.preview and not paid:
         raise HTTPException(402, "이 리포트는 아직 열려 있지 않아요.")
     if not paid:
-        want = want[:PREVIEW_SECTIONS]
+        # 🛑 0 이면 **전부** 쓴다 (2026-09-13). 자르면 안 된다
+        if PREVIEW_SECTIONS:
+            want = want[:PREVIEW_SECTIONS]
 
     try:
         have = saju_writer.load(product, pair) or {"blocks": []}
@@ -3546,7 +3556,8 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
                         "text": done.get(s, {}).get("text", ""),
                         "hook": done.get(s, {}).get("hook", ""),
                         "mutter": done.get(s, {}).get("mutter", "")} for s in want],
-            "more": (not paid) and len(body.sections or []) > PREVIEW_SECTIONS}
+            "more": bool((not paid) and PREVIEW_SECTIONS
+                         and len(body.sections or []) > PREVIEW_SECTIONS)}
 
 
 class SummaryBody(BaseModel):
