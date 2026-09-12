@@ -638,8 +638,17 @@ _SAFE = re.compile(r"^[A-Za-z0-9_-]{1,80}$")
 DATED = {"today"}
 
 
+# 🛑 **한국 날짜로 센다** (2026-09-13 온해님 「오늘의 운세를 어제도 보고 오늘도
+#    봤는데 나오는 해설이 완전 똑같아」).
+#    `time.strftime` 은 **서버 시간(UTC)** 이라, 한국 시간 아침 9시 전에는 UTC 날짜가
+#    아직 어제다. 어제 밤 10시(KST)와 오늘 새벽 6시(KST)가 **같은 UTC 날짜**라
+#    어제 쓴 「오늘의 운세」가 그대로 나왔다. 화면은 한국 날짜를 쓰니 서로 어긋났다.
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+_KST = _tz(_td(hours=9))
+
+
 def _day() -> str:
-    return time.strftime("%Y-%m-%d")
+    return _dt.now(_KST).strftime("%Y-%m-%d")
 
 
 def _store_dir():
@@ -675,7 +684,7 @@ def save(product: str, pair: str, data: dict[str, Any]) -> None:
     data = dict(data)
     if product in DATED:
         data["day"] = _day()
-    data["savedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    data["savedAt"] = _dt.now(_KST).strftime("%Y-%m-%dT%H:%M:%S")
     tmp = p.with_suffix(".tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     tmp.replace(p)

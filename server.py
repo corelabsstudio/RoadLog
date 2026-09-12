@@ -3351,7 +3351,10 @@ def _preview_used(email: str, kind: str = "preview") -> int:
     import json as _j
     import datetime as _dt
     f = _P(DATA_DIR) / "saju_preview_count.json"
-    today = _dt.date.today().isoformat()
+    # 🛑 **한국 날짜다** (2026-09-13). `date.today()` 는 서버 시간(UTC)이라
+    #    한국 아침 9시 전에는 어제로 센다 — 하루 한도가 제때 안 풀린다.
+    today = (_dt.datetime.now(_dt.timezone.utc)
+             + _dt.timedelta(hours=9)).date().isoformat()
     try:
         data = _j.loads(f.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -3368,7 +3371,10 @@ def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
     import json as _j
     import datetime as _dt
     f = _P(DATA_DIR) / "saju_preview_count.json"
-    today = _dt.date.today().isoformat()
+    # 🛑 **한국 날짜다** (2026-09-13). `date.today()` 는 서버 시간(UTC)이라
+    #    한국 아침 9시 전에는 어제로 센다 — 하루 한도가 제때 안 풀린다.
+    today = (_dt.datetime.now(_dt.timezone.utc)
+             + _dt.timedelta(hours=9)).date().isoformat()
     key = _quota_key(email, kind)
     try:
         data = _j.loads(f.read_text(encoding="utf-8"))
