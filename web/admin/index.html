@@ -74,6 +74,10 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
   .head .as{font-size:.78rem}
   .live{margin-left:0;width:100%;font-size:.94rem;padding-top:4px}
   .live b{font-size:1.35rem}
+  /* 🛑 한 줄에 다 안 들어가 **잘려 나왔다** (2026-09-12 온해님 「모바일에선 상단바에서
+     지금도 잘려나오는데」). 「오늘 들어온 회원」을 통째로 아랫줄로 내리고,
+     줄이 바뀌면 어색해지는 세로 구분선을 지운다. */
+  .live em{width:100%;padding-left:0;border-left:0;margin-top:2px}
   .card{padding:14px 13px 15px;border-radius:14px}
   .deck{gap:10px;margin-bottom:10px}
   /* 표는 손가락으로 민다. 밀 수 있다는 걸 보이게 오른쪽 끝을 옅게 지운다 */
@@ -90,7 +94,7 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 /* 지금 접속 중 (2026-09-12). 오른쪽 끝에 붙여 어느 화면에서나 보이게 한다 */
 /* 🛑 글씨를 키웠다 (2026-09-12 온해님 「글씨좀 키워줘」). 운영 화면에서 제일 자주
    보는 숫자라 멀리서도 읽혀야 한다. */
-.live{margin-left:auto;display:flex;align-items:center;gap:9px;font-size:1rem;color:var(--ink)}
+.live{margin-left:auto;display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:1rem;color:var(--ink)}
 .live b{font-size:1.55rem;color:var(--ink);font-variant-numeric:tabular-nums}
 .live i{font-style:normal;color:var(--muted)}
 .live em{font-style:normal;color:var(--muted);padding-left:11px;border-left:1px solid var(--line)}
@@ -1585,11 +1589,15 @@ async function paintLive() {
     const d = await r.json();
     const L = d.live || {}, S = d.seen || [];
     $('liveAll').textContent = L.all ?? 0;
-    // 🛑 **기기를 같이 적는다** (2026-09-12 온해님 「죄다 비회원이야」 · 「이게 맞는건지
-    //    모르겠네」). 숫자만으로는 사람인지 크롤러인지 모른다. 「기타」가 많으면 봇이다.
+    // 🛑 **기기 목록을 상단바에 적지 않는다** (2026-09-12 온해님 「이걸 왜 여기에 놨어?」).
+    //    한눈에 보는 자리에 진단용 값을 끼우면 너저분해진다. 대신 **마우스를 올리면**
+    //    보이게 둔다 — 봇인지 볼 일이 있을 때만 필요하다.
+    //    (「기타 · 기타」는 브라우저도 OS 도 못 알아본 방문이다. 사람이면 거의 안 나온다)
     const by = (L.by || []).map((x) => x[0] + ' ' + x[1]).join(' · ');
+    const box = $('live');
+    if (box) box.title = by ? '기기 — ' + by : '';
     $('liveSplit').textContent =
-      '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0) + (by ? ' — ' + by : '');
+      '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0);
     // 🛑 「회원이 안 느는데 방문은 늘었다」에 답하는 자리다. 어제와 나란히 둔다
     const t = (S[0] && S[0].members) || 0, y = (S[1] && S[1].members) || 0;
     $('liveSeen').textContent = '오늘 들어온 회원 ' + t + '명 (어제 ' + y + ')';
