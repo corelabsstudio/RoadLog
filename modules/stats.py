@@ -229,7 +229,10 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
 #    보지 않는다 — 세는 값이라 그 정도면 되고, 요청마다 DB 를 열면 느려진다.
 _LIVE: dict[str, tuple[float, bool]] = {}
 _LIVE_LOCK = threading.Lock()
-LIVE_MIN = 5           # 이 시간 안에 움직였으면 「지금 있는 사람」
+# 🛑 **2분**이다 (2026-09-13). 앞단이 45초마다 `/api/ping` 을 보내므로 보고 있는
+#    사람은 계속 잡히고, 창을 닫으면 **최대 2분 뒤 사라진다.** 전에는 5분이라
+#    나간 사람이 오래 남았고, 반대로 가만히 읽는 사람은 사라졌다.
+LIVE_MIN = 2           # 이 시간 안에 움직였으면 「지금 있는 사람」
 
 
 def live_touch(ip: str, ua: str, member: bool) -> None:

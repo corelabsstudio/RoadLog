@@ -1841,6 +1841,18 @@ def admin_stats(authorization: str | None = Header(default=None), days: int = 30
     return stats_ops.overview(days=max(1, min(days, 90)))
 
 
+@app.get("/api/ping")
+def ping():
+    """화면이 열려 있다는 신호. 접속 중을 세는 데만 쓴다 (2026-09-13 온해님).
+
+    🛑 **몸통이 비어 있는 게 맞다.** 실제로 세는 것은 위 미들웨어의 `live_touch` 이고,
+       이 주소는 **요청을 한 번 일으키려고** 있다. 화면이 SPA 라 손님이 사주를
+       읽는 내내 요청이 한 번도 안 가서, 보고 있는 사람이 「접속 중」에서 사라졌다.
+    🛑 방문(pv)에는 안 잡힌다 — 아래 `hit()` 은 HTML 요청만 센다.
+    """
+    return {"ok": True}
+
+
 @app.get("/api/admin/live")
 def admin_live(authorization: str | None = Header(default=None)):
     """지금 사이트에 있는 사람 + 오늘 들어온 회원 (2026-09-12 온해님).
