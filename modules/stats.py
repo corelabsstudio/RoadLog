@@ -316,8 +316,12 @@ def tap(what: str, product: str = "") -> None:
 
     🛑 **누가 눌렀는지는 안 남긴다.** 몇 번 눌렸는지만 안다.
     """
+    # 🛑 **`open` 을 더했다** (2026-09-12 온해님 「사주 열람도 일별로 볼 수 있어야 하는데」).
+    #    대시보드의 「열람」은 `acc["owned"]` 를 세는데, 그건 **복채를 낸 것만** 들어간다.
+    #    「오늘 운세」처럼 무료로 연 것은 어디에도 안 세어져서, 66명이 와서 사주를
+    #    봤는지 아닌지 알 길이 없었다. 앞단이 리포트를 **끝까지 열 때** 이걸 부른다.
     what = " ".join(str(what or "").split())[:24]
-    if what not in ("save", "share", "sns", "copy"):
+    if what not in ("save", "share", "sns", "copy", "open"):
         return
     product = " ".join(str(product or "").split())[:24]
     day = _today()
@@ -510,7 +514,15 @@ def overview(days: int = 30) -> dict[str, Any]:
 
     # 🛑 날짜마다 **어디서·무엇으로** 들어왔는지를 같이 보낸다 (2026-09-09 온해님 요청).
     #    자료는 원래 날짜별로 쌓여 있었는데 합계만 보내느라 화면에서 하루를 못 골랐다.
+    # 🛑 **무료로 연 것을 같이 내려보낸다** (2026-09-12 온해님 「사주 열람도 일별로」).
+    #    `opens` 는 복채를 낸 것(`owned`)만 센다. 무료 열람은 `tap` 의 `open:*` 에 쌓인다.
+    def _free_opens(day: str) -> int:
+        t = (vis.get(day) or {}).get("tap") or {}
+        return sum(int(v or 0) for k, v in t.items()
+                   if k == "open" or str(k).startswith("open:"))
+
     daily = [{"day": d, **by_day[d],
+              "free_opens": _free_opens(d),
               # 이미 쌓인 기록도 읽을 때 이름을 맞춘다
               "src": _tidy_map((vis.get(d) or {}).get("src") or {}),
               "ua": dict((vis.get(d) or {}).get("ua") or {})}
