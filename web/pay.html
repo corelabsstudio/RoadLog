@@ -197,7 +197,10 @@ let pick = PACKS.find(p => String(p.lamps) === q.get('lamps')) || PACKS[2];
 // 리포트를 사면 덤으로 얹어 드리는 등불. 🛑 서버 modules/lamps.py:bonus_lamps 와
 // 같은 계단이어야 한다 — 어긋나면 화면에 적힌 수와 실제로 들어오는 수가 달라진다.
 // node tools/check_gift.mjs 가 세 곳(서버·products.js·여기)을 대조한다.
-const giftFor = (won) => (won >= 30000 ? 1200 : won >= 20000 ? 600 : won >= 10000 ? 300 : won >= 5000 ? 180 : 90);
+// 🛑 계단 없음 — 낸 만큼 (2026-09-13 온해님).
+//    서버 `lamps.bonus_lamps` · 진열대 `products.js:giftLamps` 와 같은 식이다.
+//    🛑 이 파일에 셈법을 말로 적지 않는다 — 손님이 받는 파일이다.
+const giftFor = (won) => Math.floor((won || 0) / 50);
 
 function paintPacks() {
   $('packs').innerHTML = '';       // 🛑 등불은 팔지 않는다. 위 PACKS 주석 참고

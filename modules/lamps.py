@@ -589,15 +589,10 @@ def bonus_lamps(won: int) -> int:
        한 곳만 고치면 화면에 적힌 수와 실제로 들어오는 수가 달라진다.
        → `node tools/check_gift.mjs`
     """
-    if won >= 30000:
-        return 1200
-    if won >= 20000:
-        return 600
-    if won >= 10000:
-        return 300
-    if won >= 5000:
-        return 180
-    return 90
+    # 🛑 **계단을 없앴다** (2026-09-13 온해님 「그냥 결제금액의 /50 하면 되는 거
+    #    아니야? · 뭔 결제 계단이야」). 낸 만큼 등불로 돌려 드린다.
+    #    등불 1개 = 50원어치이므로 **복채 전액이 등불로 돌아온다.**
+    return won // WON_PER_LAMP_SPEND
 
 
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
