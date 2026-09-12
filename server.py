@@ -2378,6 +2378,10 @@ class GwansangBody(BaseModel):
     sections: list[str] = []
     # 🛑 상품의 질문. 카드 제목이 이것이라 **문구도 이 물음에 답해야** 한다 (2026-09-10)
     q: str = ""
+    # 🛑 **한 자리를 몇 자로 쓸지** (2026-09-12 온해님 「금액에 비해 해석 글자수가
+    #    제대로 나오는지」). 앞단 `gwansang.js:gwanChars` 가 값에 따라 정해 보낸다.
+    #    0 이면 `read_face` 기본값으로 떨어진다 — 옛 화면이 안 보내도 깨지지 않게.
+    chars: int = 0
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
@@ -3122,8 +3126,12 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
+        # 🛑 **글 길이를 앞단이 정해 보낸다** (2026-09-12). 안 보내면 260자로 떨어져
+        #    39,800원짜리가 2,900원짜리 사주의 3분의 1 분량으로 나갔다.
+        #    상한을 두는 것은 값이 이상하게 와도 원가가 튀지 않게 하려는 것이다.
+        _chars = max(260, min(int(body.chars or 0) or 260, 2200))
         out = gwansang_ops.read_face(product, clean, name=(body.name or "").strip(),
-                                     sections=body.sections or [])
+                                     sections=body.sections or [], chars=_chars)
     except ValueError as e:
         raise HTTPException(400, str(e))
     except Exception as e:                            # noqa: BLE001
