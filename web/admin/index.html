@@ -333,7 +333,10 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
            ?명, 비회원 ?명 이런식으로」).
            그리고 「회원은 안 느는데 방문이 늘었다 — 기존 회원이 재방문하는 건지」를
            알 수 있게 **오늘 들어온 회원**을 옆에 붙인다. -->
-      <div class="live" id="live" hidden>
+      <!-- 🛑 「접속 중」은 **최근 5분 안에 페이지를 연 사람**이다. 이 5분은 판정 기준이고,
+           화면이 다시 묻는 주기(5초)와 다른 값이다 (2026-09-13 온해님이 둘을 헷갈리심). -->
+      <div class="live" id="live" hidden
+           title="최근 5분 안에 페이지를 연 사람이에요. 화면은 5초마다 다시 물어봐요.">
         <span class="live-dot" aria-hidden="true"></span>
         <b id="liveAll">–</b><span>명 접속</span>
         <i id="liveSplit"></i>
@@ -1595,8 +1598,12 @@ $('btnWipeAll').onclick = () => {
 };
 
 // ── 지금 사이트에 있는 사람 (2026-09-12 온해님) ──────────────────
-// 🛑 **30초마다 다시 묻는다.** 「지금」이라 낡으면 쓸모가 없다. 서버는 메모리에서
-//    세기만 하므로 가볍다. 화면이 안 보일 때(다른 탭)는 묻지 않는다.
+// 🛑 **5초마다 다시 묻는다** (2026-09-13 온해님 「5분에 한 번씩이면 너무 부정확한데?」).
+//    서버는 메모리에서 세기만 하므로 가볍고, **화면이 안 보일 때(다른 탭)는 묻지 않는다** —
+//    안 그러면 관리자 화면을 열어 둔 내내 5초마다 두드린다.
+// 🛑 **「5분」은 새로고침 주기가 아니다.** 「최근 5분 안에 페이지를 연 사람」을 접속 중으로
+//    보는 **판정 기준**이다(`stats.LIVE_MIN`). 이걸 줄이면 글을 읽는 동안 요청이 없어서
+//    멀쩡히 있는 사람이 사라진다. 둘은 다른 값이다.
 async function paintLive() {
   if (!token() || document.hidden) return;
   try {
@@ -1616,7 +1623,7 @@ async function paintLive() {
     $('live').hidden = false;
   } catch { /* 못 받아도 화면은 그대로 둔다 */ }
 }
-setInterval(paintLive, 30000);
+setInterval(paintLive, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) paintLive(); });
 
 if (token()) { load().catch(() => show('login')); paintLive(); }
