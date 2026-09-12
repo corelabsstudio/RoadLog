@@ -215,6 +215,93 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
         _write(VISITS_JSON, data)
 
 
+# ── 지금 사이트에 있는 사람 (2026-09-12 온해님) ──────────────────
+#
+# 🛑 **파일에 안 쓴다. 메모리에만 둔다.** 「지금」이라 다시 뜨면 비는 게 맞고,
+#    요청마다 디스크를 만지면 느려진다.
+# 🛑 **`hit()` 으로는 못 센다.** 그건 HTML 이 열릴 때만 도는데, 우리 화면은 SPA 라
+#    손님이 사주를 보는 내내 HTML 요청이 한 번도 안 간다. 그래서 **API 요청까지**
+#    세는 자리를 따로 뒀다.
+# 🛑 회원인지는 **Authorization 헤더가 붙었는지**로만 본다. 토큰을 제대로 맞춰
+#    보지 않는다 — 세는 값이라 그 정도면 되고, 요청마다 DB 를 열면 느려진다.
+_LIVE: dict[str, tuple[float, bool]] = {}
+_LIVE_LOCK = threading.Lock()
+LIVE_MIN = 5           # 이 시간 안에 움직였으면 「지금 있는 사람」
+
+
+def live_touch(ip: str, ua: str, member: bool) -> None:
+    """요청 하나가 왔다. 지문과 시각을 메모리에 남긴다."""
+    fp = _fingerprint(ip or "", ua or "", _today())
+    now = datetime.now(KST).timestamp()
+    with _LIVE_LOCK:
+        was = _LIVE.get(fp)
+        # 🛑 한 번이라도 회원으로 들어왔으면 회원으로 둔다. 화면 하나를 여는 동안
+        #    토큰이 붙는 요청과 안 붙는 요청이 섞여서, 덮어쓰면 숫자가 깜박인다.
+        _LIVE[fp] = (now, bool(member) or bool(was and was[1]))
+        if len(_LIVE) > 4000:                    # 쌓이면 오래된 것부터 버린다
+            cut = now - LIVE_MIN * 60
+            for k in [k for k, v in _LIVE.items() if v[0] < cut]:
+                _LIVE.pop(k, None)
+
+
+def live(minutes: int = LIVE_MIN) -> dict[str, int]:
+    """지금 있는 사람 — 전부 · 회원 · 비회원."""
+    cut = datetime.now(KST).timestamp() - minutes * 60
+    with _LIVE_LOCK:
+        rows = [v for v in _LIVE.values() if v[0] >= cut]
+    mem = sum(1 for _, m in rows if m)
+    return {"all": len(rows), "members": mem, "guests": len(rows) - mem,
+            "minutes": minutes}
+
+
+# ── 오늘 들어온 회원 (2026-09-12 온해님) ────────────────────────
+#
+# > 회원은 안 늘고 있는데 방문자랑 페이지 열림은 어제보다 많아서
+# > **기존 회원이 재방문하는건지** 궁금해서 그래
+#
+# 방문자(uv)는 지문이라 회원인지 모른다. 그래서 **로그인해서 들어온 회원**을 따로 센다.
+# 🛑 `users.json` 은 안 건드린다 — Supabase 와 두 갈래라 손대면 어긋난다.
+# 🛑 **하루에 한 사람당 한 번만 쓴다.** 요청마다 디스크를 만지면 느려진다.
+SEEN_JSON = Path(DATA_DIR) / "seen.json"
+_SEEN_TODAY: set[str] = set()
+_SEEN_DAY = ""
+
+
+def seen_member(email: str) -> None:
+    """회원이 오늘 움직였다. 이미 적은 사람은 그냥 지나간다."""
+    global _SEEN_DAY
+    email = (email or "").strip().lower()
+    if not email:
+        return
+    day = _today()
+    with _LOCK:
+        if _SEEN_DAY != day:
+            _SEEN_DAY = day
+            _SEEN_TODAY.clear()
+        if email in _SEEN_TODAY:
+            return
+        _SEEN_TODAY.add(email)
+        data = _read(SEEN_JSON, {})
+        lst = data.setdefault(day, [])
+        if email not in lst:
+            lst.append(email)
+        if len(data) > KEEP_DAYS + 10:
+            cut = (now_kst() - timedelta(days=KEEP_DAYS)).strftime("%Y-%m-%d")
+            for k in [k for k in data if k < cut]:
+                data.pop(k, None)
+        _write(SEEN_JSON, data)
+
+
+def seen_days(days: int = 2) -> list[dict[str, Any]]:
+    """최근 며칠, 날짜별로 들어온 회원 수. 오늘이 맨 앞이다."""
+    data = _read(SEEN_JSON, {})
+    out = []
+    for i in range(days):
+        d = (now_kst() - timedelta(days=i)).strftime("%Y-%m-%d")
+        out.append({"day": d, "members": len(data.get(d, []))})
+    return out
+
+
 def tap(what: str, product: str = "") -> None:
     """카드를 저장했거나 공유했다. 날짜별로 세기만 한다 (2026-09-11).
 

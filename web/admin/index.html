@@ -84,6 +84,16 @@ body{margin:0;background-color:var(--bg);background-image:var(--seal);
 /* ── 위쪽 줄 ───────────────────────────────────────── */
 .main{min-width:0;padding:0 26px 60px}
 .head{display:flex;align-items:baseline;gap:14px;padding:22px 0 16px}
+/* 지금 접속 중 (2026-09-12). 오른쪽 끝에 붙여 어느 화면에서나 보이게 한다 */
+.live{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:.82rem;color:var(--muted)}
+.live b{font-size:1.05rem;color:var(--ink);font-variant-numeric:tabular-nums}
+.live i{font-style:normal}
+.live em{font-style:normal;padding-left:9px;border-left:1px solid var(--line)}
+.live-dot{width:7px;height:7px;border-radius:4px;background:#3ec98a;flex:0 0 auto;
+          box-shadow:0 0 0 0 rgba(62,201,138,.55);animation:livePulse 2.4s ease-out infinite}
+@keyframes livePulse{70%{box-shadow:0 0 0 7px rgba(62,201,138,0)}
+                     100%{box-shadow:0 0 0 0 rgba(62,201,138,0)}}
+@media (prefers-reduced-motion: reduce){.live-dot{animation:none}}
 .head h1{font-size:1.5rem;margin:0;letter-spacing:-.02em}
 .head .as{color:var(--faint);font-size:.88rem;margin:0;margin-left:auto}
 
@@ -309,6 +319,17 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
     <div class="head">
       <h1 id="pageName">한눈에</h1>
       <p class="as" id="asOf"></p>
+      <!-- 🛑 **지금 사이트에 있는 사람** (2026-09-12 온해님 「상단바에 현재 우리 사이트
+           접속중인 회원수 보이게 해줘」 · 「총 접속한 인원 ?명, 회원가입 되어있는 인원
+           ?명, 비회원 ?명 이런식으로」).
+           그리고 「회원은 안 느는데 방문이 늘었다 — 기존 회원이 재방문하는 건지」를
+           알 수 있게 **오늘 들어온 회원**을 옆에 붙인다. -->
+      <div class="live" id="live" hidden>
+        <span class="live-dot" aria-hidden="true"></span>
+        <b id="liveAll">–</b><span>명 접속</span>
+        <i id="liveSplit"></i>
+        <em id="liveSeen"></em>
+      </div>
     </div>
 
     <section data-page="sum">
@@ -1537,7 +1558,30 @@ $('btnWipeAll').onclick = () => {
   if (confirm('방문 기록을 전부 지웁니다. 되돌릴 수 없습니다.')) wipe('');
 };
 
-if (token()) load().catch(() => show('login'));
+// ── 지금 사이트에 있는 사람 (2026-09-12 온해님) ──────────────────
+// 🛑 **30초마다 다시 묻는다.** 「지금」이라 낡으면 쓸모가 없다. 서버는 메모리에서
+//    세기만 하므로 가볍다. 화면이 안 보일 때(다른 탭)는 묻지 않는다.
+async function paintLive() {
+  if (!token() || document.hidden) return;
+  try {
+    const r = await fetch('/api/admin/live',
+      { headers: { Authorization: 'Bearer ' + token() } });
+    if (!r.ok) return;
+    const d = await r.json();
+    const L = d.live || {}, S = d.seen || [];
+    $('liveAll').textContent = L.all ?? 0;
+    $('liveSplit').textContent =
+      '회원 ' + (L.members ?? 0) + ' · 비회원 ' + (L.guests ?? 0);
+    // 🛑 「회원이 안 느는데 방문은 늘었다」에 답하는 자리다. 어제와 나란히 둔다
+    const t = (S[0] && S[0].members) || 0, y = (S[1] && S[1].members) || 0;
+    $('liveSeen').textContent = '오늘 들어온 회원 ' + t + '명 (어제 ' + y + ')';
+    $('live').hidden = false;
+  } catch { /* 못 받아도 화면은 그대로 둔다 */ }
+}
+setInterval(paintLive, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) paintLive(); });
+
+if (token()) { load().catch(() => show('login')); paintLive(); }
 else show('login');
 </script>
 </body>

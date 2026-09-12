@@ -255,6 +255,12 @@ def _token_user(authorization: str | None) -> dict:
     else:
         user = admin_ops.enrich_user_flags(user) or user
         _sessions[token] = user
+    # 🛑 **오늘 들어온 회원**을 남긴다 (2026-09-12 온해님 「기존 회원이 재방문하는건지
+    #    궁금해서」). 하루에 한 사람당 한 번만 디스크를 만진다.
+    try:
+        stats_ops.seen_member(user.get("email", ""))
+    except Exception:
+        pass
     return user
 
 
@@ -1774,6 +1780,20 @@ async def _count_visit(request: Request, call_next):
             return resp
         if request.cookies.get("rl_nocount") == "1":
             return resp
+        # ── 지금 사이트에 있는 사람 (2026-09-12 온해님) ──────────────
+        # 🛑 **API 요청까지 센다.** 화면이 SPA 라 손님이 사주를 보는 내내 HTML 요청이
+        #    한 번도 안 간다. 아래 `hit()` 조건(HTML 만)으로는 「지금」을 못 센다.
+        # 🛑 운영 화면(`admin`)은 빼고 센다 — 그건 손님이 아니다.
+        try:
+            ua0 = request.headers.get("user-agent", "") or ""
+            low0 = ua0.lower()
+            if ("mozilla" in low0 and not any(b in low0 for b in _BOT)
+                    and not p.startswith("/assets") and "admin" not in p):
+                stats_ops.live_touch(
+                    _client_ip(request), ua0,
+                    bool(request.headers.get("authorization")))
+        except Exception:
+            pass
         if (
             request.method == "GET"
             and resp.status_code == 200
@@ -1815,6 +1835,20 @@ def admin_stats(authorization: str | None = Header(default=None), days: int = 30
     """매출·가입·방문자·유입경로를 한 번에."""
     _require_admin(authorization)
     return stats_ops.overview(days=max(1, min(days, 90)))
+
+
+@app.get("/api/admin/live")
+def admin_live(authorization: str | None = Header(default=None)):
+    """지금 사이트에 있는 사람 + 오늘 들어온 회원 (2026-09-12 온해님).
+
+    · live      최근 5분 안에 움직인 사람 — 전부 / 회원 / 비회원
+    · seen      날짜별로 **로그인해서 들어온 회원** 수 (오늘·어제)
+
+    🛑 `live` 는 메모리라 서버가 다시 뜨면 0부터다. 「지금」이라 그게 맞다.
+    🛑 회원인지는 Authorization 헤더가 붙었는지로만 본다 — 세는 값이라 그 정도면 된다.
+    """
+    _require_admin(authorization)
+    return {"live": stats_ops.live(), "seen": stats_ops.seen_days(2)}
 
 
 @app.get("/api/admin/dashboard")
