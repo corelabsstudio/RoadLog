@@ -727,11 +727,10 @@ def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
 
 
 def pay_regift(*, apply: bool = False) -> dict:
-    """복채를 내신 분께 **결제액 ÷ 50** 만큼 등불을 맞춰 드린다 (2026-09-13 온해님).
+    """복채를 내신 분께 **결제액 ÷ 50** 만큼 등불을 더 드린다 (2026-09-13 온해님).
 
-    왜: 등불 1개를 **50원어치**로 정했으니, 낸 만큼 돌려받는 셈이 맞는지 다시 본다.
-    이미 받은 결제 선물(`premium-gift`)이 그보다 많으면 **더 드리지 않는다** —
-    지금 계단이 구간에 따라 더 후하기 때문이다.
+    등불 1개를 **50원어치**로 정했으니 낸 만큼을 등불로 돌려 드린다.
+    🛑 **이미 받은 결제 선물은 빼지 않는다** — 그건 그대로 두고 더한다.
 
     🛑 **실제로 돈이 들어온 것만 센다** (`REAL_PAY_FROM` 이후). 그전은 테스트 채널이라
        포트원에 PAID 로 찍혀도 입금이 0원이었다.
@@ -751,12 +750,12 @@ def pay_regift(*, apply: bool = False) -> dict:
                    and str(e.get("at", ""))[:10] >= REAL_PAY_FROM)
         if not paid:
             continue
-        want = paid // WON_PER_LAMP_SPEND
-        # 🛑 **원장에서 찾는다.** `lots` 에는 종류가 안 남는다 — `_add_lot` 이 kind 를
-        #    `ledger` 에만 적는다. lots 에서 찾으면 늘 0 이라 **두 배로 나간다**.
+        # 🛑 **이미 받은 것을 빼지 않는다** (2026-09-13 온해님 「그냥 결제금액의 /50
+        #    하면 되는 거 아니야?」). 결제 선물은 그대로 두고, 낸 만큼을 더 드린다.
+        #    받은 양은 보여 주기만 한다.
+        more = want = paid // WON_PER_LAMP_SPEND
         had = sum(int(e.get("lamps") or 0) for e in led
                   if e.get("type") == "premium-gift")
-        more = want - had
         rows.append({"email": email, "paid": paid, "want": want, "had": had,
                      "more": max(0, more)})
         if more > 0:
