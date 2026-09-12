@@ -430,7 +430,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
           <h2>날짜별</h2>
           <p class="note" id="humanNote"></p>
           <div class="scroll"><table>
-            <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>무료로 봄</th><th>사주 열람</th><th>더 물어보기</th><th>결제</th><th>매출</th></tr></thead>
+            <thead><tr><th>날짜</th><th>방문</th><th>가입</th><th>무료로 봄</th><th>사주 열람</th><th>무냥이와 채팅</th><th>결제</th><th>매출</th></tr></thead>
             <tbody id="tDaily"></tbody>
           </table></div>
           <details class="fold">
@@ -676,47 +676,8 @@ const won = (n) => Number(n || 0).toLocaleString('ko-KR') + '원';
 const num = (n) => Number(n || 0).toLocaleString('ko-KR');
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g,
   (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
-// 「무냥이에게 더 물어보기」 질문. 없으면 화면에 ask:q_want 처럼 날것으로 나온다.
-const ASK_NAMES = {
-  q_think: '그 사람, 이달에 내 생각을 할까요?',
-  q_newlove: '그 사람 곁에 새 사람이 들어올 자리가 있나요?',
-  q_hour: '하루 중 언제 제 생각이 날까요?',
-  q_block: '막혀 있는 게 언제 풀릴까요?',
-  q_youare: '그 사람은 원래 어떤 사람인가요?',
-  q_youel: '그 사람에게 넘치는 것과 비어 있는 것은요?',
-  q_youpartner: '그 사람의 배우자 자리에는 무엇이 앉아 있나요?',
-  q_youtype: '그 사람과 결이 맞는 사람은 어떤 사람인가요?',
-  q_youluck: '그 사람은 지금 어떤 십 년을 지나고 있나요?',
-  q_want: '그 사람이 사실은 바라는 게 뭔가요?',
-  q_do: '연락한다면 첫 줄에 뭐라고 써야 하나요?',
-  q_dont: '지금 하면 오히려 멀어지는 행동은 뭔가요?',
-  q_days: '언제 보내야 읽힐까요?',
-  q_seeme: '그 사람 눈에 저는 어떻게 보였나요?',
-  q_iseeyou: '제 눈에 그 사람은 어떻게 보였나요?',
-  q_hits: '두 사람 글자가 어디서 맞물리고 어디서 부딪히나요?',
-  q_talk: '같은 말을 왜 다르게 듣나요?',
-  q_fill: '서로가 채워 주던 게 뭔가요?',
-  q_youyear: '올해 그 사람에게는 어떤 해인가요?',
-  q_yousinsal: '그 사람 사주에 걸려 있는 건 뭔가요?',
-  q_wonjin: '미워하면서도 왜 못 끊을까요?',
-  q_give: '누가 주고 누가 받기만 했나요?',
-  q_luckpair: '두 사람의 때가 지금 어긋나 있나요?',
-  q_tired: '가까워질수록 지치는 쪽은 누구인가요?',
-  q_meare: '저는 원래 어떤 사람인가요?',
-  q_meel: '저에게 넘치는 것과 비어 있는 것은요?',
-  q_loop: '제가 되풀이하는 자리는 어디인가요?',
-  q_seat: '제 배우자 자리에는 무엇이 앉아 있나요?',
-  q_partner: '저와 결이 맞는 사람은 어떤 사람인가요?',
-  q_charm: '제 사주에 사람을 끄는 힘이 있나요?',
-  q_sinsal: '평생 저를 따라다니는 기운은 무엇인가요?',
-  q_meluck: '제 앞의 십 년은 어디로 가나요?',
-  q_year: '올해는 저에게 어떤 해인가요?',
-  q_month: '올해 어느 달이 오르고 어느 달이 꺾이나요?',
-  q_strength: '제가 타고난 힘은 센 편인가요, 얕은 편인가요?',
-  q_void: '제가 채우지 못한 자리는 어디인가요?',
-  q_hidden: '겉으로 안 보이는 제 글자는 뭔가요?',
-  q_today: '오늘은 저에게 어떤 날인가요?'
-};
+// 🛑 **질문 이름표(`ASK_NAMES`)를 걷어냈다** (2026-09-13). 채팅을 상품 목록에서
+//    뺐더니 쓰는 곳이 없어졌다. 되살릴 일이 생기면 git 기록에 있다.
 // 🛑 **`products.js` 가 정본이다.** 이 화면은 그 파일을 못 읽어서 여기 적어 둔다.
 //    상품 이름을 바꾸면 `python tools/sync_admin_names.py` 로 다시 맞춘다 (2026-09-10).
 // 🛑 **`products.js` 가 정본이다.** 이 화면은 그 파일을 못 읽어서 여기 적어 둔다.
@@ -974,7 +935,7 @@ function paint() {
     ['가입', num(d.total.signups) + '명', [], ''],
     // 🛑 「더 물어보기」는 등불 30개짜리라 **돈이 안 들어온다.**
     //    같은 칸에 두면 「열람은 느는데 매출이 0」으로 읽힌다 (2026-09-13).
-    ['사주 열람', num(d.total.opens) + '번', [], '더 물어보기 ' + num(d.total.asks || 0) + '번은 따로'],
+    ['사주 열람', num(d.total.opens) + '번', [], '무냥이와 채팅 ' + num(d.total.asks || 0) + '번은 따로'],
     ['가입 전환율', pct(mem, uv), [], '방문 ' + num(uv) + '명 중'],
     ['결제 전환율', pct(buyers, mem), [], '회원 ' + num(mem) + '명 중 ' + num(buyers) + '명'],
   ]);
@@ -983,19 +944,14 @@ function paint() {
   //    깨져있어」). 손님이 직접 친 질문은 id 가 `free-<해시>` 라 이름표가 없어서
   //    `ask:free-01529cb…` 가 날것으로 스물몇 줄 깔렸다. 질문 내용은 우리가 안 갖고
   //    있고(브라우저가 만든다) **가지고 있어도 남의 사연이라 여기 뿌리지 않는다.**
-  const label = (r) => {
-    const k = r.product || '';
-    if (k.startsWith('ask:')) {
-      const id = k.slice(4);
-      if (ASK_NAMES[id]) return `더 물어보기 · ${ASK_NAMES[id]}`;
-      if (id.startsWith('free-')) return '더 물어보기 · 직접 쓴 질문';
-      return `더 물어보기 · ${id}`;
-    }
-    return NAMES[k] || k;
-  };
-  // 이름이 같아진 줄끼리 더한다 — 안 그러면 「직접 쓴 질문 1번」이 스물몇 줄 남는다
+  // 🛑 **채팅은 이 목록에서 뺀다** (2026-09-13 온해님 「더 물어보기 열람은 중요하지
+  //    않으니까 빼버려도 될 것 같은데?」). 여기는 **어느 사주가 팔렸나**를 보는 자리이고,
+  //    채팅은 사주가 아니라 등불 30개짜리 한 마디다. 손님 화면 이름도 「무냥이와 1:1 채팅」이다.
+  //    🛑 **숫자를 버리는 게 아니다** — 요약 카드와 날짜별 표에 따로 세고 있다.
+  const label = (r) => NAMES[r.product] || r.product || '';
   const bag = new Map();
   (d.byProduct || []).forEach((p) => {
+    if (String(p.product || '').startsWith('ask:')) return;
     const nm = label(p);
     bag.set(nm, (bag.get(nm) || 0) + (p.opens || 0));
   });
