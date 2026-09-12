@@ -379,8 +379,15 @@ def _visits() -> dict[str, dict[str, Any]]:
     """
     out = {}
     for day, d in _read(VISITS_JSON, {}).items():
-        src = dict(d.get("src", {}))
-        inside = int(src.pop("이어서 보기", 0) or 0)
+        # 🛑 **옛 이름까지 잡는다.** 2026-09-12 전 기록에는 「사이트 안」으로 적혀 있고
+        #    읽을 때 `tidy_source` 가 「이어서 보기」로 바꾼다. 바뀐 뒤 이름으로만
+        #    걷어냈더니 **9/12 것만 빠지고 그 전 기록은 그대로 남았다** (2026-09-13 실측).
+        src, inside = {}, 0
+        for k, v in (d.get("src") or {}).items():
+            if tidy_source(k) == "이어서 보기":
+                inside += int(v or 0)
+            else:
+                src[k] = v
         out[day] = {
             "pv": int(d.get("pv", 0)),
             "uv": max(0, len(d.get("uv", [])) - inside),
