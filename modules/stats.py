@@ -87,6 +87,9 @@ UTM_ALIAS = {
     # 옛 기록의 이름을 지금 이름으로 — 읽을 때 합쳐진다
     "사이트 안": "이어서 보기",
     "threads": "스레드", "instagram": "인스타그램", "ig": "인스타그램",
+    # 🛑 카드뉴스·공유카드에 박은 QR 로 들어온 사람 (2026-09-13 온해님
+    #    「QR 코드 찍고 들어온 사람이 몇 명인지 보이게 해줘」). 스레드와 갈라 둔다
+    "threads-qr": "스레드 QR", "qr": "QR",
     "tiktok": "틱톡", "youtube": "유튜브", "yt": "유튜브", "shorts": "유튜브",
     "dcinside": "디시인사이드", "디시": "디시인사이드", "dc": "디시인사이드",
     "naver": "네이버", "kakao": "카카오", "kakaotalk": "카카오",
@@ -497,14 +500,22 @@ def overview(days: int = 30) -> dict[str, Any]:
 
     start = (now - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     by_day: dict[str, dict[str, int]] = defaultdict(
-        lambda: {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0, "opens": 0})
+        lambda: {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
+                 "opens": 0, "asks": 0})
     for r in ch:
         by_day[r["day"]]["sales"] += r["price"]
         by_day[r["day"]]["charges"] += 1
     for d in su:
         by_day[d]["signups"] += 1
+    # 🛑 **「더 물어보기」를 사주 열람과 갈라 센다** (2026-09-13 온해님
+    #    「9/11 복채 내고 봄이 7인데 결제된 건 2,900원이 다야」).
+    #    둘 다 `owned` 에 쌓여서 한 칸에 섞여 있었다. 실측으로 90일 34건 중
+    #    **24건이 더 물어보기**였다 — 등불 30개짜리라 돈이 안 들어온다.
     for r in sp:
-        by_day[r["day"]]["opens"] += 1
+        if str(r.get("product", "")).startswith("ask:"):
+            by_day[r["day"]]["asks"] += 1
+        else:
+            by_day[r["day"]]["opens"] += 1
     for d, v in vis.items():
         by_day[d]["uv"] = v["uv"]
         by_day[d]["pv"] = v["pv"]
@@ -527,7 +538,8 @@ def overview(days: int = 30) -> dict[str, Any]:
     daily.reverse()
 
     def _sum(keep) -> dict[str, int]:
-        out = {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0, "opens": 0}
+        out = {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
+               "opens": 0, "asks": 0}
         for d, v in by_day.items():
             if not keep(d):
                 continue
@@ -579,7 +591,9 @@ def overview(days: int = 30) -> dict[str, Any]:
             "sales": sum(r["price"] for r in ch),
             "charges": len(ch),
             "signups": len(su),
-            "opens": len(sp),
+            # 🛑 사주 열람만. 「더 물어보기」는 `asks` 로 따로 센다 (2026-09-13)
+            "opens": len([r for r in sp if not str(r.get("product", "")).startswith("ask:")]),
+            "asks": len([r for r in sp if str(r.get("product", "")).startswith("ask:")]),
             "members": len(su),
             "legacy": len([m for m in members() if m["legacy"]]),
             "uv": sum(v["uv"] for v in vis.values()),
