@@ -3231,9 +3231,12 @@ def report_open(body: OpenBody, authorization: str | None = Header(default=None)
     if _is_free(user):
         # 주인은 등불을 깎지 않고 바로 연다. 사서 여는 손님과 같은 화면을 보기 위해서다.
         return {"ok": True, "spent": 0, "balance": 999999, "reopened": False, "unlimited": True}
-    # 단건 결제 상품은 등불로 사는 물건이 아니다. 결제로 이미 샀는지만 본다.
-    if lamps_ops.won_of(body.product.strip()):
-        if lamps_ops.owns(user["email"], body.product.strip(), body.pair.strip()):
+    # 🛑 **프리미엄만 결제 전용이다** (2026-09-13 온해님). 전에는 `won_of()` 로 갈랐는데
+    #    그 표(`PREMIUM_WON`)에 **일반 상품도 전부 들어 있어서** 결국 모든 상품이
+    #    결제 전용이 됐다. 가입 선물 등불 300개를 쥐고도 결제창만 보던 까닭이다.
+    prod = body.product.strip()
+    if prod in lamps_ops.PREMIUM_ONLY:
+        if lamps_ops.owns(user["email"], prod, body.pair.strip()):
             return {"ok": True, "spent": 0, "balance": lamps_ops.balance(user["email"]), "reopened": True}
         raise HTTPException(402, "이 상품은 등불이 아니라 결제로 열어요.")
     try:

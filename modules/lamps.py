@@ -125,10 +125,14 @@ def use_ticket(email: str, product: str, pair: str) -> dict:
     data = _read()
     acc = _account(data, email)
     led = acc.get("ledger", [])
+    # 🛑 **프리미엄은 이용권으로 못 연다** (2026-09-13 온해님). 전에는 막는 곳이
+    #    없어서 이용권 한 장으로 5만 9,800원짜리 대점이 열렸다.
+    if product in PREMIUM_ONLY:
+        raise ValueError("이 상품은 이용권으로 열 수 없어요. 복채를 내고 보셔야 해요.")
     left = (sum(1 for e in led if e.get("type") == "ticket")
             - sum(1 for e in led if e.get("type") == "ticket-use"))
     if left <= 0:
-        raise ValueError("무료 이용권이 없어요. 친구를 데려오시면 한 장 드려요.")
+        raise ValueError("무료 이용권이 없어요.")
     now = _now()
     expires = now + timedelta(days=OWNED_DAYS)
     if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
@@ -159,28 +163,55 @@ PACKS: dict[int, int] = {}
 #    「값표에 없으면 무료」로 판정하면 상품 id 에 오타가 난 순간 전부 무료가 된다.
 FREE_PRODUCTS = {"today"}
 
+# 🛑 **결제로만 여는 상품** (2026-09-13 온해님 「프리미엄은 결제로만 볼 수 있게 하고
+#    일반 상품들은 결제 또는 등불로 열 수 있게」). `products.js` 의 `premium: true` 와
+#    같은 목록이다 — **한쪽만 고치면 어긋난다.** `tools/check_lamp_price.py` 가 잡는다.
+# 🛑 `PREMIUM_WON` 은 이름과 달리 **프리미엄 목록이 아니다.** 결제할 수 있는 모든
+#    상품의 원화 값 표라서, 그걸로 프리미엄을 가려낼 수 없다.
+PREMIUM_ONLY = {"great", "full", "bond", "ox", "marry", "divorce", "secret",
+                # 관상 — 왕이 될 상 39,800 · 얼굴 전부 19,800 · 둘이 맞는 얼굴 29,800
+                "face_king", "face_all", "face_pair"}
+
+
 PRICES = {
-    # 혼자 보는 것
-    "solo": 59,
-    "god": 9,
-    "year": 49,
-    "charm": 49,
-    "luck": 59,
-    "money": 49,
-    "life": 79,
-    # 두 사람 — 시기
-    "week": 19,
-    "dday": 69,
-    # 두 사람 — 재회
-    "mind": 79,
-    "full": 98,
-    "bond": 89,
-    "again": 59,
-    "match": 79,
-    # 두 사람 — 결정
-    "ox": 89,
-    "cool": 49,
-    "marry": 95,
+    # 🛑 **등불 1개 = 50원어치로 친다** (2026-09-13 온해님). 상품 원화 값 ÷ 50 이다.
+    #    전에는 표가 원화와 따로 놀아서 같은 상품이 등불로는 **반값 이하**였고,
+    #    전생·환승·속마음 등 **9개는 값이 아예 없어** 등불로 열면 오류가 났다.
+    # 🛑 **프리미엄은 여기 넣지 않는다.** 결제로만 연다 (PREMIUM_WON).
+    # 🛑 **원화 값을 고치면 여기도 고친다.** `tools/check_lamp_price.py` 가 잡는다.
+    "past": 58,      # 2,900원
+    "god": 58,       # 2,900원
+    "solo": 256,     # 12,800원
+    "week": 36,      # 1,800원
+    "dday": 296,     # 14,800원
+    "newlove": 396,  # 19,800원
+    "think": 296,    # 14,800원
+    "loop": 396,     # 19,800원
+    "block": 296,    # 14,800원
+    "hour": 256,     # 12,800원
+    "first": 396,    # 19,800원
+    "mind": 396,     # 19,800원
+    "year": 196,     # 9,800원
+    "charm": 196,    # 9,800원
+    "luck": 256,     # 12,800원
+    "money": 196,    # 9,800원
+    "life": 396,     # 19,800원
+    "cool": 196,     # 9,800원
+    "again": 256,    # 12,800원
+    "match": 396,    # 19,800원
+    "bed": 296,      # 14,800원
+    "queer": 396,    # 19,800원
+    "eros": 296,     # 14,800원
+    # ── 관상 (2026-09-13) ──
+    "face_first": 60,  # 2,980원
+    "face_me": 116,    # 5,800원
+    "face_you": 116,   # 5,800원
+    "face_love": 116,  # 5,800원
+    "face_money": 116, # 5,800원
+    "face_flag": 120,  # 5,980원
+    "face_read": 100,  # 4,980원
+    "face_fix": 80,    # 3,980원
+    "face_luck": 60,   # 2,980원
 }
 
 # 프리미엄 — 등불로 사지 않는다. 그 자리에서 결제하고 연다.
@@ -481,6 +512,16 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
     expires = _add_lot(acc, WELCOME_LAMPS, WELCOME_DAYS, now, "welcome",
                        f"가입 선물 · {via}" if via else "가입 선물")
 
+    # 🛑 **가입하면 이용권 한 장을 드린다** (2026-09-13 온해님 「가입하면 프리미엄을
+    #    제외한 모든 상품을 무료 이용권으로 열어 볼 수 있게」). 그전에는 등불 300개만
+    #    줬는데 **그 등불로는 사주를 열 수 없어서**(더 물어보기 전용) 가입자의 82%가
+    #    아무것도 못 열고 나갔다. 한 편을 열어 본 사람만 다음 편을 산다.
+    acc.setdefault("ledger", []).append({
+        "at": _iso(now), "type": "ticket", "lamps": 0, "price": 0,
+        "note": "가입 선물 · 무료 이용권",
+        "expires": _iso(now + timedelta(days=TICKET_DAYS)),
+    })
+
     bonus = 0
     ticket = 0
     inviter = _email_of_code(data, ref) if ref else None
@@ -493,15 +534,10 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
                 bonus = REFER_IN_LAMPS
                 _add_lot(acc, REFER_IN_LAMPS, REFER_DAYS, now, "refer_in", "친구 따라 들어온 선물")
                 _add_lot(iacc, REFER_LAMPS, REFER_DAYS, now, "refer", "친구를 데려온 선물")
-                # 🛑 **무료 이용권 한 장도 같이** (2026-09-11 온해님). 등불은 더 묻는
-                #    자리에만 쓰는데, 이용권은 **리포트 한 편**을 통째로 연다.
-                #    데려온 쪽에만 준다 — 수고한 사람에게 가는 값이다.
-                iacc.setdefault("ledger", []).append({
-                    "at": _iso(now), "type": "ticket", "lamps": 0, "price": 0,
-                    "note": "친구를 데려온 선물 · 무료 이용권",
-                    "expires": _iso(now + timedelta(days=TICKET_DAYS)),
-                })
-                ticket = 1
+                # 🛑 **이용권은 더 이상 안 준다** (2026-09-13 온해님 「친구 데려와도
+                #    무료 이용권 주는 게 아니라 등불로도 열 수 있게」). 이제 등불로
+                #    사주를 열 수 있어서, 데려온 값은 **등불 120개**로 치른다.
+                #    이용권은 **가입 선물**로 옮겼다.
 
     _write(data)
     return {
