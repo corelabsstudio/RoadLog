@@ -2112,6 +2112,32 @@ def admin_welcome_again(authorization: str | None = Header(default=None),
     return out
 
 
+@app.post("/api/admin/lamps/pay-regift")
+def admin_pay_regift(authorization: str | None = Header(default=None),
+                     apply: bool = False):
+    """복채를 내신 분께 결제액 ÷ 50 만큼 등불을 맞춰 드린다 (2026-09-13 온해님).
+
+    🛑 `apply=false` 가 기본이다. 먼저 세어 보고 넣는다.
+    """
+    _require_admin(authorization)
+    out = lamps_ops.pay_regift(apply=apply)
+    if apply:
+        for r in out.get("rows", []):
+            if not r.get("more"):
+                continue
+            try:
+                inbox.push(
+                    r["email"],
+                    "등불 %d개를 더 드렸어요" % int(r["more"]),
+                    "복채를 내 주신 만큼 등불을 다시 맞춰 드렸어요. "
+                    "프리미엄만 빼고 사주를 등불로도 열어 보실 수 있어요.",
+                    key="pay-regift", icon="lamp",
+                )
+            except Exception as e:                        # noqa: BLE001
+                log.error("복채 소급 알림 실패 (%s): %s", r.get("email"), e)
+    return out
+
+
 @app.post("/api/admin/refund")
 def admin_refund(body: RefundBody, authorization: str | None = Header(default=None)):
     admin = _require_admin(authorization)

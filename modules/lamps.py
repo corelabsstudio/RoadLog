@@ -24,6 +24,9 @@ from .config import DATA_DIR
 LAMPS_JSON = Path(DATA_DIR) / "lamps.json"
 
 LAMP_WON = 100          # 등불 1개 = 100원
+# 🛑 **상품을 등불로 열 때의 셈** (2026-09-13 온해님 「등불 50원으로 계산해서」).
+#    `PRICES` 가 이 값으로 매겨져 있다 — 상품 원화 ÷ 50.
+WON_PER_LAMP_SPEND = 50
 EXPIRE_DAYS = 365       # 충전분 유효기간
 OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
@@ -721,6 +724,53 @@ def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
         _write(data)
     return {"applied": bool(apply), "people": len({r["email"] for r in rows}),
             "count": len(rows), "lamps": total, "rows": rows[:50]}
+
+
+def pay_regift(*, apply: bool = False) -> dict:
+    """복채를 내신 분께 **결제액 ÷ 50** 만큼 등불을 맞춰 드린다 (2026-09-13 온해님).
+
+    왜: 등불 1개를 **50원어치**로 정했으니, 낸 만큼 돌려받는 셈이 맞는지 다시 본다.
+    이미 받은 결제 선물(`premium-gift`)이 그보다 많으면 **더 드리지 않는다** —
+    지금 계단이 구간에 따라 더 후하기 때문이다.
+
+    🛑 **실제로 돈이 들어온 것만 센다** (`REAL_PAY_FROM` 이후). 그전은 테스트 채널이라
+       포트원에 PAID 로 찍혀도 입금이 0원이었다.
+    🛑 한 사람에게 **한 번만** 간다 — `pay-regift` 표시를 본다.
+    """
+    data = _read()
+    now = _now()
+    rows, total = [], 0
+    for email, acc in data.items():
+        if not isinstance(acc, dict) or "@" not in str(email):
+            continue
+        led = acc.setdefault("ledger", [])
+        if any(e.get("type") == "pay-regift" for e in led):
+            continue
+        paid = sum(int(e.get("price") or 0) for e in led
+                   if e.get("type") in ("charge", "premium")
+                   and str(e.get("at", ""))[:10] >= REAL_PAY_FROM)
+        if not paid:
+            continue
+        want = paid // WON_PER_LAMP_SPEND
+        # 🛑 **원장에서 찾는다.** `lots` 에는 종류가 안 남는다 — `_add_lot` 이 kind 를
+        #    `ledger` 에만 적는다. lots 에서 찾으면 늘 0 이라 **두 배로 나간다**.
+        had = sum(int(e.get("lamps") or 0) for e in led
+                  if e.get("type") == "premium-gift")
+        more = want - had
+        rows.append({"email": email, "paid": paid, "want": want, "had": had,
+                     "more": max(0, more)})
+        if more > 0:
+            total += more
+            if apply:
+                _add_lot(acc, more, GIFT_DAYS, now, "pay-regift",
+                         "복채에 맞춰 더 드리는 등불")
+        if apply and more <= 0:
+            # 더 드릴 것이 없어도 **다시 세지 않게** 표시만 남긴다
+            led.append({"at": _iso(now), "type": "pay-regift", "lamps": 0,
+                        "price": 0, "note": "이미 넉넉히 받으심"})
+    if apply and rows:
+        _write(data)
+    return {"applied": bool(apply), "people": len(rows), "lamps": total, "rows": rows[:50]}
 
 
 def welcome_again(*, apply: bool = False) -> dict:
