@@ -723,6 +723,48 @@ def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
             "count": len(rows), "lamps": total, "rows": rows[:50]}
 
 
+def welcome_again(*, apply: bool = False) -> dict:
+    """이미 가입한 분들께 **무료 이용권 1장 + 등불 300개**를 소급한다.
+
+    왜: 2026-09-13 온해님 「가입한 사람들 전원에게 무료 이용권 1장과 등불 300개」.
+    그전 가입자는 등불 300개만 받았는데 **그 등불로는 사주를 열 수 없었고**
+    (더 물어보기 전용), 이용권은 **친구를 데려온 사람에게만** 갔다. 그래서
+    가입자의 82%가 아무것도 못 열고 나갔다.
+
+    🛑 **한 사람에게 한 번만** 간다 — 원장에 `welcome-again` 이 있으면 건너뛴다.
+    🛑 **관리자는 뺀다.** 손님에게 가는 선물이다.
+    🛑 `apply=False` 면 **누구에게 얼마가 갈지 세어만 본다.** 먼저 보고 넣는다.
+    """
+    data = _read()
+    now = _now()
+    rows, given = [], 0
+    for email, acc in data.items():
+        if not isinstance(acc, dict) or "@" not in str(email):
+            continue
+        if str(email).endswith("@roadlog.local"):          # 관리자 계정
+            continue
+        led = acc.setdefault("ledger", [])
+        if any(e.get("type") == "welcome-again" for e in led):
+            continue
+        tickets_now = (sum(1 for e in led if e.get("type") == "ticket")
+                       - sum(1 for e in led if e.get("type") == "ticket-use"))
+        rows.append({"email": email, "ticket_now": tickets_now,
+                     "balance_now": sum(l["remain"] for l in _live_lots(acc, now))})
+        given += 1
+        if apply:
+            _add_lot(acc, WELCOME_LAMPS, WELCOME_DAYS, now, "welcome-again",
+                     "다시 드리는 가입 선물")
+            led.append({
+                "at": _iso(now), "type": "ticket", "lamps": 0, "price": 0,
+                "note": "다시 드리는 가입 선물 · 무료 이용권",
+                "expires": _iso(now + timedelta(days=TICKET_DAYS)),
+            })
+    if apply and rows:
+        _write(data)
+    return {"applied": bool(apply), "people": given,
+            "lamps": given * WELCOME_LAMPS, "tickets": given, "rows": rows[:100]}
+
+
 def refund(email: str, payment_id: str, *, why: str = "") -> dict:
     """돌려준 것을 원장에 남기고, 열어 둔 리포트를 닫는다 (2026-09-11).
 

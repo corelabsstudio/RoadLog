@@ -2085,6 +2085,17 @@ def admin_regift(body: RegiftBody, authorization: str | None = Header(default=No
     return got
 
 
+@app.post("/api/admin/lamps/welcome-again")
+def admin_welcome_again(authorization: str | None = Header(default=None),
+                        apply: bool = False):
+    """이미 가입한 분들께 이용권 1장 + 등불 300개를 소급 (2026-09-13 온해님).
+
+    🛑 `apply=false` 가 기본이다. **먼저 세어 보고** 넣는다.
+    """
+    _require_admin(authorization)
+    return lamps_ops.welcome_again(apply=apply)
+
+
 @app.post("/api/admin/refund")
 def admin_refund(body: RefundBody, authorization: str | None = Header(default=None)):
     admin = _require_admin(authorization)
