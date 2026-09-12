@@ -672,19 +672,21 @@ def _welcome_inbox(email: str, gift: dict) -> None:
     """가입한 분께 무엇을 드렸는지 알림함에 남긴다."""
     given = gift.get("given", 0)
     if given:
+        # 🛑 **이용권을 먼저 알린다** (2026-09-13). 전에는 등불만 알렸는데, 그 등불로는
+        #    사주를 열 수 없어서(더 물어보기 전용) 받고도 쓸 데를 못 찾았다.
         inbox.push(
             email,
-            "무냥이가 등불 %d개를 드렸어요" % given,
-            "리포트를 보다가 궁금한 게 생기면 무냥이한테 물어보실 수 있어요. "
-            "한 번 물을 때마다 등불이 조금씩 들어가요.",
+            "무료 이용권 한 장과 등불 %d개를 드렸어요" % given,
+            "이용권으로 사주 한 편을 복채 없이 열어 보실 수 있어요. "
+            "등불로도 열 수 있고, 읽다가 궁금한 걸 무냥이한테 물어볼 때도 써요.",
             key="welcome", icon="lamp",
         )
     if gift.get("referred"):
         inbox.push(
             email,
             "친구 따라 들어오셔서 등불 %d개를 더 드렸어요" % int(gift.get("referred") or 0),
-            "데려오신 분께도 등불과 무료 이용권을 드렸어요. 고맙습니다. "
-            "친구를 데려오시면 등불 120개와 이용권 한 장을 받으실 수 있어요.",
+            "데려오신 분께도 등불을 드렸어요. 고맙습니다. "
+            "친구를 데려오시면 등불 120개를 받으실 수 있어요 — 사주를 여는 데도 써요.",
             key="refer_in", icon="lamp",
         )
     # 선착순 자리를 받으셨는지
@@ -2093,7 +2095,21 @@ def admin_welcome_again(authorization: str | None = Header(default=None),
     🛑 `apply=false` 가 기본이다. **먼저 세어 보고** 넣는다.
     """
     _require_admin(authorization)
-    return lamps_ops.welcome_again(apply=apply)
+    out = lamps_ops.welcome_again(apply=apply)
+    # 🛑 **넣기만 하면 아무도 모른다.** 다음에 들어오실 때 보시도록 알림함에 남긴다.
+    if apply:
+        for r in out.get("rows", []):
+            try:
+                inbox.push(
+                    r["email"],
+                    "무료 이용권 한 장과 등불을 더 드렸어요",
+                    "이용권으로 사주 한 편을 복채 없이 열어 보실 수 있어요. "
+                    "프리미엄만 빼고 어느 편이든 고르시면 돼요.",
+                    key="welcome-again", icon="lamp",
+                )
+            except Exception as e:                        # noqa: BLE001
+                log.error("소급 알림 실패 (%s): %s", r.get("email"), e)
+    return out
 
 
 @app.post("/api/admin/refund")
