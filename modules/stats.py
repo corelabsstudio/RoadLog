@@ -254,13 +254,10 @@ def live(minutes: int = LIVE_MIN) -> dict[str, Any]:
     with _LIVE_LOCK:
         rows = [v for v in _LIVE.values() if v[0] >= cut]
     mem = sum(1 for r in rows if r[1])
-    by: dict[str, int] = {}
-    for r in rows:
-        k = (r[2] if len(r) > 2 else "") or "기타"
-        by[k] = by.get(k, 0) + 1
+    # 🛑 기기별 쪼갠 값은 **안 내려보낸다** (2026-09-12 온해님 「없애 그냥」).
+    #    화면에서 걷어냈으니 여기서도 셈하지 않는다.
     return {"all": len(rows), "members": mem, "guests": len(rows) - mem,
-            "minutes": minutes,
-            "by": sorted(by.items(), key=lambda x: -x[1])[:5]}
+            "minutes": minutes}
 
 
 # ── 오늘 들어온 회원 (2026-09-12 온해님) ────────────────────────
