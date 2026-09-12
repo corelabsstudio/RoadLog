@@ -192,13 +192,20 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
     utm = " ".join(str(utm or "").split())[:24]
     campaign = " ".join(str(campaign or "").split())[:32]
     src = tidy_source(utm) if utm else source_of(ref, host)
+    # 🛑 **사이트 안에서 옮겨 간 것은 방문자로 세지 않는다** (2026-09-13 온해님
+    #    「방문자로 세어지는 게 오류잖아」). 리퍼러가 우리 사이트라는 것은 **이미
+    #    사이트에 있던 사람**이라는 뜻이다. 밖에서 온 사람이면 리퍼러가 바깥이다.
+    #    사람을 IP+브라우저로 세다 보니, 이동 중에 IP 가 바뀌면 같은 사람이
+    #    **새 방문자로 한 번 더** 잡혔다. 방문자 수가 그만큼 부풀려져 있었다.
+    # 🛑 **페이지 수(pv)는 그대로 센다** — 그 쪽을 본 것은 맞다.
+    inside = (not utm) and src == "이어서 보기"
     with _LOCK:
         data = _read(VISITS_JSON, {})
         d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
         d.setdefault("src", {})
         d.setdefault("ua", {})
         d["pv"] = int(d.get("pv", 0)) + 1
-        if fp not in d["uv"]:
+        if not inside and fp not in d["uv"]:
             d["uv"].append(fp)
             # 유입경로·기기는 그날 처음 온 사람만 센다 — 안 그러면 새로고침이 다 잡힌다
             d["src"][src] = int(d["src"].get(src, 0)) + 1
@@ -363,12 +370,21 @@ def forget_visits(day: str | None = None) -> int:
 
 
 def _visits() -> dict[str, dict[str, Any]]:
+    """읽을 때 **사이트 안 이동을 걷어낸다** (2026-09-13 온해님 「기존에 이어서 보기로
+    카운트된 거 다 빼버리고 정확한 방문자수만 보이게 해봐」).
+
+    2026-09-13 전 기록에는 그 사람들이 **방문자(uv)에 섞여 있다.** 어느 지문이
+    그것인지는 안 남지만 **그날 몇 명인지는 `src` 에 남아 있어서**, 그만큼 빼면
+    수가 맞는다. 🛑 **파일은 안 고친다** — 읽을 때만 뺀다. 되돌릴 수 있어야 한다.
+    """
     out = {}
     for day, d in _read(VISITS_JSON, {}).items():
+        src = dict(d.get("src", {}))
+        inside = int(src.pop("이어서 보기", 0) or 0)
         out[day] = {
             "pv": int(d.get("pv", 0)),
-            "uv": len(d.get("uv", [])),
-            "src": dict(d.get("src", {})),
+            "uv": max(0, len(d.get("uv", [])) - inside),
+            "src": src,
             "camp": dict(d.get("camp", {})),
             "tap": dict(d.get("tap", {})),
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
