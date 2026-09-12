@@ -940,7 +940,13 @@ function paint() {
   $('asOf').textContent = new Date().toLocaleString('ko-KR');
 
   // 잔물결·어제 대비는 날짜별 자료에서 바로 뽑는다. 없는 값은 안 그린다.
-  const dl = d.daily || [];
+  // 🛑 **서버는 `daily` 를 최신이 맨 앞(내림차순)으로 준다** (`stats.py` 의 `daily.reverse()`).
+  //    그런데 아래 `prev`·`last` 는 **오래된 것이 앞**이라고 보고 짜여 있었다. 그래서
+  //    「어제보다」가 **엿새 전과 비교**되고 잔물결도 거꾸로 그려졌다 —
+  //    2026-09-12 에 온해님이 「오늘 방문자 어제보다 33명 줄었는데 늘었다고 나온다」로
+  //    잡으셨다(어제 99명·오늘 66명인데 09/06 의 42명과 견주고 있었다).
+  //    🛑 여기서 한 번 뒤집어 **오래된 것부터**로 맞춘다. 아래 셈은 그대로 둔다.
+  const dl = (d.daily || []).slice().reverse();
   const last = (k, n) => dl.slice(-n).map((x) => x[k] || 0);
   const prev = (k) => (dl.length > 1 ? dl[dl.length - 2][k] || 0 : null);
   stats($('statBox'), [
