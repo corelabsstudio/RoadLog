@@ -301,13 +301,25 @@ def seen_member(email: str) -> None:
         _write(SEEN_JSON, data)
 
 
+# 🛑 **20초만 기억해 둔다** (2026-09-13 온해님 「5초마다 서버를 두드리는 게 문제가 되나?」).
+#    화면이 5초마다 묻는데 이 값은 **하루 단위**라 그때마다 디스크를 읽을 이유가 없다.
+#    접속 인원은 메모리에서 세므로, 이걸 캐시하면 5초짜리 요청이 파일을 아예 안 만진다.
+_SEEN_CACHE: dict[str, Any] = {"at": 0.0, "days": 0, "out": []}
+SEEN_CACHE_SEC = 20
+
+
 def seen_days(days: int = 2) -> list[dict[str, Any]]:
     """최근 며칠, 날짜별로 들어온 회원 수. 오늘이 맨 앞이다."""
+    now = datetime.now(KST).timestamp()
+    if (_SEEN_CACHE["days"] == days
+            and now - float(_SEEN_CACHE["at"]) < SEEN_CACHE_SEC):
+        return _SEEN_CACHE["out"]
     data = _read(SEEN_JSON, {})
     out = []
     for i in range(days):
         d = (now_kst() - timedelta(days=i)).strftime("%Y-%m-%d")
         out.append({"day": d, "members": len(data.get(d, []))})
+    _SEEN_CACHE.update({"at": now, "days": days, "out": out})
     return out
 
 
