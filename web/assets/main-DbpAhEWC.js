@@ -63,7 +63,7 @@ Minimum version required to store current data is: `+c+`.
         <div class="shelf-txt"><b>${e.name}</b><span>${e.line}</span></div>
         <div class="shelf-buy"><span class="won">${e.free?`무료`:`<s>${og(e.list)}</s><em>${Math.round((1-e.price/e.list)*100)}% 할인</em>`}</span>
         <div class="btns"><button type="button" class="btn btn-sm" data-open="${e.id}"${e.free?` data-free="1"`:` data-won="${og(e.price)}"`}>${e.free?`무료로 보기`:`${Ug(e)?`<span class="was">${og(e.was)}</span>`:``}${og(e.price)} 복채로 열기`}</button>${e.free||e.premium?``:`
-        <button type="button" class="btn btn-sm btn-lamp" data-lampopen="${e.id}" data-need="${Math.round(e.price/50)}"><img src="${_n}" alt="" />등불 ${Math.round(e.price/50)}개로 열기</button>`}</div></div>
+        <button type="button" class="btn btn-sm btn-lamp" data-lampopen="${e.id}" data-need="${Math.round(e.price/50)}"><img src="${_n}" alt="" />등불 ${Math.round(e.price/50)}개로 열기</button>`}${e.free?``:`<p class="shelf-gift">복채를 내시면 등불 ${Sd(e)}개도 드려요</p>`}</div></div>
       </div>
       <details class="toc">
         <summary>${e.sections.length}개 항목 <span>무엇이 들어 있나</span></summary>
