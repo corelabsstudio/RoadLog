@@ -96,6 +96,7 @@ from modules import reviews as reviews_ops
 # 손님이 쓴 말이 봐 달라는 것인지 그냥 건네는 말인지 가른다 (2026-09-11 3단계)
 from modules import intent as intent_ops
 from modules import saju_writer
+from modules import dream as dream_ops
 from modules.rate_limit import (
     AUTH_LIMIT,
     AUTH_WINDOW,
@@ -3248,6 +3249,123 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
     return {"ok": True, "text": _gwan_veil(out["text"], paid), "paid": paid,
             "tokens": out.get("tokens"), "card": card if paid else {},
             "left": max(0, GWAN_TRIES - len(_gwan_seen(user["email"], pair)))}
+
+
+# ── 꿈 해몽 (2026-09-13 온해님 기획) ─────────────────────
+# 상품 정본은 앞단 `dream.js`. 여기는 **쓰고, 세고, 잘라서** 준다.
+# 🛑 꿈 스캔은 사주 미리보기와 **다른 칸**으로 센다 — 같이 세면 꿈 한 번 본 손님이
+#    사주 맛보기를 잃는다. 미끼가 미끼를 잡아먹는다 (FREE_DAILY_CAP 과 같은 이유).
+
+DREAM_DAILY_CAP = 5         # 꿈 스캔을 하루에 새로 뽑는 횟수. 한 번에 1원 안쪽
+DREAM_PRODUCT = "dream_saju"
+# 🛑 **값을 아직 안 정했다** (2026-09-13 온해님 「가격 정하지 말고 만들어 봐」).
+#    정하기 전에는 누구도 복채로 못 연다 — 주인·무료 이용권만 끝까지 본다.
+#    정하면 `lamps.PREMIUM_WON` 에 값을 넣고 이것을 True 로 바꾼다.
+DREAM_PRICE_SET = False
+
+
+class DreamScanBody(BaseModel):
+    keywords: list[str] = []
+    text: str = ""
+    name: str = ""
+
+
+class DreamReadBody(BaseModel):
+    text: str = ""
+    keywords: list[str] = []
+    # 사주 값 — 생년월일은 앞단이 계산해서 **여덟 글자와 개수만** 보낸다 (사주 상품과 같다)
+    saju: dict = {}
+    pair: str = ""
+    sections: list[str] = []
+    name: str = ""
+    # 스캔에서 매긴 등급. 같은 꿈이 스캔과 리포트에서 다른 등급으로 나오지 않게 넘긴다
+    grade: str = ""
+
+
+_DREAM_FIELDS = ("grade", "label", "title", "punch", "read", "tip")
+
+
+@app.post("/api/dream/scan")
+def dream_scan(body: DreamScanBody, authorization: str | None = Header(default=None)):
+    """꿈 스캔 — 무료. 등급·별명·한 줄 팩폭·짧은 풀이."""
+    user = _token_user(authorization)
+    try:
+        kw, text = dream_ops.clean_input(body.keywords, body.text)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    name = (body.name or "").strip()[:20]
+    key = dream_ops.key_of("scan", ",".join(sorted(kw)), text, name)
+    # 🛑 **같은 꿈은 같은 등급** — 저장분을 준다. 한도도 안 깎는다.
+    #    안 그러면 S 가 나올 때까지 다시 누르고, 등급이 아무 뜻이 없어진다
+    try:
+        prev = saju_writer.load("dream_scan", key)
+    except ValueError:
+        prev = None
+    if prev and prev.get("ver") == dream_ops.VER and prev.get("grade"):
+        return {"ok": True, "again": True, **{k: prev.get(k, "") for k in _DREAM_FIELDS}}
+    if not saju_writer.ready():
+        raise HTTPException(503, "지금은 무냥이가 못 읽어요. 잠시 뒤에 다시 해 주세요.")
+    if not _is_free(user):
+        _preview_quota(user["email"], kind="dream", cap=DREAM_DAILY_CAP,
+                       msg="오늘 꿈 스캔은 여기까지예요. 내일 0시부터 다시 열려요.")
+    try:
+        out = dream_ops.scan(kw, text, name=name)
+    except Exception as e:                            # noqa: BLE001
+        print("[dream/scan] 실패:", repr(e)[:300])
+        raise HTTPException(502, "꿈을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
+    try:
+        saju_writer.save("dream_scan", key, {**out, "ver": dream_ops.VER, "kind": "dream"})
+    except Exception:                                 # noqa: BLE001
+        pass                                          # 저장을 못 해도 결과는 나가야 한다
+    return {"ok": True, **{k: out[k] for k in _DREAM_FIELDS}}
+
+
+@app.post("/api/dream/read")
+def dream_read(body: DreamReadBody, authorization: str | None = Header(default=None)):
+    """꿈 사주 리포트. 복채 전에는 첫 자리만 준다."""
+    user = _token_user(authorization)
+    pair = (body.pair or "").strip()
+    if not pair or not body.saju:
+        raise HTTPException(400, "사주 값이 필요합니다.")
+    try:
+        kw, text = dream_ops.clean_input(body.keywords, body.text)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if len(text) < 10:
+        raise HTTPException(400, "꿈 이야기를 한두 줄만 더 적어 주세요.")
+    free = _is_free(user)
+    paid = free or (DREAM_PRICE_SET and lamps_ops.owns(user["email"], DREAM_PRODUCT, pair))
+    key = dream_ops.key_of("read", pair, ",".join(sorted(kw)), text, (body.grade or "").upper())
+    try:
+        prev = saju_writer.load(DREAM_PRODUCT, key)
+    except ValueError:
+        prev = None
+    if prev and prev.get("ver") == dream_ops.VER and prev.get("text"):
+        g = prev.get("grade", "B")
+        return {"ok": True, "again": True, "paid": paid, "priceSet": DREAM_PRICE_SET,
+                "grade": g, "label": dream_ops.GRADES.get(g, ""),
+                "text": dream_ops.veil(prev["text"], paid)}
+    if not saju_writer.ready():
+        raise HTTPException(503, "지금은 무냥이가 못 읽어요. 잠시 뒤에 다시 해 주세요.")
+    # 🛑 **복채 전 맛보기는 사주 미리보기와 같은 한도**를 쓴다 — 리포트 한 편 원가가 나가는 자리다
+    if not paid:
+        _preview_quota(user["email"])
+    try:
+        out = dream_ops.read(text, body.saju, body.sections, keywords=kw,
+                             name=(body.name or "").strip(), grade=body.grade or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                            # noqa: BLE001
+        print("[dream/read] 실패:", repr(e)[:300])
+        raise HTTPException(502, "꿈을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
+    try:
+        saju_writer.save(DREAM_PRODUCT, key, {"text": out["text"], "grade": out["grade"],
+                                              "ver": dream_ops.VER, "kind": "dream"})
+    except Exception:                                 # noqa: BLE001
+        pass
+    return {"ok": True, "paid": paid, "priceSet": DREAM_PRICE_SET,
+            "grade": out["grade"], "label": dream_ops.GRADES[out["grade"]],
+            "text": dream_ops.veil(out["text"], paid)}
 
 
 class ReferBody(BaseModel):

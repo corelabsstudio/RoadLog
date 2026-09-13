@@ -31,8 +31,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-BiuN1wNG.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-BwLDtnf2.css">
+  <script type="module" crossorigin src="/assets/main-C9Zfl1JY.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Dw_BJZlh.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -145,6 +145,16 @@
     <svg class="gate-gwan-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4.5 13.5 10 8 15.5"/></svg>
   </button>
 
+  <!-- 꿈 해몽으로 가는 문 (2026-09-13 온해님 기획). 관상 문과 같은 모양으로 그 밑에 둔다 -->
+  <button type="button" class="gate-gwan gate-dream" id="dreamBtn">
+    <img class="gate-gwan-face" src="/assets/face-D1JUG1d8.webp" alt="" aria-hidden="true" />
+    <span class="gate-gwan-txt">
+      <b id="dreamGateTitle">어젯밤 꿈 스캔하기</b>
+      <em id="dreamGateSub">꿈해몽 &middot; 무료</em>
+    </span>
+    <svg class="gate-gwan-arrow" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4.5 13.5 10 8 15.5"/></svg>
+  </button>
+
   <!-- 🛑 **친구를 많이 데려온 분 세 줄이 한 자리에서 돌아간다** (2026-09-11 온해님
        「굴림판 같은 모습으로 1위 다음 2위 다음 3위, 자리 차지를 최대한 줄이자」).
        한 줄 높이만 쓴다 — 셋을 나란히 깔면 배너와 상품 사이가 통째로 밀린다.
@@ -171,6 +181,95 @@
   </div>
 
   <!-- 관상 — 사주와 결은 같게 두되 무늬(돋보기)와 화자(관멍이)로 가른다 -->
+  <!-- 꿈 해몽 화면 (2026-09-13 온해님 기획). 속은 dream.js 가 채운다.
+       🛑 사주 폼(pairForm) 밖이다. 생년월일 굴림판만 `form="pairForm"` 으로 빌려 쓴다 —
+          굴림판 코드가 pairForm.elements 로 값을 찾기 때문이다. -->
+  <div class="view view-dream" id="viewDream" hidden>
+    <div class="dream-wrap">
+      <button type="button" class="back" id="dreamBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>사주로 돌아가기</button>
+
+      <header class="dream-head">
+        <p class="dream-kicker" id="dreamKicker">무냥이 꿈해몽 · 무료</p>
+        <h2 id="dreamQ">어젯밤 꿈, 길몽일까 개꿈일까?</h2>
+        <p class="dream-sub" id="dreamLine"></p>
+      </header>
+
+      <section class="dream-box" id="dreamPickBox">
+        <div class="dream-row"><h3 id="dreamPickHead">꿈에서 본 것</h3><span class="dream-n" id="dreamPickN">0 / 3</span></div>
+        <div class="dream-words" id="dreamWords"></div>
+        <div class="dream-row"><h3 id="dreamTextHead">한 줄로 적기</h3><span class="dream-n" id="dreamCount">0 / 300</span></div>
+        <textarea id="dreamText" class="dream-text" rows="3" maxlength="300"
+                  placeholder="예) 스레드에 올린 글이 하루 만에 조회수 4200만을 찍었어"></textarea>
+        <p class="form-error" id="dreamErr" hidden></p>
+        <button type="button" class="btn" id="dreamScanBtn">꿈 스캔하기</button>
+        <p class="dream-note" id="dreamScanNote">하루 다섯 번까지 · 같은 꿈은 같은 등급이 나와요</p>
+      </section>
+
+      <section class="dream-result" id="dreamResult" hidden>
+        <div class="dream-grade-row">
+          <b class="dream-grade" id="dreamGrade">S</b><span class="dream-grade-unit">급</span>
+          <div class="dream-grade-txt">
+            <span class="dream-label" id="dreamLabel"></span>
+            <strong id="dreamTitle"></strong>
+          </div>
+        </div>
+        <div class="dream-punch">
+          <img src="/assets/face-D1JUG1d8.webp" alt="무냥이" class="talk-face" />
+          <p id="dreamPunch"></p>
+        </div>
+        <p class="dream-read" id="dreamRead"></p>
+        <div class="dream-tip"><span id="dreamTipHead">오늘 해 볼 것</span><p id="dreamTip"></p></div>
+
+        <div class="share dream-share">
+          <canvas id="dreamCanvas" width="1080" height="1350" aria-label="꿈 등급 공유 카드 미리보기"></canvas>
+          <div class="share-btns">
+            <button type="button" class="btn btn-line" id="dreamSave">이미지로 저장</button>
+            <button type="button" class="btn" id="dreamShare">공유하기</button>
+          </div>
+          <p class="share-note" id="dreamShareNote" hidden></p>
+        </div>
+        <button type="button" class="dream-again" id="dreamAgain">다른 꿈 스캔하기</button>
+      </section>
+
+      <section class="dream-box dream-deep" id="dreamDeep" hidden>
+        <p class="dream-kicker" id="dreamDeepKicker">꿈 사주</p>
+        <h3 class="dream-deep-q" id="dreamDeepQ"></h3>
+        <p class="dream-sub" id="dreamDeepLine"></p>
+        <ol class="dream-toc" id="dreamDeepToc"></ol>
+
+        <div class="dream-row"><h3 id="dreamDeepTextHead">꿈 이야기</h3></div>
+        <textarea id="dreamDeepText" class="dream-text" rows="4" maxlength="300"
+                  placeholder="꿈에서 무슨 일이 있었는지 두세 줄로 적어 주세요"></textarea>
+
+        <div class="dream-row"><h3 id="dreamBirthHead">내 생년월일</h3></div>
+        <div class="wheel" data-wheel="dreamDate">
+          <div class="wheel-col" data-part="y" tabindex="0" role="listbox" aria-label="연도"></div>
+          <div class="wheel-col" data-part="m" tabindex="0" role="listbox" aria-label="월"></div>
+          <div class="wheel-col" data-part="d" tabindex="0" role="listbox" aria-label="일"></div>
+          <div class="wheel-line" aria-hidden="true"></div>
+        </div>
+        <input type="hidden" name="dreamDate" form="pairForm" value="1996-03-14" />
+        <input type="hidden" id="dreamCalIn" value="solar" />
+        <div class="pick pick-2" id="dreamCal">
+          <button type="button" data-val="solar" class="on">양력</button>
+          <button type="button" data-val="lunar">음력</button>
+        </div>
+        <input type="hidden" id="dreamSexIn" value="female" />
+        <div class="pick pick-2" id="dreamSex">
+          <button type="button" data-val="female" class="on">여자</button>
+          <button type="button" data-val="male">남자</button>
+        </div>
+        <p class="dream-note" id="dreamPrivacy">생년월일은 이 기기에서만 계산하고 서버로 보내지 않아요.</p>
+        <p class="form-error" id="dreamDeepErr" hidden></p>
+        <button type="button" class="btn" id="dreamDeepBtn">꿈 사주 보기</button>
+
+        <div class="dream-report" id="dreamReport" hidden>
+          <div id="dreamReportBody"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
   <div class="view view-gwansang" id="viewGwansang" hidden>
     <!-- 사주 홈과 같은 자리·같은 마크업. 🛑 프리미엄만 배너에 세운다 —
          관상 프리미엄은 「내가 왕이 될 상인가」 하나라 캐러셀이 아니라 한 장이다.
@@ -877,20 +976,6 @@
   <h3 id="ledgerTitle">등불 내역</h3>
   <p class="dlg-lede" id="ledgerLede"></p>
   <ul class="ledger" id="ledgerList"></ul>
-</dialog>
-
-<dialog id="soonDlg" class="dlg">
-  <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
-  <img class="soon-cat" src="/assets/sorry_sm-BqHo1vIV.webp" alt="" />
-  <h3>지금은 결제가 안 돼요</h3>
-  <p class="dlg-lede">결제대행사 심사를 받고 있어요. 그동안 복채가 있는 사주는 <b>맛보기까지만</b> 열려요.</p>
-  <p class="soon-can"><b>오늘의 운세</b>는 복채 없이 끝까지 보실 수 있어요.<br />
-     가입하시면 <b>무냥이에게 열 번</b> 더 물어보실 수 있고요.</p>
-  <p class="soon-gift" id="soonGift" hidden>먼저 들러 주신 <b>100분</b>께는
-     아무 상품이나 <b>한 편</b>을 복채 없이 열어 드려요.<br />
-     <span id="soonGiftLeft"></span></p>
-  <p class="dlg-note">준비되면 이 자리에서 알려 드릴게요. 그때 다시 오시면 돼요.</p>
-  <button type="button" class="btn" id="soonGo">오늘의 운세 보러 가기</button>
 </dialog>
 
 <dialog id="chargeDlg" class="dlg">
