@@ -50,6 +50,10 @@ input{font:inherit;font-size:1rem;color:var(--ink);background:var(--paper);borde
 input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .btn{display:block;width:100%;margin-top:20px;font:inherit;font-weight:700;font-size:1rem;color:var(--btn-fg,#fff);background:var(--accent);border:0;border-radius:10px;padding:15px;cursor:pointer}
 .btn:disabled{opacity:.5;cursor:default}
+/* 모든 단추 = 꿈 스캔 단추 결 (2026-09-13 온해님) — style.css 맨 끝과 같은 값 */
+.btn{color:#fff;border-radius:14px;background:linear-gradient(120deg, #7b5cf0 0%, #a86ff0 45%, #e07ab8 100%);box-shadow:0 6px 22px rgba(143,107,255,.35);transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+.btn:not(:disabled):hover{transform:translateY(-2px);filter:brightness(1.06);box-shadow:0 10px 30px rgba(168,111,240,.55),0 0 22px rgba(224,122,184,.35)}
+.btn:disabled{box-shadow:none;transform:none}
 .msg{margin-top:16px;border-radius:10px;padding:12px 14px;font-size:.88rem}
 .msg.err{background:var(--bad-soft);color:var(--bad)}
 .msg.ok{background:var(--good-soft);color:var(--good)}
