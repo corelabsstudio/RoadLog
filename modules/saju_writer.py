@@ -555,6 +555,98 @@ def plan_report(saju: dict[str, Any], sections: list[str], *, product: str = "",
     return out
 
 
+# ── 항목 한 칸을 **나눠서** 받는다 (2026-09-14 온해님 「리포트가 글 덩어리라 밋밋하다 · 전 상품에 적용」) ──
+# 🛑 전에는 글 한 덩어리를 받아 화면이 문단으로 늘어놨다. 이제 화면이 카드로 그린다:
+#    첫 문장(크게) → 한 장면 → 접는 칸 셋 → 처방 → 오늘 할 일(체크리스트) → 혼잣말.
+# 🛑 **접는 칸 제목·체크리스트·한 장면도 LLM 이 쓴다** (온해님 「제미나이가 항목마다 뽑게 해」).
+#    화면이 정해 둔 제목을 붙이면 모든 항목·모든 상품에 같은 제목이 박힌다.
+# 🛑 `text` 는 계속 만든다(아래 `_join`). 공유 카드 요약·앞 편 겹침 검사·PDF 가 그걸 읽는다.
+SECTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "hook": {"type": "string", "description": "항목 제목. 열여섯 자 안쪽. 실제로 나온 답을 걸고 넘어져 본문을 열게 한다. 사주 용어·이모지·느낌표 금지. 답을 다 말하지 않는다"},
+        "lead": {"type": "string", "description": "뼈 때리는 첫 문장 하나. 이 항목의 답이다. 쉰 자 안쪽"},
+        "scene_line": {"type": "string", "description": "이 항목의 사주를 한 장면으로 줄인 말. 스무 자 안쪽 (예: 넓은 땅과 외로운 큰 나무). 사주 용어 금지"},
+        "folds": {
+            "type": "array",
+            "description": "접어 두는 칸 **정확히 셋**. ① 왜 그런지 — [사주] 글자를 대고 ② 손님이 겪었을 일상 장면 ③ 스스로는 모르는 부분이나 조건에 따라 갈리는 것",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string", "description": "접힌 칸 제목. 열여섯 자 안쪽. 펼쳐 보고 싶게. 칸마다 다르게"},
+                    "tag": {"type": "string", "description": "제목 옆 작은 꼬리. 여덟 자 안쪽 (예: 사주 근거, 익숙한 장면)"},
+                    "body": {"type": "string", "description": "칸 본문. 두세 문장씩 끊어 한두 문단"},
+                },
+                "required": ["title", "tag", "body"],
+            },
+        },
+        "rx": {
+            "type": "object",
+            "description": "처방. 뻔한 조언 금지",
+            "properties": {
+                "title": {"type": "string", "description": "처방 칸 제목. 열여섯 자 안쪽"},
+                "body": {"type": "string", "description": "그래서 어떻게 하면 되는지. 두세 문장"},
+                "punch": {"type": "string", "description": "처방을 한 문장으로 못 박는 촌철살인. 서른 자 안쪽"},
+            },
+            "required": ["title", "body", "punch"],
+        },
+        "todos": {"type": "array", "description": "오늘 당장 체크할 행동 **둘에서 셋**. 한 줄에 스물다섯 자 안쪽. 「~하기」로 끝낸다 (예: 카드 명세서 열어 두기)",
+                  "items": {"type": "string"}},
+        "marks": {"type": "array", "description": "lead·folds·rx 에서 **글자 하나 안 바꾸고 그대로** 옮긴 핵심 구절 둘에서 넷. 한 구절 여섯~스무 자",
+                  "items": {"type": "string"}},
+        "mutter": {"type": "string", "description": "무냥이가 다 읽고 옆에서 툭 던지는 한마디. 두 문장·마흔 자 안쪽. 요약·위로 금지"},
+        "memo_topic": {"type": "string", "description": "이 항목에서 때린 팩폭. 열다섯 자 안쪽. 손님에게 안 보인다"},
+        "memo_scene": {"type": "string", "description": "이 항목에서 쓴 핵심 비유·장면. 열다섯 자 안쪽. 손님에게 안 보인다"},
+    },
+    "required": ["hook", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "memo_topic", "memo_scene"],
+}
+
+
+def _parse_section(raw: str) -> dict[str, Any] | None:
+    """규격 답을 읽는다. 못 읽으면 None."""
+    t = (raw or "").strip()
+    if t.startswith("```"):
+        t = t.split("```")[1] if "```" in t[3:] else t[3:]
+        t = t[4:] if t.lower().startswith("json") else t
+    i, j = t.find("{"), t.rfind("}")
+    if i < 0 or j <= i:
+        return None
+    try:
+        d = json.loads(t[i:j + 1])
+    except Exception:                                    # noqa: BLE001
+        return None
+    s_ = lambda v, n: str(v or "").strip()[:n]           # noqa: E731
+    folds = [{"title": s_(f.get("title"), 30), "tag": s_(f.get("tag"), 16), "body": s_(f.get("body"), 1600)}
+             for f in (d.get("folds") or []) if isinstance(f, dict) and str(f.get("body") or "").strip()][:3]
+    rx = d.get("rx") if isinstance(d.get("rx"), dict) else {}
+    out = {
+        "hook": s_(d.get("hook"), _HOOK_MAX + 8),
+        "lead": s_(d.get("lead"), 200),
+        "scene_line": s_(d.get("scene_line"), 40),
+        "folds": folds,
+        "rx": {"title": s_(rx.get("title"), 30), "body": s_(rx.get("body"), 900), "punch": s_(rx.get("punch"), 80)},
+        "todos": [s_(x, 60) for x in (d.get("todos") or []) if str(x or "").strip()][:3],
+        "mutter": s_(d.get("mutter"), _MUTTER_MAX + 20),
+        "topic": s_(d.get("memo_topic"), _MEMO_MAX),
+        "scene": s_(d.get("memo_scene"), _MEMO_MAX),
+    }
+    if not out["lead"] or len(folds) < 2:
+        return None
+    joined = _join(out)
+    # 🛑 하이라이트는 **본문에 글자 그대로 있는 것만** 남긴다. 없는 말을 칠하면 화면에서 안 붙는다
+    out["marks"] = [m for m in (s_(x, 40) for x in (d.get("marks") or [])) if len(m) >= 4 and m in joined][:4]
+    out["text"] = joined
+    return out
+
+
+def _join(d: dict[str, Any]) -> str:
+    """나눠 받은 칸을 예전 `text` 한 덩어리로 잇는다 (요약·겹침 검사·PDF 용)."""
+    parts = [d.get("lead", "")] + [f.get("body", "") for f in d.get("folds") or []]
+    rx = d.get("rx") or {}
+    parts.append(" ".join(x for x in (rx.get("body", ""), rx.get("punch", "")) if x))
+    return "\n\n".join(x.strip() for x in parts if x and x.strip())
+
+
 _MEMO_MAX = 80
 
 
@@ -624,50 +716,52 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
     head = ("[이 상품이 답해야 할 것]\n%s\n\n🛑 아래 항목이 무엇이든, 결국 위 "
             "질문에 답하는 방향으로 쓴다.\n\n" % ask) if ask else ""
     # 🛑 앞서 읽은 편이 있으면 그것부터 알려 준다. 겹치면 2차 결제가 끊긴다
-    # 🛑 **제목도 여기서 같이 받는다** (2026-09-09 온해님 「항목도 LLM이 뽑게」).
-    #    손님이 미리보기에서 보는 건 제목과 두세 줄이 전부다. 제목이 밋밋하면
-    #    아래를 안 읽는다. 다만 **본래 제목은 그대로 두고** 보이는 글자만 바꾼다.
-    hook = (
-        "\n\n[맨 첫 줄에 제목을 쓴다]\n"
-        "`제목: ` 으로 시작하는 줄을 하나 쓰고, 한 줄 띄운 뒤에 본문을 쓴다." "\n"
-        "  · 이 항목에서 **실제로 나온 답**을 걸고 넘어지는 제목이어야 한다" "\n"
-        "  · 열여섯 자 안쪽. 읽고 나서 「그래서 뭔데」가 들게" "\n"
-        "  · 🛑 사주 용어를 쓰지 마라. 이모지·느낌표도 쓰지 마라" "\n"
-        "  · 🛑 답을 제목에서 다 말하지 마라. 본문을 열게 만드는 게 제목이 할 일이다"
-
-        # 🛑 혼잣말도 같이 받는다 (2026-09-09 온해님 「무냥이 혼잣말도 LLM으로, 모든 항목에」)
-        "\n\n[맨 마지막 줄에 혼잣말을 쓴다]\n"
-        "`혼잣말: ` 으로 시작하는 줄을 하나 쓴다. 본문 끝에서 한 줄 띄우고." "\n"
-        "  · 무냥이가 이 항목을 다 읽고 **옆에서 툭 던지는 한마디**다" "\n"
-        "  · 두 문장 안쪽·마흔 자 안쪽. 말풍선에 들어간다" "\n"
-        "  · 🛑 본문을 요약하지 마라. 요약은 손님이 방금 읽었다" "\n"
-        "  · 🛑 위로하거나 훈훈하게 맺지 마라. 한 발 물러선 자리에서 덧붙이는 말이다" "\n"
-        "  · 좋은 보기: 「이 자리 얘기 나오면 다들 한참 말이 없어져요」 "
-        "「저도 이건 조심해서 말해요」 「올해 글자는 올해만 써요. 내년엔 또 달라져요」"
-
-        # 🛑 되풀이를 잡으려고 **이 항목이 무엇을 때렸고 무슨 비유를 썼는지** 받는다 (2026-09-13).
-        #    다음 물결에 「이미 쓴 주제·비유」로 넘긴다. 손님 화면에는 안 나간다
-        "\n\n[혼잣말 줄 바로 앞에 메모 한 줄]\n"
-        "`메모: 주제=… | 비유=…` 형식. 주제는 이 항목에서 때린 팩폭을 열다섯 자 안쪽으로, "
-        "비유는 쓴 핵심 비유·장면을 열다섯 자 안쪽으로. 손님에게는 안 보인다.")
+    # 🛑 제목·혼잣말·메모는 예전엔 `제목:` 줄로 받았다. 이제 규격(SECTION_SCHEMA)의 칸으로 받는다
+    shape = (
+        "\n\n[칸마다 무엇을 쓰나 — 규격대로 JSON 으로 답한다]\n"
+        "- lead: 첫 문장. 위 [이 항목의 형식]의 여는 방식을 여기에 쓴다\n"
+        "- folds 셋: ① 왜 그런지([사주] 글자를 쉬운 말+괄호로) ② 손님이 겪었을 일상 장면 ③ 스스로 모르는 부분이나 조건에 따라 갈리는 것.\n"
+        "  칸마다 제목(title)과 꼬리(tag)도 네가 쓴다. 칸 셋의 제목이 서로 달라야 한다\n"
+        "- rx: 그래서 어떻게 하면 되는지. punch 는 한 문장으로 못 박는다\n"
+        "- todos: 오늘 당장 체크할 행동 둘~셋. 무엇을 언제 하는지 손에 잡히게\n"
+        "- marks: 본문에서 **글자 그대로** 옮긴 핵심 구절 둘~넷 (화면에서 형광펜으로 칠한다)\n"
+        "- mutter: 무냥이 혼잣말. 좋은 보기: 「이 자리 얘기 나오면 다들 한참 말이 없어져요」 「올해 글자는 올해만 써요」\n"
+        "- memo_topic·memo_scene: 이 항목에서 때린 팩폭과 쓴 비유. 손님에게는 안 보인다\n"
+        "🛑 길이는 lead·folds·rx 를 모두 합친 분량이다.")
     user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s%s"
-            % (name, seen or "", head, fact, section, guide, hook))
-    res = _call(_P('saju', SYSTEM), user, model=model, max_tokens=max(1400, int(chars * 2.2)))
-    bad = check_counts(res["text"], saju)
+            % (name, seen or "", head, fact, section, guide, shape))
+    toks = max(2000, int(chars * 3))
+
+    def ask(msg: str, temperature: float = 1.0) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        r = _call(_P('saju', SYSTEM), msg, model=model, max_tokens=toks, temperature=temperature,
+                  schema=SECTION_SCHEMA)
+        return _parse_section(r.get("text") or ""), r
+
+    got, res = ask(user)
+    if got is None:
+        # 🛑 규격을 못 읽으면 한 번 더 시킨다. 그래도 못 읽으면 이 항목은 비운다 (화면이 「못 썼어요」로 떨어진다)
+        got, res2 = ask(user, temperature=0.8)
+        res2["in"] += res["in"]
+        res2["out"] += res["out"]
+        res = res2
+    if got is None:
+        return {"text": "", "in": res["in"], "out": res["out"], "error": "규격을 못 읽었어요"}
+    check = lambda g: check_counts(" ".join([g["text"], g["scene_line"]] + g["todos"]), saju)   # noqa: E731
+    bad = check(got)
     if bad:
         fix = user + ("\n\n[다시 쓴다]\n앞서 쓴 글에서 개수를 틀렸다: %s\n"
                       "[사주]에 적힌 개수를 그대로 옮겨라. 헷갈리면 개수를 아예 말하지 마라."
                       % " / ".join(bad))
-        res2 = _call(_P('saju', SYSTEM), fix, model=model, temperature=0.7)
+        got2, res2 = ask(fix, temperature=0.7)
         res2["in"] += res["in"]
         res2["out"] += res["out"]
-        res2["retried"] = bad
         res = res2
-        res["left"] = check_counts(res["text"], saju)
-    res["hook"], res["text"] = _split_hook(res.get("text") or "")
-    res["topic"], res["scene"], res["text"] = _split_memo(res["text"])
-    res["mutter"], res["text"] = _split_mutter(res["text"])
-    return res
+        if got2 is not None:
+            got = got2
+        got["retried"] = bad
+        got["left"] = check(got)
+    got.update({"in": res["in"], "out": res["out"]})
+    return got
 
 
 _MUTTER_MAX = 60
@@ -787,6 +881,10 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
         blocks.append({"title": s, "text": d.get("text", ""),
                        # 화면에 보이는 제목. 비어 있으면 본래 제목을 쓴다
                        "hook": d.get("hook", ""),
+                       # 🛑 카드로 그릴 칸들 (2026-09-14). 비어 있으면 화면이 text 를 문단으로 그린다
+                       "lead": d.get("lead", ""), "scene_line": d.get("scene_line", ""),
+                       "folds": d.get("folds") or [], "rx": d.get("rx") or {},
+                       "todos": d.get("todos") or [], "marks": d.get("marks") or [],
                        # 항목 끝에 붙는 무냥이 혼잣말 (2026-09-09 온해님 지시)
                        "mutter": d.get("mutter", ""),
                        "left": d.get("left") or []})
@@ -1146,7 +1244,7 @@ CARD_VER = 4
 #    2026-09-10 에 해설을 「팩트폭격」 말투로 갈았는데 화면에는 진지한 옛 글이
 #    그대로 나왔다 — 온해님이 「예전이랑 달라진게 없어」로 잡으셨다.
 #    🛑 관상은 `GWAN_VER` 로 이미 같은 장치를 쓰고 있었다. 사주 본문에만 없었다.
-WRITE_VER = 2
+WRITE_VER = 3          # 🛑 3 (2026-09-14): 항목을 칸으로 나눠 받는다 — 옛 글은 칸이 없어 다시 쓴다
 
 # 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
 #    `job`·`habit`·`karma` 는 전생 카드의 세 칸이다 (다른 상품에는 안 온다)

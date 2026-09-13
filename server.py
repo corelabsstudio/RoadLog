@@ -3695,7 +3695,10 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
             "blocks": [{"title": s,
                         "text": done.get(s, {}).get("text", ""),
                         "hook": done.get(s, {}).get("hook", ""),
-                        "mutter": done.get(s, {}).get("mutter", "")} for s in want],
+                        "mutter": done.get(s, {}).get("mutter", ""),
+                        # 🛑 카드 칸 (2026-09-14 · saju_writer.SECTION_SCHEMA). 옛 글엔 없어서 빈 값이 간다
+                        **{k: done.get(s, {}).get(k) or ([] if k in ("folds", "todos", "marks") else ({} if k == "rx" else ""))
+                           for k in ("lead", "scene_line", "folds", "rx", "todos", "marks")}} for s in want],
             "more": bool((not paid) and PREVIEW_SECTIONS
                          and len(body.sections or []) > PREVIEW_SECTIONS)}
 
