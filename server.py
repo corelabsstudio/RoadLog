@@ -3073,7 +3073,7 @@ GWAN_MAX_SHOTS = 2
 #    항목을 나눠 길게 쓰게 고쳤는데, 같은 사진으로 다시 열면 **예전 짧은 글**이 그대로 나왔다.
 #    「배포했는데 그대로인데?」의 진짜 이유가 이것이었다.
 #    얼개를 고치면 이 숫자를 올린다.
-GWAN_VER = 2
+GWAN_VER = 3          # 🛑 3 (2026-09-14): 자리를 카드 칸으로 나눠 받는다 (blocks)
 
 GWAN_TRIES = 3          # 🛑 한 번 결제로 **서로 다른 사진 셋**까지. 사진을 잘못 올릴 수 있어서다
                         #    (2026-09-09 온해님). 같은 사진을 다시 보는 건 안 깎는다.
@@ -3110,6 +3110,23 @@ def _gwan_use(email: str, ticket: str, shot: str) -> None:
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except Exception:                                 # noqa: BLE001
         pass
+
+
+def _gwan_veil_blocks(blocks: list, paid: bool) -> list:
+    """카드 칸도 **서버에서 자른다** (2026-09-14). 복채 전에는 본문을 하나도 안 보낸다.
+
+    첫 자리: 제목 · 첫 문장 · 한 장면 · 칸 제목까지. 나머지 자리: 제목 · 칸 제목까지.
+    🛑 화면에서만 흐리면 개발자 도구로 다 보인다 — `_gwan_veil` 과 같은 이유다.
+    """
+    if paid:
+        return blocks or []
+    out = []
+    for i, b in enumerate(blocks or []):
+        out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
+                    "lead": b.get("lead", "") if i == 0 else "",
+                    "scene_line": b.get("scene_line", "") if i == 0 else "",
+                    "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []]})
+    return out
 
 
 def _gwan_veil(text: str, paid: bool) -> str:
@@ -3181,6 +3198,7 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         prev = None
     if prev and prev.get("text") and prev.get("ver") == GWAN_VER:
         return {"ok": True, "text": _gwan_veil(prev["text"], paid), "paid": paid,
+                "blocks": _gwan_veil_blocks(prev.get("blocks") or [], paid),
                 "tokens": None, "card": (prev.get("card") or {}) if paid else {},
                 "again": True,
                 "left": max(0, GWAN_TRIES - len(_gwan_seen(user["email"], pair)))}
@@ -3239,7 +3257,7 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         card = {}
     # 🛑 **글은 남기고 사진은 안 남긴다.** 다시 볼 때 돈이 또 나가지 않게 글만 저장한다.
     try:
-        saju_writer.save(product, shot, {"text": out["text"], "card": card,
+        saju_writer.save(product, shot, {"text": out["text"], "card": card, "blocks": out.get("blocks") or [],
                                          "kind": "gwansang", "ver": GWAN_VER})
     except Exception:                                 # noqa: BLE001
         pass                                          # 저장을 못 해도 글은 나가야 한다
@@ -3247,6 +3265,7 @@ def gwansang_read(body: GwansangBody, authorization: str | None = Header(default
         _gwan_use(user["email"], pair, shot)
     # 🛑 사진은 여기서 끝이다. `clean` 은 응답에 담지 않는다
     return {"ok": True, "text": _gwan_veil(out["text"], paid), "paid": paid,
+            "blocks": _gwan_veil_blocks(out.get("blocks") or [], paid),
             "tokens": out.get("tokens"), "card": card if paid else {},
             "left": max(0, GWAN_TRIES - len(_gwan_seen(user["email"], pair)))}
 

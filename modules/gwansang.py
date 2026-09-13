@@ -265,6 +265,10 @@ def look_shot(shots: list[str], *, model: str | None = None) -> dict[str, Any]:
 #    자리를 몇 개 쓰라고 부탁하면 빠뜨린다 — 그래서 개수를 세어 다시 시키는
 #    뒤처리가 붙어 있었다. 배열 규격을 주면 모델이 개수를 어길 수 없다.
 #    칸 이름은 온해님이 주신 그대로다.
+# 🛑 **자리 하나를 칸으로 나눠 받는다** (2026-09-14 온해님 「관상에도 똑같이 적용해줘」).
+#    사주(`saju_writer.SECTION_SCHEMA`)와 **같은 칸**이다. 화면이 같은 카드(`repcard.js`)로 그린다:
+#    첫 문장 → 한 장면 → 접는 칸 셋(제목도 LLM) → 처방 → 오늘 할 일 → 혼잣말.
+#    🛑 칸 제목·체크리스트를 화면이 지어 붙이지 않는다 — 온해님 「제미나이가 항목마다 뽑게 해」.
 FACE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -274,15 +278,39 @@ FACE_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "nickname": {"type": "string",
-                                 "description": "이 자리의 제목. 준 자리 이름을 그대로 쓰거나 더 재치 있게"},
-                    "fact_bomb": {"type": "string",
-                                  "description": "뼈 때리는 팩트 폭격. 사진에서 보이는 것을 돌려 말하지 않는다"},
-                    "meme_analysis": {"type": "string",
-                                      "description": "밈과 유머를 섞은 성향 분석. 일상 장면 하나를 든다"},
-                    "funny_solution": {"type": "string",
-                                       "description": "유쾌하고 엉뚱한 대안. 그래서 어떻게 하면 되는지"},
+                                 "description": "이 자리의 제목. 열여섯 자 안쪽. 준 자리 이름을 그대로 쓰거나 더 재치 있게. 답을 다 말하지 않는다"},
+                    "lead": {"type": "string", "description": "뼈 때리는 첫 문장 하나. 사진에서 보이는 것을 돌려 말하지 않는다. 쉰 자 안쪽"},
+                    "scene_line": {"type": "string", "description": "이 자리를 한 장면으로 줄인 말. 스무 자 안쪽 (예: 돋보기 든 탐정의 눈매). 관상 용어 금지"},
+                    "folds": {
+                        "type": "array",
+                        "description": "접어 두는 칸 **정확히 셋**. ① 사진에서 무엇이 보이나 → 그래서 어떤 사람으로 읽히나 ② 손님이 겪었을 일상 장면(여럿) ③ 스스로는 모르는 부분이나 조건에 따라 갈리는 것",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string", "description": "접힌 칸 제목. 열여섯 자 안쪽. 펼쳐 보고 싶게. 칸마다 다르게"},
+                                "tag": {"type": "string", "description": "제목 옆 작은 꼬리. 여덟 자 안쪽 (예: 보이는 것, 익숙한 장면)"},
+                                "body": {"type": "string", "description": "칸 본문. 두세 문장씩 끊어 문단으로"},
+                            },
+                            "required": ["title", "tag", "body"],
+                        },
+                    },
+                    "rx": {
+                        "type": "object",
+                        "description": "유쾌하고 엉뚱한 처방. 하면 되는 것과 하면 안 되는 것",
+                        "properties": {
+                            "title": {"type": "string", "description": "처방 칸 제목. 열여섯 자 안쪽"},
+                            "body": {"type": "string", "description": "그래서 어떻게 하면 되는지"},
+                            "punch": {"type": "string", "description": "처방을 한 문장으로 못 박는 촌철살인. 서른 자 안쪽"},
+                        },
+                        "required": ["title", "body", "punch"],
+                    },
+                    "todos": {"type": "array", "items": {"type": "string"},
+                              "description": "오늘 당장 체크할 행동 둘에서 셋. 한 줄 스물다섯 자 안쪽. 「~하기」로 끝낸다"},
+                    "marks": {"type": "array", "items": {"type": "string"},
+                              "description": "lead·folds·rx 에서 글자 하나 안 바꾸고 그대로 옮긴 핵심 구절 둘에서 넷. 한 구절 여섯~스무 자"},
+                    "mutter": {"type": "string", "description": "관멍이가 다 읽고 옆에서 툭 던지는 한마디. 두 문장·마흔 자 안쪽. 요약·위로 금지"},
                 },
-                "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution"],
+                "required": ["nickname", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter"],
             },
         },
     },
@@ -290,22 +318,46 @@ FACE_SCHEMA = {
 }
 
 
-def _weave(data, secs):
-    """규격으로 받은 자리들을 화면이 읽는 평문으로 잇는다.
-
-    🛑 화면(`main.js`)은 `## 제목` 으로 나뉜 평문을 그린다. 여기서 JSON 을
-       그대로 내보내면 관상 화면이 통째로 깨진다.
-    """
-    rows = (data or {}).get("sections") or []
+def _blocks(data, secs):
+    """규격 답을 자리별 카드 칸으로 정리한다. 🛑 형광펜은 본문에 글자 그대로 있는 것만 남긴다."""
     out = []
-    for i, r in enumerate(rows):
-        title = str(r.get("nickname") or (secs[i] if i < len(secs) else "")).strip()
-        body = [str(r.get(k) or "").strip()
-                for k in ("fact_bomb", "meme_analysis", "funny_solution")]
-        body = [x for x in body if x]
-        if not body:
+    for i, r in enumerate((data or {}).get("sections") or []):
+        if not isinstance(r, dict):
             continue
-        out.append("## " + title + chr(10) + chr(10) + (chr(10) + chr(10)).join(body))
+        st = lambda v, n: str(v or "").strip()[:n]           # noqa: E731
+        folds = [{"title": st(f.get("title"), 30), "tag": st(f.get("tag"), 16), "body": st(f.get("body"), 3000)}
+                 for f in (r.get("folds") or []) if isinstance(f, dict) and str(f.get("body") or "").strip()][:3]
+        rx = r.get("rx") if isinstance(r.get("rx"), dict) else {}
+        b = {"title": secs[i] if i < len(secs) else st(r.get("nickname"), 30),
+             "hook": st(r.get("nickname"), 30),
+             "lead": st(r.get("lead"), 200), "scene_line": st(r.get("scene_line"), 40), "folds": folds,
+             "rx": {"title": st(rx.get("title"), 30), "body": st(rx.get("body"), 1500), "punch": st(rx.get("punch"), 80)},
+             "todos": [st(x, 60) for x in (r.get("todos") or []) if str(x or "").strip()][:3],
+             "mutter": st(r.get("mutter"), 80)}
+        if not b["lead"] and not folds:
+            continue
+        joined = _join(b)
+        b["marks"] = [m for m in (st(x, 40) for x in (r.get("marks") or [])) if len(m) >= 4 and m in joined][:4]
+        out.append(b)
+    return out
+
+
+def _join(b):
+    parts = [b.get("lead", "")] + [f.get("body", "") for f in b.get("folds") or []]
+    rx = b.get("rx") or {}
+    parts.append(" ".join(x for x in (rx.get("body", ""), rx.get("punch", "")) if x))
+    return (chr(10) + chr(10)).join(x.strip() for x in parts if x and x.strip())
+
+
+def _weave(data, secs):
+    """규격으로 받은 자리들을 `## 제목` 평문으로 잇는다.
+
+    🛑 평문(`text`)은 계속 만든다 — 공유 카드 문구·관멍이 채팅·옛 화면이 읽는다.
+       화면은 이제 `blocks` 로 카드를 그리고, `text` 는 대비책이다.
+    """
+    out = []
+    for b in _blocks(data, secs):
+        out.append("## " + (b["hook"] or b["title"]) + chr(10) + chr(10) + _join(b))
     return (chr(10) + chr(10)).join(out)
 
 
@@ -359,6 +411,9 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                 #    🛑 재시도(floor 55%)로는 못 고친다. 세 번 다시 써도 구조가 같아서
                 #       똑같이 짧게 나오고 원가만 세 배 든다.
                 + _para_note(chars)
+                # 🛑 칸 규격으로 받는다 (2026-09-14) — 문단을 칸에 나눠 담게 한다
+                + "🛑 문단은 **folds 세 칸과 rx 에 나눠 담는다.** 칸 제목·꼬리·오늘 할 일·형광펜 구절도 네가 쓴다.\n"
+                  "   lead 는 첫 문장 하나, scene_line 은 한 장면 한 줄이다.\n"
                 + "🛑 **채우려고 같은 말을 돌려 쓰지 마라.** 자리마다 사진에서 **다른 데**를 본다.\n"
                   "🛑 사진에서 그 자리가 잘 안 보이면 **안 보인다고 적고 넘어간다.** "
                   "지어내는 것보다 낫다.\n"
@@ -375,7 +430,7 @@ def read_face(product: str, shots: list[str], *, name: str = "",
         #    2026-09-09 에 실제로 27토큰(한 문장 반)에서 끊겼다. saju_writer 와 같은 설정이다.
         # 🛑 예산이 모자라면 마지막 자리가 통째로 잘린다. 항목 수만큼 잡는다
         "generationConfig": {"temperature": 1.0,
-                             "maxOutputTokens": max(900, chars * max(1, len(secs)) * 3),
+                             "maxOutputTokens": max(1400, int(chars * max(1, len(secs)) * 3.6)),
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
     # 🛑 **자리가 있으면 규격으로 받는다** (2026-09-10 온해님).
@@ -406,9 +461,12 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                 # 🛑 규격으로 받았으면 **화면이 읽는 평문으로 잇는다.**
                 #    화면은 `## 제목` 으로 나뉜 글을 그린다 — JSON 을 그대로
                 #    내보내면 관상 화면이 통째로 깨진다.
+                blocks = []
                 if secs and text.lstrip().startswith("{"):
                     try:
-                        text = _weave(json.loads(text), secs) or text
+                        data = json.loads(text)
+                        blocks = _blocks(data, secs)
+                        text = _weave(data, secs) or text
                     except Exception:            # noqa: BLE001
                         pass                     # 못 읽으면 받은 그대로 쓴다
                 if text:
@@ -437,7 +495,7 @@ def read_face(product: str, shots: list[str], *, name: str = "",
                             % (plain, want, got, len(secs)))}
                         last = "짧아서 다시 (%d자)" % plain
                         continue
-                    return {"text": text, "model": model or MODEL,
+                    return {"text": text, "blocks": blocks, "model": model or MODEL,
                             "tokens": {"in": tin, "out": tout},
                             "chars": plain, "want": want, "retried": turn}
                 last = "빈 답 (%s)" % c.get("finishReason", "")
