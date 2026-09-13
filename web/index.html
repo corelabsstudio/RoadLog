@@ -31,8 +31,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-Cu6A1gYu.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-B3J9_sUP.css">
+  <script type="module" crossorigin src="/assets/main-DMXBUr0V.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-BRIPLOma.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -285,10 +285,12 @@
            🛑 사주 상품 로딩(`#loading`)과 **같은 그림·같은 짜임**이다. 그쪽은 상품 화면 안에 있어 못 빌려 쓴다.
            문구는 제미나이가 쓴다 — `python tools/gen_dream_copy.py --load` -->
       <section class="loading dream-loading" id="dreamLoading" hidden aria-live="polite">
-        <picture>
-          <source srcset="/assets/buy_reading-BS28zlog.webp" media="(prefers-reduced-motion: reduce)" />
-          <img src="/assets/reading-BfxXxTFl.gif" alt="" class="load-pic" />
-        </picture>
+        <div class="load-stage" aria-hidden="true">
+          <span class="load-orbit"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="load-orbit is-back"><i></i><i></i><i></i><i></i><i></i></span>
+          <span class="load-halo"></span>
+          <img src="/assets/dream_cat-DbvrUvX8.webp" alt="" class="load-cat" />
+        </div>
         <p class="load-step" id="dreamLoadStep"></p>
         <p class="load-say" id="dreamLoadSay"></p>
         <div class="load-bar"><i id="dreamLoadBar"></i></div>
@@ -766,11 +768,14 @@
     </div>
   </section>
   <section class="loading" id="loading" hidden aria-live="polite">
-    <picture>
-      <!-- 움직임을 줄여 달라고 설정한 분에게는 멈춘 그림 -->
-      <source srcset="/assets/buy_reading-BS28zlog.webp" media="(prefers-reduced-motion: reduce)" />
-      <img src="/assets/reading-BfxXxTFl.gif" alt="" class="load-pic" />
-    </picture>
+    <!-- 🛑 **로딩은 떠 있는 등불 무냥이 + 퍼지는 등불 빛 + 도는 입자** (2026-09-13 온해님 「너무 정적이고 밋밋하다 ·
+         몰입형 애니메이션」). 전에는 사각 틀 GIF 한 장이었다. 꿈 사주 로딩(`#dreamLoading`)과 같은 마크업이다 -->
+    <div class="load-stage" aria-hidden="true">
+      <span class="load-orbit"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="load-orbit is-back"><i></i><i></i><i></i><i></i><i></i></span>
+      <span class="load-halo"></span>
+      <img src="/assets/dream_cat-DbvrUvX8.webp" alt="" class="load-cat" />
+    </div>
     <p class="load-step" id="loadStep">사주를 뽑는 중</p>
     <p class="load-say">다 짚을 때까지 이 화면을 두세요.</p>
     <div class="load-bar"><i id="loadBar"></i></div>
