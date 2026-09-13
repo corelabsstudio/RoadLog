@@ -137,15 +137,15 @@ SYSTEM = """너는 사주 상담 사이트 「로드로그」의 글을 쓴다. 
 - 🛑 이름은 준 그대로 쓴다. 성을 떼거나 줄이지 마라. 「호현수」면 「호현수님」이다.
 
 
-[말하는 결 — 팩트폭격 (2026-09-10 온해님이 정하심)]
-손님은 20~30대 여성이다. 지루한 사주 풀이 말고 **위트와 팩트폭격**으로 간다.
-화자는 그대로 **무냥이**다. 무냥이가 팩트를 때린다.
-한 항목을 이 세 박자로 쓴다.
-  ① **팩트폭격** — 돌려 말하지 않는다. 뼈 때리는 한 줄로 연다.
-  ② **찰진 비유** — 손님이 자기 얘기라고 느낄 장면 하나.
-     「장바구니에 담아 두고 결제는 안 눌러요」 「읽씹 당하고도 프로필은 확인해요」
-  ③ **유쾌한 반전** — 그래서 어떻게 하면 되는지로 뒤집어 준다.
-🛑 **외모 비하가 아니라 상황·성향을 웃긴다** (온해님 지침). 얼굴·몸을 두고 웃지 않는다.
+[말하는 결 — 뼈 때리는 팩폭 (2026-09-13 온해님 지침)]
+손님은 20~30대 여성이다. 화자는 그대로 **무냥이**다. 무냥이는 위트와 팩트폭격이 무기인
+거침없는 사주 분석가다. 지루하고 진지한 사주 풀이 대신 **요즘 B급 유머 · 찰진 비유 · 날카로운 직설**로 때린다.
+- 「겉은 반듯한데 속은 꼰대」 「불쌍한 척하지만 사실 귀찮은 것뿐」 같은 **촌철살인** 한 줄을 쓴다.
+- 욕설이나 시비가 아니다. 손님이 읽고 「아 뼈 맞아서 아픈데 반박을 못 하겠네ㅋㅋ」 하고 웃음이 터져야 한다.
+- 사주 말은 괄호 안에 살짝만 넣고, 실생활 말로 바꿔서 보여 준다
+  (카톡 억지 텐션, 직장에서 영혼 없는 눈빛, 장바구니에 담아 두고 결제는 안 누르기 같은 것).
+- 한 항목 안에서는 ① 뼈 때리는 한 줄로 열고 ② 자기 얘기라고 느낄 장면을 보여 주고 ③ 그래서 어떻게 할지로 뒤집는다.
+🛑 **외모 비하가 아니라 상황·성향을 웃긴다.** 얼굴·몸을 두고 웃지 않는다.
 🛑 **없는 숫자를 지어내지 않는다.** %는 우리가 따로 계산해서 넣어 준다.
 
 [금지 — 하나라도 어기면 다시 쓴다]
@@ -236,7 +236,10 @@ _NUM = {
 _WORDS = ["비겁", "식상", "재성", "관성", "인성", "목", "화", "토", "금", "수"]
 # 「금 기운만 셋」 「재성이 두 개」 「인성 3개」 처럼 낱말 뒤 열두 글자 안에 오는 수량만 본다
 _PAT = re.compile(
-    r"(%s)\s*(?:기운|글자)?[가-힣이 ]{0,6}?"
+    # 🛑 **괄호를 건너뛴다** (2026-09-13 전수 검사). 우리가 「나와 같은 기운(비겁)이 세 개」처럼
+    #    괄호로 쓰라고 시켜 놓고, 검사는 괄호에서 멈춰서 틀린 개수가 그대로 나갔다
+    #    (비겁 2개인데 「세 개」 「셋이나」가 한 편에 세 번)
+    r"(%s)\)?\s*(?:기운|글자)?[가-힣이 ()]{0,8}?"
     r"(하나|한|둘|두|셋|세|넷|네|다섯|여섯|일곱|여덟|[1-8])\s*(?:개|자|가지|이나|씩)" % "|".join(_WORDS)
 )
 
@@ -443,6 +446,142 @@ def _call(system: str, user: str, *, model: str | None = None,
     raise RuntimeError("생성 실패: %s" % last)
 
 
+# ── 리포트 한 편을 네 갈래로 나눈다 (2026-09-13 온해님 「장별 팩폭 주제 완전 분리」) ──────
+# 🛑 사주 특징 하나(인성이 많다 등)를 잡고 첫 항목부터 끝까지 상황만 바꿔 같은 팩폭을
+#    되풀이하는 게 문제였다. 항목 순서대로 네 갈래를 나눠 **각 항목이 때릴 곳을 정해 준다.**
+# 🛑 항목 제목이 묻는 것에 답하는 게 먼저다. 갈래는 **그 답을 어느 쪽에서 때릴지**만 정한다
+#    — 상품마다 항목이 달라서, 갈래를 제목보다 앞세우면 산 질문에서 벗어난다.
+# 🛑 ASK_SYSTEM 이 SYSTEM 을 물려받으므로 갈래 규칙은 SYSTEM 에 넣지 않는다. 채팅엔 장이 없다.
+LANES = [
+    ("본체 팩폭", "타고난 본성 · 자아도취 · 겉과 속이 다른 이중성을 턴다. "
+                "관계나 돈 얘기로 새지 않는다."),
+    ("인간관계 팩폭", "연애와 사회생활에서 스스로 저지르는 호구짓 · 가식 · 자꾸 꼬이는 사람 패턴을 짚는다. "
+                   "타고난 성격 설명을 되풀이하지 않는다."),
+    ("일·돈·앞날 팩폭", "일할 때 나오는 나쁜 습관 · 미루기 · 돈 새는 구멍 · 헛짓거리를 짚는다. "
+                     "성격·연애 얘기를 되풀이하지 않는다."),
+    ("실전 처방전", "「거리를 두세요」 「자신을 사랑하세요」 같은 뻔한 조언은 금지다. "
+                 "오늘 당장 해볼 사이다 행동을 손에 잡히게 적는다(무엇을 · 언제 · 어떻게)."),
+]
+
+# 🛑 **비유를 한 편에 한 번만** 쓰게 하려고 항목마다 장면을 가져올 동네를 따로 준다.
+#    같은 물결은 동시에 쓰여서 서로 뭘 썼는지 모른다 — 동네가 다르면 애초에 안 겹친다.
+SCENES = [
+    "카톡·단톡방", "회사 메신저·회의실", "배달앱·야식", "중고거래 앱", "넷플릭스·OTT 몰아보기",
+    "헬스장·필라테스 등록", "편의점·1+1", "쇼핑앱 장바구니·택배", "인스타 스토리·좋아요",
+    "지하철·출퇴근길", "회식·노래방", "여행 계획·항공권 검색", "월급날·가계부·카드값",
+    "게임·가챠", "자취방 살림·빨래", "알람·늦잠·지각", "소개팅·모임 자리", "다이어리·새해 계획",
+]
+
+
+def _lane_of(idx: int, total: int) -> int:
+    """항목 순서로 네 갈래 중 하나를 고른다. 마지막 항목은 늘 처방전이다."""
+    if total <= 1:
+        return 0
+    if idx >= total - 1:
+        return 3
+    return min(3, idx * 4 // total)
+
+
+PLAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "n": {"type": "integer", "description": "항목 번호(1부터)"},
+                    "topic": {"type": "string",
+                              "description": "이 항목이 때릴 팩폭 한 줄. 스무 자 안쪽. 다른 항목과 뜻이 겹치면 안 된다"},
+                    "scene": {"type": "string",
+                              "description": "이 항목에서만 쓸 핵심 비유·장면. 열다섯 자 안쪽. 다른 항목과 겹치면 안 된다"},
+                },
+                "required": ["n", "topic", "scene"],
+            },
+        },
+    },
+    "required": ["items"],
+}
+
+PLAN_SYSTEM = """너는 사주 리포트의 편집장이다. 글을 쓰기 전에 항목마다 **무엇을 때릴지** 나눠 준다.
+사주 계산은 끝났다. [사주]에 적힌 사실에서만 고른다. 없는 글자를 만들지 마라.
+
+[나누는 규칙 — 어기면 못 쓴다]
+1. 사주 특징 하나(예: 인성이 많다)를 잡고 모든 항목에서 상황만 바꿔 같은 팩폭을 되풀이하게 하지 마라.
+   항목마다 **다른 특징, 또는 같은 특징의 전혀 다른 얼굴**을 준다.
+2. 비유·장면은 한 편에서 **딱 한 번**이다. 항목마다 다른 동네에서 가져온다.
+   파출소·고민상담소·감정 쓰레기통처럼 흔한 비유는 쓰지 마라.
+3. 항목에 적힌 [갈래]를 지킨다.
+   본체 팩폭 = 타고난 본성·자아도취·겉과 속이 다른 이중성
+   인간관계 팩폭 = 연애·사회생활에서 스스로 저지르는 호구짓·가식·꼬이는 사람 패턴
+   일·돈·앞날 팩폭 = 일할 때 나쁜 습관·미루기·돈 새는 구멍·헛짓거리
+   실전 처방전 = 오늘 당장 해볼 사이다 행동 (「거리를 두세요」 같은 뻔한 말 금지)
+4. 항목 제목이 묻는 것에 답이 되는 주제여야 한다.
+5. 주제끼리 뜻이 겹치는 부분이 15%를 넘으면 안 된다."""
+
+_PLAN_MIN = 4           # 항목이 이보다 적으면 계획 없이 쓴다 (짧은 편은 순차로 써서 이미 서로 본다)
+
+
+def plan_report(saju: dict[str, Any], sections: list[str], *, product: str = "",
+                model: str | None = None) -> dict[str, dict[str, str]]:
+    """항목마다 팩폭 주제·비유를 먼저 정한다. 실패하면 빈 dict — 계획 없이 예전처럼 쓴다.
+
+    🛑 왜 따로 부르나 (2026-09-13 온해님 「장별 팩폭 주제 완전 분리」): 첫 물결은 여섯 항목을
+       **동시에** 쓴다. 서로 뭘 쓰는지 몰라서, 시험 한 편에서 1·2항목이 둘 다 「속으로 점수 깎는
+       판사/심사위원」이었다. 뒤 물결에 알려 주는 것만으로는 첫 물결의 겹침을 못 막는다.
+    """
+    if len(sections) < _PLAN_MIN:
+        return {}
+    ask = brief_of(product)
+    rows = "\n".join("%d. %s  [갈래: %s]" % (i + 1, t, LANES[_lane_of(i, len(sections))][0])
+                     for i, t in enumerate(sections))
+    user = ("%s[사주]\n%s\n\n[항목 — 이 순서대로 하나씩 나눠 준다]\n%s"
+            % (("[이 상품이 답해야 할 것]\n%s\n\n" % ask) if ask else "", facts(saju), rows))
+    try:
+        res = _call(_P('plan', PLAN_SYSTEM), user, model=model, temperature=0.9,
+                    max_tokens=max(800, 90 * len(sections)), schema=PLAN_SCHEMA)
+        got = json.loads(res.get("text") or "{}")
+    except Exception:                                   # noqa: BLE001
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for it in got.get("items") or []:
+        try:
+            k = int(it.get("n")) - 1
+        except Exception:                               # noqa: BLE001
+            continue
+        if 0 <= k < len(sections):
+            out[sections[k]] = {"topic": str(it.get("topic") or "")[:40],
+                                "scene": str(it.get("scene") or "")[:30]}
+    return out
+
+
+_MEMO_MAX = 80
+
+
+def _split_memo(text: str) -> tuple[str, str, str]:
+    """`메모: 주제=… | 비유=…` 줄을 떼어 낸다. 손님 화면에는 안 나간다.
+
+    🛑 모델이 안 붙일 수도 있다. 그러면 빈 값이고, 다음 항목에는 첫 문장만 넘어간다.
+    """
+    lines = (text or "").split("\n")
+    topic = scene = ""
+    keep = []
+    for line in lines:
+        t = line.strip()
+        if t.startswith("메모:"):
+            body = t[len("메모:"):]
+            for part in body.split("|"):
+                k, _, v = part.partition("=")
+                k, v = k.strip(), v.strip()[:_MEMO_MAX]
+                if k == "주제":
+                    topic = v
+                elif k == "비유":
+                    scene = v
+            continue
+        keep.append(line)
+    return topic, scene, "\n".join(keep).strip()
+
+
 def _length_note(chars: int) -> str:
     """몇 자로 쓸지. 문단 수까지 같이 정해 줘야 늘어지지 않는다."""
     if chars >= 1000:
@@ -454,11 +593,31 @@ def _length_note(chars: int) -> str:
 
 def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
                   *, product: str = "", model: str | None = None,
-                  chars: int = 420, seen: str = "") -> dict[str, Any]:
+                  chars: int = 420, seen: str = "", total: int = 0,
+                  plan: dict[str, dict[str, str]] | None = None) -> dict[str, Any]:
     """항목 하나를 쓴다. 숫자가 어긋나면 한 번 다시 쓰게 한다."""
     fact = facts(saju)
     guide = "%s\n%s\n%s" % (OPENERS[idx % len(OPENERS)], CLOSERS[idx % len(CLOSERS)],
                              _length_note(chars))
+    # 🛑 몇 항목짜리 편인지 알 때만 갈래를 준다. 모르면(단건 호출) 예전처럼 쓴다
+    mine = (plan or {}).get(section)
+    if total:
+        ln, lw = LANES[_lane_of(idx, total)]
+        guide += ("\n\n[이 항목의 팩폭 갈래 — %s]\n%s\n"
+                  "🛑 항목 제목이 묻는 것에 먼저 답한다. 갈래는 그 답을 어느 쪽에서 때릴지를 정한다.\n"
+                  "🛑 다른 항목에서 잡은 사주 특징을 또 잡아 상황만 바꿔 되풀이하지 마라. "
+                  "같은 글자를 말해야 하면 이 갈래에서만 보이는 새 모습으로 말한다." % (ln, lw))
+        # 계획이 없을 때만 장면 동네를 정해 준다. 계획이 있으면 편집장이 고른 비유가 우선이다
+        if not mine:
+            guide += ("\n[비유·장면을 가져올 곳] %s 쪽에서 찾는다. "
+                      "파출소·고민상담소처럼 흔한 비유로 새지 마라." % SCENES[idx % len(SCENES)])
+    # 🛑 편집장이 나눠 준 주제·비유 (plan_report). 다른 항목 몫은 **건드리지 말라고** 같이 준다
+    if mine:
+        others = [v for t, v in (plan or {}).items() if t != section]
+        guide += ("\n\n[이 항목에 배정된 것 — 이걸로 쓴다]\n팩폭: %s\n비유: %s\n"
+                  "[다른 항목이 맡은 것 — 가져다 쓰지 마라]\n%s"
+                  % (mine.get("topic", ""), mine.get("scene", ""),
+                     "\n".join("  - %s / %s" % (v.get("topic", ""), v.get("scene", "")) for v in others)))
     # 🛑 상품이 무엇을 묻는지 안 알려 주면 사주 일반론으로 흐른다 (2026-09-07).
     #    항목 제목은 각도일 뿐이고, 손님이 산 것은 이 질문에 대한 답이다.
     ask = brief_of(product)
@@ -484,7 +643,13 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
         "  · 🛑 본문을 요약하지 마라. 요약은 손님이 방금 읽었다" "\n"
         "  · 🛑 위로하거나 훈훈하게 맺지 마라. 한 발 물러선 자리에서 덧붙이는 말이다" "\n"
         "  · 좋은 보기: 「이 자리 얘기 나오면 다들 한참 말이 없어져요」 "
-        "「저도 이건 조심해서 말해요」 「올해 글자는 올해만 써요. 내년엔 또 달라져요」")
+        "「저도 이건 조심해서 말해요」 「올해 글자는 올해만 써요. 내년엔 또 달라져요」"
+
+        # 🛑 되풀이를 잡으려고 **이 항목이 무엇을 때렸고 무슨 비유를 썼는지** 받는다 (2026-09-13).
+        #    다음 물결에 「이미 쓴 주제·비유」로 넘긴다. 손님 화면에는 안 나간다
+        "\n\n[혼잣말 줄 바로 앞에 메모 한 줄]\n"
+        "`메모: 주제=… | 비유=…` 형식. 주제는 이 항목에서 때린 팩폭을 열다섯 자 안쪽으로, "
+        "비유는 쓴 핵심 비유·장면을 열다섯 자 안쪽으로. 손님에게는 안 보인다.")
     user = ("손님 이름: %s\n\n%s%s[사주]\n%s\n\n[이번에 쓸 항목]\n%s\n\n[이 항목의 형식]\n%s%s"
             % (name, seen or "", head, fact, section, guide, hook))
     res = _call(_P('saju', SYSTEM), user, model=model, max_tokens=max(1400, int(chars * 2.2)))
@@ -500,6 +665,7 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
         res = res2
         res["left"] = check_counts(res["text"], saju)
     res["hook"], res["text"] = _split_hook(res.get("text") or "")
+    res["topic"], res["scene"], res["text"] = _split_memo(res["text"])
     res["mutter"], res["text"] = _split_mutter(res["text"])
     return res
 
@@ -575,15 +741,18 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
     if len(sections) <= 3:
         workers = 1
 
+    plan = plan_report(saju, sections, product=product, model=model)
+
     out: dict[str, Any] = {}
-    wrote: list[tuple[str, str]] = []               # 이 편에서 이미 쓴 (제목, 첫 문장)
+    wrote: list[tuple[str, str, str, str]] = []     # 이 편에서 이미 쓴 (제목, 첫 문장, 주제, 비유)
     start, size = 0, workers
     while start < len(sections):
         wave = sections[start:start + size]
         note = seen + _same_note(wrote)             # 다른 편 + 이 편에서 이미 쓴 것
         with cf.ThreadPoolExecutor(max_workers=workers) as ex:
             futs = {ex.submit(write_section, name, saju, s, start + i, product=product,
-                              model=model, chars=chars, seen=note): s
+                              model=model, chars=chars, seen=note, total=len(sections),
+                              plan=plan): s
                     for i, s in enumerate(wave)}
             for f in cf.as_completed(futs):
                 try:
@@ -598,7 +767,8 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
                 # 🛑 **LLM 이 쓴 제목**을 넘긴다. 본래 제목만 넘기면 제목끼리 겹친다 —
                 #    2026-09-09 실측에서 「남의 짐까지 다 지고 서 있는 버릇」과
                 #    「남의 짐까지 지고 계시죠」가 한 편에 같이 나왔다.
-                wrote.append((d.get("hook") or t, _first_sentence(txt)))
+                wrote.append((d.get("hook") or t, _first_sentence(txt),
+                              d.get("topic") or "", d.get("scene") or ""))
         start += size
         # 🛑 순차로 가기로 했으면 계속 하나씩이다. 여기서 키우면 셋째 항목이
         #    둘째를 못 보고, 순차로 쓰는 뜻이 사라진다
@@ -620,7 +790,7 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
                        # 항목 끝에 붙는 무냥이 혼잣말 (2026-09-09 온해님 지시)
                        "mutter": d.get("mutter", ""),
                        "left": d.get("left") or []})
-    return {"model": model or MODEL, "blocks": blocks,
+    return {"model": model or MODEL, "blocks": blocks, "plan": plan,
             "tokens": {"in": tin, "out": tout}, "fixed": fixed, "errors": errs}
 
 
@@ -1183,18 +1353,27 @@ def _first_sentence(text: str) -> str:
     return re.split(r"(?<=[.!?요죠])\s", t, 1)[0][:_SAME_HEAD]
 
 
-def _same_note(wrote: list[tuple[str, str]]) -> str:
+def _same_note(wrote: list[tuple[str, str, str, str]]) -> str:
     """이 편에서 이미 쓴 항목들. 없으면 빈 문자열."""
     if not wrote:
         return ""
     rows = wrote[-_SAME_MAX:]
-    body = "\n".join("  - %s — %s" % (t, f) for t, f in rows)
+    body = "\n".join("  - %s — %s" % (w[0], w[1]) for w in rows)
+    # 🛑 주제·비유는 **오래된 것도 버리지 않는다** (2026-09-13 온해님 「한 번 쓴 비유는 리포트 전체에서 딱 한 번」).
+    #    짧아서 전부 넣어도 입력이 크게 안 는다
+    topics = [w[2] for w in wrote if len(w) > 2 and w[2]]
+    scenes = [w[3] for w in wrote if len(w) > 3 and w[3]]
+    ban = ""
+    if topics:
+        ban += "\n[이미 때린 팩폭 주제 — 다시 때리지 마라]\n" + " / ".join(topics) + "\n"
+    if scenes:
+        ban += "\n[이미 쓴 비유·장면 — 한 편에 딱 한 번이다. 다시 쓰지 마라]\n" + " / ".join(scenes) + "\n"
     return (
         "[이 편에서 이미 쓴 항목]\n"
         "같은 리포트 안에서 아래 항목들을 먼저 썼다. 손님은 이걸 이어서 읽는다.\n\n"
-        + body
-        + "\n\n🛑 **같은 편 안이라 겹치면 바로 보인다.**\n"
-          "- 위에 나온 **장면·비유·예시를 다시 쓰지 마라.** 다른 장면을 찾아라.\n"
+        + body + "\n" + ban
+        + "\n🛑 **같은 편 안이라 겹치면 바로 보인다.** 앞 항목과 뜻이 겹치는 부분이 15%를 넘으면 안 된다.\n"
+          "- 위에 나온 **팩폭 주제·장면·비유·예시를 다시 쓰지 마라.** 다른 것을 찾아라.\n"
           "- 위와 **같은 문장으로 시작하지 마라.**\n"
           "- 같은 글자(십성·오행·신살)를 또 말해야 하면, **이번 항목의 각도로만** 말한다.\n\n"
     )

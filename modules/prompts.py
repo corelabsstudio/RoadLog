@@ -50,6 +50,10 @@ SPEC: list[dict[str, Any]] = [
     {"key": "saju", "name": "사주 해설",
      "why": "손님이 읽는 글의 대부분이 여기서 나옵니다. 팩트폭격 세 박자가 들어 있어요.",
      "mod": "saju_writer", "attr": "SYSTEM"},
+    {"key": "plan", "name": "항목 나누기 (편집장)",
+     "why": "리포트를 쓰기 전에 항목마다 때릴 팩폭 주제·비유를 겹치지 않게 나눠 줍니다. "
+            "🛑 여기를 비우면 항목끼리 같은 팩폭을 되풀이하기 쉬워요.",
+     "mod": "saju_writer", "attr": "PLAN_SYSTEM"},
     {"key": "card", "name": "공유 카드 문구",
      "why": "스레드·인스타에 퍼지는 카드의 이름·한 줄·이야기입니다.",
      "mod": "saju_writer", "attr": "CARD_SYSTEM"},
