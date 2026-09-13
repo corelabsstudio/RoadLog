@@ -3372,7 +3372,7 @@ def dream_read(body: DreamReadBody, authorization: str | None = Header(default=N
         prev = saju_writer.load(DREAM_PRODUCT, key)
     except ValueError:
         prev = None
-    if prev and prev.get("ver") == dream_ops.VER and prev.get("text"):
+    if prev and prev.get("ver") == dream_ops.REPORT_VER and prev.get("text"):
         g = prev.get("grade", "B")
         return {"ok": True, "again": True, "paid": paid, "priceSet": DREAM_PRICE_SET,
                 "grade": g, "label": dream_ops.GRADES.get(g, ""),
@@ -3394,7 +3394,7 @@ def dream_read(body: DreamReadBody, authorization: str | None = Header(default=N
     try:
         saju_writer.save(DREAM_PRODUCT, key, {"text": out["text"], "grade": out["grade"],
                                               "blocks": out.get("blocks") or [],
-                                              "ver": dream_ops.VER, "kind": "dream"})
+                                              "ver": dream_ops.REPORT_VER, "kind": "dream"})
     except Exception:                                 # noqa: BLE001
         pass
     return {"ok": True, "paid": paid, "priceSet": DREAM_PRICE_SET,

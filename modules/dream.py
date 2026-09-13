@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from typing import Any
@@ -25,6 +26,9 @@ from modules import saju_writer
 
 # 🛑 2 — 자리마다 무냥이 한줄평(`mutter`)을 받고 자리를 나눠 준다 (2026-09-13). 옛 저장분은 다시 쓴다
 VER = 2
+# 🛑 리포트만 따로 센다 (2026-09-14). VER 을 올리면 **꿈 스캔 등급까지** 새로 뽑혀서, 이미 퍼진 공유 카드와
+#    같은 꿈의 등급이 달라질 수 있다. 리포트 칸 구조만 바뀌었으니 리포트만 버린다
+REPORT_VER = 3
 
 # 🛑 등급 이름표. 공유 카드·화면이 이 이름을 그대로 쓴다
 GRADES = {
@@ -93,24 +97,25 @@ REPORT_RULES = """
 """
 
 
+# 🛑 **자리 하나를 칸으로 나눠 받는다** (2026-09-14 온해님 「꿈 사주 리포트에도 똑같이 적용해줘」).
+#    사주(`saju_writer.SECTION_SCHEMA`)·관상과 **같은 칸**이다 — 화면이 같은 카드(`repcard.js`)로 그린다.
+#    칸 제목·체크리스트·한 장면도 LLM 이 쓴다. 규격은 사주 것을 복사해 꿈에 맞게 설명만 바꾼다.
+_SEC = copy.deepcopy(saju_writer.SECTION_SCHEMA)
+for _k in ("memo_topic", "memo_scene"):
+    _SEC["properties"].pop(_k, None)
+    if _k in _SEC["required"]:
+        _SEC["required"].remove(_k)
+_SEC["properties"]["folds"]["description"] = (
+    "접어 두는 칸 **정확히 셋**. ① 꿈에 나온 것이 이 사람 [사주]의 무엇과 맞물려 그렇게 읽히나 "
+    "② 요즘 겪었을 일상 장면 ③ 스스로는 모르는 부분이나 조건에 따라 갈리는 것")
+_SEC["properties"]["scene_line"]["description"] = "이 자리를 한 장면으로 줄인 말. 스무 자 안쪽 (예: 물이 찰랑이는 빈 항아리). 사주 용어 금지"
+_SEC["properties"]["mutter"]["description"] = "무냥이의 족집게 한줄평. 이 자리를 한 줄로 콕 찌르는 팩폭. 서른 자 안쪽. 느낌표 금지"
+
 REPORT_SCHEMA = {
     "type": "object",
     "properties": {
         "grade": {"type": "string", "enum": list(GRADES.keys())},
-        "sections": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "nickname": {"type": "string", "description": "이 자리의 제목. 준 자리 이름을 그대로 쓴다"},
-                    "fact_bomb": {"type": "string", "description": "뼈 때리는 팩트 폭격"},
-                    "meme_analysis": {"type": "string", "description": "꿈 상징과 사주를 엮은 풀이. 일상 장면 하나를 든다"},
-                    "funny_solution": {"type": "string", "description": "그래서 무엇을 하면 되는지. 유쾌하게"},
-                    "mutter": {"type": "string", "description": "무냥이의 족집게 한줄평. 이 자리를 한 줄로 콕 찌르는 팩폭. 서른 자 안쪽. 느낌표 금지"},
-                },
-                "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution", "mutter"],
-            },
-        },
+        "sections": {"type": "array", "items": _SEC},
     },
     "required": ["grade", "sections"],
 }
@@ -198,7 +203,9 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
         + ("\n\n[등급]\n이 꿈은 이미 %s급(%s)으로 매겼다. 이 등급과 어긋나는 말을 하지 않는다."
            % (fixed, GRADES[fixed]) if fixed else "")
         + "\n\n[적는 법]\n"
-          "자리 하나에 %d자 안팎. 세 박자로 쓴다 — 팩트폭격 → 찰진 비유 → 유쾌한 반전.\n"
+          "자리 하나에 %d자 안팎(첫 문장·접는 칸 셋·처방을 합친 분량). 세 박자로 쓴다 — 팩트폭격 → 찰진 비유 → 유쾌한 반전.\n"
+          "🛑 자리마다 칸으로 나눠 담는다: lead(첫 문장 하나) · scene_line(한 장면) · folds 셋(칸 제목·꼬리도 네가 쓴다) · "
+          "rx(처방·못 박는 한 문장) · todos(오늘 할 일 둘~셋) · marks(본문에서 글자 그대로 옮긴 핵심 구절) · mutter.\n"
           "🛑 **꿈 상징만 풀면 해몽집이다.** 자리마다 [사주]에 적힌 것 하나를 짚어 "
           "그 꿈이 왜 **이 사람에게** 그렇게 읽히는지 잇는다.\n"
           "🛑 [사주]에 없는 글자·개수를 지어내지 않는다.\n"
@@ -206,26 +213,20 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
     )
     system = saju_writer._P("dream", SYSTEM) + REPORT_RULES + "\n" + _hard_words()
     res = saju_writer._call(system, user,
-                            max_tokens=max(1600, chars * len(secs) * 3),
+                            max_tokens=max(2400, int(chars * len(secs) * 3.8)),
                             schema=REPORT_SCHEMA)
     d = _loads(res["text"])
     got = d.get("sections") or []
     parts, blocks = [], []
     for i, t in enumerate(secs):
-        s = got[i] if i < len(got) and isinstance(got[i], dict) else {}
-        b = {
-            "title": t,
-            "fact": str(s.get("fact_bomb") or "").strip(),
-            "body": str(s.get("meme_analysis") or "").strip(),
-            "tip": str(s.get("funny_solution") or "").strip(),
-            "mutter": str(s.get("mutter") or "").strip()[:60],
-        }
-        body = "\n\n".join(x for x in (b["fact"], b["body"], b["tip"]) if x)
-        if body:
-            parts.append("## %s\n%s" % (t, body))
-            # 🛑 **자리를 나눠서도 준다** (2026-09-13 온해님 「주제별 독립된 카드」). 화면이
-            #    팩폭·풀이·처방·한줄평을 따로 꾸미려면 한 덩어리 글로는 못 가른다
-            blocks.append(b)
+        s_ = got[i] if i < len(got) and isinstance(got[i], dict) else {}
+        # 🛑 칸 읽기·형광펜 거르기는 사주 것을 그대로 쓴다 (`saju_writer._parse_section`)
+        b = saju_writer._parse_section(json.dumps(s_, ensure_ascii=False)) if s_ else None
+        if not b:
+            continue
+        b = {"title": t, **{k: b[k] for k in ("hook", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "text")}}
+        parts.append("## %s\n%s" % (t, b["text"]))
+        blocks.append(b)
     if not parts:
         raise RuntimeError("꿈 리포트가 비었다")
     g = fixed or str(d.get("grade") or "B").upper()
@@ -234,9 +235,19 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
 
 
 def veil_blocks(blocks: list[dict[str, Any]] | None, paid: bool) -> list[dict[str, Any]]:
-    """자리 목록도 복채 전에는 첫 자리만. 🛑 서버에서 자른다 (아래 `veil` 과 같은 이유)."""
+    """복채 전에는 **첫 자리는 통째로, 나머지는 제목·칸 제목까지만** 준다. 🛑 서버에서 자른다.
+
+    (2026-09-14) 사주 목차 맛보기·관상과 같은 모양이다 — 잠긴 카드에 칸 제목이 보여야 뒤를 열고 싶어진다.
+    """
     blocks = [b for b in (blocks or []) if isinstance(b, dict)]
-    return blocks if paid else blocks[:1]
+    if paid:
+        return blocks
+    out = blocks[:1]
+    for b in blocks[1:]:
+        out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
+                    "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""}
+                              for f in (b.get("folds") or [])]})
+    return out
 
 
 def veil(text: str, paid: bool) -> str:
