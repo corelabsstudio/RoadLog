@@ -3357,7 +3357,8 @@ def dream_read(body: DreamReadBody, authorization: str | None = Header(default=N
         g = prev.get("grade", "B")
         return {"ok": True, "again": True, "paid": paid, "priceSet": DREAM_PRICE_SET,
                 "grade": g, "label": dream_ops.GRADES.get(g, ""),
-                "text": dream_ops.veil(prev["text"], paid)}
+                "text": dream_ops.veil(prev["text"], paid),
+                "blocks": dream_ops.veil_blocks(prev.get("blocks"), paid)}
     if not saju_writer.ready():
         raise HTTPException(503, "지금은 무냥이가 못 읽어요. 잠시 뒤에 다시 해 주세요.")
     # 🛑 **복채 전 맛보기는 사주 미리보기와 같은 한도**를 쓴다 — 리포트 한 편 원가가 나가는 자리다
@@ -3373,12 +3374,14 @@ def dream_read(body: DreamReadBody, authorization: str | None = Header(default=N
         raise HTTPException(502, "꿈을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
     try:
         saju_writer.save(DREAM_PRODUCT, key, {"text": out["text"], "grade": out["grade"],
+                                              "blocks": out.get("blocks") or [],
                                               "ver": dream_ops.VER, "kind": "dream"})
     except Exception:                                 # noqa: BLE001
         pass
     return {"ok": True, "paid": paid, "priceSet": DREAM_PRICE_SET,
             "grade": out["grade"], "label": dream_ops.GRADES[out["grade"]],
-            "text": dream_ops.veil(out["text"], paid)}
+            "text": dream_ops.veil(out["text"], paid),
+            "blocks": dream_ops.veil_blocks(out.get("blocks"), paid)}
 
 
 class ReferBody(BaseModel):

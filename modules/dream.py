@@ -23,7 +23,8 @@ from typing import Any
 
 from modules import saju_writer
 
-VER = 1
+# 🛑 2 — 자리마다 무냥이 한줄평(`mutter`)을 받고 자리를 나눠 준다 (2026-09-13). 옛 저장분은 다시 쓴다
+VER = 2
 
 # 🛑 등급 이름표. 공유 카드·화면이 이 이름을 그대로 쓴다
 GRADES = {
@@ -105,8 +106,9 @@ REPORT_SCHEMA = {
                     "fact_bomb": {"type": "string", "description": "뼈 때리는 팩트 폭격"},
                     "meme_analysis": {"type": "string", "description": "꿈 상징과 사주를 엮은 풀이. 일상 장면 하나를 든다"},
                     "funny_solution": {"type": "string", "description": "그래서 무엇을 하면 되는지. 유쾌하게"},
+                    "mutter": {"type": "string", "description": "무냥이의 족집게 한줄평. 이 자리를 한 줄로 콕 찌르는 팩폭. 서른 자 안쪽. 느낌표 금지"},
                 },
-                "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution"],
+                "required": ["nickname", "fact_bomb", "meme_analysis", "funny_solution", "mutter"],
             },
         },
     },
@@ -208,21 +210,33 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
                             schema=REPORT_SCHEMA)
     d = _loads(res["text"])
     got = d.get("sections") or []
-    parts = []
+    parts, blocks = [], []
     for i, t in enumerate(secs):
         s = got[i] if i < len(got) and isinstance(got[i], dict) else {}
-        body = "\n\n".join(x for x in (
-            str(s.get("fact_bomb") or "").strip(),
-            str(s.get("meme_analysis") or "").strip(),
-            str(s.get("funny_solution") or "").strip(),
-        ) if x)
+        b = {
+            "title": t,
+            "fact": str(s.get("fact_bomb") or "").strip(),
+            "body": str(s.get("meme_analysis") or "").strip(),
+            "tip": str(s.get("funny_solution") or "").strip(),
+            "mutter": str(s.get("mutter") or "").strip()[:60],
+        }
+        body = "\n\n".join(x for x in (b["fact"], b["body"], b["tip"]) if x)
         if body:
             parts.append("## %s\n%s" % (t, body))
+            # 🛑 **자리를 나눠서도 준다** (2026-09-13 온해님 「주제별 독립된 카드」). 화면이
+            #    팩폭·풀이·처방·한줄평을 따로 꾸미려면 한 덩어리 글로는 못 가른다
+            blocks.append(b)
     if not parts:
         raise RuntimeError("꿈 리포트가 비었다")
     g = fixed or str(d.get("grade") or "B").upper()
-    return {"grade": g if g in GRADES else "B", "text": "\n\n".join(parts),
+    return {"grade": g if g in GRADES else "B", "text": "\n\n".join(parts), "blocks": blocks,
             "tokens": {"in": res.get("in", 0), "out": res.get("out", 0)}}
+
+
+def veil_blocks(blocks: list[dict[str, Any]] | None, paid: bool) -> list[dict[str, Any]]:
+    """자리 목록도 복채 전에는 첫 자리만. 🛑 서버에서 자른다 (아래 `veil` 과 같은 이유)."""
+    blocks = [b for b in (blocks or []) if isinstance(b, dict)]
+    return blocks if paid else blocks[:1]
 
 
 def veil(text: str, paid: bool) -> str:
