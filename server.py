@@ -3285,6 +3285,19 @@ class DreamReadBody(BaseModel):
 _DREAM_FIELDS = ("grade", "label", "title", "punch", "read", "tip")
 
 
+@app.get("/api/dream/quota")
+def dream_quota(authorization: str | None = Header(default=None)):
+    """오늘 꿈 스캔을 몇 번 더 할 수 있나 (2026-09-13 온해님 「오늘 무료 스캔 남은 횟수」).
+
+    🛑 화면에 숫자를 박아 두지 않는다. 다섯 번 다 쓴 손님에게 「5회」가 보이면 거짓말이다.
+    """
+    user = _token_user(authorization)
+    if _is_free(user):
+        return {"cap": DREAM_DAILY_CAP, "left": DREAM_DAILY_CAP, "unlimited": True}
+    used = _preview_used(user["email"], kind="dream")
+    return {"cap": DREAM_DAILY_CAP, "left": max(0, DREAM_DAILY_CAP - used), "unlimited": False}
+
+
 @app.post("/api/dream/scan")
 def dream_scan(body: DreamScanBody, authorization: str | None = Header(default=None)):
     """꿈 스캔 — 무료. 등급·별명·한 줄 팩폭·짧은 풀이."""
