@@ -111,6 +111,9 @@ def snapshot(result: dict[str, Any]) -> dict[str, Any]:
         "keywords": [str(x)[:12] for x in (sc.get("pet_keywords") or [])][:3],
         "stats": stats,
         "stat_names": {str(k): str(v)[:16] for k, v in (result.get("stat_names") or {}).items()},
+        # 갤러리 카드에 「A+급 · 고양이」로 적는다 (2026-09-15). 옛 줄에는 없어서 빈 값이 간다
+        "species": str(result.get("pet_species") or "")[:12],
+        "species_word": str(result.get("species_word") or "")[:12],
     }
 
 
@@ -122,6 +125,7 @@ def public(row: dict[str, Any], *, winner: bool = False) -> dict[str, Any]:
         "factcheck_short": snap.get("factcheck_short", ""),
         "advice": snap.get("advice", ""),
         "keywords": snap.get("keywords", []),
+        "species": snap.get("species", ""),
         "stats": snap.get("stats", {}),
         "stat_names": snap.get("stat_names", {}),
         "owner_label": row.get("owner_label", ""),
