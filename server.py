@@ -3438,7 +3438,8 @@ def pets_share(body: PetShareBody, authorization: str | None = Header(default=No
     except Exception:                                 # noqa: BLE001
         raise HTTPException(400, "사진을 읽지 못했어요.")
     try:
-        row = pet_hall_ops.add(owner=user["email"], shot=shot, pet_name=body.pet_name, jpeg=jpeg, result=prev)
+        row = pet_hall_ops.add(owner=user["email"], shot=shot, pet_name=body.pet_name, jpeg=jpeg, result=prev,
+                               owner_label=_mask_name(user.get("name") or "", user.get("email") or ""))
     except ValueError as e:
         raise HTTPException(400, str(e))
     except PermissionError as e:
@@ -3446,16 +3447,37 @@ def pets_share(body: PetShareBody, authorization: str | None = Header(default=No
     return {"ok": True, "item": row}
 
 
-@app.post("/api/pets/{pid}/like")
-def pets_like(pid: str, request: Request, response: Response,
-              voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
-    """좋아요(투표) 1. 🛑 로그인 없이 누를 수 있다 — 퍼진 카드에서 들어온 사람도 누르게.
-    중복은 브라우저 쿠키로 막고, 같은 IP 는 한 아이에게 5번까지만(`pet_hall.IP_LIKE_CAP`)."""
+class PetCommentBody(BaseModel):
+    nickname: str = ""
+    content: str = ""
+    password: str = ""      # 적으면 다른 기기에서도 이 비밀번호로 지울 수 있다
+
+
+class PetCommentDeleteBody(BaseModel):
+    password: str = ""
+
+
+def _pet_voter(voter: str | None, response: Response) -> str:
+    """이 브라우저를 가리키는 표. 없으면 만들어 쿠키로 준다(좋아요·댓글이 같이 쓴다)."""
     import uuid as _uuid
     if not voter or len(voter) > 64:
         voter = _uuid.uuid4().hex
         # 🛑 1년. 지우면 다시 누를 수 있지만 IP 칸이 한 번 더 막는다
         response.set_cookie(PET_VOTER_COOKIE, voter, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax", secure=True)
+    return voter
+
+
+def _pet_id_ok(pid: str) -> bool:
+    import re as _re
+    return bool(_re.fullmatch(r"[0-9a-f-]{36}", pid or ""))
+
+
+@app.post("/api/pets/{pid}/like")
+def pets_like(pid: str, request: Request, response: Response,
+              voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
+    """좋아요(투표) 1. 🛑 로그인 없이 누를 수 있다 — 퍼진 카드에서 들어온 사람도 누르게.
+    중복은 브라우저 쿠키로 막고, 같은 IP 는 한 아이에게 5번까지만(`pet_hall.IP_LIKE_CAP`)."""
+    voter = _pet_voter(voter, response)
     try:
         return pet_hall_ops.like(pid, voter=voter, ip=_client_ip(request))
     except KeyError:
@@ -3463,11 +3485,73 @@ def pets_like(pid: str, request: Request, response: Response,
 
 
 @app.get("/api/pets/hall-of-fame")
-def pets_hall(month: str | None = Query(default=None), limit: int = Query(default=30)):
-    """좋아요 순 목록. 1위는 「이달의 관상왕」(is_monthly_winner). 로그인 없이 볼 수 있다."""
+def pets_hall(month: str | None = Query(default=None), limit: int = Query(default=30),
+              sort: str = Query(default="likes")):
+    """목록. `sort=likes`(실시간 랭킹순) · `latest`(최신순). 1위는 「이달의 관상왕」(is_monthly_winner). 로그인 없이 볼 수 있다."""
     if month and not (len(month) == 7 and month[4] == "-" and month.replace("-", "").isdigit()):
         raise HTTPException(400, "달은 2026-09 처럼 적어 주세요.")
-    return pet_hall_ops.hall(month, limit)
+    if sort not in {"likes", "latest"}:
+        raise HTTPException(400, "정렬은 likes 또는 latest 예요.")
+    # 갤러리 상세 조각이 없던 옛 줄을 관상 저장본으로 한 번 채운다 (2026-09-14 이전에 올린 것)
+    pet_hall_ops.fill_missing(lambda shot: saju_writer.load("pet_read", shot))
+    return pet_hall_ops.hall(month, limit, sort)
+
+
+@app.get("/api/pets/{pid}/comments")
+def pets_comments(pid: str, authorization: str | None = Header(default=None),
+                  voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
+    """댓글 목록 (오래된 것부터). `mine` 이면 이 브라우저·계정이 쓴 것이라 지우기 단추를 보인다."""
+    if not _pet_id_ok(pid) or not pet_hall_ops.exists(pid):
+        raise HTTPException(404, "명예의 전당에서 내려간 아이예요.")
+    user = _maybe_user(authorization)
+    return {"items": pet_hall_ops.comments(pid, voter=voter or "", user=(user or {}).get("email") or ""),
+            "admin": bool(user and _is_owner(user))}
+
+
+@app.post("/api/pets/{pid}/comments")
+def pets_comment_add(pid: str, body: PetCommentBody, request: Request, response: Response,
+                     authorization: str | None = Header(default=None),
+                     voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
+    """댓글 쓰기. 🛑 로그인 없이(기획서). 링크 금지 · IP 하루 30개 · 10초에 1개 (`pet_hall`)."""
+    if not _pet_id_ok(pid):
+        raise HTTPException(404, "명예의 전당에서 내려간 아이예요.")
+    voter = _pet_voter(voter, response)
+    user = _maybe_user(authorization)
+    try:
+        return {"ok": True, **pet_hall_ops.add_comment(pid, nickname=body.nickname, content=body.content,
+                                                       password=body.password, voter=voter, ip=_client_ip(request),
+                                                       user=(user or {}).get("email") or "")}
+    except KeyError:
+        raise HTTPException(404, "명예의 전당에서 내려간 아이예요.")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(429, str(e))
+
+
+@app.post("/api/pets/{pid}/comments/{cid}/delete")
+def pets_comment_delete(pid: str, cid: str, body: PetCommentDeleteBody,
+                        authorization: str | None = Header(default=None),
+                        voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
+    """댓글 지우기(숨김). 쓴 브라우저 · 같은 계정 · 비밀번호 · 관리자."""
+    if not _pet_id_ok(pid):
+        raise HTTPException(404, "없는 댓글이에요.")
+    user = _maybe_user(authorization)
+    try:
+        n = pet_hall_ops.delete_comment(pid, cid, voter=voter or "", user=(user or {}).get("email") or "",
+                                        password=body.password, admin=bool(user and _is_owner(user)))
+    except KeyError:
+        raise HTTPException(404, "없는 댓글이에요.")
+    except PermissionError as e:
+        raise HTTPException(403, str(e))
+    return {"ok": True, "comment_count": n}
+
+
+@app.get("/hall-of-fame")
+@app.get("/pets/hall-of-fame")
+def hall_of_fame_page():
+    """명예의 전당 주소. 🛑 이 사이트는 화면을 **해시로** 옮긴다(CLAUDE.md) — 주소로 들어오면 `#hall` 로 보낸다."""
+    return RedirectResponse("/#hall", status_code=302)
 
 
 @app.get("/api/pets/{pid}/image")

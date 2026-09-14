@@ -31,8 +31,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-aEqnANdB.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-DUB6-exn.css">
+  <script type="module" crossorigin src="/assets/main-mGU-_38g.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Dnyn8LQE.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -302,12 +302,84 @@
       <!-- 🛑 명예의 전당 — 좋아요 순. 1위는 「이달의 관상왕」. 서버 `/api/pets/hall-of-fame` · `pet.js:loadHall` -->
       <section class="dream-box pet-hall" id="petHall">
         <div class="dream-row"><h3 id="petHallHead">명예의 전당</h3><span class="dream-n" id="petHallMonth"></span></div>
+        <a class="pet-hall-more" href="#hall" id="petHallMore">전당 전체 보기 ➔</a>
         <p class="pet-hint" id="petHallLede"></p>
         <div class="pet-last" id="petLast" hidden></div>
         <ol class="pet-hall-list" id="petHallList"></ol>
         <p class="share-note" id="petHallNote" hidden></p>
       </section>
     </div>
+  </div>
+
+  <!-- 👑 명예의 전당 갤러리 `#hall` (2026-09-14 온해님 「인스타그램 감성 독립 페이지 · 피드/댓글」).
+       속은 hall.js 가 그린다. 서버 `/api/pets/hall-of-fame?sort=` · `/api/pets/:id/comments`.
+       🛑 알약 금지 — 정렬은 밑줄 탭, 순위 딱지는 작은 네모 -->
+  <div class="view view-hall" id="viewHall" hidden>
+    <div class="gal-wrap">
+      <button type="button" class="back" id="galBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>홈으로</button>
+      <header class="gal-head">
+        <h2 id="galTitle">👑 이달의 댕냥이 관상 명예의 전당</h2>
+        <p class="gal-lede"><span id="galMonth"></span> <span id="galLede"></span></p>
+      </header>
+      <div class="gal-sort" id="galSort" role="tablist" aria-label="정렬">
+        <button type="button" role="tab" data-sort="likes" id="galSortLikes" class="on" aria-selected="true">실시간 랭킹순</button>
+        <button type="button" role="tab" data-sort="latest" id="galSortLatest" aria-selected="false">최신순</button>
+      </div>
+      <ul class="gal-grid" id="galGrid"></ul>
+      <div class="gal-empty" id="galEmpty" hidden>
+        <img src="/assets/pet_duo_b-CE3zaRTc.webp" alt="" aria-hidden="true" />
+        <p id="galEmptyTxt">아직 올라온 아이가 없어요.</p>
+      </div>
+      <button type="button" class="btn cta-hero gal-join" id="galJoin">우리 아이 관상 보기 ➔</button>
+    </div>
+
+    <dialog class="gal-modal" id="galModal" aria-labelledby="gmName">
+      <div class="gm-box">
+        <button type="button" class="gm-close" id="gmClose" aria-label="닫기">✕</button>
+        <div class="gm-scroll">
+          <section class="gm-left">
+            <div class="gm-photo"><img id="gmImg" alt="" /></div>
+            <div class="gm-result">
+              <p class="gm-grade"><b id="gmGrade"></b> <span id="gmCardTitle"></span></p>
+              <p class="gm-title" id="gmTitle"></p>
+              <div id="gmStatsBox">
+                <p class="pet-card-t" id="gmResultHead">관상 스탯</p>
+                <div class="pet-stats" id="gmStats"></div>
+              </div>
+            </div>
+          </section>
+          <section class="gm-right">
+            <header class="gm-user">
+              <img src="/assets/face-D1JUG1d8.webp" alt="" aria-hidden="true" />
+              <div><b id="gmName"></b><span id="gmOwner"></span></div>
+              <span class="gm-crown" id="gmCrown"></span>
+            </header>
+            <div class="gm-fact">
+              <p class="pet-card-t" id="gmFactHead">관상 한 줄평</p>
+              <p class="gm-fact-t" id="gmFact"></p>
+              <p class="gm-summary" id="gmSummary"></p>
+              <p class="pet-keywords gm-keywords" id="gmKeywords"></p>
+            </div>
+            <div class="gm-actions">
+              <button type="button" class="ph-like gm-like" id="gmLike" aria-label="좋아요"></button>
+            </div>
+            <p class="pet-card-t gm-c-head" id="gmCommentsHead">댓글</p>
+            <ul class="gm-list" id="gmList"></ul>
+            <p class="form-error" id="gmErr" hidden></p>
+            <form class="gm-form" id="gmForm">
+              <div class="gm-form-row">
+                <input type="text" id="gmNick" maxlength="12" autocomplete="nickname" placeholder="닉네임" />
+                <input type="password" id="gmPw" maxlength="16" autocomplete="off" placeholder="비밀번호(선택)" />
+              </div>
+              <div class="gm-form-row">
+                <input type="text" id="gmText" maxlength="200" autocomplete="off" placeholder="댓글 달기" />
+                <button type="submit" class="gm-post" id="gmPost">게시</button>
+              </div>
+            </form>
+          </section>
+        </div>
+      </div>
+    </dialog>
   </div>
 
   <div class="view view-dream" id="viewDream" hidden>

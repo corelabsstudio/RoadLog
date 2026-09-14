@@ -20,12 +20,26 @@ Railway 볼륨). 칸은 기획서 그대로다:
 🛑 **좋아요 중복 막기** — 브라우저 쿠키로 한 번. IP 는 **같은 IP 에서 한 아이에게 5번까지만** 둔다.
    IP 하나로만 막으면 휴대폰 통신사가 여러 사람을 한 IP 로 묶는 경우 다른 사람 표까지 막힌다.
 🛑 IP 는 **해시로만** 남긴다. 원래 주소는 저장하지 않는다.
+
+**갤러리 · 댓글 (2026-09-14 온해님 「인스타그램 감성 명예의 전당 페이지」)**
+기획서의 표 두 개를 이 사이트 방식(JSON 한 벌씩)으로 둔다.
+
+| 기획서 표 | 여기 |
+|---|---|
+| `pet_gallery_posts` | 위 `pet_physiognomy_ranks.json` 의 줄 — `summary` · `comment_count` 칸을 더했다 |
+| `pet_gallery_comments` | `DATA_DIR/pet_gallery_comments.json` (id · post_id · nickname · content · created_at) |
+
+🛑 **댓글은 로그인 없이 쓴다**(기획서). 대신 막는 것: 주소(링크) 금지 · 같은 IP 하루 30개 ·
+   같은 브라우저 10초에 1개 · 닉네임 12자 · 내용 200자.
+🛑 **지우기** — 쓴 브라우저(쿠키) · 같은 계정 · 비밀번호(적었을 때) · 관리자. 비밀번호는 PBKDF2 해시만 남긴다.
 """
 from __future__ import annotations
 
 import datetime as _dt
 import hashlib
+import hmac
 import json
+import re
 import os
 import threading
 import uuid
@@ -81,9 +95,37 @@ def _h(s: str) -> str:
     return hashlib.sha256(("roadlog-pet|" + (s or "")).encode("utf-8")).hexdigest()[:24]
 
 
+def snapshot(result: dict[str, Any]) -> dict[str, Any]:
+    """갤러리 상세 창에 쓸 관상 결과 조각. 올릴 때 한 번 떠 둔다 — 저장본이 나중에 바뀌어도 올린 모습 그대로."""
+    sc = result.get("share_card_data") or {}
+    stats = {}
+    for k, v in (result.get("stats") or {}).items():
+        try:
+            stats[str(k)] = max(0, min(100, int(v)))
+        except (TypeError, ValueError):
+            continue
+    return {
+        "summary": str(result.get("summary") or "")[:80],
+        "factcheck_short": str(sc.get("main_factcheck_short") or "")[:120],
+        "advice": str(result.get("one_line_advice") or "")[:120],
+        "keywords": [str(x)[:12] for x in (sc.get("pet_keywords") or [])][:3],
+        "stats": stats,
+        "stat_names": {str(k): str(v)[:16] for k, v in (result.get("stat_names") or {}).items()},
+    }
+
+
 def public(row: dict[str, Any], *, winner: bool = False) -> dict[str, Any]:
     """밖으로 내보내는 칸만. 🛑 등록한 사람 이메일·투표 기록은 내보내지 않는다."""
+    snap = row.get("snap") or {}
     return {
+        "summary": snap.get("summary", ""),
+        "factcheck_short": snap.get("factcheck_short", ""),
+        "advice": snap.get("advice", ""),
+        "keywords": snap.get("keywords", []),
+        "stats": snap.get("stats", {}),
+        "stat_names": snap.get("stat_names", {}),
+        "owner_label": row.get("owner_label", ""),
+        "comment_count": int(row.get("comment_count", 0)),
         "id": row["id"],
         "pet_name": row.get("pet_name", ""),
         "image_url": "/api/pets/%s/image" % row["id"],
@@ -121,7 +163,7 @@ def _ranked(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda r: (-int(r.get("like_count", 0)), r.get("created_at", "")))
 
 
-def add(*, owner: str, shot: str, pet_name: str, jpeg: bytes, result: dict[str, Any]) -> dict[str, Any]:
+def add(*, owner: str, shot: str, pet_name: str, jpeg: bytes, result: dict[str, Any], owner_label: str = "") -> dict[str, Any]:
     """명예의 전당에 올린다. 같은 사진은 한 번만."""
     name = " ".join(str(pet_name or "").split())[:NAME_MAX]
     if not name:
@@ -146,6 +188,7 @@ def add(*, owner: str, shot: str, pet_name: str, jpeg: bytes, result: dict[str, 
             "like_count": 0, "character_design": result.get("character_design") or {},
             "is_monthly_winner": False, "month": month_of(), "created_at": _now(),
             "shot": shot, "owner": _h(owner), "voters": [], "ips": {}, "hidden": False,
+            "snap": snapshot(result), "owner_label": owner_label, "comment_count": 0,
         }
         d["rows"].append(row)
         _settle(d)
@@ -173,8 +216,26 @@ def like(pid: str, *, voter: str, ip: str) -> dict[str, Any]:
         return {"ok": True, "already": False, "like_count": row["like_count"]}
 
 
-def hall(month: str | None = None, limit: int = 30) -> dict[str, Any]:
-    """좋아요 순 목록. 진행 중인 달은 지금 1위에게 「이달의 관상왕」을 붙여 보여 준다."""
+def fill_missing(loader) -> None:
+    """상세 조각(`snap`)이 없는 옛 줄을 관상 저장본으로 한 번 채운다. loader(shot) → 저장본 dict | None."""
+    with _LOCK:
+        d = _read()
+        todo = [r for r in d["rows"] if "snap" not in r and r.get("shot")]
+        if not todo:
+            return
+        for r in todo:
+            try:
+                res = loader(r["shot"]) or {}
+            except Exception:                              # noqa: BLE001
+                res = {}
+            r["snap"] = snapshot(res)
+        _write(d)
+
+
+def hall(month: str | None = None, limit: int = 30, sort: str = "likes") -> dict[str, Any]:
+    """목록. `sort=likes`(실시간 랭킹순) · `latest`(최신순).
+    🛑 **순위(rank)는 정렬과 상관없이 좋아요 순위다** — 최신순으로 봐도 1~3위 왕관이 같은 아이에게 붙는다.
+    진행 중인 달은 지금 1위에게 「이달의 관상왕」을 붙여 보여 준다."""
     m = month_of() if not month else month[:7]
     with _LOCK:
         d = _read()
@@ -183,10 +244,13 @@ def hall(month: str | None = None, limit: int = 30) -> dict[str, Any]:
         rows = _ranked([r for r in d["rows"] if r.get("month") == m and not r.get("hidden")])
         fixed = d["winners"].get(m)
     out = []
-    for n, r in enumerate(rows[:max(1, min(limit, 100))]):
+    for n, r in enumerate(rows):
         win = (r["id"] == fixed) if fixed is not None else (n == 0 and int(r.get("like_count", 0)) > 0)
         out.append({**public(r, winner=win), "rank": n + 1})
-    return {"month": m, "settled": fixed is not None, "items": out}
+    if sort == "latest":
+        out.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return {"month": m, "settled": fixed is not None, "sort": "latest" if sort == "latest" else "likes",
+            "items": out[:max(1, min(limit, 100))]}
 
 
 def hide(pid: str) -> bool:
@@ -204,3 +268,121 @@ def hide(pid: str) -> bool:
 def exists(pid: str) -> bool:
     with _LOCK:
         return any(r["id"] == pid and not r.get("hidden") for r in _read()["rows"])
+
+
+# ── 댓글 (기획서 `pet_gallery_comments`) ─────────────────────────────
+COMMENT_NICK_MAX = 12
+COMMENT_MAX = 200
+COMMENT_IP_DAILY = 30
+COMMENT_GAP_SEC = 10
+_LINK = re.compile(r"(https?://|www\.|\.(com|kr|net|org|io|me|ly|gg)(/|\b))", re.I)
+
+
+def _cfile() -> Path:
+    return _dir() / "pet_gallery_comments.json"
+
+
+def _cread() -> dict[str, Any]:
+    try:
+        return json.loads(_cfile().read_text(encoding="utf-8"))
+    except Exception:                                    # noqa: BLE001
+        return {"rows": []}
+
+
+def _cwrite(d: dict[str, Any]) -> None:
+    f = _cfile()
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(f)
+
+
+def _pw(password: str, salt: str) -> str:
+    return hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 120_000).hex()
+
+
+def _cpublic(c: dict[str, Any], *, voter: str, user: str) -> dict[str, Any]:
+    mine = bool((voter and c.get("author") == _h("v|" + voter)) or (user and c.get("user") == _h(user)))
+    return {"id": c["id"], "post_id": c["post_id"], "nickname": c.get("nickname", ""), "content": c.get("content", ""),
+            "created_at": c.get("created_at", ""), "mine": mine, "has_pw": bool(c.get("pw"))}
+
+
+def _set_count(pid: str, n: int) -> None:
+    d = _read()
+    for r in d["rows"]:
+        if r["id"] == pid:
+            r["comment_count"] = n
+            _write(d)
+            return
+
+
+def comments(pid: str, *, voter: str = "", user: str = "") -> list[dict[str, Any]]:
+    """오래된 것부터 (인스타그램처럼 아래로 쌓인다)."""
+    with _LOCK:
+        rows = [c for c in _cread()["rows"] if c.get("post_id") == pid and not c.get("hidden")]
+    rows.sort(key=lambda c: c.get("created_at", ""))
+    return [_cpublic(c, voter=voter, user=user) for c in rows]
+
+
+def add_comment(pid: str, *, nickname: str, content: str, password: str = "", voter: str, ip: str,
+                user: str = "") -> dict[str, Any]:
+    nick = " ".join(str(nickname or "").split())[:COMMENT_NICK_MAX]
+    text = " ".join(str(content or "").split())
+    pw = str(password or "")
+    if not nick:
+        raise ValueError("닉네임을 적어 주세요.")
+    if not text:
+        raise ValueError("댓글 내용을 적어 주세요.")
+    if len(text) > COMMENT_MAX:
+        raise ValueError("댓글은 %d자까지 쓸 수 있어요." % COMMENT_MAX)
+    if _LINK.search(text) or _LINK.search(nick):
+        raise ValueError("댓글에는 주소(링크)를 넣을 수 없어요.")
+    if pw and not (4 <= len(pw) <= 16):
+        raise ValueError("비밀번호는 4~16자로 적어 주세요.")
+    now = _now()
+    v, i = _h("v|" + voter), _h("ip|" + ip)
+    with _LOCK:
+        if not any(r["id"] == pid and not r.get("hidden") for r in _read()["rows"]):
+            raise KeyError(pid)
+        d = _cread()
+        today = now[:10]
+        if sum(1 for c in d["rows"] if c.get("ip") == i and c.get("created_at", "")[:10] == today) >= COMMENT_IP_DAILY:
+            raise PermissionError("오늘은 댓글을 여기까지 쓸 수 있어요. 내일 다시 써 주세요.")
+        mine = [c for c in d["rows"] if c.get("author") == v]
+        if mine:
+            last = max(c.get("created_at", "") for c in mine)
+            try:
+                gap = (_dt.datetime.fromisoformat(now) - _dt.datetime.fromisoformat(last)).total_seconds()
+            except ValueError:
+                gap = COMMENT_GAP_SEC
+            if gap < COMMENT_GAP_SEC:
+                raise PermissionError("조금만 천천히 써 주세요. 잠시 뒤에 다시 올릴 수 있어요.")
+        salt = uuid.uuid4().hex
+        c = {"id": str(uuid.uuid4()), "post_id": pid, "nickname": nick, "content": text, "created_at": now,
+             "author": v, "ip": i, "user": _h(user) if user else "", "salt": salt,
+             "pw": _pw(pw, salt) if pw else "", "hidden": False}
+        d["rows"].append(c)
+        _cwrite(d)
+        n = sum(1 for x in d["rows"] if x.get("post_id") == pid and not x.get("hidden"))
+        _set_count(pid, n)
+    return {"comment": _cpublic(c, voter=voter, user=user), "comment_count": n}
+
+
+def delete_comment(pid: str, cid: str, *, voter: str = "", user: str = "", password: str = "",
+                   admin: bool = False) -> int:
+    """지운다(숨김). 🛑 쓴 브라우저 · 같은 계정 · 비밀번호 · 관리자 중 하나여야 한다. 남은 댓글 수를 돌려준다."""
+    with _LOCK:
+        d = _cread()
+        c = next((x for x in d["rows"] if x["id"] == cid and x.get("post_id") == pid and not x.get("hidden")), None)
+        if not c:
+            raise KeyError(cid)
+        ok = admin or (voter and c.get("author") == _h("v|" + voter)) or (user and c.get("user") == _h(user))
+        if not ok and password and c.get("pw"):
+            ok = hmac.compare_digest(_pw(str(password), c.get("salt", "")), c["pw"])
+        if not ok:
+            raise PermissionError("비밀번호가 맞지 않아요." if password else "내가 쓴 댓글만 지울 수 있어요.")
+        c["hidden"] = True
+        _cwrite(d)
+        n = sum(1 for x in d["rows"] if x.get("post_id") == pid and not x.get("hidden"))
+        _set_count(pid, n)
+    return n
