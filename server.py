@@ -97,6 +97,7 @@ from modules import reviews as reviews_ops
 from modules import intent as intent_ops
 from modules import saju_writer
 from modules import dream as dream_ops
+from modules import pet as pet_ops
 from modules.rate_limit import (
     AUTH_LIMIT,
     AUTH_WINDOW,
@@ -3317,6 +3318,78 @@ def dream_quota(authorization: str | None = Header(default=None)):
     return {"cap": DREAM_DAILY_CAP, "left": max(0, DREAM_DAILY_CAP - used), "unlimited": False}
 
 
+# ── 반려동물 관상 「내가 왕이 될 냥인가?」 (2026-09-14 온해님 기획) ─────────────────
+# 🛑 **값을 아직 안 정했다.** 정해지기 전에는 꿈 스캔처럼 로그인한 분께 **하루 몇 번 무료**로 연다.
+#    같은 사진은 저장해 둔 결과를 주고 횟수를 안 깎는다 — 다시 눌러 S 등급을 뽑는 걸 막는다.
+# 🛑 **사진은 저장하지 않는다** (관상과 같다). 결과 글만 사진 해시로 남긴다.
+PET_DAILY_CAP = 3
+PET_VER = 1
+
+
+class PetReadBody(BaseModel):
+    shot: str = ""          # 앞단이 만든 사진 해시 (저장 열쇠)
+    shots: list[str] = []   # base64 jpeg 한 장
+
+
+@app.get("/api/pet/quota")
+def pet_quota(authorization: str | None = Header(default=None)):
+    """오늘 반려동물 관상을 몇 번 더 볼 수 있나. 🛑 화면에 숫자를 박지 않는다 — 서버가 센 값만 쓴다."""
+    user = _token_user(authorization)
+    if _is_free(user):
+        return {"cap": PET_DAILY_CAP, "left": PET_DAILY_CAP, "unlimited": True}
+    used = _preview_used(user["email"], kind="pet")
+    return {"cap": PET_DAILY_CAP, "left": max(0, PET_DAILY_CAP - used), "unlimited": False}
+
+
+@app.post("/api/pet/read")
+def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)):
+    """반려동물 사진 한 장 → 관상 보고서 + 공유 카드 칸."""
+    user = _token_user(authorization)
+    shot = (body.shot or "").strip()
+    try:
+        prev = saju_writer.load("pet_read", shot) if shot else None
+    except ValueError:
+        prev = None
+    if prev and prev.get("ver") == PET_VER and prev.get("title"):
+        return {"ok": True, "again": True, **{k: v for k, v in prev.items() if k not in ("ver", "kind")}}
+    shots = body.shots or []
+    if len(shots) != 1:
+        raise HTTPException(400, "사진을 한 장 올려 주세요.")
+    try:
+        clean = gwansang_ops.check_jpeg(shots[0])
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if not saju_writer.ready():
+        raise HTTPException(503, "지금은 무냥이가 못 봐요. 잠시 뒤에 다시 해 주세요.")
+    if not _is_free(user):
+        _preview_quota(user["email"], kind="pet", cap=PET_DAILY_CAP,
+                       msg="오늘 반려동물 관상은 여기까지예요. 내일 0시부터 다시 열려요.")
+    counted = not _is_free(user)
+    try:
+        out = pet_ops.read_pet(clean)
+    except ValueError as e:
+        if counted:
+            _preview_refund(user["email"], "pet")
+        raise HTTPException(400, str(e))
+    except Exception as e:                            # noqa: BLE001
+        print("[pet/read] 실패:", repr(e)[:300])
+        if counted:
+            _preview_refund(user["email"], "pet")
+        raise HTTPException(502, "사진을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
+    # 🛑 동물이 아니거나 흐린 사진은 **저장하지 않고** 그대로 알려 준다 — 다음 사진으로 다시 보게.
+    #    횟수도 되돌린다 (사진을 잘못 고른 것으로 오늘 기회를 잃지 않게)
+    if out.get("error_code") != "NONE":
+        if counted:
+            _preview_refund(user["email"], "pet")
+        return {"ok": False, **out}
+    if shot:
+        try:
+            saju_writer.save("pet_read", shot, {**out, "ver": PET_VER, "kind": "pet"})
+        except Exception:                             # noqa: BLE001
+            pass
+    return {"ok": True, **out}
+
+
 @app.post("/api/dream/scan")
 def dream_scan(body: DreamScanBody, authorization: str | None = Header(default=None)):
     """꿈 스캔 — 무료. 등급·별명·한 줄 팩폭·짧은 풀이."""
@@ -3542,6 +3615,25 @@ def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
     try:
         f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
     except OSError:
+        pass
+
+
+def _preview_refund(email: str, kind: str) -> None:
+    """방금 센 한 번을 되돌린다 — 손님 탓이 아닌데 횟수만 깎이지 않게 (2026-09-14 반려동물 관상).
+
+    동물이 아닌 사진·흐린 사진·서버가 못 읽은 경우에 쓴다. 🛑 성공한 결과에는 쓰지 않는다.
+    """
+    from pathlib import Path as _P
+    import json as _j
+    f = _P(DATA_DIR) / "saju_preview_count.json"
+    try:
+        data = _j.loads(f.read_text(encoding="utf-8"))
+        key = _quota_key(email, kind)
+        n = int((data.get("by") or {}).get(key, 0))
+        if n > 0:
+            data["by"][key] = n - 1
+            f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except (OSError, ValueError, AttributeError):
         pass
 
 

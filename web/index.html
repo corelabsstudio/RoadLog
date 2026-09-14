@@ -31,8 +31,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-CY6XVnJn.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-DemdngiP.css">
+  <script type="module" crossorigin src="/assets/main-FyhSMIG3.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-C6acqufl.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -196,6 +196,85 @@
   <!-- 꿈 해몽 화면 (2026-09-13 온해님 기획). 속은 dream.js 가 채운다.
        🛑 사주 폼(pairForm) 밖이다. 생년월일 굴림판만 `form="pairForm"` 으로 빌려 쓴다 —
           굴림판 코드가 pairForm.elements 로 값을 찾기 때문이다. -->
+  <!-- ══ 반려동물 관상 「내가 왕이 될 냥인가?」 (2026-09-14 온해님 기획) ══
+       속은 `pet.js` 가 그린다. 서버 `RoadLog/modules/pet.py` · `/api/pet/read`.
+       🛑 사진은 저장하지 않는다. 🛑 문구는 `pet_copy.json`(제미나이) — 여기 적힌 글은 못 읽었을 때의 대비다 -->
+  <div class="view view-pet" id="viewPet" hidden>
+    <div class="dream-wrap pet-wrap">
+      <button type="button" class="back" id="petBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>관상으로 돌아가기</button>
+
+      <header class="dream-head pet-head">
+        <div class="dream-head-txt">
+          <p class="dream-kicker" id="petKicker">반려동물 관상</p>
+          <h2 id="petQ">내가 왕이 될 냥인가?</h2>
+          <p class="dream-sub" id="petLede"></p>
+        </div>
+        <img class="pet-art" id="petArt" alt="손 흔드는 무냥이와 돋보기 든 관멍이" />
+      </header>
+
+      <section class="dream-box pet-box" id="petBox">
+        <div class="dream-row"><h3 id="petPickHead">사진 올리기</h3></div>
+        <p class="pet-hint" id="petPickHint">얼굴이 잘 보이는 밝은 사진이 좋아요.</p>
+        <input type="file" id="petFile" accept="image/*" hidden />
+        <img class="pet-shot" id="petShot" alt="올린 반려동물 사진" hidden />
+        <button type="button" class="btn btn-line pet-pick" id="petPick">사진 올리기</button>
+        <p class="form-error" id="petErr" hidden></p>
+        <button type="button" class="btn cta-hero" id="petGo" hidden>🐾 관상 보기 ➔</button>
+        <p class="dream-note" id="petNote"></p>
+        <p class="dream-note pet-privacy" id="petPrivacy">사진은 저장하지 않아요.</p>
+      </section>
+
+      <section class="loading dream-loading pet-loading" id="petLoading" hidden aria-live="polite">
+        <img class="pet-load-art" src="/assets/pet_duo_b-CE3zaRTc.webp" alt="" aria-hidden="true" />
+        <p class="load-step" id="petLoadStep"></p>
+        <p class="load-say" id="petLoadSay"></p>
+        <div class="load-bar"><i id="petLoadBar"></i></div>
+      </section>
+
+      <section class="pet-result" id="petResult" hidden>
+        <div class="pet-hero">
+          <div class="pet-grade-row">
+            <b class="dream-grade" id="petGrade">S</b><span class="dream-grade-unit">급</span>
+            <div class="dream-grade-txt">
+              <span class="dream-label" id="petCardTitle"></span>
+              <strong id="petTitle"></strong>
+            </div>
+          </div>
+          <p class="pet-summary" id="petSummary"></p>
+          <p class="pet-keywords" id="petKeywords"></p>
+        </div>
+
+        <div class="rep pet-card">
+          <p class="rep-rx-t pet-card-t" id="petStatsHead">관상 스탯</p>
+          <div class="pet-stats" id="petStats"></div>
+        </div>
+        <div class="rep pet-card">
+          <p class="pet-card-t" id="petFactHead">냥성·멍성 팩폭 분석</p>
+          <p class="wrote" id="petFact"></p>
+        </div>
+        <div class="rep pet-card">
+          <p class="pet-card-t" id="petButlerHead">집사와의 궁합 및 기운</p>
+          <p class="wrote" id="petButler"></p>
+        </div>
+        <div class="dream-punch pet-advice">
+          <img src="/assets/face-D1JUG1d8.webp" alt="무냥이" class="talk-face" />
+          <div><span class="pet-advice-h" id="petAdviceHead">무냥이의 족집게 조언</span><p id="petAdvice"></p></div>
+        </div>
+
+        <div class="share dream-share">
+          <h3 class="pet-share-h" id="petShareHead">공유 카드</h3>
+          <canvas id="petCanvas" width="1080" height="1350" aria-label="반려동물 관상 공유 카드 미리보기"></canvas>
+          <div class="share-btns">
+            <button type="button" class="btn btn-line" id="petSave">이미지로 저장</button>
+            <button type="button" class="btn" id="petShare">공유하기</button>
+          </div>
+          <p class="share-note" id="petShareNote" hidden></p>
+        </div>
+        <button type="button" class="dream-again" id="petAgain">다른 아이도 보기</button>
+      </section>
+    </div>
+  </div>
+
   <div class="view view-dream" id="viewDream" hidden>
     <div class="dream-wrap">
       <button type="button" class="back" id="dreamBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>사주로 돌아가기</button>
@@ -328,7 +407,7 @@
             `is-single` 만 떼면 홈처럼 5:5 로 선다. 문구는 이전 넓은 카드(809461d) 것을 그대로 썼다 -->
     <!-- 🛑 **오른쪽에 반려동물 관상 카드** (2026-09-14 온해님 「무냥이한테 가기 오른쪽에 관멍이 카드를 똑같이 · 문구는 제미나이」).
          짜임은 사주 홈 관멍이 카드(`.duo-card.is-gwan`)를 그대로 쓴다. 넓은 화면 5:5, 1023px 이하는 위아래.
-         🛑 **아직 반려동물 관상 상품이 없다.** 누르면 준비 중 한 줄만 뜬다(main.js · `gwanPetBtn`). 상품이 생기면 그리로 잇는다.
+         누르면 반려동물 관상 화면(`#pet` · `pet.js`)으로 간다. 딱지는 온해님이 주신 「내가 왕이 될 냥인가?」.
          문구: 제미나이가 세 벌 뽑은 것 중 하나 (2026-09-14) -->
     <div class="quick">
       <button type="button" class="duo-card is-dream" id="gwanToSaju">
@@ -342,10 +421,9 @@
       </button>
       <button type="button" class="duo-card is-gwan" id="gwanPetBtn">
         <span class="duo-txt">
-          <span class="duo-badge">반려동물 관상 분석</span>
+          <span class="duo-badge">내가 왕이 될 냥인가?</span>
           <b class="duo-title">우리 집 댕냥이 숨은 속마음은? 🐾</b>
           <span class="duo-sub">사진 한 장이면 관멍이가 털뭉치 성격과 복을 짚어드려요.</span>
-          <span class="duo-soon" hidden>관멍이가 댕냥이 공부 중이에요. 곧 찾아올게요.</span>
           <span class="duo-cta">🐶 반려동물 관상 보러가기 ➔</span>
         </span>
         <!-- 🛑 무냥이와 관멍이가 **같이** (2026-09-14 온해님 「같이 있는 모습이면 좋겠다」 · tools/gen_pet_duo.py 두 벌 중 **B** —
