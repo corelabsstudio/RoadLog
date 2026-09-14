@@ -3324,7 +3324,7 @@ def dream_quota(authorization: str | None = Header(default=None)):
 #    같은 사진은 저장해 둔 결과를 주고 횟수를 안 깎는다 — 다시 눌러 S 등급을 뽑는 걸 막는다.
 # 🛑 **사진은 저장하지 않는다** (관상과 같다). 결과 글만 사진 해시로 남긴다.
 PET_DAILY_CAP = 3
-PET_VER = 2          # 🛑 2 (2026-09-14): character_design 칸이 붙었다
+PET_VER = 3          # 🛑 3 (2026-09-14): 멀티 스피시즈·SS~B+ 등급·집사 시너지로 칸이 바뀌었다 (2: character_design)
 
 
 class PetReadBody(BaseModel):
