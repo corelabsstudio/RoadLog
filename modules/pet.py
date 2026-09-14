@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import httpx
@@ -42,7 +43,15 @@ STAT_NAMES = {
     "action_power": "돌발 행동력",
     "fortune_synergy": "집사 재물·액막이 기운",
 }
-SPECIES = ("dog", "cat", "hamster", "rabbit", "bird", "reptile", "other")
+# 개편 전(PET_VER 2) 열쇠 — 그때 열어 둔 화면·그때 저장된 결과가 이 이름으로 읽는다
+STAT_LEGACY_OF = {
+    "control_power": "butler_control",
+    "greed_for_treats": "snack_greed",
+    "cuteness_appeal": "cute_power",
+    "action_power": "night_energy",
+    "fortune_synergy": "luck_booster",
+}
+SPECIES =("dog", "cat", "hamster", "rabbit", "bird", "reptile", "other")
 # 돌발 행동력 뒤에 붙는 종별 말 (카드·막대 이름). 🛑 없는 종은 이름만 쓴다
 ACTION_WORD = {"cat": "야간 우다다", "dog": "산책 지체력", "hamster": "쳇바퀴 러닝", "rabbit": "뒷발 쿵쿵",
                "bird": "날갯짓", "reptile": "기습 탈출"}
@@ -207,10 +216,12 @@ def _clean(d: dict[str, Any]) -> dict[str, Any]:
     raw = d.get("stats") if isinstance(d.get("stats"), dict) else {}
     stats = {}
     for k in STAT_NAMES:
-        try:
-            stats[k] = max(0, min(100, int(round(float(raw.get(k, 0))))))
-        except (TypeError, ValueError):
-            stats[k] = 0
+        v = raw.get(k, raw.get(STAT_LEGACY_OF[k]))
+        m = re.search(r"\d+(?:\.\d+)?", str(v if v is not None else ""))   # 「88점」처럼 와도 숫자만
+        stats[k] = max(0, min(100, int(round(float(m.group()))))) if m else 0
+    # 🛑 다섯 칸이 전부 0 이면 모델이 칸을 비운 것이다 — 받지 않고 다시 부른다 (2026-09-14 「수치가 안 나와」)
+    if not any(stats.values()):
+        raise RuntimeError("관상 스탯이 비었다")
     names = stat_names_for(species)
     # 🛑 가장 높은 칸은 **서버가 고른다** — 모델이 적은 이름·숫자와 막대가 어긋나지 않게
     top = max(stats, key=lambda k: stats[k])
@@ -233,8 +244,9 @@ def _clean(d: dict[str, Any]) -> dict[str, Any]:
         "grade_label": GRADES[grade],
         "title": _cut(d.get("title"), 32),
         "hashtags": ["#" + t for t in tags],
-        "stats": stats,
-        "stat_names": names,
+        # 🛑 옛 열쇠(butler_control…)도 같은 값으로 싣는다 — 개편 전에 열어 둔 화면은 옛 열쇠를 읽어서 0 이 찍힌다
+        "stats": {**stats, **{STAT_LEGACY_OF[k]: v for k, v in stats.items()}},
+        "stat_names": {**names, **{STAT_LEGACY_OF[k]: v for k, v in names.items()}},
         "short_analysis": short,
         "full_analysis": full,
         "synergy_analysis": syn,

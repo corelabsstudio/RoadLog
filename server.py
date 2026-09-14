@@ -3351,7 +3351,8 @@ def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)
         prev = saju_writer.load("pet_read", shot) if shot else None
     except ValueError:
         prev = None
-    if prev and prev.get("ver") == PET_VER and prev.get("title"):
+    # 🛑 스탯이 전부 0 인 저장본은 주지 않고 새로 본다 (2026-09-14 「관상 스탯 수치가 안 나와」)
+    if prev and prev.get("ver") == PET_VER and prev.get("title") and any((prev.get("stats") or {}).values()):
         return {"ok": True, "again": True, **{k: v for k, v in prev.items() if k not in ("ver", "kind")}}
     shots = body.shots or []
     if len(shots) != 1:
