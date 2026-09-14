@@ -17,11 +17,18 @@ import secrets
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import Cookie, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile
+from fastapi import (
+    Cookie,
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -32,47 +39,16 @@ import logging
 log = logging.getLogger("roadlog")
 
 from modules import db
-from modules import visitors as visitors_ops
 from modules.config import (
-    ADMIN_EMAIL,
-    ADMIN_PASSWORD,
-    ADMIN_USERNAME,
     ALLOW_DEMO_BILLING_UPGRADE,
     APP_ENV,
     APP_FULL,
-    APP_TAGLINE,
     APP_TITLE,
-    BUSINESS_ADDRESS,
-    BUSINESS_NAME,
-    BUSINESS_OWNER,
-    BUSINESS_REG_NO,
     CONTACT_EMAIL,
-    CONTACT_FORM_URL,
-    CONTACT_HP,
-    CONTACT_TEL,
     DATA_DIR,
-    DEFAULT_USER_SETTINGS,
-    ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW,
-    ENTERPRISE_ANNUAL_PAYMENT_URL,
-    ENTERPRISE_ANNUAL_PRICE_KRW,
-    ENTERPRISE_BASE_SEATS,
-    ENTERPRISE_PAYMENT_URL,
-    ENTERPRISE_PRICE_KRW,
-    ENTERPRISE_SEAT_ANNUAL_PRICE_KRW,
-    ENTERPRISE_SEAT_PRICE_KRW,
-    FREE_MONTHLY_LIMIT,
     FREE_TOTAL_LIMIT,
-    MAIL_ORDER_REG_NO,
     MIN_PASSWORD_LENGTH,
     COST_MODE,
-    OPENAI_API_KEY,
-    PRO_ANNUAL_MONTHLY_EQ_KRW,
-    PRO_ANNUAL_PAYMENT_URL,
-    PRO_ANNUAL_PRICE_KRW,
-    PRO_PAYMENT_URL,
-    PRO_PRICE_KRW,
-    STUDIO_NAME,
-    STUDIO_NAME_EN,
     assert_secure_for_production,
     cors_allow_origins,
     data_dir_is_external,
@@ -82,17 +58,7 @@ from modules.config import (
     resolve_llm_config,
     security_issues,
 )
-from modules.export import (
-    export_docx,
-    export_excel,
-    export_pdf,
-    export_summary_excel,
-    export_summary_pdf,
-)
-from modules.generator import generate_driving_log, scrub_submission_log
-from modules import style_learn
 from modules import admin_ops
-from modules import reviews as reviews_ops
 # 손님이 쓴 말이 봐 달라는 것인지 그냥 건네는 말인지 가른다 (2026-09-11 3단계)
 from modules import intent as intent_ops
 from modules import saju_writer
@@ -102,14 +68,10 @@ from modules import pet_hall as pet_hall_ops
 from modules.rate_limit import (
     AUTH_LIMIT,
     AUTH_WINDOW,
-    GENERATE_LIMIT,
-    GENERATE_WINDOW,
     REGISTER_LIMIT,
     REGISTER_WINDOW,
     limiter,
 )
-from modules.validator import validate_log
-from modules import notify as notify_ops
 from modules import inbox
 from modules import mailer
 from modules import password_reset as reset_ops
@@ -167,15 +129,6 @@ async def security_headers_middleware(request, call_next):
     if ct.startswith("application/json") and "charset" not in ct.lower():
         response.headers["content-type"] = "application/json; charset=utf-8"
     return response
-
-
-def _client_ip(request) -> str:
-    forwarded = request.headers.get("x-forwarded-for") or ""
-    if forwarded:
-        return forwarded.split(",")[0].strip() or "unknown"
-    if request.client and request.client.host:
-        return request.client.host
-    return "unknown"
 
 
 def _rate_limit_or_429(key: str, *, limit: int, window_sec: int, what: str) -> None:
@@ -306,50 +259,6 @@ class ResetBody(BaseModel):
     password: str
 
 
-class GenerateBody(BaseModel):
-    """구조화 입력 우선. raw_text는 선택(추가 메모)."""
-    raw_text: str = ""
-    settings: dict[str, Any] | None = None
-    # driving | field (외근·출장)
-    report_type: str = "driving"
-    # 구조화 필드 (권장) — 운행
-    vehicle_number: str = ""
-    odometer_start: float | None = None
-    odometer_end: float | None = None
-    lunch_restaurant: str = ""
-    morning_places: str = ""
-    afternoon_places: str = ""
-    # 외근
-    visits_text: str = ""
-    work_summary: str = ""
-    next_actions: str = ""
-    department: str = ""
-    form: dict[str, Any] | None = None
-
-
-class SettingsBody(BaseModel):
-    settings: dict[str, Any]
-
-
-class ExportBody(BaseModel):
-    log: dict[str, Any]
-    # validate reuses this model; format only required for /api/export
-    format: str = "excel"  # excel | pdf | docx
-
-
-class StyleTextBody(BaseModel):
-    title: str = "붙여넣기 일지"
-    text: str
-
-
-class SaveLogBody(BaseModel):
-    """일지 저장 요청."""
-    log: dict[str, Any]
-    report_type: str = "driving"
-    title: str = ""
-    id: str | None = None
-
-
 # ── API ───────────────────────────────────────────────
 
 
@@ -395,236 +304,6 @@ def health():
         "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
         "launch_ready": launch_ready,
     }
-
-
-@app.get("/api/meta")
-def meta():
-    billing = admin_ops.load_billing_config()
-    return {
-        "title": APP_TITLE,
-        "tagline": APP_TAGLINE,
-        "full": APP_FULL,
-        "studio": STUDIO_NAME,
-        "studio_en": STUDIO_NAME_EN,
-        "contact_email": CONTACT_EMAIL,
-        "contact_form_url": CONTACT_FORM_URL or "",
-        "free_limit": FREE_TOTAL_LIMIT,
-        "free_limit_period": "lifetime",  # monthly 아님 · 가입 후 누적
-        "pro_price": int(billing.get("pro_price_krw") or PRO_PRICE_KRW),
-        "pro_annual_price": int(
-            billing.get("pro_annual_price_krw") or PRO_ANNUAL_PRICE_KRW
-        ),
-        "pro_annual_monthly_eq": int(
-            billing.get("pro_annual_monthly_eq_krw") or PRO_ANNUAL_MONTHLY_EQ_KRW
-        ),
-        "enterprise_price": int(
-            billing.get("enterprise_price_krw") or ENTERPRISE_PRICE_KRW
-        ),
-        "enterprise_annual_price": int(
-            billing.get("enterprise_annual_price_krw") or ENTERPRISE_ANNUAL_PRICE_KRW
-        ),
-        "enterprise_annual_monthly_eq": int(
-            billing.get("enterprise_annual_monthly_eq_krw")
-            or ENTERPRISE_ANNUAL_MONTHLY_EQ_KRW
-        ),
-        "enterprise_base_seats": int(
-            billing.get("enterprise_base_seats") or ENTERPRISE_BASE_SEATS
-        ),
-        "enterprise_seat_price": int(
-            billing.get("enterprise_seat_price_krw") or ENTERPRISE_SEAT_PRICE_KRW
-        ),
-        "enterprise_seat_annual_price": int(
-            billing.get("enterprise_seat_annual_price_krw")
-            or ENTERPRISE_SEAT_ANNUAL_PRICE_KRW
-        ),
-        "pro_url": PRO_PAYMENT_URL,
-        "pro_annual_url": (PRO_ANNUAL_PAYMENT_URL or PRO_PAYMENT_URL or "").strip(),
-        "enterprise_url": ENTERPRISE_PAYMENT_URL,
-        "enterprise_annual_url": (
-            ENTERPRISE_ANNUAL_PAYMENT_URL or ENTERPRISE_PAYMENT_URL or ""
-        ).strip(),
-        "demo_billing_upgrade": ALLOW_DEMO_BILLING_UPGRADE,
-        "cost_mode": COST_MODE,
-        "free_mode": is_free_cost_mode(),
-        "payment_ready": not (
-            (not PRO_PAYMENT_URL)
-            or "example.com" in (PRO_PAYMENT_URL or "").lower()
-            or "your-payment" in (PRO_PAYMENT_URL or "").lower()
-        ),
-        "pro_claim_path": "#pro-claim",
-        "notify_ready": notify_ops.notify_configured(),
-        "default_settings": DEFAULT_USER_SETTINGS,
-        "default_templates_url": "/assets/templates/manifest.json",
-        "business": {
-            "name": BUSINESS_NAME or STUDIO_NAME,
-            "owner": BUSINESS_OWNER or "",
-            "reg_no": BUSINESS_REG_NO or "",
-            "address": BUSINESS_ADDRESS or "",
-            "mail_order_no": MAIL_ORDER_REG_NO or "",
-            "contact_email": CONTACT_EMAIL,
-            "tel": CONTACT_TEL,
-            "hp": CONTACT_HP,
-        },
-    }
-
-
-class UpgradeBody(BaseModel):
-    plan: str  # pro | enterprise
-
-
-class PaymentClaimBody(BaseModel):
-    """스마트스토어 결제 후 Pro 반영 요청 → 관리자 폰 알림."""
-
-    order_id: str
-    email: str
-    name: str = ""
-    note: str = ""
-    plan: str = "pro"
-    billing_period: str = "monthly"  # monthly | annual
-
-
-@app.post("/api/billing/claim")
-def billing_claim(body: PaymentClaimBody, request: Request):
-    """
-    스마트스토어 결제 완료 고객이 주문번호·이메일을 남기면
-    관리자 폰(ntfy/Telegram)으로 푸시합니다.
-    """
-    ip = _client_ip(request)
-    _rate_limit_or_429(
-        f"claim:{ip}",
-        limit=8,
-        window_sec=3600,
-        what="결제 확인 요청",
-    )
-    order_id = (body.order_id or "").strip()
-    email = (body.email or "").strip().lower()
-    if len(order_id) < 4:
-        raise HTTPException(400, "주문번호(또는 결제 확인 번호)를 입력해 주세요.")
-    if not email or "@" not in email:
-        raise HTTPException(400, "로드로그 가입 이메일을 올바르게 입력해 주세요.")
-
-    period = (body.billing_period or "monthly").strip().lower()
-    if period not in ("monthly", "annual", "year", "yearly"):
-        period = "monthly"
-    if period in ("year", "yearly"):
-        period = "annual"
-    claim = notify_ops.save_claim(
-        order_id=order_id,
-        email=email,
-        name=body.name or "",
-        note=body.note or "",
-        plan=(body.plan or "pro").strip().lower() or "pro",
-        billing_period=period,
-    )
-    period_label = "연 결제" if claim.get("billing_period") == "annual" else "월 결제"
-    title = "로드로그 · 결제 확인 요청"
-    msg = (
-        f"plan={claim['plan']} ({period_label})\n"
-        f"주문/결제번호: {claim['order_id']}\n"
-        f"가입 이메일: {claim['email']}\n"
-        f"이름: {claim.get('name') or '-'}\n"
-        f"메모: {claim.get('note') or '-'}\n"
-        f"시각: {claim['created_at']}\n"
-        f"→ 관리자에서 {claim['plan']} 반영해 주세요."
-    )
-    push = notify_ops.send_admin_push(title, msg, priority=5)
-    return {
-        "ok": True,
-        "message": "접수되었습니다. 확인 후 Pro가 반영됩니다. 조금만 기다려 주세요.",
-        "claim_id": claim["id"],
-        "notify": push,
-    }
-
-
-@app.get("/api/admin/claims")
-def admin_claims(
-    limit: int = Query(default=30, ge=1, le=100),
-    authorization: str | None = Header(default=None),
-):
-    _require_admin(authorization)
-    return {
-        "ok": True,
-        "items": notify_ops.list_claims(limit=limit),
-        "notify_configured": notify_ops.notify_configured(),
-    }
-
-
-@app.post("/api/admin/notify-test")
-def admin_notify_test(authorization: str | None = Header(default=None)):
-    """관리자 폰 알림 테스트."""
-    _require_admin(authorization)
-    if not notify_ops.notify_configured():
-        raise HTTPException(
-            400,
-            "NTFY_TOPIC 또는 TELEGRAM_BOT_TOKEN+TELEGRAM_CHAT_ID 를 Railway에 설정하세요.",
-        )
-    push = notify_ops.send_admin_push(
-        "로드로그 · 알림 테스트",
-        "푸시가 정상적으로 연결되었습니다.",
-        priority=4,
-    )
-    if not push.get("ok"):
-        raise HTTPException(502, f"알림 전송 실패: {push}")
-    return {"ok": True, "notify": push}
-
-
-@app.post("/api/billing/upgrade")
-def billing_upgrade(body: UpgradeBody, authorization: str | None = Header(default=None)):
-    """
-    요금제 업그레이드.
-
-    기본: 비활성 (복채 없이 plan 변경 불가).
-    로컬 데모에서만 ALLOW_DEMO_BILLING_UPGRADE=true 로 허용.
-    운영에서는 결제 웹훅/관리자 수동 등록으로 plan을 변경하세요.
-    """
-    user = _token_user(authorization)
-    if not ALLOW_DEMO_BILLING_UPGRADE:
-        raise HTTPException(
-            403,
-            "결제가 확인된 뒤 요금제가 적용됩니다. 아래 결제 링크로 진행하거나 문의해 주세요.",
-        )
-
-    plan = (body.plan or "").strip().lower()
-    email = user["email"]
-    if plan == "pro":
-        ok = db.upgrade_to_pro(email, note="웹 요금제 Pro 업그레이드 (데모)")
-    elif plan in ("enterprise", "ent"):
-        ok = db.upgrade_to_enterprise(email, note="웹 요금제 Enterprise 업그레이드 (데모)")
-    else:
-        raise HTTPException(400, "plan은 pro 또는 enterprise 여야 합니다.")
-    if not ok:
-        raise HTTPException(500, "업그레이드 처리에 실패했습니다.")
-    fresh = db.get_user(email) or user
-    fresh = admin_ops.enrich_user_flags(fresh) or fresh
-    # 세션 갱신
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization.removeprefix("Bearer ").strip()
-        if token in _sessions:
-            _sessions[token] = fresh
-    return {
-        "ok": True,
-        "user": fresh,
-        "message": "Enterprise로 전환되었습니다. (데모)"
-        if plan in ("enterprise", "ent")
-        else "Pro로 전환되었습니다. (데모)",
-        "demo": True,
-    }
-
-
-@app.get("/api/templates/defaults")
-def default_templates():
-    """사이트 기본 제공 운행일지 서식 목록 (로그인 불필요)."""
-    import json
-    from pathlib import Path
-
-    path = WEB / "assets" / "templates" / "manifest.json"
-    if not path.exists():
-        return {"templates": []}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return {"templates": data}
-    except Exception:
-        return {"templates": []}
 
 
 @app.post("/api/auth/register")
@@ -737,183 +416,6 @@ def _issue_session(user: dict, message: str) -> dict:
         "free_limit_period": "lifetime",
         "message": message,
     }
-
-
-def _shorten_korean_address(display_name: str, raw: dict | None = None) -> str:
-    """
-    긴 Nominatim 주소를 일지용 짧은 표기로 축약.
-    우선: 건물/시설명 + 동(洞) 단위.
-    예) 한일유앤아이아파트, 후평2동
-    """
-    import re
-
-    raw = raw or {}
-    # 1) 구조화 필드 우선
-    place_keys = (
-        "building",
-        "amenity",
-        "tourism",
-        "leisure",
-        "shop",
-        "office",
-        "highway",  # 최후
-        "road",
-    )
-    dong_keys = (
-        "suburb",
-        "neighbourhood",
-        "neighborhood",
-        "quarter",
-        "city_district",
-        "borough",
-        "hamlet",
-        "village",
-    )
-    place = ""
-    for k in place_keys:
-        v = (raw.get(k) or "").strip()
-        if not v:
-            continue
-        # 도로명만 있는 경우 제외 (로/길 등) — 아래 문자열 파서로 넘김
-        if k in ("highway", "road") and re.search(r"(로|길|대로|거리)$", v):
-            continue
-        place = v
-        break
-    dong = ""
-    for k in dong_keys:
-        v = (raw.get(k) or "").strip()
-        if v and re.search(r"(동|가|리|읍|면)$", v):
-            dong = v
-            break
-    if not dong:
-        for k in dong_keys:
-            v = (raw.get(k) or "").strip()
-            if v:
-                dong = v
-                break
-
-    if place and dong and place != dong:
-        return f"{place}, {dong}"
-    if place:
-        return place
-    if dong:
-        return dong
-
-    # 2) display_name 파싱 폴백
-    text = (display_name or "").strip()
-    if not text:
-        return ""
-    parts = [p.strip() for p in re.split(r"[,/|]", text) if p.strip()]
-    if not parts:
-        return text
-
-    drop_exact = {
-        "대한민국",
-        "한국",
-        "korea",
-        "south korea",
-        "republic of korea",
-    }
-    drop_re = re.compile(
-        r"("
-        r"특별자치도|광역시|특별시|자치시|"
-        r"도$|시$|군$|"  # 광역/기초 행정구역
-        r"^\d{4,6}$|"  # 우편번호
-        r"^[A-Za-z\s]+$"  # 영문 국가명 등
-        r")"
-    )
-    road_re = re.compile(r"(로|길|대로|거리|로\d*번길)$")
-    dong_re = re.compile(r"(동|가|리|읍|면)$")
-    building_hint = re.compile(
-        r"(아파트|APT|빌라|타워|오피스텔|센터|빌딩|병원|학교|마트|역|터미널|공원|시장|교회|성당|사찰)"
-    )
-
-    kept: list[str] = []
-    dongs: list[str] = []
-    buildings: list[str] = []
-    for p in parts:
-        pl = p.lower()
-        if pl in drop_exact:
-            continue
-        if re.fullmatch(r"\d{4,6}", p):
-            continue
-        if drop_re.search(p) and not dong_re.search(p) and not building_hint.search(p):
-            # '춘천시', '강원특별자치도' 등 제거 (동 단위는 유지)
-            if re.search(r"(시|군|도|특별|광역)$", p) and not dong_re.search(p):
-                continue
-        if road_re.search(p) and not building_hint.search(p):
-            continue  # 후만로 등 도로명 제외
-        if dong_re.search(p):
-            dongs.append(p)
-        elif building_hint.search(p) or len(p) >= 3:
-            buildings.append(p)
-        else:
-            kept.append(p)
-
-    short_parts: list[str] = []
-    if buildings:
-        short_parts.append(buildings[0])
-    if dongs:
-        short_parts.append(dongs[0])
-    if not short_parts and kept:
-        short_parts = kept[:2]
-    if not short_parts and parts:
-        # 최후: 앞쪽 의미 있는 1~2토큰 (국가/우편 제외 후)
-        filtered = [
-            p
-            for p in parts
-            if p.lower() not in drop_exact and not re.fullmatch(r"\d{4,6}", p)
-        ]
-        short_parts = filtered[:2] if filtered else parts[:1]
-    return ", ".join(short_parts)
-
-
-@app.get("/api/geo/reverse")
-def geo_reverse(
-    lat: float = Query(..., ge=-90, le=90),
-    lon: float = Query(..., ge=-180, le=180),
-):
-    """GPS 좌표 → 주소 문자열 (OpenStreetMap Nominatim). short_address 포함."""
-    try:
-        with httpx.Client(timeout=12.0) as client:
-            res = client.get(
-                "https://nominatim.openstreetmap.org/reverse",
-                params={
-                    "lat": lat,
-                    "lon": lon,
-                    "format": "jsonv2",
-                    "accept-language": "ko",
-                    "zoom": 18,
-                    "addressdetails": 1,
-                },
-                headers={
-                    "User-Agent": "RoadLog/1.0 (CoreLabs; corelabs.studio@gmail.com)",
-                    "Accept": "application/json",
-                },
-            )
-        if res.status_code != 200:
-            raise HTTPException(502, "주소 변환 서비스에 일시적으로 연결할 수 없습니다.")
-        data = res.json()
-        raw = data.get("address") or {}
-        address = (data.get("display_name") or "").strip()
-        if not address:
-            address = f"{lat:.5f}, {lon:.5f}"
-        short = _shorten_korean_address(address, raw if isinstance(raw, dict) else {})
-        if not short:
-            short = address
-        return {
-            "ok": True,
-            "lat": lat,
-            "lon": lon,
-            "address": short,  # 일지·리스트 기본값 = 짧은 주소
-            "address_full": address,
-            "short_address": short,
-            "raw": raw if isinstance(raw, dict) else {},
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(502, f"주소 변환 실패: {e}") from e
 
 
 @app.post("/api/auth/login")
@@ -1263,510 +765,15 @@ def me_set_name(body: NameBody, authorization: str | None = Header(default=None)
     return {"ok": True, "name": name}
 
 
-@app.get("/api/settings")
-def get_settings(authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    return {"settings": db.load_settings(user["email"])}
-
-
-@app.put("/api/settings")
-def put_settings(body: SettingsBody, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    ok = db.save_settings(user["email"], body.settings)
-    if not ok:
-        raise HTTPException(500, "설정 저장 실패")
-    return {"ok": True, "settings": db.load_settings(user["email"])}
-
-
-@app.post("/api/generate")
-def generate(
-    body: GenerateBody,
-    request: Request,
-    authorization: str | None = Header(default=None),
-):
-    user = _token_user(authorization)
-    ip = _client_ip(request)
-    email_key = (user.get("email") or "anon").lower()
-    _rate_limit_or_429(
-        f"generate:{email_key}",
-        limit=GENERATE_LIMIT,
-        window_sec=GENERATE_WINDOW,
-        what="일지 생성",
-    )
-    _rate_limit_or_429(
-        f"generate-ip:{ip}",
-        limit=GENERATE_LIMIT * 2,
-        window_sec=GENERATE_WINDOW,
-        what="일지 생성",
-    )
-    plan = (user.get("plan") or user.get("plan_type") or "free").lower()
-    used = db.get_usage_lifetime(user["email"])
-    unlimited = (
-        plan in ("pro", "enterprise")
-        or user.get("is_admin")
-        or user.get("is_vip")
-    )
-
-    if not unlimited and used >= FREE_TOTAL_LIMIT:
-        raise HTTPException(
-            403,
-            f"무료 체험 한도({FREE_TOTAL_LIMIT}회)를 모두 사용했습니다. "
-            "Pro로 업그레이드하면 무제한 이용할 수 있습니다.",
-        )
-
-    settings = body.settings or db.load_settings(user["email"])
-    report_type = (body.report_type or "driving").lower().strip()
-    if report_type in ("field", "field_visit", "outing", "외근"):
-        report_type = "field"
-    else:
-        report_type = "driving"
-
-    if body.form:
-        form = body.form
-    elif report_type == "field":
-        form = {
-            "visits_text": body.visits_text,
-            "work_summary": body.work_summary,
-            "next_actions": body.next_actions,
-            "department": body.department,
-            "extra_note": body.raw_text,
-            "author_name": (body.settings or {}).get("driver_name")
-            if isinstance(body.settings, dict)
-            else "",
-        }
-    else:
-        form = {
-            "vehicle_number": body.vehicle_number,
-            "odometer_start": body.odometer_start,
-            "odometer_end": body.odometer_end,
-            "lunch_restaurant": body.lunch_restaurant,
-            "morning_places": body.morning_places,
-            "afternoon_places": body.afternoon_places,
-            "extra_note": body.raw_text,
-            "fuel_refueled": False,
-            "fuel_amount_krw": None,
-            "fuel_liters": None,
-        }
-    result = generate_driving_log(
-        body.raw_text or "",
-        settings,
-        form=form,
-        user_email=user["email"],
-        report_type=report_type,
-    )
-
-    log = scrub_submission_log(result.get("log") or {})
-    result = {**result, "log": log}
-    has_content = bool(log.get("trips") or log.get("visits"))
-    saved = None
-    if log and has_content:
-        used = db.increment_usage(user["email"], 1)
-        # 생성 성공 시 서버에 자동 저장 (이력)
-        try:
-            saved = db.save_user_log(
-                user["email"],
-                log,
-                report_type=report_type,
-            )
-            # 클라이언트 동기화용 id (제출 본문 필드와 분리)
-            if isinstance(result.get("log"), dict) and saved.get("id"):
-                result = {**result, "log": {**result["log"], "_saved_id": saved["id"]}}
-        except Exception as e:
-            print(f"[RoadLog] auto-save log failed: {e}", flush=True)
-
-    # 생성 실패·빈 결과면 증가 없음 → 누적 재조회
-    if not (log and has_content):
-        used = db.get_usage_lifetime(user["email"])
-    return {
-        **result,
-        "usage": used,
-        "limit": FREE_TOTAL_LIMIT,
-        "free_limit_period": "lifetime",
-        "plan": plan,
-        "saved": saved,
-    }
-
-
-@app.get("/api/logs")
-def api_list_logs(
-    limit: int = Query(default=50, ge=1, le=200),
-    authorization: str | None = Header(default=None),
-):
-    """내 일지 이력 목록."""
-    user = _token_user(authorization)
-    items = db.list_user_logs(user["email"], limit=limit)
-    return {"ok": True, "items": items, "count": len(items)}
-
-
-@app.get("/api/logs/summary")
-def api_logs_summary(
-    period: str = Query(default="month", description="week | month | custom"),
-    date_from: str | None = Query(default=None),
-    date_to: str | None = Query(default=None),
-    authorization: str | None = Header(default=None),
-):
-    """
-    주간/월간 업무 요약.
-    총 km · 운행/외근 건수 · 방문 Top3 · 복붙용 report_text
-    """
-    user = _token_user(authorization)
-    p = (period or "month").lower().strip()
-    if p not in ("week", "month", "custom", "주간", "월간", "7d"):
-        p = "month"
-    try:
-        data = db.summarize_user_logs(
-            user["email"],
-            period=p,
-            date_from=date_from,
-            date_to=date_to,
-        )
-    except Exception as e:
-        raise HTTPException(500, f"요약 생성 실패: {e}") from e
-    return {"ok": True, **data}
-
-
-@app.get("/api/logs/summary/export")
-def api_logs_summary_export(
-    period: str = Query(default="month"),
-    format: str = Query(default="pdf", description="pdf | xlsx | excel"),
-    date_from: str | None = Query(default=None),
-    date_to: str | None = Query(default=None),
-    authorization: str | None = Header(default=None),
-):
-    """업무 요약 PDF/Excel 다운로드 (워터마크 없음)."""
-    user = _token_user(authorization)
-    p = (period or "month").lower().strip()
-    if p not in ("week", "month", "custom", "주간", "월간", "7d"):
-        p = "month"
-    try:
-        summary = db.summarize_user_logs(
-            user["email"],
-            period=p,
-            date_from=date_from,
-            date_to=date_to,
-        )
-    except Exception as e:
-        raise HTTPException(500, f"요약 생성 실패: {e}") from e
-
-    fmt = (format or "pdf").lower().strip()
-    try:
-        if fmt in ("xlsx", "excel", "xls"):
-            data, name = export_summary_excel(summary)
-            media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        else:
-            data, name = export_summary_pdf(summary)
-            media = "application/pdf"
-    except Exception as e:
-        raise HTTPException(500, f"내보내기 실패: {e}") from e
-
-    from urllib.parse import quote
-
-    headers = {
-        "Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"
-    }
-    return Response(content=data, media_type=media, headers=headers)
-
-
-@app.get("/api/logs/{log_id}")
-def api_get_log(log_id: str, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    item = db.get_user_log(user["email"], log_id)
-    if not item:
-        raise HTTPException(404, "일지를 찾을 수 없습니다.")
-    return {"ok": True, "item": item}
-
-
-@app.post("/api/logs")
-def api_save_log(body: SaveLogBody, authorization: str | None = Header(default=None)):
-    """일지 수동 저장·업데이트."""
-    user = _token_user(authorization)
-    try:
-        entry = db.save_user_log(
-            user["email"],
-            body.log,
-            report_type=body.report_type,
-            title=body.title,
-            log_id=body.id,
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    return {"ok": True, "item": entry}
-
-
-@app.delete("/api/logs/{log_id}")
-def api_delete_log(log_id: str, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    ok = db.delete_user_log(user["email"], log_id)
-    if not ok:
-        raise HTTPException(404, "일지를 찾을 수 없습니다.")
-    return {"ok": True}
-
-
-@app.post("/api/validate")
-def validate(body: ExportBody, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    settings = db.load_settings(user["email"])
-    v = validate_log(body.log, settings)
-    return {
-        "ok": v["ok"],
-        "log": v["enriched_log"],
-        "errors": v["errors"],
-        "warnings": v["warnings"],
-    }
-
-
-@app.post("/api/export")
-def export(body: ExportBody, authorization: str | None = Header(default=None)):
-    _token_user(authorization)
-    fmt = (body.format or "").lower().strip()
-    clean_log = scrub_submission_log(body.log or {})
-    try:
-        if fmt in ("excel", "xlsx", "xls"):
-            data, name = export_excel(clean_log)
-            media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        elif fmt == "pdf":
-            data, name = export_pdf(clean_log)
-            media = "application/pdf"
-        elif fmt == "docx":
-            data, name = export_docx(clean_log)
-            media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        else:
-            raise HTTPException(400, "format은 excel | xlsx | pdf | docx 중 하나여야 합니다.")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(500, f"문서 생성 오류: {e}") from e
-
-    # 한글 파일명은 latin-1 HTTP 헤더에 못 들어가 Content-Disposition 500 유발
-    # → ASCII fallback + RFC 5987 filename* (UTF-8)
-    safe_ascii = re.sub(r"[^\w.\-]+", "_", name, flags=re.ASCII).strip("._") or "roadlog.bin"
-    if not re.search(r"\.\w+$", safe_ascii):
-        # 확장자 보존
-        ext = Path(name).suffix or ""
-        safe_ascii = f"roadlog{ext}" if ext else "roadlog.bin"
-    cd = f"attachment; filename=\"{safe_ascii}\"; filename*=UTF-8''{quote(name)}"
-    return Response(
-        content=data,
-        media_type=media,
-        headers={"Content-Disposition": cd},
-    )
-
-
 # ── 서식·말투 학습 ─────────────────────────────────────
-
-
-@app.get("/api/style")
-def style_status(authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    return style_learn.list_style_status(user["email"])
-
-
-@app.post("/api/style/upload")
-async def style_upload(
-    file: UploadFile = File(...),
-    authorization: str | None = Header(default=None),
-):
-    user = _token_user(authorization)
-    data = await file.read()
-    try:
-        return style_learn.add_sample_from_upload(
-            user["email"],
-            file.filename or "upload.bin",
-            data,
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    except Exception as e:
-        raise HTTPException(500, f"업로드 처리 오류: {e}") from e
-
-
-@app.post("/api/style/paste")
-def style_paste(body: StyleTextBody, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    try:
-        return style_learn.add_sample_from_text(user["email"], body.title, body.text)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.post("/api/style/learn")
-def style_learn_now(authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    try:
-        result = style_learn.learn_style(user["email"])
-        status = style_learn.list_style_status(user["email"])
-        status["learn"] = result
-        return status
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.delete("/api/style/samples/{sample_id}")
-def style_delete(sample_id: str, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    try:
-        return style_learn.delete_sample(user["email"], sample_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.post("/api/style/samples/{sample_id}/activate")
-def style_activate(sample_id: str, authorization: str | None = Header(default=None)):
-    """주 사용 회사 서식으로 지정."""
-    user = _token_user(authorization)
-    try:
-        return style_learn.set_active_sample(user["email"], sample_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
 
 
 # ── 관리자 운영 ───────────────────────────────────────
 
 
-class BillingBody(BaseModel):
-    pro_price_krw: int
-    enterprise_price_krw: int
-    pro_annual_price_krw: int | None = None
-    pro_annual_monthly_eq_krw: int | None = None
-    enterprise_annual_price_krw: int | None = None
-    enterprise_annual_monthly_eq_krw: int | None = None
-    enterprise_base_seats: int | None = None
-    enterprise_seat_price_krw: int | None = None
-    enterprise_seat_annual_price_krw: int | None = None
-
-
 class FreePassBody(BaseModel):
     email: str
     on: bool = True
-
-
-class VipBody(BaseModel):
-    id: str
-    email: str = ""
-    note: str = ""
-
-
-class ReviewBody(BaseModel):
-    text: str
-    text_en: str = ""
-    name: str
-    name_en: str = ""
-    role: str = ""
-    role_en: str = ""
-    initial: str = ""
-    stars: int = 5
-    published: bool = True
-    sort_order: int | None = None
-
-
-class ReviewPublishBody(BaseModel):
-    published: bool
-
-
-@app.get("/api/reviews")
-def public_reviews():
-    """비로그인 랜딩용 공개 후기."""
-    items = reviews_ops.list_public_reviews()
-    return {"reviews": items, "count": len(items)}
-
-
-@app.get("/api/stats/visitors")
-def stats_visitors(
-    response: Response,
-    request: Request,
-    rl_vid: str | None = Cookie(default=None, alias=visitors_ops.COOKIE_NAME),
-    hit: int = Query(default=1, ge=0, le=1),
-):
-    """
-    총 방문자 수 (브라우저 쿠키 기준 1회 카운트).
-    hit=0 이면 조회만, hit=1(기본) 이면 신규 방문자 시 +1.
-    localhost / webdriver 는 프론트에서 hit=0 권장.
-    """
-    if hit == 0:
-        return {"total": visitors_ops.get_total(), "counted": False}
-    total, vid, is_new = visitors_ops.touch_visitor(rl_vid)
-    response.set_cookie(
-        key=visitors_ops.COOKIE_NAME,
-        value=vid,
-        max_age=visitors_ops.COOKIE_MAX_AGE,
-        httponly=True,
-        samesite="lax",
-        secure=bool(is_production()),
-        path="/",
-    )
-    return {"total": total, "counted": is_new}
-
-
-@app.get("/api/admin/reviews")
-def admin_reviews_list(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    items = reviews_ops.list_admin_reviews()
-    return {"reviews": items, "count": len(items)}
-
-
-@app.post("/api/admin/reviews")
-def admin_reviews_create(
-    body: ReviewBody, authorization: str | None = Header(default=None)
-):
-    _require_admin(authorization)
-    try:
-        row = reviews_ops.create_review(body.model_dump())
-        return {
-            "ok": True,
-            "review": row,
-            "reviews": reviews_ops.list_admin_reviews(),
-        }
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.put("/api/admin/reviews/{review_id}")
-def admin_reviews_update(
-    review_id: str,
-    body: ReviewBody,
-    authorization: str | None = Header(default=None),
-):
-    _require_admin(authorization)
-    try:
-        row = reviews_ops.update_review(review_id, body.model_dump())
-        return {
-            "ok": True,
-            "review": row,
-            "reviews": reviews_ops.list_admin_reviews(),
-        }
-    except KeyError as e:
-        raise HTTPException(404, str(e)) from e
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.patch("/api/admin/reviews/{review_id}/publish")
-def admin_reviews_publish(
-    review_id: str,
-    body: ReviewPublishBody,
-    authorization: str | None = Header(default=None),
-):
-    _require_admin(authorization)
-    try:
-        row = reviews_ops.set_review_published(review_id, body.published)
-        return {
-            "ok": True,
-            "review": row,
-            "reviews": reviews_ops.list_admin_reviews(),
-        }
-    except KeyError as e:
-        raise HTTPException(404, str(e)) from e
-
-
-@app.delete("/api/admin/reviews/{review_id}")
-def admin_reviews_delete(
-    review_id: str, authorization: str | None = Header(default=None)
-):
-    _require_admin(authorization)
-    ok = reviews_ops.delete_review(review_id)
-    if not ok:
-        raise HTTPException(404, "후기를 찾을 수 없습니다.")
-    return {"ok": True, "reviews": reviews_ops.list_admin_reviews()}
 
 
 # ── 방문자 세기 ──────────────────────────────────────────
@@ -1889,48 +896,6 @@ def admin_live(authorization: str | None = Header(default=None)):
     """
     _require_admin(authorization)
     return {"live": stats_ops.live(), "seen": stats_ops.seen_days(2)}
-
-
-@app.get("/api/admin/dashboard")
-def admin_dashboard(
-    authorization: str | None = Header(default=None),
-    date_from: str | None = None,
-    date_to: str | None = None,
-):
-    """매출 대시보드. date_from / date_to = YYYY-MM-DD (기간 합산·날짜별)."""
-    _require_admin(authorization)
-    return admin_ops.revenue_dashboard(date_from=date_from, date_to=date_to)
-
-
-@app.get("/api/admin/usage")
-def admin_usage(
-    authorization: str | None = Header(default=None),
-    month: str | None = None,
-):
-    """무료/유료 회원 이번 달 생성 횟수 집계."""
-    _require_admin(authorization)
-    return admin_ops.usage_dashboard(month=month)
-
-
-@app.put("/api/admin/billing")
-def admin_billing(body: BillingBody, authorization: str | None = Header(default=None)):
-    admin = _require_admin(authorization)
-    try:
-        cfg = admin_ops.save_billing_config(
-            body.pro_price_krw,
-            body.enterprise_price_krw,
-            updated_by=admin.get("email") or "",
-            pro_annual_price=body.pro_annual_price_krw,
-            pro_annual_monthly_eq=body.pro_annual_monthly_eq_krw,
-            enterprise_annual_price=body.enterprise_annual_price_krw,
-            enterprise_annual_monthly_eq=body.enterprise_annual_monthly_eq_krw,
-            enterprise_base_seats=body.enterprise_base_seats,
-            enterprise_seat_price=body.enterprise_seat_price_krw,
-            enterprise_seat_annual_price=body.enterprise_seat_annual_price_krw,
-        )
-        return {"ok": True, "billing": cfg}
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
 
 
 # ── 쿠폰 ──────────────────────────────────────────────
@@ -2255,7 +1220,6 @@ def admin_prompt_try(key: str, body: PromptBody,
     값이 든다(한 번에 1원 안팎). 저장 전에 결과를 보고 정하시라고 둔 자리다.
     """
     _require_admin(authorization)
-    from modules import prompts as prompts_ops
     from modules import saju_writer
 
     text = str(body.text or "").strip()
@@ -2321,36 +1285,6 @@ def admin_freepass_set(body: FreePassBody, authorization: str | None = Header(de
         return {"ok": True, "emails": _free_pass_set(body.email, body.on)}
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
-
-
-@app.get("/api/admin/vip")
-def admin_vip_list(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return {"vip_members": admin_ops.load_vip_members()}
-
-
-@app.post("/api/admin/vip")
-def admin_vip_add(body: VipBody, authorization: str | None = Header(default=None)):
-    admin = _require_admin(authorization)
-    try:
-        row = admin_ops.add_vip(
-            body.id,
-            email=body.email,
-            note=body.note,
-            added_by=admin.get("email") or "",
-        )
-        return {"ok": True, "member": row, "vip_members": admin_ops.load_vip_members()}
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-
-
-@app.delete("/api/admin/vip/{member_id}")
-def admin_vip_remove(member_id: str, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    ok = admin_ops.remove_vip(member_id)
-    if not ok:
-        raise HTTPException(404, "VIP 회원을 찾을 수 없습니다.")
-    return {"ok": True, "vip_members": admin_ops.load_vip_members()}
 
 
 def _drop_sessions_for_email(email: str) -> int:
@@ -2432,7 +1366,6 @@ def _file_response(path: Path, status_code: int = 200) -> FileResponse:
     if media:
         return FileResponse(path, media_type=media, headers=headers or None, status_code=status_code)
     return FileResponse(path, headers=headers or None, status_code=status_code)
-
 
 
 # ── 등불(선불 재화) ────────────────────────────────────
@@ -4455,7 +3388,6 @@ def card_page(cid: str):
     go = f"{SITE_ORIGIN}/?ref={ref}" if ref else f"{SITE_ORIGIN}/"
     html = CARD_HTML % {"title": title, "line": line, "img": img, "url": url, "go": go}
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=3600"})
-
 
 
 @app.get("/{path:path}")
