@@ -98,6 +98,7 @@ from modules import intent as intent_ops
 from modules import saju_writer
 from modules import dream as dream_ops
 from modules import pet as pet_ops
+from modules import pet_hall as pet_hall_ops
 from modules.rate_limit import (
     AUTH_LIMIT,
     AUTH_WINDOW,
@@ -3323,7 +3324,7 @@ def dream_quota(authorization: str | None = Header(default=None)):
 #    같은 사진은 저장해 둔 결과를 주고 횟수를 안 깎는다 — 다시 눌러 S 등급을 뽑는 걸 막는다.
 # 🛑 **사진은 저장하지 않는다** (관상과 같다). 결과 글만 사진 해시로 남긴다.
 PET_DAILY_CAP = 3
-PET_VER = 1
+PET_VER = 2          # 🛑 2 (2026-09-14): character_design 칸이 붙었다
 
 
 class PetReadBody(BaseModel):
@@ -3388,6 +3389,106 @@ def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)
         except Exception:                             # noqa: BLE001
             pass
     return {"ok": True, **out}
+
+
+# ── 반려동물 관상 명예의 전당 (2026-09-14 온해님 기획) ─────────────────────
+# 저장·순위·좋아요 셈은 `modules/pet_hall.py`. 여기는 누가 무엇을 할 수 있는지만 가른다.
+PET_VOTER_COOKIE = "rl_pet_voter"
+
+
+class PetShareBody(BaseModel):
+    shot: str = ""
+    shots: list[str] = []   # 관상 볼 때 보낸 그 사진 한 장 (base64 jpeg)
+    pet_name: str = ""
+    agree: bool = False     # 🛑 명예의 전당에 사진이 공개된다는 데 동의했는가
+
+
+def _shot_hash_of(b64: str) -> str:
+    """앞단(`pet.js`)이 만드는 사진 해시와 같은 셈. 앞단은 data URL 전체를 SHA-256 해 앞 16바이트를 쓴다."""
+    import hashlib as _hl
+    return _hl.sha256(("data:image/jpeg;base64," + (b64 or "")).encode("utf-8")).hexdigest()[:32]
+
+
+@app.post("/api/pets/share")
+def pets_share(body: PetShareBody, authorization: str | None = Header(default=None)):
+    """관상 결과 카드를 명예의 전당에 올린다 (손님이 동의했을 때만)."""
+    user = _token_user(authorization)
+    if not body.agree:
+        raise HTTPException(400, "명예의 전당에 사진이 보인다는 데 동의해 주셔야 올릴 수 있어요.")
+    shots = body.shots or []
+    if len(shots) != 1:
+        raise HTTPException(400, "사진을 한 장 올려 주세요.")
+    try:
+        clean = gwansang_ops.check_jpeg(shots[0])
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    shot = (body.shot or "").strip()
+    # 🛑 **관상을 본 바로 그 사진인지** 맞춰 본다. 결과 없이 아무 사진이나 올리는 것을 막는다
+    if not shot or _shot_hash_of(clean) != shot:
+        raise HTTPException(400, "관상을 본 사진과 달라요. 관상 결과 화면에서 올려 주세요.")
+    try:
+        prev = saju_writer.load("pet_read", shot)
+    except ValueError:
+        prev = None
+    if not prev or not prev.get("title"):
+        raise HTTPException(404, "이 사진의 관상 결과를 못 찾았어요. 관상을 먼저 봐 주세요.")
+    import base64 as _b64
+    try:
+        jpeg = _b64.b64decode(clean)
+    except Exception:                                 # noqa: BLE001
+        raise HTTPException(400, "사진을 읽지 못했어요.")
+    try:
+        row = pet_hall_ops.add(owner=user["email"], shot=shot, pet_name=body.pet_name, jpeg=jpeg, result=prev)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except PermissionError as e:
+        raise HTTPException(429, str(e))
+    return {"ok": True, "item": row}
+
+
+@app.post("/api/pets/{pid}/like")
+def pets_like(pid: str, request: Request, response: Response,
+              voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
+    """좋아요(투표) 1. 🛑 로그인 없이 누를 수 있다 — 퍼진 카드에서 들어온 사람도 누르게.
+    중복은 브라우저 쿠키로 막고, 같은 IP 는 한 아이에게 5번까지만(`pet_hall.IP_LIKE_CAP`)."""
+    import uuid as _uuid
+    if not voter or len(voter) > 64:
+        voter = _uuid.uuid4().hex
+        # 🛑 1년. 지우면 다시 누를 수 있지만 IP 칸이 한 번 더 막는다
+        response.set_cookie(PET_VOTER_COOKIE, voter, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax", secure=True)
+    try:
+        return pet_hall_ops.like(pid, voter=voter, ip=_client_ip(request))
+    except KeyError:
+        raise HTTPException(404, "명예의 전당에서 내려간 아이예요.")
+
+
+@app.get("/api/pets/hall-of-fame")
+def pets_hall(month: str | None = Query(default=None), limit: int = Query(default=30)):
+    """좋아요 순 목록. 1위는 「이달의 관상왕」(is_monthly_winner). 로그인 없이 볼 수 있다."""
+    if month and not (len(month) == 7 and month[4] == "-" and month.replace("-", "").isdigit()):
+        raise HTTPException(400, "달은 2026-09 처럼 적어 주세요.")
+    return pet_hall_ops.hall(month, limit)
+
+
+@app.get("/api/pets/{pid}/image")
+def pets_image(pid: str):
+    """명예의 전당 사진. 🛑 숨긴 아이는 안 준다."""
+    import re as _re
+    if not _re.fullmatch(r"[0-9a-f-]{36}", pid or "") or not pet_hall_ops.exists(pid):
+        raise HTTPException(404, "없는 사진이에요.")
+    f = pet_hall_ops.image_path(pid)
+    if not f.exists():
+        raise HTTPException(404, "없는 사진이에요.")
+    return FileResponse(str(f), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.delete("/api/pets/{pid}")
+def pets_hide(pid: str, authorization: str | None = Header(default=None)):
+    """주인이 명예의 전당에서 내린다 (지우지 않고 숨김)."""
+    user = _token_user(authorization)
+    if not _is_owner(user):
+        raise HTTPException(403, "주인만 내릴 수 있어요.")
+    return {"ok": pet_hall_ops.hide(pid)}
 
 
 @app.post("/api/dream/scan")

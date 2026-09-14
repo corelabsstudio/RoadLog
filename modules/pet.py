@@ -11,9 +11,11 @@
 | stats | 집사 조종력 · 간식 탐욕 · 귀여움 어필력 · 새벽 에너지 · 집사 재물/액막이 (0~100) |
 | one_line_advice | 무냥이의 족집게 조언 한 문장 |
 | share_card_data | 공유 카드(엽서 한 장)용으로 **짧게 줄인** 칸 |
+| character_design | 명예의 전당 1위가 되면 사이트를 떠다닐 2D 캐릭터로 만들 때 쓰는 명세 (2026-09-14) |
 
 🛑 **규격(responseSchema)으로 받는다.** 부탁이 아니라 규격이라 모델이 칸을 빼먹지 못한다.
-🛑 **사진은 어디에도 저장하지 않는다.** 관상(`gwansang.py`)과 같다 — 결과 글만 남긴다.
+🛑 **관상만 볼 때는 사진을 저장하지 않는다.** 관상(`gwansang.py`)과 같다 — 결과 글만 남긴다.
+   🛑 예외: 손님이 **명예의 전당에 올리기에 동의**하면 그 사진만 남긴다 (`pet_hall.py` · 2026-09-14).
 🛑 동물이 아니거나 너무 흐리면 `error_code` 를 채우고 나머지는 비운다. 억지로 지어내지 않는다.
 🛑 **숫자를 믿지 않는다.** `top_stat_name/value` 는 모델이 적어도 서버가 stats 에서 다시 고른다 —
    카드 숫자와 막대 숫자가 어긋나면 손님이 바로 본다.
@@ -69,7 +71,14 @@ share_card_data 는 **모바일 화면 한 장에 들어갈 이미지 엽서용 
 - card_title: 여덟 자 안쪽 + 끝에 이모지 하나 (예: 태평성대 황제상 👑)
 - pet_keywords: 정확히 셋. 하나에 여덟 자 안쪽, 띄어쓰기 없이 (예: 새벽우다다, 츄르노예)
 - main_factcheck_short: 두 문장, 합쳐서 예순 자 안쪽
-- grade_badge: S / A / B / C 중 하나"""
+- grade_badge: S / A / B / C 중 하나
+
+[character_design — 캐릭터화 명세]
+이 아이가 「이달의 관상왕」이 되면 사이트 모퉁이를 돌아다니는 2D 캐릭터로 만든다. 그림 그리는 사람이 바로 쓸 수 있게 적는다.
+- visual_features: 사진에서 **실제로 보이는** 캐릭터화 특징을 쉼표로 (털색·무늬 위치·눈 색·귀 모양·표정). 예: 오른쪽 눈 아래 검은 점, 크림색 가슴 털, 앙다문 입
+  🛑 무냥이처럼 조선 옷차림 소품 하나를 얹어도 된다(갓·두건 등). 그때도 아이의 털 무늬는 그대로 둔다
+- sprite_concept: 사이트 모퉁이를 돌아다닐 때의 픽셀 아트 콘셉트 한 문장
+- motion_keyword: 시그니처 동작 한두 낱말 (예: 둥둥 떠다니기, 냥펀치 날리기, 식빵 굽기)"""
 
 PET_SCHEMA = {
     "type": "object",
@@ -85,6 +94,15 @@ PET_SCHEMA = {
             "required": list(STAT_NAMES),
         },
         "one_line_advice": {"type": "string", "description": "무냥이의 족집게 조언. 집사가 명심할 수발 팁 한 문장"},
+        "character_design": {
+            "type": "object",
+            "properties": {
+                "visual_features": {"type": "string", "description": "사진에서 보이는 캐릭터화 특징. 쉼표로 · 백 자 안쪽"},
+                "sprite_concept": {"type": "string", "description": "사이트를 돌아다닐 픽셀 아트 콘셉트 한 문장 · 예순 자 안쪽"},
+                "motion_keyword": {"type": "string", "description": "시그니처 동작 · 열두 자 안쪽"},
+            },
+            "required": ["visual_features", "sprite_concept", "motion_keyword"],
+        },
         "share_card_data": {
             "type": "object",
             "properties": {
@@ -99,7 +117,7 @@ PET_SCHEMA = {
         },
     },
     "required": ["error_code", "title", "summary", "personality_factcheck", "butler_compatibility",
-                 "stats", "one_line_advice", "share_card_data"],
+                 "stats", "one_line_advice", "character_design", "share_card_data"],
 }
 
 
@@ -150,6 +168,12 @@ def _clean(d: dict[str, Any]) -> dict[str, Any]:
             "top_stat_value": stats[top],
             "grade_badge": grade if grade in ("S", "A", "B", "C") else "B",
         },
+    }
+    cd = d.get("character_design") if isinstance(d.get("character_design"), dict) else {}
+    out["character_design"] = {
+        "visual_features": _cut(cd.get("visual_features"), 120),
+        "sprite_concept": _cut(cd.get("sprite_concept"), 80),
+        "motion_keyword": _cut(cd.get("motion_keyword"), 16),
     }
     if not out["title"] or not out["personality_factcheck"]:
         raise RuntimeError("관상 글이 비었다")
