@@ -5,9 +5,11 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import hashlib
 import secrets
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -56,14 +58,32 @@ def _read_json(path: Path, default: Any) -> Any:
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except OSError:
         return default
+    except ValueError as e:
+        # 🛑 깨진 파일을 기본값({})으로 읽으면 다음 쓰기가 그 빈 값을 저장해 **회원 전체가 지워진다** (2026-09-14 전수 검사)
+        raise RuntimeError("%s 을(를) 읽지 못했습니다(파일 손상)." % path.name) from e
 
 
 def _write_json(path: Path, data: Any) -> None:
+    # 🛑 임시 파일에 쓰고 바꿔 끼운다 — 제자리에 쓰면 쓰는 도중 읽은 요청이 반쪽 파일을 본다
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
+    tmp = path.with_name(path.name + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    tmp.replace(path)
+
+
+# 회원·사용량·결제 파일을 읽고-고치고-쓰는 함수는 잠근다(동시 가입·이름 바꾸기에서 한쪽이 사라지지 않게)
+_DB_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrap(*a, **kw):
+        with _DB_LOCK:
+            return fn(*a, **kw)
+    return wrap
 
 
 # ── Supabase 클라이언트 ────────────────────────────────
@@ -97,6 +117,7 @@ def supabase_status() -> str:
 # ── 사용자 ─────────────────────────────────────────────
 
 
+@_locked
 def register_user(email: str, password: str, name: str = "") -> tuple[bool, str]:
     """회원가입. (성공여부, 메시지)"""
     email = email.strip().lower()
@@ -151,6 +172,7 @@ def register_user(email: str, password: str, name: str = "") -> tuple[bool, str]
     return True, "가입이 완료되었습니다. 로그인해 주세요."
 
 
+@_locked
 def ensure_admin_owner() -> dict:
     """
     사이트 관리자(소유자) 계정을 보장합니다.
@@ -196,6 +218,7 @@ def ensure_admin_owner() -> dict:
     return _normalize_user(users[email])
 
 
+@_locked
 def authenticate_admin_credentials(login_id: str, password: str) -> tuple[bool, dict | None, str]:
     """
     관리자 자격 확인 (UI 탭 없음 — 일반 로그인 폼에서 동일 입력).
@@ -353,6 +376,7 @@ def get_user(email: str) -> dict | None:
     return enrich_user_flags(_normalize_user(u)) if u else None
 
 
+@_locked
 def set_user_name(email: str, name: str) -> bool:
     """손님이 부르는 이름을 바꾼다. 결과 화면에서 부를 때만 쓴다.
 
@@ -375,6 +399,7 @@ def set_user_name(email: str, name: str) -> bool:
     return True
 
 
+@_locked
 def set_user_plan(email: str, plan: str) -> bool:
     """plan: free | pro"""
     email = email.strip().lower()
@@ -419,6 +444,7 @@ def get_user_record(email: str) -> dict | None:
     return _read_json(USERS_JSON, {}).get(email)
 
 
+@_locked
 def mark_social(email: str, provider: str) -> bool:
     """소셜로 처음 들어온 계정임을 적어 둔다.
 
@@ -473,6 +499,7 @@ def social_only_provider(email: str) -> str:
     return ""
 
 
+@_locked
 def set_password(email: str, new_password: str) -> tuple[bool, str]:
     """비밀번호를 새로 정한다. (성공, 메시지)"""
     email = (email or "").strip().lower()
@@ -579,6 +606,7 @@ def is_tester_account(user_or_email: dict | str) -> bool:
     return False
 
 
+@_locked
 def delete_user(email: str, *, force: bool = False) -> dict[str, Any]:
     """
     회원 및 관련 로컬 데이터 삭제.
@@ -888,6 +916,7 @@ def get_all_usage_map(month: str | None = None) -> dict[str, int]:
     return out
 
 
+@_locked
 def increment_usage(email: str, amount: int = 1) -> int:
     """
     사용량 +amount.
@@ -934,6 +963,7 @@ def increment_usage(email: str, amount: int = 1) -> int:
 # ── 결제 / 수익 (관리자 대시보드) ─────────────────────
 
 
+@_locked
 def record_payment(
     email: str,
     amount: int = PRO_PRICE_KRW,

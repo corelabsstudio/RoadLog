@@ -19,6 +19,8 @@
 from __future__ import annotations
 
 import json
+import functools
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -31,6 +33,18 @@ def _path() -> Path:
     d = Path(DATA_DIR)
     d.mkdir(parents=True, exist_ok=True)
     return d / "inbox.json"
+
+
+# 🛑 읽고-고치고-쓰는 사이 다른 요청이 끼지 않게 잠근다 (2026-09-14 전수 검사)
+_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrap(*a, **kw):
+        with _LOCK:
+            return fn(*a, **kw)
+    return wrap
 
 
 def _read() -> dict[str, list[dict[str, Any]]]:
@@ -51,10 +65,17 @@ def _write(data: dict[str, list[dict[str, Any]]]) -> None:
     tmp.replace(p)
 
 
+def _kst_now() -> str:
+    """🛑 한국 시각으로 적는다 — 화면이 이 값을 한국 시각으로 읽는다. 서버 시간(UTC)으로 적으면 9시간 동안 「방금」으로 보였다 (2026-09-14 전수 검사)"""
+    import datetime as _dt
+    return (_dt.datetime.now(_dt.timezone.utc) + _dt.timedelta(hours=9)).strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def _key(email: str) -> str:
     return (email or "").strip().lower()
 
 
+@_locked
 def push(email: str, title: str, body: str = "", *, key: str = "",
          icon: str = "", link: str = "") -> bool:
     """알림 하나를 넣는다. `key` 가 이미 있으면 넣지 않고 False 를 준다."""
@@ -72,7 +93,7 @@ def push(email: str, title: str, body: str = "", *, key: str = "",
         "body": body,
         "icon": icon or "",
         "link": link or "",
-        "at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "at": _kst_now(),
         "read": False,
     })
     data[e] = rows[-MAX_PER_USER:]
@@ -80,12 +101,13 @@ def push(email: str, title: str, body: str = "", *, key: str = "",
     return True
 
 
+@_locked
 def push_all(emails: list[str], title: str, body: str = "", *, key: str = "",
              icon: str = "", link: str = "") -> int:
     """여러 사람에게 같은 알림. 공지에 쓴다. 넣은 수를 준다."""
     n = 0
     data = _read()
-    now = time.strftime("%Y-%m-%dT%H:%M:%S")
+    now = _kst_now()
     for raw in emails:
         e = _key(raw)
         if not e:
@@ -113,6 +135,7 @@ def listing(email: str) -> dict[str, Any]:
     return {"items": rows, "unread": sum(1 for r in rows if not r.get("read"))}
 
 
+@_locked
 def mark_read(email: str, ids: list[str] | None = None) -> int:
     """읽음 표시. ids 가 없으면 전부."""
     e = _key(email)

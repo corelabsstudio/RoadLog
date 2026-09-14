@@ -168,12 +168,19 @@ def add(*, owner: str, shot: str, pet_name: str, jpeg: bytes, result: dict[str, 
     name = " ".join(str(pet_name or "").split())[:NAME_MAX]
     if not name:
         raise ValueError("아이 이름을 적어 주세요.")
+    # 🛑 이름은 홈 배너에 그대로 뜬다 — 주소를 넣지 못하게 (2026-09-14 전수 검사)
+    if _LINK.search(name):
+        raise ValueError("아이 이름에는 주소(링크)를 넣을 수 없어요.")
     sc = result.get("share_card_data") or {}
     with _LOCK:
         d = _read()
         for r in d["rows"]:
-            if r.get("shot") == shot and not r.get("hidden"):
-                return public(r)                          # 이미 올린 사진 — 그 칸을 그대로 준다
+            if r.get("shot") != shot:
+                continue
+            if r.get("hidden"):
+                # 🛑 관리자가 내린 사진을 바로 다시 올리지 못하게 (2026-09-14 전수 검사)
+                raise ValueError("명예의 전당에서 내려간 사진이라 다시 올릴 수 없어요.")
+            return public(r)                              # 이미 올린 사진 — 그 칸을 그대로 준다
         today = _now()[:10]
         mine_today = sum(1 for r in d["rows"] if r.get("owner") == _h(owner) and r.get("created_at", "")[:10] == today)
         if mine_today >= SHARE_DAILY_CAP:
@@ -275,7 +282,7 @@ COMMENT_NICK_MAX = 12
 COMMENT_MAX = 200
 COMMENT_IP_DAILY = 30
 COMMENT_GAP_SEC = 10
-_LINK = re.compile(r"(https?://|www\.|\.(com|kr|net|org|io|me|ly|gg)(/|\b))", re.I)
+_LINK = re.compile(r"(https?://|www\.|\.(com|kr|net|org|io|me|ly|gg|co|shop|xyz|site|link|app|info|biz|to|tv|cc|store|online|top)(/|\b))", re.I)
 
 
 def _cfile() -> Path:
@@ -377,10 +384,18 @@ def delete_comment(pid: str, cid: str, *, voter: str = "", user: str = "", passw
         if not c:
             raise KeyError(cid)
         ok = admin or (voter and c.get("author") == _h("v|" + voter)) or (user and c.get("user") == _h(user))
-        if not ok and password and c.get("pw"):
-            ok = hmac.compare_digest(_pw(str(password), c.get("salt", "")), c["pw"])
-        if not ok:
-            raise PermissionError("비밀번호가 맞지 않아요." if password else "내가 쓴 댓글만 지울 수 있어요.")
+        salt, stored = c.get("salt", ""), c.get("pw", "")
+    # 🛑 비밀번호 셈(PBKDF2 12만 번)은 **잠금 밖에서** 한다 (2026-09-14 전수 검사).
+    #    잠금 안에서 하면 틀린 비밀번호를 연달아 보내는 동안 좋아요·목록·댓글이 전부 멈춘다
+    if not ok and password and stored:
+        ok = hmac.compare_digest(_pw(str(password)[:64], salt), stored)
+    if not ok:
+        raise PermissionError("비밀번호가 맞지 않아요." if password else "내가 쓴 댓글만 지울 수 있어요.")
+    with _LOCK:
+        d = _cread()
+        c = next((x for x in d["rows"] if x["id"] == cid and x.get("post_id") == pid and not x.get("hidden")), None)
+        if not c:
+            raise KeyError(cid)
         c["hidden"] = True
         _cwrite(d)
         n = sum(1 for x in d["rows"] if x.get("post_id") == pid and not x.get("hidden"))

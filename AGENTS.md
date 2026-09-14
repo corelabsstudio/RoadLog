@@ -1,5 +1,10 @@
 # RoadLog (로드로그) — Agent 지침
 
+> 🛑 **2026-09-14 기준: 아래 내용은 옛 운행일지 시절 문서다.** 2026-09-04 운행일지를 접고 roadlog.co.kr 은 **사주 서비스**가 됐다.
+> 이 폴더는 지금 **사주 서비스의 서버(`server.py`·`modules/`) + 빌드 결과(`web/`)** 이고, 화면 소스와 규칙의 정본은
+> `C:\Users\hysoo\projects\roadlog-saju\CLAUDE.md` 다. 최근 작업 기록은 `C:\Users\hysoo\projects\docs\CLAUDE_TO_CODEX_HANDOFF_2026-09-14.md`.
+> `web/` 을 손으로 고치지 말고 `roadlog-saju` 에서 `python tools/ship.py` 로 배포한다.
+
 ## 불러오기 트리거
 
 ### 로드로그 본체

@@ -438,7 +438,8 @@ def _call(system: str, user: str, *, model: str | None = None,
                 last = "빈 답 (%s)" % (cand.get("finishReason") or "이유 없음")
             else:
                 last = json.dumps(j, ensure_ascii=False)[:300]
-        except httpx.HTTPError as e:
+        except (httpx.HTTPError, ValueError, IndexError, KeyError, TypeError) as e:
+            # 🛑 JSON 이 아닌 답(ValueError)·빈 candidates(IndexError)도 되풀이한다 (2026-09-14 전수 검사)
             last = str(e)[:200]
         time.sleep(1.5 * (attempt + 1))
     # 🛑 세 번 다 실패했다. 잔액이 바닥났을 수 있으니 세어 둔다 (위 note_fail 참고)

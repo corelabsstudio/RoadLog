@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import functools
+import threading
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -48,6 +50,18 @@ def _digest(token: str) -> str:
     return hashlib.sha256((token or "").encode("utf-8")).hexdigest()
 
 
+# 🛑 읽고-고치고-쓰는 사이 다른 요청이 끼지 않게 잠근다 (2026-09-14 전수 검사)
+_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrap(*a, **kw):
+        with _LOCK:
+            return fn(*a, **kw)
+    return wrap
+
+
 def _read() -> dict[str, Any]:
     if not RESETS_JSON.exists():
         return {}
@@ -60,9 +74,9 @@ def _read() -> dict[str, Any]:
 
 def _write(data: dict[str, Any]) -> None:
     RESETS_JSON.parent.mkdir(parents=True, exist_ok=True)
-    RESETS_JSON.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    tmp = RESETS_JSON.with_name(RESETS_JSON.name + ".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(RESETS_JSON)
 
 
 def _purge(data: dict[str, Any]) -> dict[str, Any]:
@@ -79,6 +93,7 @@ def _purge(data: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+@_locked
 def issue(email: str, *, ip: str = "") -> tuple[str, str]:
     """새 토큰. (토큰, 사유) — 토큰이 빈 문자열이면 사유를 본다."""
     email = (email or "").strip().lower()
@@ -136,6 +151,7 @@ def peek(token: str) -> tuple[bool, str, str]:
     return _look(token)
 
 
+@_locked
 def consume(token: str) -> tuple[bool, str, str]:
     """확인하고 바로 닫는다. 비밀번호를 실제로 바꾸기 직전에 부른다."""
     ok, email, why = _look(token)

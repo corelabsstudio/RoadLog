@@ -189,7 +189,8 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
     🛑 **스캔에서 매긴 등급을 넘겨받으면 그대로 쓴다.** 안 넘기면 같은 꿈이 스캔은 A급,
        리포트는 S급으로 따로 나온다 (2026-09-13 첫 시험에서 그랬다).
     """
-    secs = [str(x).strip() for x in (sections or []) if str(x).strip()][:12]
+    # 🛑 제목은 앞단이 보낸다 — 길이·개수를 막아 LLM 원가가 부풀지 않게 (2026-09-14 전수 검사 · 화면은 6개)
+    secs = [str(x).strip()[:40] for x in (sections or []) if str(x).strip()][:8]
     if not secs:
         raise ValueError("볼 자리가 없습니다.")
     fixed = str(grade or "").strip().upper()

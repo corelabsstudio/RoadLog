@@ -173,11 +173,15 @@ def answer(name: str, seen: str, question: str, *, model: str | None = None) -> 
         "generationConfig": {"temperature": 1.0, "maxOutputTokens": 900,
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
-    r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
-    j = r.json()
-    if "candidates" not in j:
+    try:
+        r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
+        j = r.json()
+    except (httpx.HTTPError, ValueError) as e:
+        raise RuntimeError(str(e)[:200]) from e
+    # 🛑 빈 candidates 면 [0] 에서 IndexError(500)가 났다 (2026-09-14 전수 검사) — 부른 쪽이 받는 RuntimeError 로
+    if not j.get("candidates"):
         raise RuntimeError(str(j)[:200])
-    parts = (j["candidates"][0].get("content") or {}).get("parts") or []
+    parts = ((j["candidates"][0] or {}).get("content") or {}).get("parts") or []
     u = j.get("usageMetadata", {})
     tin = u.get("promptTokenCount", 0)
     tout = u.get("candidatesTokenCount", 0)
@@ -243,11 +247,15 @@ def look_shot(shots: list[str], *, model: str | None = None) -> dict[str, Any]:
         "generationConfig": {"temperature": 0.4, "maxOutputTokens": 400,
                              "thinkingConfig": {"thinkingBudget": 0}},
     }
-    r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
-    j = r.json()
-    if "candidates" not in j:
+    try:
+        r = httpx.post((_URL % (model or MODEL)) + "?key=" + key, json=body, timeout=TIMEOUT)
+        j = r.json()
+    except (httpx.HTTPError, ValueError) as e:
+        raise RuntimeError(str(e)[:200]) from e
+    # 🛑 빈 candidates 면 [0] 에서 IndexError(500)가 났다 (2026-09-14 전수 검사) — 부른 쪽이 받는 RuntimeError 로
+    if not j.get("candidates"):
         raise RuntimeError(str(j)[:200])
-    parts = (j["candidates"][0].get("content") or {}).get("parts") or []
+    parts = ((j["candidates"][0] or {}).get("content") or {}).get("parts") or []
     txt = "".join(p.get("text", "") for p in parts).strip()
     i, k = txt.find("{"), txt.rfind("}")
     if i < 0 or k <= i:

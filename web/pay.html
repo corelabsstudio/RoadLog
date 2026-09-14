@@ -186,7 +186,20 @@ const TKEY = 'roadlog.token.v1';
 const $ = (id) => document.getElementById(id);
 const won = (n) => Number(n).toLocaleString('ko-KR') + '원';
 const q = new URLSearchParams(location.search);
-const BACK = q.get('back') || '/';
+// 🛑 주소창 값은 누구나 바꿔서 링크로 보낼 수 있다 (2026-09-14 전수 검사).
+//    화면에 넣을 때는 반드시 esc 를 거치고, 돌아갈 주소는 **이 사이트 안(/…)** 만 받는다 — `javascript:` 나 `//남의사이트` 로 못 보내게
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+const rawBack = q.get('back') || '/';
+const BACK = /^\/(?![\/\\])/.test(rawBack) ? rawBack : '/';
+/** 돌아갈 주소에 `?이름=값` 을 붙인다. 🛑 해시(#p/full) **앞에** 붙여야 한다 — 뒤에 붙이면 location.search 가 비어 결제 뒤 상품이 안 열렸다 */
+function backWith(param) {
+  const i = BACK.indexOf('#');
+  const path = i < 0 ? BACK : BACK.slice(0, i);
+  const hash = i < 0 ? '' : BACK.slice(i);
+  return path + (path.includes('?') ? '&' : '?') + param + hash;
+}
+/** 로그인 토큰. 🛑 「로그인 상태 유지」를 끄면 sessionStorage 에 있다 — localStorage 만 보면 결제하고도 「로그인이 풀렸습니다」가 떴다 */
+const readTok = () => { try { return localStorage.getItem(TKEY) || sessionStorage.getItem(TKEY); } catch { return null; } };
 
 // 프리미엄 한 건 결제 — 등불을 거치지 않는다
 const PREMIUM = q.get('premium') ? {
@@ -274,14 +287,14 @@ function payFailed(code, message) {
       : '<br />잠시 뒤에 다시 해 보시거나 다른 결제 수단을 골라 주세요.')
     + '<br />계속 안 되면 corelabs.studio@gmail.com 으로 알려 주세요. 바로 봐 드릴게요.'
     + (message ? '<details style="margin-top:10px"><summary style="cursor:pointer;font-size:.86rem;opacity:.75">자세한 내용</summary><pre>'
-      + String(message) + '</pre></details>' : ''));
+      + esc(message) + '</pre></details>' : ''));
 }
 
 // 결제가 끝나면 서버가 포트원에 다시 물어 금액을 확인하고 등불을 넣는다
 async function claim(paymentId) {
-  const token = localStorage.getItem(TKEY);
+  const token = readTok();
   if (!token) {
-    show('err', '로그인이 풀렸습니다. 홈에서 다시 로그인하신 뒤 아래 결제 번호로 문의해 주세요.<pre>' + paymentId + '</pre>');
+    show('err', '로그인이 풀렸습니다. 홈에서 다시 로그인하신 뒤 아래 결제 번호로 문의해 주세요.<pre>' + esc(paymentId) + '</pre>');
     return;
   }
   if (PREMIUM) return claimPremium(paymentId, token);
@@ -294,13 +307,13 @@ async function claim(paymentId) {
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       show('err', '등불을 넣지 못했습니다. 아래 결제 번호를 가지고 문의해 주세요.<pre>'
-        + ((data && data.detail) || res.status) + '\n' + paymentId + '</pre>');
+        + esc((data && data.detail) || res.status) + '\n' + esc(paymentId) + '</pre>');
       return;
     }
     show('ok', `등불 <b>${data.lamps}개</b>를 넣었습니다. 지금 잔액 <b>${data.balance}등불</b>.<br />잠시 뒤 보시던 화면으로 돌아갑니다.`);
-    setTimeout(() => { location.href = BACK + (BACK.includes('?') ? '&' : '?') + 'charged=1'; }, 1600);
+    setTimeout(() => { location.href = backWith('charged=1'); }, 1600);
   } catch (e) {
-    show('err', '등불을 넣는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + paymentId + '</pre>');
+    show('err', '등불을 넣는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + esc(paymentId) + '</pre>');
   }
 }
 
@@ -314,13 +327,13 @@ async function claimPremium(paymentId, token) {
     const data = await res.json().catch(() => null);
     if (!res.ok) {
       show('err', '상품을 열어 드리지 못했습니다. 아래 결제 번호를 가지고 문의해 주세요.<pre>'
-        + ((data && data.detail) || res.status) + '<br />' + paymentId + '</pre>');
+        + esc((data && data.detail) || res.status) + '<br />' + esc(paymentId) + '</pre>');
       return;
     }
-    show('ok', `<b>${PREMIUM.name}</b> 결제가 끝났습니다.<br />잠시 뒤 보시던 화면으로 돌아가 바로 열립니다.`);
-    setTimeout(() => { location.href = BACK + (BACK.includes('?') ? '&' : '?') + 'bought=' + encodeURIComponent(PREMIUM.product); }, 1600);
+    show('ok', `<b>${esc(PREMIUM.name)}</b> 결제가 끝났습니다.<br />잠시 뒤 보시던 화면으로 돌아가 바로 열립니다.`);
+    setTimeout(() => { location.href = backWith('bought=' + encodeURIComponent(PREMIUM.product)); }, 1600);
   } catch (e) {
-    show('err', '여는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + paymentId + '</pre>');
+    show('err', '여는 중 통신 오류가 났습니다. 결제 번호를 보관해 주세요.<pre>' + esc(paymentId) + '</pre>');
   }
 }
 

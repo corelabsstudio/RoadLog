@@ -15,6 +15,8 @@
 from __future__ import annotations
 
 import json
+import functools
+import threading
 import os
 import re
 import time
@@ -29,6 +31,18 @@ def _path() -> Path:
     return Path(os.getenv("DATA_DIR") or ".") / FILE
 
 
+# 🛑 읽고-고치고-쓰는 사이 다른 요청이 끼지 않게 잠근다 (2026-09-14 전수 검사)
+_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrap(*a, **kw):
+        with _LOCK:
+            return fn(*a, **kw)
+    return wrap
+
+
 def _read() -> dict[str, Any]:
     try:
         return json.loads(_path().read_text(encoding="utf-8"))
@@ -39,9 +53,12 @@ def _read() -> dict[str, Any]:
 def _write(d: dict[str, Any]) -> None:
     f = _path()
     f.parent.mkdir(parents=True, exist_ok=True)
-    f.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp = f.with_name(f.name + ".tmp")
+    tmp.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(f)
 
 
+@_locked
 def make(code: str, *, cap: int = 50, note: str = "", by: str = "") -> dict[str, Any]:
     code = (code or "").strip().upper()
     if not CODE_RE.match(code):
@@ -56,6 +73,7 @@ def make(code: str, *, cap: int = 50, note: str = "", by: str = "") -> dict[str,
     return d[code]
 
 
+@_locked
 def toggle(code: str, on: bool) -> None:
     d = _read()
     c = d.get((code or "").strip().upper())
@@ -65,6 +83,7 @@ def toggle(code: str, on: bool) -> None:
     _write(d)
 
 
+@_locked
 def drop(code: str) -> None:
     d = _read()
     if d.pop((code or "").strip().upper(), None) is not None:
@@ -87,6 +106,7 @@ def check(code: str, email: str) -> dict[str, Any]:
     return c
 
 
+@_locked
 def use(code: str, email: str) -> dict[str, Any]:
     """한 자리를 쓴다. 🛑 리포트를 여는 것은 부른 쪽이 한다."""
     code = (code or "").strip().upper()

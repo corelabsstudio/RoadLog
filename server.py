@@ -237,6 +237,7 @@ except Exception:
     pass
 
 _load_sessions_from_disk()
+_SESSIONS_RELOAD_AT = 0.0
 
 
 def _token_user(authorization: str | None) -> dict:
@@ -244,10 +245,16 @@ def _token_user(authorization: str | None) -> dict:
         raise HTTPException(401, "로그인이 필요합니다.")
     token = authorization.removeprefix("Bearer ").strip()
     user = _sessions.get(token)
-    if not user:
+    if not user and len(token) <= 128:
         # 디스크에서 재로드 시도 (다른 워커/재시작 직후)
-        _load_sessions_from_disk()
-        user = _sessions.get(token)
+        # 🛑 **30초에 한 번만** (2026-09-14 전수 검사). 아무 토큰이나 보내면 요청마다 세션 파일과 회원 파일을
+        #    통째로 다시 읽어, 가짜 토큰을 연달아 보내는 것만으로 서버를 느리게 할 수 있었다
+        global _SESSIONS_RELOAD_AT
+        now = time.monotonic()
+        if now - _SESSIONS_RELOAD_AT > 30:
+            _SESSIONS_RELOAD_AT = now
+            _load_sessions_from_disk()
+            user = _sessions.get(token)
     if not user:
         raise HTTPException(401, "세션이 만료되었습니다. 다시 로그인해 주세요.")
     # plan / VIP 최신화
@@ -1152,6 +1159,9 @@ def google_callback(code: str = "", state: str = "", error: str = ""):
         if info.status_code != 200:
             raise HTTPException(400, "구글에서 정보를 받지 못했습니다.")
         d = info.json()
+    # 🛑 구글이 확인 안 된 주소라고 알려 주면 받지 않는다 (2026-09-14 전수 검사 · 남의 계정에 잇지 않게)
+    if d.get("verified_email") is False:
+        raise HTTPException(400, "구글 계정의 이메일 확인이 끝나지 않았어요. 구글에서 이메일을 확인한 뒤 다시 시도해 주세요.")
     return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글", "google"))
 
 
@@ -1199,6 +1209,10 @@ def kakao_callback(code: str = "", state: str = "", error: str = ""):
     profile = (acc.get("profile") or {})
     email = acc.get("email") or ""
     name = profile.get("nickname") or ""
+    # 🛑 카카오가 **확인 안 된 주소라고 분명히 알려 준 경우** 그 주소로 기존 계정에 잇지 않는다 (2026-09-14 전수 검사).
+    #    남의 주소를 카카오에 적어 두고 그 사람 계정으로 들어오는 것을 막는다. 값이 아예 없으면(동의 범위 밖) 예전대로 둔다
+    if email and (acc.get("is_email_verified") is False or acc.get("is_email_valid") is False):
+        email = ""
     if not email:
         # 이메일 동의를 안 했거나 카카오 계정에 이메일이 없는 경우.
         # 우리 쪽에서만 쓰는 주소를 만들어 계정을 잇는다.
@@ -1974,16 +1988,19 @@ def coupon_use(body: CouponUse, authorization: str | None = Header(default=None)
     pair = (body.pair or "").strip()
     if not lamps_ops.won_of(product) and product not in lamps_ops.PRICES:
         raise HTTPException(400, "없는 상품이에요.")
+    if not lamps_ops._PAIR_RE.match(pair):
+        raise HTTPException(400, "잘못된 요청입니다.")
+    # 🛑 **자리를 먼저 잡고(use · 잠금 안에서 확인+기록) 연다** (2026-09-14 전수 검사).
+    #    확인 → 열기 → 기록 순서면 같은 코드를 동시에 두 번 보내 두 편이 열리거나 자리보다 많이 나갔다
     try:
-        coupons_ops.check(body.code, user["email"])
+        got = coupons_ops.use(body.code, user["email"])
     except ValueError as e:
         raise HTTPException(400, str(e))
     try:
-        out = lamps_ops.gift_open(user["email"], product, pair,
+        out = lamps_ops.gift_open(user["email"], product, pair, kind="coupon-open",
                                   note="쿠폰 %s" % (body.code or "").strip().upper())
     except ValueError as e:
         raise HTTPException(400, str(e))
-    got = coupons_ops.use(body.code, user["email"])
     return {"ok": True, **out, **got}
 
 
@@ -2885,7 +2902,10 @@ def records_delete(rid: str, authorization: str | None = Header(default=None)):
 def records_merge(body: RecordMergeBody, authorization: str | None = Header(default=None)):
     """브라우저에만 있던 옛 기록을 계정으로 옮긴다. 로그인 직후 한 번."""
     user = _token_user(authorization)
-    moved = rec_ops.merge_in(user["email"], body.items)
+    try:
+        moved = rec_ops.merge_in(user["email"], body.items)
+    except (ValueError, TypeError, KeyError):
+        raise HTTPException(400, "옮길 기록의 모양이 올바르지 않아요.")   # 🛑 500 대신 (2026-09-14 전수 검사)
     return {"ok": True, "moved": moved, **rec_ops.listing(user["email"])}
 
 
@@ -2958,6 +2978,9 @@ def gwan_ask(body: GwanAskBody, authorization: str | None = Header(default=None)
         res = gwan_ops.answer(body.name or "", seen, q)
     except (RuntimeError, ValueError):
         raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.")
+    # 🛑 **빈 답에는 등불을 받지 않는다** (2026-09-14 전수 검사). 모델이 글 없이 답하면 30개가 나가고 빈 말풍선만 떴다
+    if not str(res.get("text") or "").strip():
+        raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.")
 
     spent, balance = 0, 999999
     if not free:
@@ -3027,7 +3050,7 @@ def ask_free(body: AskFreeBody, authorization: str | None = Header(default=None)
 
     try:
         res = saju_writer.answer(body.name or "", body.saju or {}, q)
-    except (RuntimeError, ValueError) as e:
+    except (RuntimeError, ValueError, TypeError, AttributeError) as e:   # 🛑 사주 값 모양이 틀리면 500 대신 (2026-09-14 전수 검사)
         raise HTTPException(503, "답을 쓰다가 막혔어요. 다시 여쭤 주세요.") from e
 
     spent = 0
@@ -3128,6 +3151,31 @@ def _gwan_veil_blocks(blocks: list, paid: bool) -> list:
                     "lead": b.get("lead", "") if i == 0 else "",
                     "scene_line": b.get("scene_line", "") if i == 0 else "",
                     "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []]})
+    return out
+
+
+def _saju_veil_blocks(blocks: list) -> list:
+    """사주 미리보기도 **서버에서 자른다** (2026-09-14 전수 검사).
+
+    그전에는 복채 전에도 항목 전문을 다 보내고 화면(CSS)만 가렸다 — 요청을 직접 보내면
+    59,800원짜리 리포트가 통째로 나왔다. 화면이 실제로 보여 주는 만큼만 보낸다.
+    첫 자리: 통째(목차 맛보기가 카드를 통째로 연다 · CLAUDE.md). 나머지: 제목 · 첫 문장 · 한 장면 · 칸 제목.
+    🛑 `text` 를 비우면 앞단이 그 자리를 건너뛴다(`if (!b.text) return`) — 첫 문장을 넣어 둔다.
+    """
+    out = []
+    for i, b in enumerate(blocks or []):
+        if i == 0:
+            out.append(b)
+            continue
+        lead = b.get("lead") or ""
+        if not lead:
+            first = str(b.get("text") or "").strip().split("\n")[0]
+            lead = first[:120]
+        out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
+                    "text": lead if b.get("text") else "", "lead": lead,
+                    "scene_line": b.get("scene_line", ""), "mutter": "",
+                    "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []],
+                    "rx": {}, "todos": [], "marks": b.get("marks") or []})
     return out
 
 
@@ -3346,14 +3394,6 @@ def pet_quota(authorization: str | None = Header(default=None)):
 def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)):
     """반려동물 사진 한 장 → 관상 보고서 + 공유 카드 칸."""
     user = _token_user(authorization)
-    shot = (body.shot or "").strip()
-    try:
-        prev = saju_writer.load("pet_read", shot) if shot else None
-    except ValueError:
-        prev = None
-    # 🛑 스탯이 전부 0 인 저장본은 주지 않고 새로 본다 (2026-09-14 「관상 스탯 수치가 안 나와」)
-    if prev and prev.get("ver") == PET_VER and prev.get("title") and any((prev.get("stats") or {}).values()):
-        return {"ok": True, "again": True, **{k: v for k, v in prev.items() if k not in ("ver", "kind")}}
     shots = body.shots or []
     if len(shots) != 1:
         raise HTTPException(400, "사진을 한 장 올려 주세요.")
@@ -3361,6 +3401,17 @@ def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)
         clean = gwansang_ops.check_jpeg(shots[0])
     except ValueError as e:
         raise HTTPException(400, str(e))
+    # 🛑 저장 열쇠는 **서버가 받은 사진으로 다시 센다** (2026-09-14 전수 검사).
+    #    앞단이 보낸 해시를 그대로 쓰면, 개 사진으로 본 결과를 다른 사진 해시에 저장한 뒤
+    #    그 사진(동물 아닌 것)을 명예의 전당에 올릴 수 있었다 — `pets_share` 는 해시만 맞춰 본다
+    shot = _shot_hash_of(clean)
+    try:
+        prev = saju_writer.load("pet_read", shot)
+    except ValueError:
+        prev = None
+    # 🛑 스탯이 전부 0 인 저장본은 주지 않고 새로 본다 (2026-09-14 「관상 스탯 수치가 안 나와」)
+    if prev and prev.get("ver") == PET_VER and prev.get("title") and any((prev.get("stats") or {}).values()):
+        return {"ok": True, "again": True, **{k: v for k, v in prev.items() if k not in ("ver", "kind")}}
     if not saju_writer.ready():
         raise HTTPException(503, "지금은 무냥이가 못 봐요. 잠시 뒤에 다시 해 주세요.")
     if not _is_free(user):
@@ -3384,11 +3435,10 @@ def pet_read(body: PetReadBody, authorization: str | None = Header(default=None)
         if counted:
             _preview_refund(user["email"], "pet")
         return {"ok": False, **out}
-    if shot:
-        try:
-            saju_writer.save("pet_read", shot, {**out, "ver": PET_VER, "kind": "pet"})
-        except Exception:                             # noqa: BLE001
-            pass
+    try:
+        saju_writer.save("pet_read", shot, {**out, "ver": PET_VER, "kind": "pet"})
+    except Exception:                                 # noqa: BLE001
+        pass
     return {"ok": True, **out}
 
 
@@ -3531,12 +3581,16 @@ def pets_comment_add(pid: str, body: PetCommentBody, request: Request, response:
 
 
 @app.post("/api/pets/{pid}/comments/{cid}/delete")
-def pets_comment_delete(pid: str, cid: str, body: PetCommentDeleteBody,
+def pets_comment_delete(pid: str, cid: str, body: PetCommentDeleteBody, request: Request,
                         authorization: str | None = Header(default=None),
                         voter: str | None = Cookie(default=None, alias=PET_VOTER_COOKIE)):
     """댓글 지우기(숨김). 쓴 브라우저 · 같은 계정 · 비밀번호 · 관리자."""
     if not _pet_id_ok(pid):
         raise HTTPException(404, "없는 댓글이에요.")
+    # 🛑 비밀번호를 대입해 남의 댓글을 지우지 못하게 — 댓글 하나에 10분 10번, 한 곳에서 10분 30번 (2026-09-14 전수 검사)
+    if body.password:
+        _rate_limit_or_429("pet-cdel:%s" % cid, limit=10, window_sec=600, what="댓글 지우기")
+        _rate_limit_or_429("pet-cdel-ip:%s" % _client_ip(request), limit=30, window_sec=600, what="댓글 지우기")
     user = _maybe_user(authorization)
     try:
         n = pet_hall_ops.delete_comment(pid, cid, voter=voter or "", user=(user or {}).get("email") or "",
@@ -3603,6 +3657,9 @@ def dream_scan(body: DreamScanBody, authorization: str | None = Header(default=N
         out = dream_ops.scan(kw, text, name=name)
     except Exception as e:                            # noqa: BLE001
         print("[dream/scan] 실패:", repr(e)[:300])
+        # 🛑 서버가 못 읽은 것은 손님 탓이 아니다 — 센 한 번을 되돌린다 (2026-09-14 전수 검사 · 반려동물 관상과 같게)
+        if not _is_free(user):
+            _preview_refund(user["email"], "dream")
         raise HTTPException(502, "꿈을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
     try:
         saju_writer.save("dream_scan", key, {**out, "ver": dream_ops.VER, "kind": "dream"})
@@ -3646,9 +3703,13 @@ def dream_read(body: DreamReadBody, authorization: str | None = Header(default=N
         out = dream_ops.read(text, body.saju, body.sections, keywords=kw,
                              name=(body.name or "").strip(), grade=body.grade or "")
     except ValueError as e:
+        if not paid:
+            _preview_refund(user["email"], "preview")
         raise HTTPException(400, str(e))
     except Exception as e:                            # noqa: BLE001
         print("[dream/read] 실패:", repr(e)[:300])
+        if not paid:
+            _preview_refund(user["email"], "preview")
         raise HTTPException(502, "꿈을 읽다가 막혔어요. 잠시 뒤 다시 해 주세요.")
     try:
         saju_writer.save(DREAM_PRODUCT, key, {"text": out["text"], "grade": out["grade"],
@@ -3752,6 +3813,20 @@ class WriteBody(BaseModel):
     force: bool = False     # 주인이 일부러 새로 뽑을 때만 참
 
 
+import threading as _threading
+# 🛑 하루 한도 파일은 **잠그고, 임시 파일에 쓴 뒤 바꿔 끼운다** (2026-09-14 전수 검사).
+#    동시에 여러 요청이 오면 모두 0 을 읽고 한도를 넘어 LLM 을 불렀고, 쓰는 도중에 읽은 요청이
+#    깨진 파일을 {} 로 보고 그대로 덮어써 **그날 모든 손님의 횟수가 지워질 수 있었다**
+_QUOTA_LOCK = _threading.Lock()
+
+
+def _quota_write(f, data: dict) -> None:
+    import json as _j
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(f)
+
+
 def _quota_key(email: str, kind: str) -> str:
     """세는 칸 이름. 🛑 미리보기는 **옛 이름 그대로** 둔다 — 오늘 센 것이 날아간다."""
     return email if kind == "preview" else "%s:%s" % (kind, email)
@@ -3788,20 +3863,28 @@ def _preview_quota(email: str, kind: str = "preview", cap: int = 0,
     today = (_dt.datetime.now(_dt.timezone.utc)
              + _dt.timedelta(hours=9)).date().isoformat()
     key = _quota_key(email, kind)
-    try:
-        data = _j.loads(f.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        data = {}
-    if data.get("day") != today:
-        data = {"day": today, "by": {}}
-    n = int(data["by"].get(key, 0))
-    if n >= (cap or PREVIEW_DAILY_CAP):
-        raise HTTPException(429, msg or "오늘 무료로 볼 수 있는 사주를 다 보셨어요. 내일 0시부터 다시 열려요.")
-    data["by"][key] = n + 1
-    try:
-        f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
-    except OSError:
-        pass
+    with _QUOTA_LOCK:
+        try:
+            data = _j.loads(f.read_text(encoding="utf-8"))
+        except OSError:
+            data = {}
+        except ValueError:
+            # 🛑 깨진 파일을 빈 것으로 덮어쓰면 모두의 횟수가 지워진다 — 옆에 남겨 두고 새로 센다
+            try:
+                f.replace(f.with_suffix(".broken"))
+            except OSError:
+                pass
+            data = {}
+        if data.get("day") != today:
+            data = {"day": today, "by": {}}
+        n = int(data["by"].get(key, 0))
+        if n >= (cap or PREVIEW_DAILY_CAP):
+            raise HTTPException(429, msg or "오늘 무료로 볼 수 있는 사주를 다 보셨어요. 내일 0시부터 다시 열려요.")
+        data["by"][key] = n + 1
+        try:
+            _quota_write(f, data)
+        except OSError:
+            pass
 
 
 def _preview_refund(email: str, kind: str) -> None:
@@ -3812,15 +3895,16 @@ def _preview_refund(email: str, kind: str) -> None:
     from pathlib import Path as _P
     import json as _j
     f = _P(DATA_DIR) / "saju_preview_count.json"
-    try:
-        data = _j.loads(f.read_text(encoding="utf-8"))
-        key = _quota_key(email, kind)
-        n = int((data.get("by") or {}).get(key, 0))
-        if n > 0:
-            data["by"][key] = n - 1
-            f.write_text(_j.dumps(data, ensure_ascii=False), encoding="utf-8")
-    except (OSError, ValueError, AttributeError):
-        pass
+    with _QUOTA_LOCK:
+        try:
+            data = _j.loads(f.read_text(encoding="utf-8"))
+            key = _quota_key(email, kind)
+            n = int((data.get("by") or {}).get(key, 0))
+            if n > 0:
+                data["by"][key] = n - 1
+                _quota_write(f, data)
+        except (OSError, ValueError, AttributeError):
+            pass
 
 
 def _topic_if_wanted(want: bool, asked: list[str] | None, now_q: str) -> list[str]:
@@ -3975,7 +4059,9 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
                 (body.name or "손님").strip()[:12], body.saju or {}, todo,
                 product=product, chars=chars, pair=pair)
         except Exception as e:                      # noqa: BLE001
-            raise HTTPException(502, "글을 받아 오지 못했어요: %s" % str(e)[:120])
+            # 🛑 제미나이 원문 오류를 손님 화면에 내보내지 않는다 (2026-09-14 전수 검사) — 서버 기록에만 남긴다
+            print("[saju/write] 실패:", repr(e)[:300])
+            raise HTTPException(502, "글을 받아 오지 못했어요. 잠시 뒤 다시 해 주세요.")
         saju_writer.merge(product, pair, res["blocks"])
         for b in res["blocks"]:
             if b.get("text"):
@@ -3988,14 +4074,15 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     #    받을 준비가 되어 있었는데 서버가 안 보냈다. 화면에는 표에서 고른 옛
     #    혼잣말과 본래 제목이 그대로 나왔고, 오류가 아니라서 아무도 못 봤다.
     #    저장은 처음부터 되고 있었으므로 **이미 써 둔 글도 이 줄 하나로 살아난다.**
+    blocks = [{"title": s,
+               "text": done.get(s, {}).get("text", ""),
+               "hook": done.get(s, {}).get("hook", ""),
+               "mutter": done.get(s, {}).get("mutter", ""),
+               # 🛑 카드 칸 (2026-09-14 · saju_writer.SECTION_SCHEMA). 옛 글엔 없어서 빈 값이 간다
+               **{k: done.get(s, {}).get(k) or ([] if k in ("folds", "todos", "marks") else ({} if k == "rx" else ""))
+                  for k in ("lead", "scene_line", "folds", "rx", "todos", "marks")}} for s in want]
     return {"ok": True, "paid": paid, "ownerSkip": owner_skip, "left": left,
-            "blocks": [{"title": s,
-                        "text": done.get(s, {}).get("text", ""),
-                        "hook": done.get(s, {}).get("hook", ""),
-                        "mutter": done.get(s, {}).get("mutter", ""),
-                        # 🛑 카드 칸 (2026-09-14 · saju_writer.SECTION_SCHEMA). 옛 글엔 없어서 빈 값이 간다
-                        **{k: done.get(s, {}).get(k) or ([] if k in ("folds", "todos", "marks") else ({} if k == "rx" else ""))
-                           for k in ("lead", "scene_line", "folds", "rx", "todos", "marks")}} for s in want],
+            "blocks": blocks if paid else _saju_veil_blocks(blocks),
             "more": bool((not paid) and PREVIEW_SECTIONS
                          and len(body.sections or []) > PREVIEW_SECTIONS)}
 

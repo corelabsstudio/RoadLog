@@ -12,14 +12,31 @@
 """
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import re
+import threading
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 from .config import DATA_DIR
+
+# 🛑 등불 장부는 계정 전부가 파일 하나에 있다 (2026-09-14 전수 검사).
+#    읽고-고치고-쓰는 사이에 다른 요청이 끼면 먼저 쓴 사람의 결제·열람 기록이 사라진다 → 고치는 함수는 전부 잠근다.
+#    읽기가 깨졌을 때 {} 를 돌려주면 그 빈 장부가 그대로 저장돼 **모든 계정이 지워진다** → 깨지면 멈춘다.
+_LOCK = threading.RLock()
+
+
+def _locked(fn):
+    @functools.wraps(fn)
+    def wrap(*a, **kw):
+        with _LOCK:
+            return fn(*a, **kw)
+    return wrap
+
+
 
 LAMPS_JSON = Path(DATA_DIR) / "lamps.json"
 
@@ -121,6 +138,7 @@ def tickets(email: str) -> dict[str, int]:
     return {"got": got, "used": used, "left": max(0, got - used)}
 
 
+@_locked
 def use_ticket(email: str, product: str, pair: str) -> dict:
     """무료 이용권 한 장으로 한 편을 연다."""
     if not _PAIR_RE.match(pair or ""):
@@ -316,8 +334,17 @@ def _read() -> dict[str, Any]:
     try:
         with open(LAMPS_JSON, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except OSError:
         return {}
+    except ValueError as e:
+        raise RuntimeError("등불 장부를 읽지 못했습니다(파일 손상). 관리자 확인이 필요합니다.") from e
+
+
+def payment_used(data: dict, payment_id: str) -> bool:
+    """이 결제 번호가 **어느 계정에서든** 이미 쓰였나. 🛑 한 결제로 여러 계정을 열지 못하게."""
+    return any(e.get("payment_id") == payment_id
+               for acc in data.values() if isinstance(acc, dict)
+               for e in acc.get("ledger", []))
 
 
 def _write(data: dict[str, Any]) -> None:
@@ -385,14 +412,15 @@ def is_first_charge(email: str) -> bool:
     return not any(e.get("type") == "charge" for e in acc.get("ledger", []))
 
 
+@_locked
 def charge(email: str, lamps: int, *, payment_id: str, price: int, note: str = "") -> dict:
     """충전. 같은 payment_id 가 이미 있으면 거절한다(중복 지급 방지)."""
     if lamps <= 0:
         raise ValueError("등불 수가 올바르지 않습니다.")
     data = _read()
-    acc = _account(data, email)
-    if any(e.get("payment_id") == payment_id for e in acc.get("ledger", [])):
+    if payment_used(data, payment_id):
         raise ValueError("이미 처리된 결제입니다.")
+    acc = _account(data, email)
 
     # 첫 충전이면 더 얹어 준다. 정가를 부풀려 할인처럼 보이게 하지 않는다.
     first = not any(e.get("type") == "charge" for e in acc.get("ledger", []))
@@ -465,6 +493,7 @@ def refer_stats(email: str) -> dict:
     }
 
 
+@_locked
 def claim_refer(email: str, code: str) -> dict:
     """추천 코드를 나중에 넣는 길.
 
@@ -494,6 +523,7 @@ def claim_refer(email: str, code: str) -> dict:
     return {"given": REFER_IN_LAMPS, "balance": sum(l["remain"] for l in _live_lots(acc, now))}
 
 
+@_locked
 def welcome(email: str, ref: str = "", via: str = "") -> dict:
     """가입 선물. 한 계정에 한 번만 나간다.
 
@@ -595,6 +625,7 @@ def bonus_lamps(won: int) -> int:
     return won // WON_PER_LAMP_SPEND
 
 
+@_locked
 def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: int) -> dict:
     """한 건 결제. 복채를 내신 분께는 등불을 얹어 드린다."""
     won = won_of(product)
@@ -605,9 +636,9 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     if paid < won:
         raise ValueError("결제 금액이 상품 값보다 적습니다.")
     data = _read()
-    acc = _account(data, email)
-    if any(e.get("payment_id") == payment_id for e in acc.get("ledger", [])):
+    if payment_used(data, payment_id):
         raise ValueError("이미 처리된 결제입니다.")
+    acc = _account(data, email)
     now = _now()
     expires = now + timedelta(days=OWNED_DAYS)
     # 🛑 묶음이면 **안에 든 상품을 전부** 연다. 묶음 자체는 리포트가 없어서,
@@ -627,6 +658,7 @@ def buy_premium(email: str, product: str, pair: str, *, payment_id: str, paid: i
     return {"ok": True, "product": product, "expires": _iso(expires), "lamps": gift}
 
 
+@_locked
 def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
     """등불 계단을 올렸을 때 **이미 복채를 내신 분께 차액을 드린다** (2026-09-11 온해님).
 
@@ -721,6 +753,7 @@ def regift(*, apply: bool = False, skip: set[str] | None = None) -> dict:
             "count": len(rows), "lamps": total, "rows": rows[:50]}
 
 
+@_locked
 def pay_regift(*, apply: bool = False) -> dict:
     """복채를 내신 분께 **결제액 ÷ 50** 만큼 등불을 더 드린다 (2026-09-13 온해님).
 
@@ -767,6 +800,7 @@ def pay_regift(*, apply: bool = False) -> dict:
     return {"applied": bool(apply), "people": len(rows), "lamps": total, "rows": rows[:50]}
 
 
+@_locked
 def welcome_again(*, apply: bool = False) -> dict:
     """이미 가입한 분들께 **무료 이용권 1장 + 등불 300개**를 소급한다.
 
@@ -809,6 +843,7 @@ def welcome_again(*, apply: bool = False) -> dict:
             "lamps": given * WELCOME_LAMPS, "tickets": given, "rows": rows[:100]}
 
 
+@_locked
 def refund(email: str, payment_id: str, *, why: str = "") -> dict:
     """돌려준 것을 원장에 남기고, 열어 둔 리포트를 닫는다 (2026-09-11).
 
@@ -855,7 +890,8 @@ def gift_used(email: str) -> dict | None:
     return None
 
 
-def gift_open(email: str, product: str, pair: str, *, note: str = "") -> dict:
+@_locked
+def gift_open(email: str, product: str, pair: str, *, note: str = "", kind: str = "gift-open") -> dict:
     """선착순 이벤트로 한 편을 복채 없이 열어 드린다.
 
     🛑 결제가 아니다. 원장에 type="gift-open" 으로 남기고, **한 계정에 한 번만** 받는다.
@@ -865,20 +901,23 @@ def gift_open(email: str, product: str, pair: str, *, note: str = "") -> dict:
         raise ValueError("잘못된 요청입니다.")
     data = _read()
     acc = _account(data, email)
-    if any(e.get("type") == "gift-open" for e in acc.get("ledger", [])):
+    # 🛑 쿠폰은 `kind="coupon-open"` 으로 따로 남긴다 (2026-09-14 전수 검사). 같은 표시를 쓰면 선착순을 받은 분은
+    #    쿠폰을 못 쓰고, 쿠폰을 쓴 분은 선착순을 받은 것으로 잡혔다. 한 계정 한 번은 **선착순에만** 건다
+    if kind == "gift-open" and any(e.get("type") == "gift-open" for e in acc.get("ledger", [])):
         raise ValueError("이 이벤트는 한 분께 한 편만 열어 드려요.")
     now = _now()
     expires = now + timedelta(days=OWNED_DAYS)
     if not any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc, now)):
         acc["owned"].append({"product": product, "pair": pair, "at": _iso(now), "expires": _iso(expires)})
     acc["ledger"].append({
-        "at": _iso(now), "type": "gift-open", "product": product, "pair": pair,
+        "at": _iso(now), "type": kind, "product": product, "pair": pair,
         "lamps": 0, "price": 0, "note": note or "선착순 이벤트", "expires": _iso(expires),
     })
     _write(data)
     return {"ok": True, "product": product, "expires": _iso(expires)}
 
 
+@_locked
 def ask(email: str, qid: str, pair: str) -> dict:
     """무냥이에게 한 번 더 묻는다. 같은 질문을 다시 열면 등불을 안 쓴다.
 
@@ -925,6 +964,7 @@ def owns(email: str, product: str, pair: str) -> bool:
     return any(o["product"] == product and o["pair"] == pair for o in _owned_live(acc))
 
 
+@_locked
 def spend(email: str, product: str, pair: str) -> dict:
     """리포트를 연다. 이미 산 것이면 등불을 쓰지 않는다."""
     if product not in PRICES:
@@ -967,6 +1007,7 @@ def spend(email: str, product: str, pair: str) -> dict:
     }
 
 
+@_locked
 def grant(email: str, lamps: int, note: str) -> dict:
     """운영자가 주는 등불(사과·보상·체험). 결제와 구분해 원장에 남긴다."""
     data = _read()
