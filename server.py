@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
 import os
 import re
@@ -1412,6 +1413,50 @@ class GwansangBody(BaseModel):
     product: str
     shots: list[str]          # data URL 또는 base64 jpeg. 「둘이 보는 관상」만 두 장
     name: str = ""
+
+
+class HeicConvertBody(BaseModel):
+    """갤럭시 HEIC 사진을 메모리에서만 JPEG로 바꾸는 요청."""
+    image: str
+    name: str = ""
+    type: str = ""
+
+
+_HEIC_MAX_BYTES = 20 * 1024 * 1024
+
+
+@app.post("/api/photo/heic-to-jpeg")
+def heic_to_jpeg(body: HeicConvertBody, request: Request):
+    """HEIC/HEIF를 디스크에 쓰지 않고 관상용 JPEG로 줄인다."""
+    ip = _client_ip(request)
+    if not limiter.allow("heic-convert:" + ip, limit=8, window_sec=600):
+        raise HTTPException(429, "사진 변환은 잠시 쉬었다가 다시 해 주세요.")
+    raw = (body.image or "").split(",", 1)[-1]
+    try:
+        source = base64.b64decode(raw, validate=True)
+    except Exception:
+        raise HTTPException(400, "사진을 읽지 못했어요. 다시 골라 주세요.") from None
+    if not source:
+        raise HTTPException(400, "사진이 비어 있어요. 다시 골라 주세요.")
+    if len(source) > _HEIC_MAX_BYTES:
+        mb = len(source) / 1024 / 1024
+        raise HTTPException(413, "사진 용량이 %.1fMB예요. 20MB보다 작은 사진으로 다시 올려 주세요." % mb)
+    try:
+        import pillow_heif
+        from PIL import Image, ImageOps
+
+        pillow_heif.register_heif_opener()
+        with Image.open(io.BytesIO(source)) as image:
+            image = ImageOps.exif_transpose(image)
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+            image.thumbnail((768, 768), Image.Resampling.LANCZOS)
+            out = io.BytesIO()
+            image.save(out, format="JPEG", quality=82, optimize=True)
+        jpeg = out.getvalue()
+    except Exception:
+        raise HTTPException(400, "고효율 사진을 JPG로 바꾸지 못했어요. 다른 사진으로 다시 시도해 주세요.") from None
+    return {"image": "data:image/jpeg;base64," + base64.b64encode(jpeg).decode("ascii")}
 
 
 class AskBody(BaseModel):
