@@ -918,6 +918,16 @@ class CouponUse(BaseModel):
     pair: str
 
 
+class DcPromoDraft(BaseModel):
+    gallery: str
+    title: str = ""
+    body: str = ""
+
+
+class DcPromoDraftsBody(BaseModel):
+    items: list[DcPromoDraft]
+
+
 @app.get("/api/admin/coupons")
 def admin_coupons(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
@@ -943,6 +953,29 @@ def admin_coupon_drop(code: str, authorization: str | None = Header(default=None
     from modules import coupons as coupons_ops
     coupons_ops.drop(code)
     return {"ok": True}
+
+
+@app.get("/api/admin/dc-promos")
+def admin_dc_promos(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import dc_promos as dc_promos_ops
+    try:
+        return {"items": dc_promos_ops.listing()}
+    except dc_promos_ops.PromoStoreError as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+
+@app.put("/api/admin/dc-promos")
+def admin_dc_promos_save(
+    body: DcPromoDraftsBody, authorization: str | None = Header(default=None)
+):
+    _require_admin(authorization)
+    from modules import dc_promos as dc_promos_ops
+    try:
+        items = [item.model_dump() if hasattr(item, "model_dump") else item.dict() for item in body.items]
+        return {"items": dc_promos_ops.save(items)}
+    except dc_promos_ops.PromoStoreError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 
 @app.post("/api/coupon/use")
