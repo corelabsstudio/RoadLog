@@ -104,3 +104,20 @@ def mark_read(ids: list[str] | None = None) -> int:
     if changed:
         _write(rows)
     return changed
+
+
+@_locked
+def remove(feedback_id: str) -> bool | None:
+    """읽은 피드백 한 건만 지운다. 없으면 None, 아직 안 읽었으면 False."""
+    wanted = (feedback_id or "").strip()
+    if not wanted:
+        return None
+    rows = _read()
+    row = next((item for item in rows if item.get("id") == wanted), None)
+    if row is None:
+        return None
+    if not row.get("read"):
+        return False
+    kept = [item for item in rows if item.get("id") != wanted]
+    _write(kept)
+    return True

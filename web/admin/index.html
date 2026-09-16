@@ -1485,7 +1485,9 @@ function paintFeedback(rows, unread, total) {
     + '<td>' + (row.reporter ? esc(row.reporter) : '익명') + '</td>'
     + '<td>' + (row.page ? esc(row.page) : '—') + '</td>'
     + '<td style="min-width:220px;white-space:normal">' + feedbackMessage(row.message) + '</td>'
-    + '<td>' + (row.read ? '읽음' : '<button type="button" class="btn btn-line feedback-read" data-feedback="' + esc(row.id) + '">읽음 처리</button>') + '</td>'
+    + '<td>' + (row.read
+      ? '<button type="button" class="btn btn-line feedback-delete" data-feedback="' + esc(row.id) + '">삭제</button>'
+      : '<button type="button" class="btn btn-line feedback-read" data-feedback="' + esc(row.id) + '">읽음 처리</button>') + '</td>'
     + '</tr>').join('') : '<tr><td colspan="5" class="note">아직 들어온 피드백이 없어요.</td></tr>';
 }
 
@@ -1505,20 +1507,24 @@ async function loadFeedback() {
 
 $('feedbackRefresh').addEventListener('click', loadFeedback);
 $('tFeedback').addEventListener('click', async (e) => {
-  const button = e.target.closest('.feedback-read');
+  const button = e.target.closest('.feedback-read, .feedback-delete');
   if (!button) return;
+  const deleting = button.classList.contains('feedback-delete');
+  if (deleting && !confirm('읽은 피드백을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
   button.disabled = true;
   try {
-    const r = await fetch('/api/admin/feedback/read', {
-      method: 'POST',
+    const r = await fetch(deleting
+      ? '/api/admin/feedback/' + encodeURIComponent(button.dataset.feedback)
+      : '/api/admin/feedback/read', {
+      method: deleting ? 'DELETE' : 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: JSON.stringify({ ids: [button.dataset.feedback] }),
+      body: deleting ? undefined : JSON.stringify({ ids: [button.dataset.feedback] }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || '읽음 처리하지 못했습니다.');
+    if (!r.ok) throw new Error(d.detail || (deleting ? '지우지 못했습니다.' : '읽음 처리하지 못했습니다.'));
     await loadFeedback();
   } catch (ex) {
-    alert(ex.message || '읽음 처리하지 못했습니다.');
+    alert(ex.message || (deleting ? '지우지 못했습니다.' : '읽음 처리하지 못했습니다.'));
     button.disabled = false;
   }
 });

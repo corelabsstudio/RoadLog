@@ -3009,6 +3009,24 @@ def admin_feedback_read(
         raise HTTPException(503, "피드백 보관함을 읽을 수 없어요.")
 
 
+@app.delete("/api/admin/feedback/{feedback_id}")
+def admin_feedback_delete(
+    feedback_id: str, authorization: str | None = Header(default=None)
+):
+    """읽음 처리한 피드백 한 건만 지운다. 전체 삭제 경로는 만들지 않는다."""
+    _require_admin(authorization)
+    try:
+        deleted = feedback_ops.remove(feedback_id)
+        if deleted is None:
+            raise HTTPException(404, "이미 지워졌거나 찾을 수 없는 피드백이에요.")
+        if not deleted:
+            raise HTTPException(400, "먼저 읽음 처리한 뒤 지울 수 있어요.")
+        return {"ok": True}
+    except feedback_ops.FeedbackStoreError:
+        log.exception("feedback store is unavailable")
+        raise HTTPException(503, "피드백 보관함을 읽을 수 없어요.")
+
+
 class InboxNoticeBody(BaseModel):
     title: str
     body: str = ""
