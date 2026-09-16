@@ -628,19 +628,6 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
         </div>
       </div>
 
-      <div class="deck">
-        <div class="card">
-          <div class="hd"><div>
-            <h2>네이버 검색 추세</h2>
-            <p class="sub" id="naverTrendMeta">여성 19~39세 · 모바일 · 최근 90일</p>
-          </div><button type="button" class="btn btn-line" id="naverTrendRun">조회</button></div>
-          <label>살펴볼 검색어
-            <input id="naverTrendWords" maxlength="400" placeholder="예: 사주, 무료 사주, 오늘의 운세" />
-          </label>
-          <p class="note">쉼표로 나눈 말은 하나의 주제로 합쳐 봅니다. 검색량이 아니라, 이 기간 안에서 가장 높은 달을 100으로 둔 상대 추세입니다.</p>
-          <div class="chart" id="naverTrendChart"><p class="chart-empty">검색어를 넣고 조회해 주세요.</p></div>
-        </div>
-      </div>
     </section>
 
     <section data-page="feedback" hidden>
@@ -1484,55 +1471,8 @@ $('tabs').addEventListener('click', (e) => {
   //    서버를 두드리고, 목록이 길어 화면이 늦게 뜬다.
   if (b.dataset.tab === 'ai' && !PROMPTS.length) { loadPrompts(); paintAssets(); }
   if (b.dataset.tab === 'mkt' && !COUPONS.length) loadCoupons();
-  if (b.dataset.tab === 'mkt') loadNaverDatalabStatus();
   if (b.dataset.tab === 'feedback') loadFeedback();
   window.scrollTo(0, 0);
-});
-
-function naverWords() {
-  return $('naverTrendWords').value.split(',').map((word) => word.trim()).filter(Boolean).slice(0, 20);
-}
-
-async function loadNaverDatalabStatus() {
-  const meta = $('naverTrendMeta');
-  try {
-    const r = await fetch('/api/admin/marketing/naver-datalab/status', {
-      headers: { Authorization: 'Bearer ' + token() },
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || '설정을 확인하지 못했습니다.');
-    if (d.mode === 'legacy') {
-      meta.textContent = '예전 네이버 키만 잡혔습니다. Railway의 web · production에 API HUB 키 두 개를 넣어 주세요.';
-    } else {
-      meta.textContent = d.configured
-        ? '여성 19~39세 · 모바일 · 최근 90일'
-        : '키가 아직 없습니다. Railway 변수에 API HUB 키를 넣어 주세요.';
-    }
-  } catch (ex) { meta.textContent = ex.message || '설정을 확인하지 못했습니다.'; }
-}
-
-$('naverTrendRun').addEventListener('click', async () => {
-  const words = naverWords();
-  const meta = $('naverTrendMeta');
-  if (!words.length) { meta.textContent = '검색어를 하나 이상 넣어 주세요.'; return; }
-  const button = $('naverTrendRun');
-  button.disabled = true; meta.textContent = '네이버 추세를 읽는 중입니다…';
-  try {
-    const r = await fetch('/api/admin/marketing/naver-datalab/query', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: JSON.stringify({ groups: [{ groupName: words.join(' · ').slice(0, 50), keywords: words }] }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || '검색 추세를 불러오지 못했습니다.');
-    const first = (d.results || [])[0] || {};
-    const rows = (first.data || []).map((item) => ({ k: String(item.period || ''), v: Number(item.ratio || 0) }));
-    chart($('naverTrendChart'), rows, 'month', (value) => Number(value).toFixed(1), '');
-    meta.textContent = `${d.target} · ${d.startDate} ~ ${d.endDate} · ${d.unit}`;
-  } catch (ex) {
-    meta.textContent = ex.message || '검색 추세를 불러오지 못했습니다.';
-    $('naverTrendChart').innerHTML = '<p class="chart-empty">아직 표시할 추세가 없습니다.</p>';
-  } finally { button.disabled = false; }
 });
 
 function feedbackMessage(text) {
