@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import date, timedelta
 from typing import Any
@@ -12,6 +13,7 @@ import httpx
 LEGACY_URL = "https://openapi.naver.com/v1/datalab/search"
 API_HUB_URL = "https://naverapihub.apigw.ntruss.com/search-trend/v1/search"
 WOMEN_19_TO_39 = ["3", "4", "5", "6"]
+log = logging.getLogger(__name__)
 
 
 class NaverDatalabError(RuntimeError):
@@ -78,6 +80,22 @@ def _clean_groups(groups: list[dict[str, Any]]) -> list[dict[str, list[str] | st
     return out
 
 
+def _safe_error_summary(response: httpx.Response) -> str:
+    """API 오류의 원인만 운영 로그에 남긴다. 본문·키 등 민감값은 남기지 않는다."""
+    try:
+        body = response.json()
+    except ValueError:
+        return "non-json response"
+    if not isinstance(body, dict):
+        return "unexpected response"
+    error = body.get("error")
+    if isinstance(error, dict):
+        code = str(error.get("errorCode") or error.get("code") or "")[:60]
+        return f"errorCode={code}" if code else "api error"
+    code = str(body.get("errorCode") or body.get("code") or "")[:60]
+    return f"errorCode={code}" if code else "api error"
+
+
 def trend(groups: list[dict[str, Any]]) -> dict[str, Any]:
     """19~39세 여성의 모바일 통합검색 상대 추이를 최근 90일 월 단위로 가져온다."""
     mode, client_id, client_secret = _credentials()
@@ -114,6 +132,10 @@ def trend(groups: list[dict[str, Any]]) -> dict[str, Any]:
     if response.status_code == 403:
         raise NaverDatalabError("데이터랩 권한이 없습니다. 네이버 앱 설정에서 데이터랩(검색어트렌드)을 켜 주세요.")
     if response.status_code != 200:
+        log.warning(
+            "naver datalab request failed: mode=%s status=%s %s",
+            mode, response.status_code, _safe_error_summary(response),
+        )
         raise NaverDatalabError("네이버 데이터랩 조회에 실패했습니다. 키와 요청 한도를 확인해 주세요.")
     try:
         data = response.json()
