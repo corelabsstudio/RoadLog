@@ -48,6 +48,7 @@ EXPIRE_DAYS = 365       # 충전분 유효기간
 OWNED_DAYS = 365        # 산 리포트 재열람 기간
 FIRST_BONUS = 0.2       # 처음 충전하시는 분께 20% 더 (실제로 지급한다)
 WELCOME_LAMPS = 300     # 가입 선물. 질문 열 번을 할 수 있는 양
+DAILY_LAMPS = 100       # 로그인한 회원이 한국 날짜마다 한 번 받는 접속 선물
 ASK_LAMPS = 30          # 무냥이에게 한 번 더 물어보기 (askmenu.js 와 같은 값)
 # 🛑 **등불이 있는 만큼 다 쓰게 한다** (2026-09-11 온해님 「무한으로 쓰게해도 돼 등불」).
 #    그전에는 복채를 낸 적 없는 분을 **평생 한 번**으로 막았다(FREE_ASKS = 1).
@@ -62,6 +63,7 @@ ASK_DAYS = 365          # 산 답을 다시 볼 수 있는 기간
 #    지금 켜면 결제가 안 되는 상태라 아무도 아무것도 못 연다.
 PAY_PER_REPORT = False
 WELCOME_DAYS = 30       # 지금 열어 보라고 주는 것이라 길게 두지 않는다
+DAILY_DAYS = 365        # 매일 받은 등불은 넉넉히 쓰실 수 있게 1년 둔다
 
 # 데려온 분·따라온 분 양쪽에 준다. 광고비 없이 손님이 오게 하는 유일한 장치다.
 # 🛑 **친구를 데려오는 값을 올렸다** (2026-09-11 온해님 「30개는 효과 없을 것 같아」).
@@ -328,6 +330,12 @@ def _parse(s: str) -> datetime:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
+def _kst_day(now: datetime | None = None) -> str:
+    """접속 선물의 하루는 서버 UTC가 아니라 한국 날짜로 센다."""
+    now = now or _now()
+    return (now + timedelta(hours=9)).date().isoformat()
+
+
 def _read() -> dict[str, Any]:
     if not LAMPS_JSON.exists():
         return {}
@@ -584,6 +592,32 @@ def welcome(email: str, ref: str = "", via: str = "") -> dict:
         "inviterTicket": ticket,
         "balance": sum(l["remain"] for l in _live_lots(acc, now)),
         "expires": expires,
+    }
+
+
+@_locked
+def claim_daily(email: str) -> dict:
+    """회원 접속 선물. 같은 한국 날짜에는 기기·새로고침과 관계없이 한 번만 준다."""
+    data = _read()
+    acc = _account(data, email)
+    now = _now()
+    day = _kst_day(now)
+
+    if any(e.get("type") == "daily" and e.get("day") == day for e in acc.get("ledger", [])):
+        return {
+            "given": 0,
+            "day": day,
+            "balance": sum(l["remain"] for l in _live_lots(acc, now)),
+        }
+
+    _add_lot(acc, DAILY_LAMPS, DAILY_DAYS, now, "daily", "오늘 접속 선물")
+    # 과거 원장에는 이 칸이 없으므로 일자별 중복 판단용으로 이번 줄에만 남긴다.
+    acc["ledger"][-1]["day"] = day
+    _write(data)
+    return {
+        "given": DAILY_LAMPS,
+        "day": day,
+        "balance": sum(l["remain"] for l in _live_lots(acc, now)),
     }
 
 

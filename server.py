@@ -1732,6 +1732,22 @@ def lamps_status(authorization: str | None = Header(default=None)):
     return st
 
 
+@app.post("/api/lamps/daily")
+def lamps_daily(authorization: str | None = Header(default=None)):
+    """홈페이지에 로그인해 들어온 회원의 하루 한 번 접속 선물."""
+    user = _token_user(authorization)
+    gift = lamps_ops.claim_daily(user["email"])
+    if gift["given"]:
+        # 잔액만 바뀌면 받은 줄 모르고 지나가므로, 기존 편지함에도 남긴다.
+        inbox.push(
+            user["email"],
+            "오늘 접속 선물로 등불 100개를 드렸어요",
+            "오늘도 무냥이와 마음을 천천히 읽어 보세요. 내일 다시 오시면 등불을 또 드려요.",
+            key="daily:%s" % gift["day"], icon="lamp",
+        )
+    return gift
+
+
 @app.get("/api/lamps/ledger")
 def lamps_ledger(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)
