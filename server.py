@@ -75,6 +75,7 @@ from modules.rate_limit import (
 )
 from modules import inbox
 from modules import feedback as feedback_ops
+from modules import naver_datalab as naver_datalab_ops
 from modules import mailer
 from modules import password_reset as reset_ops
 from modules import lamps as lamps_ops
@@ -2955,6 +2956,15 @@ class FeedbackReadBody(BaseModel):
     ids: list[str] | None = None
 
 
+class NaverDatalabGroup(BaseModel):
+    groupName: str
+    keywords: list[str]
+
+
+class NaverDatalabQueryBody(BaseModel):
+    groups: list[NaverDatalabGroup]
+
+
 @app.post("/api/feedback")
 def feedback_submit(
     body: FeedbackBody,
@@ -3025,6 +3035,27 @@ def admin_feedback_delete(
     except feedback_ops.FeedbackStoreError:
         log.exception("feedback store is unavailable")
         raise HTTPException(503, "피드백 보관함을 읽을 수 없어요.")
+
+
+# ── 네이버 데이터랩 (운영자 마케팅 참고용) ─────────────────
+# 키는 Railway 환경변수에서만 읽고, 손님용 화면이나 API 응답에는 절대 내보내지 않는다.
+
+@app.get("/api/admin/marketing/naver-datalab/status")
+def admin_naver_datalab_status(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return {"configured": naver_datalab_ops.configured()}
+
+
+@app.post("/api/admin/marketing/naver-datalab/query")
+def admin_naver_datalab_query(
+    body: NaverDatalabQueryBody, authorization: str | None = Header(default=None)
+):
+    _require_admin(authorization)
+    try:
+        groups = [{"groupName": item.groupName, "keywords": item.keywords} for item in body.groups]
+        return naver_datalab_ops.trend(groups)
+    except naver_datalab_ops.NaverDatalabError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 class InboxNoticeBody(BaseModel):
