@@ -74,6 +74,7 @@ from modules.rate_limit import (
     limiter,
 )
 from modules import inbox
+from modules import feedback as feedback_ops
 from modules import mailer
 from modules import password_reset as reset_ops
 from modules import lamps as lamps_ops
@@ -2939,6 +2940,73 @@ def inbox_read(body: InboxReadBody, authorization: str | None = Header(default=N
     user = _token_user(authorization)
     n = inbox.mark_read(user["email"], body.ids)
     return {"ok": True, "read": n}
+
+
+# ── 운영자 피드백 ─────────────────────────────────────────
+# 로그인하지 않은 손님도 오류를 알려야 하므로 접수는 공개한다. 대신 IP별로
+# 한 시간에 네 번만 받으며, IP 주소 자체는 파일에 남기지 않는다.
+
+class FeedbackBody(BaseModel):
+    message: str
+    page: str = ""
+
+
+class FeedbackReadBody(BaseModel):
+    ids: list[str] | None = None
+
+
+@app.post("/api/feedback")
+def feedback_submit(
+    body: FeedbackBody,
+    request: Request,
+    authorization: str | None = Header(default=None),
+):
+    message = (body.message or "").strip()
+    if len(message) < 2:
+        raise HTTPException(400, "불편했던 내용을 두 글자 이상 적어 주세요.")
+    if len(message) > 1200:
+        raise HTTPException(400, "내용은 1,200자까지 적을 수 있어요.")
+    page = (body.page or "").strip()[:300]
+    _rate_limit_or_429(
+        f"feedback:{_client_ip(request)}", limit=4, window_sec=3600, what="피드백 접수"
+    )
+    reporter = ""
+    if authorization:
+        try:
+            reporter = (_token_user(authorization).get("email") or "").strip()
+        except HTTPException:
+            # 로그인 토큰이 오래됐어도 피드백 접수 자체는 막지 않는다.
+            pass
+    try:
+        row = feedback_ops.submit(message=message, page=page, reporter=reporter)
+    except feedback_ops.FeedbackStoreError:
+        log.exception("feedback store is unavailable")
+        raise HTTPException(503, "피드백 보관함을 잠시 열 수 없어요. 조금 뒤 다시 보내 주세요.")
+    return {"ok": True, "id": row["id"]}
+
+
+@app.get("/api/admin/feedback")
+def admin_feedback(
+    authorization: str | None = Header(default=None), limit: int = 100
+):
+    _require_admin(authorization)
+    try:
+        return feedback_ops.listing(limit=limit)
+    except feedback_ops.FeedbackStoreError:
+        log.exception("feedback store is unavailable")
+        raise HTTPException(503, "피드백 보관함을 읽을 수 없어요.")
+
+
+@app.post("/api/admin/feedback/read")
+def admin_feedback_read(
+    body: FeedbackReadBody, authorization: str | None = Header(default=None)
+):
+    _require_admin(authorization)
+    try:
+        return {"ok": True, "read": feedback_ops.mark_read(body.ids)}
+    except feedback_ops.FeedbackStoreError:
+        log.exception("feedback store is unavailable")
+        raise HTTPException(503, "피드백 보관함을 읽을 수 없어요.")
 
 
 class InboxNoticeBody(BaseModel):

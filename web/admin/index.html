@@ -317,6 +317,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
     <button data-tab="pay">결제</button>
     <button data-tab="mkt">마케팅</button>
     <button data-tab="visit">유입</button>
+    <button data-tab="feedback">피드백</button>
     <!-- 손님 화면으로 건너간다 (2026-09-11 온해님 「전환되는 버튼」).
          🛑 운영 앱 범위는 `/admin/` 뿐이라, 앱으로 열었을 때 이 링크는
             **브라우저(또는 손님 앱)로 빠진다.** 그게 맞는 동작이다. -->
@@ -625,6 +626,23 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
              카드사 심사의 「노출 금액 = 결제창 금액」에 걸려요. 대신 <b>한 편을 통째로</b>
              열어 드립니다. 손님은 상품 화면에서 코드를 넣습니다.</p>
         </div>
+      </div>
+    </section>
+
+    <section data-page="feedback" hidden>
+      <div class="card">
+        <div class="hd">
+          <div>
+            <h2>사용자 피드백</h2>
+            <p class="sub" id="feedbackMeta">불러오는 중…</p>
+          </div>
+          <button type="button" class="btn btn-line" id="feedbackRefresh">새로고침</button>
+        </div>
+        <div class="scroll"><table>
+          <thead><tr><th>때</th><th>작성자</th><th>화면</th><th>내용</th><th>상태</th></tr></thead>
+          <tbody id="tFeedback"></tbody>
+        </table></div>
+        <p class="note">로그인한 분은 계정 이메일이 보이고, 로그인하지 않은 분은 익명으로 표시돼요. 접속 IP는 저장하지 않습니다.</p>
       </div>
     </section>
 
@@ -1441,7 +1459,7 @@ window.addEventListener('resize', () => {
 });
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
-                   pay: '결제', mkt: '마케팅', visit: '유입' };
+                   pay: '결제', mkt: '마케팅', visit: '유입', feedback: '피드백' };
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   // 🛑 「나가기」도 같은 상자에 있다. data-tab 이 있는 것만 고른다
@@ -1452,7 +1470,57 @@ $('tabs').addEventListener('click', (e) => {
   //    서버를 두드리고, 목록이 길어 화면이 늦게 뜬다.
   if (b.dataset.tab === 'ai' && !PROMPTS.length) { loadPrompts(); paintAssets(); }
   if (b.dataset.tab === 'mkt' && !COUPONS.length) loadCoupons();
+  if (b.dataset.tab === 'feedback') loadFeedback();
   window.scrollTo(0, 0);
+});
+
+function feedbackMessage(text) {
+  return esc(text).replace(/\n/g, '<br>');
+}
+
+function paintFeedback(rows, unread, total) {
+  $('feedbackMeta').textContent = `최근 ${num(total)}건 · 읽지 않음 ${num(unread)}건`;
+  $('tFeedback').innerHTML = rows.length ? rows.map((row) => '<tr>'
+    + '<td>' + esc(row.at) + '</td>'
+    + '<td>' + (row.reporter ? esc(row.reporter) : '익명') + '</td>'
+    + '<td>' + (row.page ? esc(row.page) : '—') + '</td>'
+    + '<td style="min-width:220px;white-space:normal">' + feedbackMessage(row.message) + '</td>'
+    + '<td>' + (row.read ? '읽음' : '<button type="button" class="btn btn-line feedback-read" data-feedback="' + esc(row.id) + '">읽음 처리</button>') + '</td>'
+    + '</tr>').join('') : '<tr><td colspan="5" class="note">아직 들어온 피드백이 없어요.</td></tr>';
+}
+
+async function loadFeedback() {
+  const out = $('feedbackMeta');
+  try {
+    const r = await fetch('/api/admin/feedback?limit=100', {
+      headers: { Authorization: 'Bearer ' + token() },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || '피드백을 불러오지 못했습니다.');
+    paintFeedback(d.items || [], d.unread || 0, d.total || 0);
+  } catch (ex) {
+    out.textContent = ex.message || '피드백을 불러오지 못했습니다.';
+  }
+}
+
+$('feedbackRefresh').addEventListener('click', loadFeedback);
+$('tFeedback').addEventListener('click', async (e) => {
+  const button = e.target.closest('.feedback-read');
+  if (!button) return;
+  button.disabled = true;
+  try {
+    const r = await fetch('/api/admin/feedback/read', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
+      body: JSON.stringify({ ids: [button.dataset.feedback] }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || '읽음 처리하지 못했습니다.');
+    await loadFeedback();
+  } catch (ex) {
+    alert(ex.message || '읽음 처리하지 못했습니다.');
+    button.disabled = false;
+  }
 });
 
 async function load() {

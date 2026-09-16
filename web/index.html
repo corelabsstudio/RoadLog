@@ -32,8 +32,8 @@
   <meta name="twitter:description" content="재회·궁합·결혼운·재물운·평생 흐름까지. 결과만 던지지 않고, 사주의 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-CLtseczA.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/main-faHkTZHc.css">
+  <script type="module" crossorigin src="/assets/main-BuaofN75.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/main-Y0YlugS5.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -1165,6 +1165,10 @@
     <p class="disclaimer">이 서비스의 결과는 참고 자료이며 정확성을 보증하지 않아요. 절기 경계일이나 출생 시간이 불명확한 경우 오차가 있을 수 있어요.</p>
   </footer>
 
+  <button type="button" class="feedback-fab" id="feedbackOpen" title="운영자에게 피드백 보내기" aria-label="운영자에게 피드백 보내기">
+    <span aria-hidden="true">💬</span>
+  </button>
+
   <nav class="tabbar" aria-label="하단 메뉴">
     <a class="on" href="#"><img class="bico" src="/assets/bar_home-BoobOjZS.webp" alt="" aria-hidden="true" /><span>홈</span></a>
     <a href="#p/today"><img class="bico" src="/assets/bar_saju-CX4-W8TJ.webp" alt="" aria-hidden="true" /><span>오늘 운세</span></a>
@@ -1264,6 +1268,21 @@
   <!-- 🛑 **여기 숫자는 `lamps.py` 의 REFER_LAMPS·REFER_IN_LAMPS 와 같아야 한다.**
        2026-09-11 까지 「두 분 모두 30개」로 남아 있었다 — 보상을 올린 뒤에 안 고쳤다. -->
   <p class="dlg-note">귀한 프리미엄 글은 복채로만 문이 열려요</p>
+</dialog>
+
+<dialog id="feedbackDlg" class="dlg" aria-labelledby="feedbackTitle">
+  <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
+  <h3 id="feedbackTitle">운영자에게 알려 주세요</h3>
+  <p class="dlg-lede">오류·불편한 점·바라는 점을 보내 주시면 다음 개선에 반영할게요.</p>
+  <form id="feedbackForm">
+    <label for="feedbackText">내용
+      <textarea id="feedbackText" name="message" required minlength="2" maxlength="1200" rows="6" placeholder="예: 사진을 고르면 계속 멈춰요. 갤럭시 S24 울트라 · 관상 화면에서 발생했어요."></textarea>
+    </label>
+    <p class="dlg-note">로그인한 상태에서 보내시면 운영자가 계정 이메일을 함께 확인할 수 있어요. 접속 IP는 저장하지 않아요.</p>
+    <p class="dlg-err" id="feedbackErr" hidden></p>
+    <p class="dlg-ok" id="feedbackOk" hidden></p>
+    <button type="submit" class="btn" id="feedbackSend">보내기</button>
+  </form>
 </dialog>
 
 <div class="install" id="installBar" hidden>
