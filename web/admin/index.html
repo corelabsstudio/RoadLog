@@ -1501,9 +1501,13 @@ async function loadNaverDatalabStatus() {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || '설정을 확인하지 못했습니다.');
-    meta.textContent = d.configured
-      ? '여성 19~39세 · 모바일 · 최근 90일'
-      : '키가 아직 없습니다. Railway 변수에 네이버 데이터랩 키를 넣어 주세요.';
+    if (d.mode === 'legacy') {
+      meta.textContent = '예전 네이버 키만 잡혔습니다. Railway의 web · production에 API HUB 키 두 개를 넣어 주세요.';
+    } else {
+      meta.textContent = d.configured
+        ? '여성 19~39세 · 모바일 · 최근 90일'
+        : '키가 아직 없습니다. Railway 변수에 API HUB 키를 넣어 주세요.';
+    }
   } catch (ex) { meta.textContent = ex.message || '설정을 확인하지 못했습니다.'; }
 }
 

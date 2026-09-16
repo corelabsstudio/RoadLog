@@ -3059,7 +3059,11 @@ def admin_feedback_delete(
 @app.get("/api/admin/marketing/naver-datalab/status")
 def admin_naver_datalab_status(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
-    return {"configured": naver_datalab_ops.configured()}
+    return {
+        "configured": naver_datalab_ops.configured(),
+        # 인증 방식만 알리고 키 값은 어떤 경우에도 응답하지 않는다.
+        "mode": naver_datalab_ops.configuration_mode(),
+    }
 
 
 @app.post("/api/admin/marketing/naver-datalab/query")

@@ -51,6 +51,15 @@ def configured() -> bool:
         return False
 
 
+def configuration_mode() -> str:
+    """관리 화면에 표시할 현재 인증 방식. 키 값 자체는 절대 내보내지 않는다."""
+    try:
+        mode, _, _ = _credentials()
+        return mode
+    except NaverDatalabError:
+        return "missing"
+
+
 def _clean_groups(groups: list[dict[str, Any]]) -> list[dict[str, list[str] | str]]:
     out: list[dict[str, list[str] | str]] = []
     for raw in groups:
