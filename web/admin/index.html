@@ -641,11 +641,12 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
           <p class="sub">갤러리별 제목과 본문을 따로 보관합니다</p>
           <div class="dc-promo-grid" id="dcPromoRows"></div>
           <div class="pr-act">
+            <button type="button" class="ghost" id="dcPromoGenerate">새 초안 만들기</button>
             <button type="button" id="dcPromoSave">초안 저장</button>
             <span class="pr-msg" id="dcPromoMsg"></span>
           </div>
           <p class="note">복사하고 글쓰기 열기를 누르면 제목과 본문만 복사해 갤러리 화면을 엽니다.
-             마지막 등록과 캡차는 직접 처리해 주세요.</p>
+             빈 초안은 마케팅 탭을 새로 열 때 Gemini가 자동으로 채웁니다. 마지막 등록과 캡차는 직접 처리해 주세요.</p>
         </div>
       </div>
 
@@ -1401,10 +1402,36 @@ async function loadDcPromos() {
     DC_PROMOS = d.items || [];
     DC_PROMOS_LOADED = true;
     paintDcPromos();
+    if (DC_PROMOS.length && DC_PROMOS.every((item) => !item.title && !item.body)) {
+      await generateDcPromos(true);
+    }
   } catch (e) {
     msg.textContent = e.message || '홍보 초안을 불러오지 못했습니다.';
   }
 }
+async function generateDcPromos(auto = false) {
+  const msg = $('dcPromoMsg');
+  const button = $('dcPromoGenerate');
+  if (!auto && DC_PROMOS.some((item) => item.title || item.body)
+    && !confirm('지금 적어 둔 세 초안을 새 문안으로 바꿀까요?')) return;
+  button.disabled = true;
+  msg.textContent = auto ? 'Gemini가 초안을 쓰는 중…' : '새 초안을 만드는 중…';
+  try {
+    const r = await fetch('/api/admin/dc-promos/generate', {
+      method: 'POST', headers: { Authorization: 'Bearer ' + token() },
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.detail || 'Gemini가 홍보 초안을 만들지 못했습니다.');
+    DC_PROMOS = d.items || [];
+    paintDcPromos();
+    msg.textContent = auto ? 'Gemini 초안을 자동으로 채웠어요.' : '새 Gemini 초안을 만들었어요.';
+  } catch (e) {
+    msg.textContent = e.message || 'Gemini가 홍보 초안을 만들지 못했습니다.';
+  } finally {
+    button.disabled = false;
+  }
+}
+$('dcPromoGenerate')?.addEventListener('click', () => generateDcPromos());
 $('dcPromoSave')?.addEventListener('click', async () => {
   syncDcPromos();
   const msg = $('dcPromoMsg');

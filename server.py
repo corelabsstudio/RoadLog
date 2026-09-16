@@ -978,6 +978,16 @@ def admin_dc_promos_save(
         raise HTTPException(503, str(exc)) from exc
 
 
+@app.post("/api/admin/dc-promos/generate")
+def admin_dc_promos_generate(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules import dc_promos as dc_promos_ops
+    try:
+        return {"items": dc_promos_ops.generate()}
+    except dc_promos_ops.PromoStoreError as exc:
+        raise HTTPException(503, str(exc)) from exc
+
+
 @app.post("/api/coupon/use")
 def coupon_use(body: CouponUse, authorization: str | None = Header(default=None)):
     """손님이 코드를 넣어 한 편을 연다. 🛑 복채를 받지 않는다."""
