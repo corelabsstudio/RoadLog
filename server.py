@@ -1741,7 +1741,7 @@ def lamps_daily(authorization: str | None = Header(default=None)):
         # 잔액만 바뀌면 받은 줄 모르고 지나가므로, 기존 편지함에도 남긴다.
         inbox.push(
             user["email"],
-            "오늘 접속 선물로 등불 100개를 드렸어요",
+            "오늘 접속 선물로 등불 60개를 드렸어요",
             "오늘도 무냥이와 마음을 천천히 읽어 보세요. 내일 다시 오시면 등불을 또 드려요.",
             key="daily:%s" % gift["day"], icon="lamp",
         )
