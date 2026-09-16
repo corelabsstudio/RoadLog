@@ -9,7 +9,8 @@ from typing import Any
 import httpx
 
 
-URL = "https://openapi.naver.com/v1/datalab/search"
+LEGACY_URL = "https://openapi.naver.com/v1/datalab/search"
+API_HUB_URL = "https://naverapihub.apigw.ntruss.com/search-trend/v1/search"
 WOMEN_19_TO_39 = ["3", "4", "5", "6"]
 
 
@@ -17,24 +18,37 @@ class NaverDatalabError(RuntimeError):
     pass
 
 
-def configured() -> bool:
-    return bool(
-        (os.getenv("NAVER_DATALAB_CLIENT_ID") or os.getenv("NAVER_CLIENT_ID") or "").strip()
-        and (os.getenv("NAVER_DATALAB_CLIENT_SECRET") or os.getenv("NAVER_CLIENT_SECRET") or "").strip()
-    )
+def _env(*names: str) -> str:
+    for name in names:
+        value = (os.getenv(name) or "").strip()
+        if value:
+            return value
+    return ""
 
 
-def _credentials() -> tuple[str, str]:
-    client_id = (os.getenv("NAVER_DATALAB_CLIENT_ID") or os.getenv("NAVER_CLIENT_ID") or "").strip()
-    client_secret = (
-        os.getenv("NAVER_DATALAB_CLIENT_SECRET") or os.getenv("NAVER_CLIENT_SECRET") or ""
-    ).strip()
+def _credentials() -> tuple[str, str, str]:
+    """API HUB를 우선 사용하고, 이관 기간의 기존 키도 잠시 지원한다."""
+    client_id = _env("NAVER_API_HUB_CLIENT_ID", "X-NCP-APIGW-API-KEY-ID")
+    client_secret = _env("NAVER_API_HUB_CLIENT_SECRET", "X-NCP-APIGW-API-KEY")
+    if client_id and client_secret:
+        return "api_hub", client_id, client_secret
+
+    client_id = _env("NAVER_DATALAB_CLIENT_ID", "NAVER_CLIENT_ID")
+    client_secret = _env("NAVER_DATALAB_CLIENT_SECRET", "NAVER_CLIENT_SECRET")
     if not client_id or not client_secret:
         raise NaverDatalabError(
-            "네이버 데이터랩 키가 아직 없습니다. Railway 변수에 NAVER_DATALAB_CLIENT_ID와 "
-            "NAVER_DATALAB_CLIENT_SECRET을 넣어 주세요."
+            "네이버 API HUB 키가 아직 없습니다. Railway 변수에 X-NCP-APIGW-API-KEY-ID와 "
+            "X-NCP-APIGW-API-KEY를 넣어 주세요."
         )
-    return client_id, client_secret
+    return "legacy", client_id, client_secret
+
+
+def configured() -> bool:
+    try:
+        _credentials()
+        return True
+    except NaverDatalabError:
+        return False
 
 
 def _clean_groups(groups: list[dict[str, Any]]) -> list[dict[str, list[str] | str]]:
@@ -57,7 +71,7 @@ def _clean_groups(groups: list[dict[str, Any]]) -> list[dict[str, list[str] | st
 
 def trend(groups: list[dict[str, Any]]) -> dict[str, Any]:
     """19~39세 여성의 모바일 통합검색 상대 추이를 최근 90일 월 단위로 가져온다."""
-    client_id, client_secret = _credentials()
+    mode, client_id, client_secret = _credentials()
     end = date.today()
     start = end - timedelta(days=90)
     payload = {
@@ -69,15 +83,25 @@ def trend(groups: list[dict[str, Any]]) -> dict[str, Any]:
         "gender": "f",
         "ages": WOMEN_19_TO_39,
     }
-    headers = {
-        "X-Naver-Client-Id": client_id,
-        "X-Naver-Client-Secret": client_secret,
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if mode == "api_hub":
+        url = API_HUB_URL
+        headers.update({
+            "X-NCP-APIGW-API-KEY-ID": client_id,
+            "X-NCP-APIGW-API-KEY": client_secret,
+        })
+    else:
+        url = LEGACY_URL
+        headers.update({
+            "X-Naver-Client-Id": client_id,
+            "X-Naver-Client-Secret": client_secret,
+        })
     try:
-        response = httpx.post(URL, json=payload, headers=headers, timeout=12.0)
+        response = httpx.post(url, json=payload, headers=headers, timeout=12.0)
     except httpx.HTTPError as exc:
         raise NaverDatalabError("네이버 데이터랩에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.") from exc
+    if response.status_code == 401 and mode == "api_hub":
+        raise NaverDatalabError("API HUB 키를 인증하지 못했습니다. Railway의 두 API HUB 키를 다시 확인해 주세요.")
     if response.status_code == 403:
         raise NaverDatalabError("데이터랩 권한이 없습니다. 네이버 앱 설정에서 데이터랩(검색어트렌드)을 켜 주세요.")
     if response.status_code != 200:
