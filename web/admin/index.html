@@ -230,6 +230,18 @@ th{color:var(--faint);font-weight:600;font-size:.84rem;border-top:0}
 td:first-child,th:first-child{text-align:left}
 td.mail{max-width:250px;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:normal}
 tbody tr:hover{background:rgba(164,147,240,.07)}
+#tMem tr.member-row{cursor:pointer}
+#tMem tr.member-row:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+#tMem tr.member-row .member-toggle{color:var(--faint);font-size:.78rem;margin-left:5px}
+#tMem tr.member-detail:hover{background:transparent}
+#tMem td.member-detail-cell{padding:0;text-align:left;white-space:normal}
+.member-opened{padding:12px 14px 14px;background:rgba(13,11,18,.42);border-top:1px solid var(--line)}
+.member-opened h3{margin:0 0 8px;font-size:.86rem;color:var(--muted)}
+.member-opened ul{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.member-opened li{display:flex;justify-content:space-between;gap:14px;padding:5px 0;border-top:1px solid rgba(47,43,60,.72);font-size:.88rem}
+.member-opened li:first-child{border-top:0}
+.member-opened time{flex:0 0 auto;color:var(--faint);font-size:.8rem}
+.member-opened .zero{padding:2px 0}
 .zero{color:var(--faint);text-align:left}
 button.del,button.vip{font:inherit;font-size:.82rem;background:none;color:var(--faint);
   border:1px solid var(--line);border-radius:7px;padding:3px 10px;cursor:pointer}
@@ -1527,7 +1539,8 @@ function paintMembers() {
     ? '「옛 계정」 ' + n + '개는 운행일지 시절 것이라 위 숫자에서 뺐습니다. 지우셔도 됩니다.'
     : '';
   $('tMem').innerHTML = mem.length
-    ? mem.map((m) => '<tr><td class="mail">' + esc(m.email) + '</td><td>' + esc(m.name || '—')
+    ? mem.map((m) => '<tr class="member-row" data-member="' + esc(m.email) + '" tabindex="0" aria-expanded="false">'
+      + '<td class="mail">' + esc(m.email) + '<span class="member-toggle" aria-hidden="true">▸</span></td><td>' + esc(m.name || '—')
       + '</td><td>' + (m.at || '—') + '</td><td>' + esc(m.legacy && m.how !== '관리자' ? '옛 계정' : m.how) + '</td><td>' + num(m.lamps)
       + '</td><td>' + won(m.spent) + '</td><td>' + num(m.opens) + '</td>'
       // 🛑 데려온 사람 수와 배지 (2026-09-11 온해님). 배지는 **등불이 아니라 초대 수**로 준다
@@ -1540,14 +1553,44 @@ function paintMembers() {
           + '" data-vip="' + esc(m.email) + '">' + (FREE.has(String(m.email).toLowerCase()) ? 'VIP' : '승격') + '</button>') + '</td>'
       + '<td>' + (m.how === '관리자' ? ''
         : '<button type="button" class="del" data-email="' + esc(m.email) + '">삭제</button>')
-      + '</td></tr>').join('')
+      + '</td></tr><tr class="member-detail" data-member-detail="' + esc(m.email) + '" hidden><td class="member-detail-cell" colspan="10">'
+      + memberOpenedMarkup(m.opened || []) + '</td></tr>').join('')
     : '<tr><td colspan="10" class="zero">아직 가입한 분이 없습니다.</td></tr>';
 }
 
-// 회원 삭제 — 되돌릴 수 없으니 아이디를 보여 주고 한 번 더 묻는다
+function memberOpenedMarkup(items) {
+  const rows = Array.isArray(items) ? items : [];
+  return '<div class="member-opened"><h3>열어 본 상품 · 최근 연 순</h3>'
+    + (rows.length
+      ? '<ul>' + rows.map((item) => '<li><b>' + esc(openedProductName(item.product)) + '</b><time>'
+        + esc(String(item.at || '').slice(0, 10) || '날짜 없음') + '</time></li>').join('') + '</ul>'
+      : '<p class="zero">아직 열어 본 상품이 없습니다.</p>')
+    + '</div>';
+}
+
+function openedProductName(product) {
+  const id = String(product || '');
+  if (id.startsWith('ask:')) return '무냥이에게 더 물어보기';
+  return NAMES[id] || '이름 미등록 상품 (' + id + ')';
+}
+
+// 회원 행을 다시 누르면 닫는다. 삭제·VIP 단추를 누를 때는 행을 펼치지 않는다.
 $('tMem').addEventListener('click', async (e) => {
   const b = e.target.closest('button.del');
-  if (!b) return;
+  if (!b) {
+    if (e.target.closest('button')) return;
+    const row = e.target.closest('tr.member-row');
+    if (!row) return;
+    const detail = $('tMem').querySelector('tr[data-member-detail="' + CSS.escape(row.dataset.member) + '"]');
+    if (!detail) return;
+    const open = detail.hidden;
+    detail.hidden = !open;
+    row.setAttribute('aria-expanded', String(open));
+    const icon = row.querySelector('.member-toggle');
+    if (icon) icon.textContent = open ? '▾' : '▸';
+    return;
+  }
+  // 회원 삭제 — 되돌릴 수 없으니 아이디를 보여 주고 한 번 더 묻는다
   const email = b.dataset.email;
   if (!confirm(email + ' — 이 회원을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
   b.disabled = true; b.textContent = '지우는 중';
@@ -1563,6 +1606,15 @@ $('tMem').addEventListener('click', async (e) => {
     alert(ex.message);
     b.disabled = false; b.textContent = '삭제';
   }
+});
+
+// 키보드로도 회원 행을 열고 닫을 수 있게 한다.
+$('tMem').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const row = e.target.closest('tr.member-row');
+  if (!row || e.target.closest('button')) return;
+  e.preventDefault();
+  row.click();
 });
 
 function seg(id, set) {

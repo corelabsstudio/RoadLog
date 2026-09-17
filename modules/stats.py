@@ -496,7 +496,15 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
         else:
             how = "이메일 · 소셜"
         at = str(u.get("created_at", ""))[:10]
-        opens = len(acc.get("owned", []))
+        # 회원 표의 열람 수와 상세 목록은 같은 원장(`owned`)을 본다. 한쪽은 현재
+        # 보유분만, 다른 한쪽은 전체 기록을 보면 숫자가 어긋나므로 만료된 기록도
+        # 함께 보관한다. 개인 사주 정보가 담긴 `pair` 값은 운영 화면에 내보내지 않는다.
+        opened = sorted(
+            [{"product": str(o.get("product") or ""), "at": str(o.get("at") or "")}
+             for o in acc.get("owned", []) if o.get("product")],
+            key=lambda o: o["at"], reverse=True,
+        )
+        opens = len(opened)
         # 사주를 쓴 적이 있거나, 사주 시작일 이후에 가입했으면 사주 손님이다
         used = bool(opens or acc.get("ledger"))
         legacy = (how == "관리자") or not (used or (at and at >= SAJU_SINCE))
@@ -515,6 +523,7 @@ def members(limit: int = 300) -> list[dict[str, Any]]:
             "lamps": bal,
             "spent": charged,
             "opens": opens,
+            "opened": opened,
             "refer": refer,
             "rank": rank_of.get(email, 0),
             "badge": rank_name.get(email, ""),
