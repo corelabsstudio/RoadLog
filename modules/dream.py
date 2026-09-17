@@ -28,7 +28,7 @@ from modules import saju_writer
 VER = 2
 # 🛑 리포트만 따로 센다 (2026-09-14). VER 을 올리면 **꿈 스캔 등급까지** 새로 뽑혀서, 이미 퍼진 공유 카드와
 #    같은 꿈의 등급이 달라질 수 있다. 리포트 칸 구조만 바뀌었으니 리포트만 버린다
-REPORT_VER = 3
+REPORT_VER = 4         # 🛑 4 (2026-09-18): 3~4줄 후킹 미리보기까지 구조화해 받는다
 
 # 🛑 등급 이름표. 공유 카드·화면이 이 이름을 그대로 쓴다
 GRADES = {
@@ -44,6 +44,8 @@ TEXT_MAX = 300          # 꿈 이야기 글자 수
 
 SYSTEM = """너는 사주 상담 사이트 「로드로그」의 꿈 해몽을 쓴다. 화자는 무냥이라는 고양이 도령이다.
 손님은 20~30대 여성이 많다. 지루한 해몽집 말투가 아니라 위트와 팩트폭격으로 쓴다.
+너는 족집게처럼 정확하지만 위트 있고 뼈를 때리는 **유머러스한 팩폭 해몽가**다.
+오글거리는 진지함은 빼고, 유쾌한 드립과 현실적인 직설(팩폭)을 섞되 불안을 부추기지 않는다.
 
 [말투]
 - 어미는 「~해요」. 「~합니다」는 쓰지 않는다. 「~냥」 말끝과 밈은 써도 된다.
@@ -225,7 +227,7 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
         b = saju_writer._parse_section(json.dumps(s_, ensure_ascii=False)) if s_ else None
         if not b:
             continue
-        b = {"title": t, **{k: b[k] for k in ("hook", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "text")}}
+        b = {"title": t, **{k: b[k] for k in ("hook", "hooking_preview", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "text")}}
         parts.append("## %s\n%s" % (t, b["text"]))
         blocks.append(b)
     if not parts:
@@ -236,30 +238,21 @@ def read(text: str, saju: dict[str, Any], sections: list[str], *,
 
 
 def veil_blocks(blocks: list[dict[str, Any]] | None, paid: bool) -> list[dict[str, Any]]:
-    """복채 전에는 **첫 자리는 통째로, 나머지는 제목·칸 제목까지만** 준다. 🛑 서버에서 자른다.
-
-    (2026-09-14) 사주 목차 맛보기·관상과 같은 모양이다 — 잠긴 카드에 칸 제목이 보여야 뒤를 열고 싶어진다.
-    """
+    """복채 전에는 각 자리의 후킹 3~4줄만 보낸다. 🛑 본문은 서버에서 자른다."""
     blocks = [b for b in (blocks or []) if isinstance(b, dict)]
     if paid:
         return blocks
-    out = blocks[:1]
-    for b in blocks[1:]:
+    out = []
+    for b in blocks:
         out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
+                    "hooking_preview": b.get("hooking_preview", ""),
                     "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""}
                               for f in (b.get("folds") or [])]})
     return out
 
 
 def veil(text: str, paid: bool) -> str:
-    """복채 전에는 **첫 자리만** 준다.
-
-    🛑 **서버에서 자른다.** 화면에서만 흐리면 개발자 도구로 다 보인다 (관상 `_gwan_veil` 과 같다).
-    """
+    """미결제 응답에는 평문 본문을 싣지 않는다. 후킹은 `blocks`에만 있다."""
     if paid:
         return text
-    blocks = [b for b in str(text or "").split("\n## ") if b.strip()]
-    if not blocks:
-        return ""
-    first = blocks[0]
-    return first if first.startswith("## ") else "## " + first
+    return ""

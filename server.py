@@ -2136,7 +2136,7 @@ GWAN_MAX_SHOTS = 2
 #    항목을 나눠 길게 쓰게 고쳤는데, 같은 사진으로 다시 열면 **예전 짧은 글**이 그대로 나왔다.
 #    「배포했는데 그대로인데?」의 진짜 이유가 이것이었다.
 #    얼개를 고치면 이 숫자를 올린다.
-GWAN_VER = 3          # 🛑 3 (2026-09-14): 자리를 카드 칸으로 나눠 받는다 (blocks)
+GWAN_VER = 4          # 🛑 4 (2026-09-18): 유머 팩폭 3~4줄 미리보기까지 구조화해 받는다
 
 GWAN_TRIES = 3          # 🛑 한 번 결제로 **서로 다른 사진 셋**까지. 사진을 잘못 올릴 수 있어서다
                         #    (2026-09-09 온해님). 같은 사진을 다시 보는 건 안 깎는다.
@@ -2176,57 +2176,33 @@ def _gwan_use(email: str, ticket: str, shot: str) -> None:
 
 
 def _gwan_veil_blocks(blocks: list, paid: bool) -> list:
-    """카드 칸도 **서버에서 자른다** (2026-09-14). 복채 전에는 본문을 하나도 안 보낸다.
-
-    첫 자리: 제목 · 첫 문장 · 한 장면 · 칸 제목까지. 나머지 자리: 제목 · 칸 제목까지.
-    🛑 화면에서만 흐리면 개발자 도구로 다 보인다 — `_gwan_veil` 과 같은 이유다.
-    """
+    """복채 전에는 각 자리의 3~4줄 후킹만 보낸다. 🛑 본문은 서버에서 자른다."""
     if paid:
         return blocks or []
     out = []
-    for i, b in enumerate(blocks or []):
+    for b in blocks or []:
         out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
-                    "lead": b.get("lead", "") if i == 0 else "",
-                    "scene_line": b.get("scene_line", "") if i == 0 else "",
+                    "hooking_preview": b.get("hooking_preview", ""),
                     "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []]})
     return out
 
 
 def _saju_veil_blocks(blocks: list) -> list:
-    """사주 미리보기도 **서버에서 자른다** (2026-09-14 전수 검사).
-
-    그전에는 복채 전에도 항목 전문을 다 보내고 화면(CSS)만 가렸다 — 요청을 직접 보내면
-    59,800원짜리 리포트가 통째로 나왔다. 화면이 실제로 보여 주는 만큼만 보낸다.
-    첫 자리: 통째(목차 맛보기가 카드를 통째로 연다 · CLAUDE.md). 나머지: 제목 · 첫 문장 · 한 장면 · 칸 제목.
-    🛑 `text` 를 비우면 앞단이 그 자리를 건너뛴다(`if (!b.text) return`) — 첫 문장을 넣어 둔다.
-    """
+    """사주 미리보기도 각 항목의 3~4줄 후킹만 보낸다. 🛑 본문은 서버에서 자른다."""
     out = []
-    for i, b in enumerate(blocks or []):
-        if i == 0:
-            out.append(b)
-            continue
-        lead = b.get("lead") or ""
-        if not lead:
-            first = str(b.get("text") or "").strip().split("\n")[0]
-            lead = first[:120]
+    for b in blocks or []:
         out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
-                    "text": lead if b.get("text") else "", "lead": lead,
-                    "scene_line": b.get("scene_line", ""), "mutter": "",
+                    "hooking_preview": b.get("hooking_preview", ""),
                     "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []],
-                    "rx": {}, "todos": [], "marks": b.get("marks") or []})
+                    "rx": {}, "todos": [], "marks": []})
     return out
 
 
 def _gwan_veil(text: str, paid: bool) -> str:
-    """복채를 안 내셨으면 **앞 문단 하나만** 준다.
-
-    🛑 **서버에서 자른다.** 화면에서만 흐리면 개발자 도구로 다 보인다 —
-       사주 미리보기의 한계를 여기서는 되풀이하지 않는다 (2026-09-09).
-    """
+    """미결제 응답에는 평문 본문을 싣지 않는다. 후킹은 `blocks`에만 있다."""
     if paid:
         return text
-    paras = [p for p in str(text or "").split("\n\n") if p.strip()]
-    return paras[0] if paras else ""
+    return ""
 
 
 class GwanCheckBody(BaseModel):
@@ -3191,7 +3167,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
                 done[b["title"]] = b
 
     left = PREVIEW_DAILY_CAP if _is_free(user) else max(0, PREVIEW_DAILY_CAP - _preview_used(user["email"]))
-    # 🛑🛑 **`hook` 과 `mutter` 를 같이 보낸다** (2026-09-11 온해님이 잡으심).
+    # 🛑🛑 **`hook`·`hooking_preview`·`mutter` 를 같이 보낸다**.
     #    여기서 `text` 만 담고 있었다. 그래서 LLM 이 쓴 **항목 제목과 혼잣말이
     #    전 상품에서 한 번도 화면에 안 나갔다** — 앞단은 `b.hook`·`b.mutter` 를
     #    받을 준비가 되어 있었는데 서버가 안 보냈다. 화면에는 표에서 고른 옛
@@ -3200,6 +3176,7 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     blocks = [{"title": s,
                "text": done.get(s, {}).get("text", ""),
                "hook": done.get(s, {}).get("hook", ""),
+               "hooking_preview": done.get(s, {}).get("hooking_preview", ""),
                "mutter": done.get(s, {}).get("mutter", ""),
                # 🛑 카드 칸 (2026-09-14 · saju_writer.SECTION_SCHEMA). 옛 글엔 없어서 빈 값이 간다
                **{k: done.get(s, {}).get(k) or ([] if k in ("folds", "todos", "marks") else ({} if k == "rx" else ""))

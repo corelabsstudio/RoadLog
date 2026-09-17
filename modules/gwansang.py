@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from typing import Any
 
 import httpx
@@ -36,6 +37,11 @@ def _P(key: str, fallback: str) -> str:
 
 SYSTEM = """너는 사주 상담 사이트 「로드로그」의 관상을 본다. 화자는 **관멍이**라는 강아지 도령이다.
 갓을 쓰고 돋보기를 든 어린 진돗개다. 사주는 무냥이가 보고, 얼굴은 네가 본다.
+
+[핵심 페르소나]
+너는 족집게처럼 정확하지만 위트 있고 뼈를 때리는 **유머러스한 팩폭 관상가**다.
+오글거리는 진지함은 빼고, 유쾌한 드립과 현실적인 직설(팩폭)을 섞어 해설한다.
+사진 속 외모를 평가하거나 비웃지 말고, 보이는 인상에서 읽히는 상황·습관만 위트 있게 짚는다.
 
 [말투]
 - 존댓말. 「~해요」가 기본이되 종결을 섞는다: ~예요 / ~거든요 / ~더라고요 / ~죠.
@@ -287,6 +293,7 @@ FACE_SCHEMA = {
                 "properties": {
                     "nickname": {"type": "string",
                                  "description": "이 자리의 제목. 열여섯 자 안쪽. 준 자리 이름을 그대로 쓰거나 더 재치 있게. 답을 다 말하지 않는다"},
+                    "hooking_preview": {"type": "string", "description": "미결제 손님에게 먼저 보여 줄 강렬한 미리보기. 줄바꿈으로 **정확히 3~4줄**, 줄마다 한 문장. 첫 줄부터 팩폭을 꽂고 마지막 줄은 관상의 핵심 근거를 남겨 본문이 궁금하게 끝낸다. 상세 근거나 처방은 쓰지 않는다."},
                     "lead": {"type": "string", "description": "뼈 때리는 첫 문장 하나. 사진에서 보이는 것을 돌려 말하지 않는다. 쉰 자 안쪽"},
                     "scene_line": {"type": "string", "description": "이 자리를 한 장면으로 줄인 말. 스무 자 안쪽 (예: 돋보기 든 탐정의 눈매). 관상 용어 금지"},
                     "folds": {
@@ -318,7 +325,7 @@ FACE_SCHEMA = {
                               "description": "lead·folds·rx 에서 글자 하나 안 바꾸고 그대로 옮긴 핵심 구절 둘에서 넷. 한 구절 여섯~스무 자"},
                     "mutter": {"type": "string", "description": "관멍이가 다 읽고 옆에서 툭 던지는 한마디. 두 문장·마흔 자 안쪽. 요약·위로 금지"},
                 },
-                "required": ["nickname", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter"],
+                "required": ["nickname", "hooking_preview", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter"],
             },
         },
     },
@@ -336,13 +343,18 @@ def _blocks(data, secs):
         folds = [{"title": st(f.get("title"), 30), "tag": st(f.get("tag"), 16), "body": st(f.get("body"), 3000)}
                  for f in (r.get("folds") or []) if isinstance(f, dict) and str(f.get("body") or "").strip()][:3]
         rx = r.get("rx") if isinstance(r.get("rx"), dict) else {}
+        preview = st(r.get("hooking_preview"), 420)
+        lines = [x.strip() for x in preview.splitlines() if x.strip()]
+        if len(lines) == 1:
+            lines = [x.strip() for x in re.split(r"(?<=[.!?요죠다])\s+", lines[0]) if x.strip()]
         b = {"title": secs[i] if i < len(secs) else st(r.get("nickname"), 30),
              "hook": st(r.get("nickname"), 30),
+             "hooking_preview": "\n".join(lines[:4]),
              "lead": st(r.get("lead"), 200), "scene_line": st(r.get("scene_line"), 40), "folds": folds,
              "rx": {"title": st(rx.get("title"), 30), "body": st(rx.get("body"), 1500), "punch": st(rx.get("punch"), 80)},
              "todos": [st(x, 60) for x in (r.get("todos") or []) if str(x or "").strip()][:3],
              "mutter": st(r.get("mutter"), 80)}
-        if not b["lead"] and not folds:
+        if (not b["lead"] and not folds) or len(lines) < 3:
             continue
         joined = _join(b)
         b["marks"] = [m for m in (st(x, 40) for x in (r.get("marks") or [])) if len(m) >= 4 and m in joined][:4]
@@ -409,6 +421,7 @@ def read_face(product: str, shots: list[str], *, name: str = "",
         ask += ("\n\n[볼 자리 — 순서를 그대로 지키고 하나도 빠뜨리지 마라]\n"
                 + "\n".join("%d. %s" % (n + 1, t) for n, t in enumerate(secs))
                 + "\n\n[적는 법]\n"
+                "자리마다 hooking_preview를 먼저 만든다. 미결제 화면에 보일 **정확히 3~4줄**이며 줄바꿈으로 나눈다. 첫 줄은 팩폭, 마지막 줄은 본문이 궁금해지게 끝내고 상세 근거·처방은 쓰지 않는다.\n"
                 "자리마다 **소제목을 그대로 쓰고** 줄을 바꿔 본문을 쓴다.\n"
                 "  ## 소제목\n  본문\n\n"
                 "자리 하나에 **%d자 안팎**. 전체는 %d자쯤 된다.\n" % (chars, chars * len(secs))

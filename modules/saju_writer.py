@@ -124,6 +124,11 @@ CLOSERS = [
 
 SYSTEM = """너는 사주 상담 사이트 「로드로그」의 글을 쓴다. 화자는 무냥이라는 고양이 도령이다.
 
+[핵심 페르소나]
+너는 족집게처럼 정확하지만 위트 있고 뼈를 때리는 **유머러스한 팩폭 사주가**다.
+오글거리는 진지함은 빼고, 유쾌한 드립과 현실적인 직설(팩폭)을 섞어 사주를 해설한다.
+다만 사람의 외모·존엄을 깎아내리거나 불안을 부추기지 않는다. 웃기는 대상은 상황과 습관이다.
+
 [가장 중요 — 어기면 못 쓴다]
 사주 계산은 이미 끝났다. 아래 [사주]에 적힌 사실만 쓴다.
 - 숫자를 새로 세지 마라. [사주]에 적힌 개수를 그대로 옮긴다.
@@ -566,6 +571,7 @@ SECTION_SCHEMA = {
     "type": "object",
     "properties": {
         "hook": {"type": "string", "description": "항목 제목. 열여섯 자 안쪽. 실제로 나온 답을 걸고 넘어져 본문을 열게 한다. 사주 용어·이모지·느낌표 금지. 답을 다 말하지 않는다"},
+        "hooking_preview": {"type": "string", "description": "미결제 손님에게 먼저 보여 줄 강렬한 미리보기. 줄바꿈으로 **정확히 3~4줄**, 줄마다 한 문장. 각 줄은 짧고 구체적으로 쓴다. 첫 줄부터 팩폭을 꽂고 마지막 줄은 답의 핵심을 일부러 남겨 ‘그래서 왜 그런지’ 본문이 궁금해지게 끝낸다. 본문 folds·rx의 자세한 근거나 결론은 쓰지 않는다."},
         "lead": {"type": "string", "description": "뼈 때리는 첫 문장 하나. 이 항목의 답이다. 쉰 자 안쪽"},
         "scene_line": {"type": "string", "description": "이 항목의 사주를 한 장면으로 줄인 말. 스무 자 안쪽 (예: 넓은 땅과 외로운 큰 나무). 사주 용어 금지"},
         "folds": {
@@ -599,7 +605,7 @@ SECTION_SCHEMA = {
         "memo_topic": {"type": "string", "description": "이 항목에서 때린 팩폭. 열다섯 자 안쪽. 손님에게 안 보인다"},
         "memo_scene": {"type": "string", "description": "이 항목에서 쓴 핵심 비유·장면. 열다섯 자 안쪽. 손님에게 안 보인다"},
     },
-    "required": ["hook", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "memo_topic", "memo_scene"],
+    "required": ["hook", "hooking_preview", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter", "memo_topic", "memo_scene"],
 }
 
 
@@ -622,6 +628,7 @@ def _parse_section(raw: str) -> dict[str, Any] | None:
     rx = d.get("rx") if isinstance(d.get("rx"), dict) else {}
     out = {
         "hook": s_(d.get("hook"), _HOOK_MAX + 8),
+        "hooking_preview": s_(d.get("hooking_preview"), 420),
         "lead": s_(d.get("lead"), 200),
         "scene_line": s_(d.get("scene_line"), 40),
         "folds": folds,
@@ -631,7 +638,13 @@ def _parse_section(raw: str) -> dict[str, Any] | None:
         "topic": s_(d.get("memo_topic"), _MEMO_MAX),
         "scene": s_(d.get("memo_scene"), _MEMO_MAX),
     }
-    if not out["lead"] or len(folds) < 2:
+    # 줄바꿈은 UI에서 3~4줄로 보이는 약속이다. 모델이 한 문단으로 보내면 문장 단위로
+    # 다시 나눈다. 그래도 세 줄을 못 만들면 재시도해 값 없는 미리보기를 저장하지 않는다.
+    preview_lines = [x.strip() for x in out["hooking_preview"].splitlines() if x.strip()]
+    if len(preview_lines) == 1:
+        preview_lines = [x.strip() for x in re.split(r"(?<=[.!?요죠다])\s+", preview_lines[0]) if x.strip()]
+    out["hooking_preview"] = "\n".join(preview_lines[:4])
+    if not out["lead"] or len(folds) < 2 or len(preview_lines) < 3:
         return None
     joined = _join(out)
     # 🛑 하이라이트는 **본문에 글자 그대로 있는 것만** 남긴다. 없는 말을 칠하면 화면에서 안 붙는다
@@ -720,6 +733,7 @@ def write_section(name: str, saju: dict[str, Any], section: str, idx: int = 0,
     # 🛑 제목·혼잣말·메모는 예전엔 `제목:` 줄로 받았다. 이제 규격(SECTION_SCHEMA)의 칸으로 받는다
     shape = (
         "\n\n[칸마다 무엇을 쓰나 — 규격대로 JSON 으로 답한다]\n"
+        "- hooking_preview: 미결제 화면에 보일 **정확히 3~4줄**. 줄바꿈으로 나누고, 첫 줄은 팩폭, 마지막 줄은 본문을 궁금하게 남긴다. 상세 근거·처방은 절대 쓰지 않는다\n"
         "- lead: 첫 문장. 위 [이 항목의 형식]의 여는 방식을 여기에 쓴다\n"
         "- folds 셋: ① 왜 그런지([사주] 글자를 쉬운 말+괄호로) ② 손님이 겪었을 일상 장면 ③ 스스로 모르는 부분이나 조건에 따라 갈리는 것.\n"
         "  칸마다 제목(title)과 꼬리(tag)도 네가 쓴다. 칸 셋의 제목이 서로 달라야 한다\n"
@@ -1245,7 +1259,7 @@ CARD_VER = 4
 #    2026-09-10 에 해설을 「팩트폭격」 말투로 갈았는데 화면에는 진지한 옛 글이
 #    그대로 나왔다 — 온해님이 「예전이랑 달라진게 없어」로 잡으셨다.
 #    🛑 관상은 `GWAN_VER` 로 이미 같은 장치를 쓰고 있었다. 사주 본문에만 없었다.
-WRITE_VER = 3          # 🛑 3 (2026-09-14): 항목을 칸으로 나눠 받는다 — 옛 글은 칸이 없어 다시 쓴다
+WRITE_VER = 4          # 🛑 4 (2026-09-18): 유머 팩폭 3~4줄 미리보기까지 구조화해 받는다
 
 # 🛑 `badge` 는 계산된 「상위 몇 %」다. 카드에 크게 박을 수 있다 (2026-09-10)
 #    `job`·`habit`·`karma` 는 전생 카드의 세 칸이다 (다른 상품에는 안 온다)
