@@ -22,9 +22,9 @@
   <meta name="twitter:description" content="나를 열받게 한 사람에게 소심하고 킹받는 저주 카드 한 장. 무냥이와 장난스럽게 털고 가세요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/curse.html" />
-  <script type="module" crossorigin src="/assets/curse-CIEtDGQE.js"></script>
+  <script type="module" crossorigin src="/assets/curse-DERh1D-C.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/browser-CyfhxvAT.js">
-  <link rel="stylesheet" crossorigin href="/assets/curse-vMIv3RH7.css">
+  <link rel="stylesheet" crossorigin href="/assets/curse-UMqvs9lX.css">
 </head>
 <body>
   <header class="shrine-top">
@@ -52,15 +52,27 @@
     </section>
 
     <section class="ritual" id="ritual" aria-labelledby="ritualTitle">
-      <p class="step-mark">의식 하나</p>
-      <h2 id="ritualTitle">누구 때문에<br />등불을 켰나요?</h2>
+      <p class="step-mark">첫 번째 의식</p>
+      <h2 id="ritualTitle">저주 대상의<br />기운 특정</h2>
+      <p class="ritual-lead">이름과 흔적을 부적에 묶어, 엉뚱한 사람에게 저주가 새지 않게 합니다.</p>
+      <h3 class="ritual-question">저주를 바칠 대상과의 관계</h3>
       <div class="relations" id="relations" role="group" aria-label="저주 대상 관계">
         <button type="button" data-value="전애인">전애인</button><button type="button" data-value="썸">썸</button>
         <button type="button" data-value="친구">친구</button><button type="button" data-value="직장동료">직장동료</button>
         <button type="button" data-value="기타">기타</button>
       </div>
-      <label class="field">그 사람을 부를 별명 <small>선택</small><input id="targetName" maxlength="30" placeholder="예: 읽씹 대마왕" /></label>
-      <label class="field">뭐가 그렇게 킹받았나요?<textarea id="reason" maxlength="240" rows="4" placeholder="예: 내 우산 빌려 가고 비 오는 날 잠수탔어요"></textarea><span id="reasonCount">0 / 240</span></label>
+      <label class="field">저주 부적에 새길 대상의 이름/별칭 <small>선택</small><input id="targetName" maxlength="30" placeholder="예: 읽씹 대마왕, 전애인 A" /></label>
+      <label class="field">🕯️ 대상의 생년월일 <small>모르면 미입력 가능</small><input id="birthDate" type="date" min="1900-01-01" /></label>
+      <label class="field photo-field">📸 대상의 사진을 올려주세요 <small>선택 · 부적 봉인용</small>
+        <input id="targetPhoto" type="file" accept="image/jpeg,image/png,image/webp" />
+        <span class="photo-hint">사진은 결과 생성에만 쓰고 서버 보관함에는 저장하지 않아요.</span>
+      </label>
+      <div class="photo-preview" id="photoPreview" hidden aria-live="polite">
+        <img id="photoPreviewImage" alt="부적 결계에 봉인된 대상 사진 미리보기" />
+        <span class="photo-ward" aria-hidden="true"><i></i><b>封</b></span>
+        <button type="button" id="removePhoto">사진 봉인 해제</button>
+      </div>
+      <label class="field">대상이 지은 죄와 킹받은 사연 <small>상세할수록 저주의 정확도가 올라갑니다</small><textarea id="reason" maxlength="240" rows="5" placeholder="예: 내 우산을 빌려 가고 비 오는 날 잠수탔어요"></textarea><span id="reasonCount">0 / 240</span></label>
       <button type="button" class="primary" id="toCards">카드 섞기</button>
     </section>
 

@@ -389,7 +389,9 @@ def _P(key: str, fallback: str) -> str:
 
 def _call(system: str, user: str, *, model: str | None = None,
           temperature: float = 1.0, max_tokens: int = 1400,
-          schema: dict[str, Any] | None = None) -> dict[str, Any]:
+          schema: dict[str, Any] | None = None,
+          image_data: str | None = None,
+          image_mime: str = "image/jpeg") -> dict[str, Any]:
     """제미나이를 부른다.
 
     🛑 `schema` 를 주면 **규격을 어길 수 없게** 된다 (2026-09-10 온해님).
@@ -399,9 +401,12 @@ def _call(system: str, user: str, *, model: str | None = None,
     key = api_key()
     if not key:
         raise RuntimeError("GEMINI_API_KEY 가 없다")
+    parts: list[dict[str, Any]] = [{"text": user}]
+    if image_data:
+        parts.append({"inlineData": {"mimeType": image_mime, "data": image_data}})
     body = {
         "systemInstruction": {"parts": [{"text": system}]},
-        "contents": [{"role": "user", "parts": [{"text": user}]}],
+        "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
             "temperature": temperature,
             "maxOutputTokens": max_tokens,

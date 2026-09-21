@@ -29,7 +29,7 @@ FREE_SCHEMA = {
 DETAIL_SCHEMA = {
     "type": "object",
     "properties": {
-        "title": {"type": "string", "description": "전체 결과 제목. 18자 안쪽"},
+        "title": {"type": "string", "description": "전체 결과 제목. 생년이 있으면 반드시 'XX년생 [별명]에게 내리는 저주' 형태"},
         "opening": {"type": "string", "description": "무냥이가 의식을 마친 뒤 건네는 2문장"},
         "curse": {"type": "string", "description": "실제 위해가 전혀 없는 생활형 불편 저주 3문장"},
         "trigger": {"type": "string", "description": "이 저주가 발동하는 우스운 순간 2문장"},
@@ -49,32 +49,39 @@ _SYSTEM = """너는 Roadlog의 고양이 점술가 무냥이다. 한국어로 �
 마지막에는 사용자가 자기 일상으로 돌아오게 한다. AI라는 말은 하지 않는다."""
 
 
-def _payload(target_type: str, target_name: str, reason: str, card: str) -> str:
+def _payload(target_type: str, target_name: str, birth_date: str, reason: str, card: str,
+             has_photo: bool = False) -> str:
+    birth_year = birth_date[:4] + "년생" if birth_date else "모름"
     return (
-        "대상 관계: %s\n대상 별명: %s\n열받은 이유: %s\n직접 뽑은 카드: %s\n"
-        "위 재료만 활용하되 대상의 신상이나 사실을 지어내지 마라."
-        % (target_type[:30], target_name[:30] or "비밀", reason[:240], card[:40])
+        "대상 관계: %s\n대상 별명: %s\n대상 생년: %s\n봉인 사진: %s\n"
+        "대상이 지은 죄와 사연: %s\n직접 뽑은 카드: %s\n"
+        "생년이 있으면 결과 제목에 반드시 'XX년생 [별명]에게 내리는 저주'를 넣어라. "
+        "사진이 있으면 비민감한 분위기만 의식 묘사에 가볍게 반영하되 신원, 나이, 인종, 건강, 성격 등은 추정하지 마라. "
+        "위 재료 밖의 대상 신상이나 사실을 지어내지 마라."
+        % (target_type[:30], target_name[:30] or "이름 모를 대상", birth_year,
+           "제공됨" if has_photo else "없음", reason[:240], card[:40])
     )
 
 
-def free_result(target_type: str, target_name: str, reason: str, card: str) -> dict[str, Any]:
+def free_result(target_type: str, target_name: str, birth_date: str, reason: str, card: str,
+                photo: str = "") -> dict[str, Any]:
     got = saju_writer._call(
         _SYSTEM,
-        _payload(target_type, target_name, reason, card)
+        _payload(target_type, target_name, birth_date, reason, card, bool(photo))
         + "\n무료 결과를 써라. 가장 중요한 저주 한 줄은 바로 이해되고 캡처하고 싶어야 한다.",
-        temperature=1.05, max_tokens=520, schema=FREE_SCHEMA,
+        temperature=1.05, max_tokens=520, schema=FREE_SCHEMA, image_data=photo or None,
     )
     return json.loads(got["text"])
 
 
-def detail_result(target_type: str, target_name: str, reason: str, card: str,
-                  free: dict[str, Any] | None = None) -> dict[str, Any]:
+def detail_result(target_type: str, target_name: str, birth_date: str, reason: str, card: str,
+                  photo: str = "", free: dict[str, Any] | None = None) -> dict[str, Any]:
     got = saju_writer._call(
         _SYSTEM,
-        _payload(target_type, target_name, reason, card)
+        _payload(target_type, target_name, birth_date, reason, card, bool(photo))
         + "\n이미 보여 준 무료 결과: " + json.dumps(free or {}, ensure_ascii=False)[:900]
         + "\n같은 카드의 상세 결과를 써라. 무료 결과와 모순되지 말고 각 항목은 서로 다른 장면을 다뤄라.",
-        temperature=1.0, max_tokens=1050, schema=DETAIL_SCHEMA,
+        temperature=1.0, max_tokens=1050, schema=DETAIL_SCHEMA, image_data=photo or None,
     )
     return json.loads(got["text"])
 
