@@ -22,9 +22,9 @@
   <meta name="twitter:description" content="나를 열받게 한 사람에게 소심하고 킹받는 저주 카드 한 장. 무냥이와 장난스럽게 털고 가세요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/curse.html" />
-  <script type="module" crossorigin src="/assets/curse-DDXaq2qP.js"></script>
-  <link rel="modulepreload" crossorigin href="/assets/browser-CyfhxvAT.js">
-  <link rel="stylesheet" crossorigin href="/assets/curse-DxOvxziG.css">
+  <script type="module" crossorigin src="/assets/curse-BGzZpSfI.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/browser-DZLiRC7b.js">
+  <link rel="stylesheet" crossorigin href="/assets/curse-Dll0tSJa.css">
 </head>
 <body>
   <header class="shrine-top">
@@ -122,10 +122,13 @@
     <section class="free-result" id="freeResult" hidden aria-labelledby="freeTitle">
       <p class="step-mark">무료 결과</p>
       <article class="omen-card">
+        <div class="curse-saju-bar" id="freeSajuBar"></div>
+        <span class="omen-stamp omen-stamp-top" aria-hidden="true">厄</span>
+        <svg class="omen-sigil" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="48"/><path d="M60 8v104M8 60h104M26 26l68 68M94 26 26 94"/><circle cx="60" cy="60" r="19"/><path d="m60 18 36 63H24ZM60 102 24 39h72Z"/></svg>
         <p class="card-name" id="freeCard"></p>
         <h2 id="freeTitle"></h2>
         <p class="reading" id="freeReading"></p>
-        <div class="seal" aria-hidden="true">냥</div>
+        <div class="seal" aria-hidden="true">詛</div>
       </article>
       <p class="tease" id="freeTease"></p>
       <div class="unlock" id="unlock">
@@ -138,8 +141,10 @@
 
     <section class="detail-result" id="detailResult" hidden aria-labelledby="detailTitle">
       <p class="step-mark">의식 완료</p>
+      <div class="curse-saju-bar" id="detailSajuBar"></div>
       <h2 id="detailTitle"></h2>
       <p class="detail-opening" id="detailOpening"></p>
+      <section class="curse-manse" id="curseManse" aria-label="대상의 사주 원국과 오행"></section>
       <div class="detail-grid" id="detailGrid"></div>
       <canvas id="shareCanvas" width="1080" height="1350" aria-label="저주 결과 공유 카드"></canvas>
       <div class="share-actions"><button type="button" id="saveShare">이미지 저장</button><button type="button" id="sendShare">친구에게 공유</button></div>
