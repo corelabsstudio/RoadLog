@@ -82,6 +82,7 @@ from modules import product_reviews as prev_ops
 from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
+from modules import curse_shrine as curse_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -1427,6 +1428,85 @@ class ChargeBody(BaseModel):
 class OpenBody(BaseModel):
     product: str
     pair: str
+
+
+class CurseBody(BaseModel):
+    ritual: str = ""
+    pair: str = ""
+    targetType: str = ""
+    targetName: str = ""
+    reason: str = ""
+    card: str = ""
+    free: dict = {}
+
+
+def _curse_inputs(body: CurseBody) -> dict[str, str]:
+    ritual = (body.ritual or "").strip().lower()
+    pair = (body.pair or "").strip().lower()
+    target_type = " ".join((body.targetType or "").split())[:30]
+    target_name = " ".join((body.targetName or "").split())[:30]
+    reason = " ".join((body.reason or "").split())[:240]
+    card = " ".join((body.card or "").split())[:40]
+    if ritual and not re.fullmatch(r"[0-9a-f]{24,64}", ritual):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
+    if pair and not lamps_ops._PAIR_RE.match(pair):
+        raise HTTPException(400, "의식 표가 올바르지 않아요.")
+    if target_type not in {"전애인", "썸", "친구", "직장동료", "기타"}:
+        raise HTTPException(400, "저주 대상을 다시 골라 주세요.")
+    if len(reason) < 2 or not card:
+        raise HTTPException(400, "열받은 이유와 카드를 채워 주세요.")
+    return {"ritual": ritual, "pair": pair, "targetType": target_type,
+            "targetName": target_name, "reason": reason, "card": card}
+
+
+@app.post("/api/curse/free")
+def curse_free(body: CurseBody, request: Request):
+    """로그인 전에 한 장 보여 주는 무료 결과."""
+    _rate_limit_or_429("curse-free:" + _client_ip(request), limit=8, window_sec=3600,
+                       what="저주 신단 무료 결과")
+    data = _curse_inputs(body)
+    try:
+        result = curse_ops.free_result(data["targetType"], data["targetName"],
+                                       data["reason"], data["card"])
+    except Exception as exc:
+        log.exception("curse free generation failed")
+        raise HTTPException(503, "무냥이가 촛불을 다시 켜고 있어요. 잠시 뒤 다시 뽑아 주세요.") from exc
+    return {"ok": True, "result": result}
+
+
+@app.post("/api/curse/detail")
+def curse_detail(body: CurseBody, authorization: str | None = Header(default=None)):
+    """결제 또는 등불 차감으로 소유권이 생긴 의식의 상세 결과."""
+    user = _token_user(authorization)
+    data = _curse_inputs(body)
+    if not data["ritual"] or not data["pair"]:
+        raise HTTPException(400, "의식 번호가 비어 있어요.")
+    saved = curse_ops.get(user["email"], data["ritual"])
+    if saved:
+        return {"ok": True, "saved": True, **saved}
+    if not (_is_free(user) or lamps_ops.owns(user["email"], curse_ops.PRODUCT_ID, data["pair"])):
+        raise HTTPException(402, "상세 결과를 먼저 열어 주세요.")
+    try:
+        detail = curse_ops.detail_result(data["targetType"], data["targetName"],
+                                         data["reason"], data["card"], body.free)
+        row = curse_ops.save(user["email"], data["ritual"], data["pair"],
+                             {k: data[k] for k in ("targetType", "targetName", "reason", "card")},
+                             body.free or {}, detail)
+    except Exception as exc:
+        log.exception("curse detail generation failed")
+        raise HTTPException(503, "상세 결과를 적다가 촛불이 꺼졌어요. 잠시 뒤 다시 열어 주세요.") from exc
+    return {"ok": True, "saved": False, **row}
+
+
+@app.get("/api/curse/{ritual}")
+def curse_saved(ritual: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    if not re.fullmatch(r"[0-9a-f]{24,64}", (ritual or "").lower()):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
+    row = curse_ops.get(user["email"], ritual.lower())
+    if not row:
+        raise HTTPException(404, "저장된 의식을 찾지 못했어요.")
+    return {"ok": True, **row}
 
 
 class PremiumBody(BaseModel):
