@@ -98,6 +98,8 @@ class TeamOperations:
             if current and current["status"] == state:
                 return {"ok":True,"status":state}
             db.execute("UPDATE marketing_state SET status=?,updated_at=? WHERE tenant_id=?",(state,stamp,self.repo.tenant_id))
+            if action=="start":
+                db.execute("UPDATE marketing_agents SET status='WAITING_NEXT_RUN',current_task='기존 작업 기록 유지 · 다음 예약 대기',progress=0,last_activity=? WHERE tenant_id=? AND status='OFFLINE'",(stamp,self.repo.tenant_id))
             if action=="stop": db.execute("UPDATE marketing_agents SET status='OFFLINE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=?",(stamp,self.repo.tenant_id))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="stop" else "INFO",stamp))
         return {"ok":True,"status":state}

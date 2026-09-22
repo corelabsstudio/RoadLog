@@ -139,6 +139,7 @@ def main() -> None:
         check(marketing_os.control("pause")["status"] == "PAUSED", "AI 팀 일시정지")
         check(marketing_os.run_due(web, datetime(2026, 9, 24, 18, 1, tzinfo=ZoneInfo("Asia/Seoul"))) == [], "일시정지 시 다음 날 자동 실행 차단")
         check(marketing_os.control("stop")["status"] == "EMERGENCY_STOP", "AI 팀 긴급정지")
+        check(marketing_os.control("start")["status"] == "RUNNING" and all(a["status"] != "OFFLINE" for a in marketing_os.team_dashboard()["agents"]), "같은 날 재시작 시 OFFLINE 잔류 방지")
 
         class FakeCatalog:
             def load(self):

@@ -1600,7 +1600,7 @@ function paintMarketingTeam(team) {
   $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => {
     const run = (team.scheduled_runs || []).find((r) => r.run_date === today && r.job_key === s.job);
     const label = run ? ('자동 ' + run.status) : (s.automatic ? '자동 대기' : '수동 · 외부 연동 전');
-    return '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + ' · ' + esc(label) + '</b><button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button></article>';
+    return '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + ' · ' + esc(label) + '</b>' + (s.job === 'kickoff' ? '' : '<button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button>') + '</article>';
   }).join('');
   $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + (a.level === 'ERROR' ? '⚠ ' : '') + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
   $('marketingContentLog').innerHTML = (team.content || []).length ? team.content.map((c) => '<article><time>' + esc(c.created_at) + '</time><div><b>' + esc(c.title) + '</b><p>' + esc(c.product_name) + ' · ' + esc(c.status) + ' · ' + esc(c.review_result) + '</p></div></article>').join('') : '<p class="note">아직 콘텐츠 작업 기록이 없습니다.</p>';
