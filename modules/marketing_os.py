@@ -17,7 +17,7 @@ POLICY = BrandPolicy(
     blocked_brand_pattern=r"ChatGPT|챗GPT|포스텔러|점신|신한라이프",
 )
 AGENTS=[("marketing_director","Marketing Director","마케팅 디렉터"),("market_researcher","Market Researcher","시장 조사원"),("seo_specialist","SEO Specialist","검색 전략가"),("content_writer","Content Writer","콘텐츠 작가"),("creative_director","Creative Director","크리에이티브 디렉터"),("social_manager","Social Manager","채널 매니저"),("quality_reviewer","Quality Reviewer","품질 검수자"),("performance_analyst","Performance Analyst","성과 분석가")]
-SCHEDULE=[{"time":"09:00","job":"market","name":"시장 흐름 점검","automatic":False},{"time":"10:00","job":"seo","name":"검색 기회 점검","automatic":False},{"time":"11:00","job":"content","name":"상품 정본 DEMO 묶음","automatic":True},{"time":"14:00","job":"review","name":"사실 검수","automatic":False},{"time":"18:00","job":"report","name":"일일 보고서","automatic":True}]
+SCHEDULE=[{"time":"00:00","job":"kickoff","name":"팀 시작 후 상품 정본 DEMO 점검","automatic":True},{"time":"09:00","job":"market","name":"시장 흐름 점검","automatic":False},{"time":"10:00","job":"seo","name":"검색 기회 점검","automatic":False},{"time":"11:00","job":"content","name":"상품 정본 DEMO 묶음","automatic":True},{"time":"14:00","job":"review","name":"사실 검수","automatic":False},{"time":"18:00","job":"report","name":"일일 보고서","automatic":True}]
 
 def _service(web_root: Path = Path(".")) -> MarketingService:
     return MarketingService(RoadLogCatalog(web_root), RoadLogDemoProvider(), MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID), POLICY)
@@ -37,7 +37,11 @@ def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]: return
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
 def team_dashboard() -> dict[str,Any]: return operations().dashboard()
-def control(action:str) -> dict[str,Any]: return operations().control(action)
+def control(action:str) -> dict[str,Any]:
+    result = operations().control(action)
+    if action == "start":
+        result["jobs"] = run_due(Path(__file__).resolve().parents[1] / "web")
+    return result
 def _demo_daily_bundle(web_root: Path, day: str) -> str:
     catalog = _service(web_root).products()["products"]
     verified = [p for p in catalog if p["facts_status"] == "VERIFIED" and p.get("confirmed_results")]
@@ -60,7 +64,10 @@ def run_due(web_root: Path, when: datetime | None = None) -> list[dict[str, str]
     results = []
     for day, job_key in ops.claim_due(when):
         try:
-            if job_key == "content":
+            if job_key == "kickoff":
+                result = _demo_daily_bundle(web_root, day)
+                ops.record_kickoff(result)
+            elif job_key == "content":
                 result = _demo_daily_bundle(web_root, day)
             elif job_key == "report":
                 ops.record_report(day)

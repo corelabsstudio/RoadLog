@@ -56,6 +56,29 @@ class TeamOperations:
                 (status,result,stamp,self.repo.tenant_id,day,job_key))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
                 (self.repo.tenant_id,aid,"예약 작업 실패" if failed else "예약 작업 완료",f"{day} {job_key}",result,"ERROR" if failed else "INFO",stamp))
+            if failed:
+                db.execute("UPDATE marketing_agents SET status='ERROR',current_task=?,progress=0,last_activity=? WHERE tenant_id=? AND agent_id=?",
+                    (result,stamp,self.repo.tenant_id,aid))
+
+    def record_kickoff(self, product_result: str) -> None:
+        """Record only work the local DEMO bundle actually supports, and name missing integrations."""
+        stamp = now()
+        outcomes = (
+            ("marketing_director", "DONE", "오늘 상품 정본 기반 작업 배정", product_result),
+            ("market_researcher", "WAITING_DATA", "상품 정본 점검 · 외부 시장 데이터 미연결", "상품 사실은 확인했습니다. 시장 동향은 조사하지 않았습니다."),
+            ("seo_specialist", "WAITING_DATA", "상품명 기반 주제 후보 확인 · 검색 API 미연결", "검색량·순위는 확인하지 않았습니다."),
+            ("content_writer", "DONE", "상품 정본 DEMO 초안 생성", product_result),
+            ("creative_director", "DONE", "영상 대본·카드뉴스 문안 준비", "내부 DEMO 묶음에 문안을 저장했습니다. 이미지·영상 제작은 하지 않았습니다."),
+            ("social_manager", "WAITING_APPROVAL", "채널별 초안 정리 · 외부 게시 차단", "블로그·짧은 영상·카드뉴스 문안만 준비됐습니다. 외부 게시 없음."),
+            ("quality_reviewer", "DONE", "상품 사실 검수 결과 저장", "채널별 검수 결과를 콘텐츠에 저장했습니다."),
+            ("performance_analyst", "WAITING_DATA", "성과 데이터 연결 대기", "유입·가입·구매 성과 API 미연결. 성과 수치를 만들지 않았습니다."),
+        )
+        with self.repo.connect() as db:
+            for aid, status, task, result in outcomes:
+                db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",
+                    (status,task,100 if status == "DONE" else 0,stamp,self.repo.tenant_id,aid))
+                db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                    (self.repo.tenant_id,aid,task,"팀 시작 후 내부 DEMO 점검",result,"INFO",stamp))
 
     def record_report(self, day: str) -> None:
         stamp = now()
@@ -71,6 +94,9 @@ class TeamOperations:
         if action not in states: raise ValueError("지원하지 않는 운영 명령입니다.")
         state=states[action]; stamp=now()
         with self.repo.connect() as db:
+            current=db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            if current and current["status"] == state:
+                return {"ok":True,"status":state}
             db.execute("UPDATE marketing_state SET status=?,updated_at=? WHERE tenant_id=?",(state,stamp,self.repo.tenant_id))
             if action=="stop": db.execute("UPDATE marketing_agents SET status='OFFLINE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=?",(stamp,self.repo.tenant_id))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="stop" else "INFO",stamp))
@@ -79,7 +105,8 @@ class TeamOperations:
     def record_bundle(self, bundle_id: int, item_count: int) -> None:
         stamp = now()
         with self.repo.connect() as db:
-            db.execute("UPDATE marketing_agents SET last_activity=? WHERE tenant_id=? AND agent_id IN ('content_writer','quality_reviewer')", (stamp, self.repo.tenant_id))
+            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='content_writer'", (f"DEMO 묶음 #{bundle_id} · {item_count}건 생성",stamp,self.repo.tenant_id))
+            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='quality_reviewer'", (f"DEMO 묶음 #{bundle_id} · 사실 검수 결과 저장",stamp,self.repo.tenant_id))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
                        (self.repo.tenant_id, "content_writer", "원본·채널별 DEMO 초안", "관리자 수동 실행", f"묶음 #{bundle_id} · {item_count}건 생성 · 외부 게시 없음", "INFO", stamp))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
@@ -94,6 +121,7 @@ class TeamOperations:
             if state!="RUNNING": raise ValueError("먼저 AI 팀을 시작해 주세요.")
             db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id=?",(status,task,stamp,self.repo.tenant_id,aid))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,aid,task,"관리자 수동 실행",result,"INFO",stamp))
-            db.execute("UPDATE marketing_agents SET status='IDLE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=? AND agent_id=?",(stamp,self.repo.tenant_id,aid))
+            final_status = "WAITING_DATA" if job_key in ("market", "seo") else "DONE"
+            db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",(final_status,result,0 if final_status == "WAITING_DATA" else 100,stamp,self.repo.tenant_id,aid))
         if job_key=="report": self.record_report(datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat())
         return {"ok":True,"message":result}
