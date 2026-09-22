@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
 from modules.marketing_roadlog import RoadLogCatalog, RoadLogDemoProvider
+from modules.marketing_gemini import RoadLogGeminiProvider
 
 DB = Path(DATA_DIR) / "marketing_os.db"
 TENANT_ID = "roadlog"
@@ -20,7 +21,7 @@ AGENTS=[("marketing_director","Marketing Director","마케팅 디렉터"),("mark
 SCHEDULE=[{"time":"00:00","job":"kickoff","name":"팀 시작 후 상품 정본 DEMO 점검","automatic":True},{"time":"09:00","job":"market","name":"시장 흐름 점검","automatic":False},{"time":"10:00","job":"seo","name":"검색 기회 점검","automatic":False},{"time":"11:00","job":"content","name":"상품 정본 DEMO 묶음","automatic":True},{"time":"14:00","job":"review","name":"사실 검수","automatic":False},{"time":"18:00","job":"report","name":"일일 보고서","automatic":True}]
 
 def _service(web_root: Path = Path(".")) -> MarketingService:
-    return MarketingService(RoadLogCatalog(web_root), RoadLogDemoProvider(), MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID), POLICY)
+    return MarketingService(RoadLogCatalog(web_root), RoadLogDemoProvider(), MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID), POLICY, real_content=RoadLogGeminiProvider())
 
 def status(web_root: Path) -> dict[str, Any]: return _service(web_root).status()
 def products(web_root: Path) -> dict[str, Any]: return _service(web_root).products()

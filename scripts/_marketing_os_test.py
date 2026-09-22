@@ -20,6 +20,9 @@ if "dotenv" not in sys.modules:
 
 from modules import marketing_os
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService
+from modules.marketing_gemini import RoadLogGeminiProvider
+import httpx
+import json
 
 
 def check(ok: bool, message: str) -> None:
@@ -154,6 +157,54 @@ def main() -> None:
                         "hook": "확인", "body": "현재 1,000원입니다.", "cta": "확인",
                         "image_prompt": "sample", "factual_claims": ["항목 A"],
                         "source_facts": item["product_id"], "uncertainty": [], "estimated_cost": None}
+
+        class RealFake(FakeProvider):
+            usage = {"input_tokens": 60, "output_tokens": 30}
+        real_repo = MarketingRepository(marketing_os.DB, "real-test")
+        real_service = MarketingService(FakeCatalog(), FakeProvider(), real_repo, BrandPolicy(("SAMPLE",), r"보장", r"혁신적인"), real_content=RealFake())
+        real_result = real_service.trial("p1", "블로그", "REAL")
+        check(real_result["ok"] and real_result["approval_id"] and real_service.usage()["requests"] == 1, "REAL 모의 공급자 생성·검수·사용량 기록")
+        with real_repo.connect() as conn:
+            usage_row = conn.execute("SELECT input_tokens,output_tokens FROM marketing_runs WHERE tenant_id='real-test' AND mode='REAL'").fetchone()
+        check(tuple(usage_row) == (60, 30), "공급자 토큰 사용량 저장")
+        class FalseReal(RealFake):
+            def generate(self, item, platform):
+                draft = super().generate(item, platform)
+                draft["body"] = "현재 999,999원입니다."
+                return draft
+        false_service = MarketingService(FakeCatalog(), FakeProvider(), MarketingRepository(marketing_os.DB, "real-false"), BrandPolicy(("SAMPLE",), r"보장", r"혁신적인"), real_content=FalseReal())
+        failed_review = false_service.trial("p1", "블로그", "REAL")
+        check(not failed_review["ok"] and failed_review["approval_id"] is None and not false_service.approvals(), "REAL 거짓 가격은 승인 대기 미등록")
+        for _ in range(4): real_service.trial("p1", "블로그", "REAL")
+        try:
+            real_service.trial("p1", "블로그", "REAL")
+            raise AssertionError("REAL 예산 한도 미작동")
+        except PermissionError:
+            print("OK  REAL 일일 Agent·예산 한도 차단")
+        os.environ["GEMINI_API_KEY"] = "TEST-ONLY-NOT-REAL"
+        valid_draft = RealFake().generate({"product_id": "p1"}, "블로그")
+        def response_for(text, status=200):
+            return httpx.Response(status, json={"candidates": [{"content": {"parts": [{"text": text}]}}], "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 7}})
+        def client_for(handler):
+            return httpx.Client(transport=httpx.MockTransport(handler))
+        with client_for(lambda req: response_for(json.dumps(valid_draft))) as client:
+            gemini = RoadLogGeminiProvider(client=client, sleep=lambda _: None)
+            check(gemini.generate({"product_id": "p1"}, "블로그")["body"] == valid_draft["body"] and gemini.usage["input_tokens"] == 5, "Gemini JSON 구조와 토큰 파싱")
+        with client_for(lambda req: response_for("not json")) as client:
+            try:
+                RoadLogGeminiProvider(client=client, sleep=lambda _: None).generate({"product_id": "p1"}, "블로그")
+                raise AssertionError("잘못된 JSON 허용")
+            except ValueError:
+                print("OK  잘못된 JSON 차단")
+        attempts = []
+        def timeout_then_success(req):
+            attempts.append(1)
+            if len(attempts) < 3: raise httpx.ReadTimeout("timeout")
+            return response_for(json.dumps(valid_draft))
+        with client_for(timeout_then_success) as client:
+            RoadLogGeminiProvider(client=client, sleep=lambda _: None).generate({"product_id": "p1"}, "블로그")
+        check(len(attempts) == 3, "Gemini timeout 최대 3회 재시도")
+        del os.environ["GEMINI_API_KEY"]
 
         generic_policy = BrandPolicy(("SAMPLE",), r"보장", r"혁신적인")
         tenant_a = MarketingService(FakeCatalog(), FakeProvider(), MarketingRepository(marketing_os.DB, "tenant-a"), generic_policy)

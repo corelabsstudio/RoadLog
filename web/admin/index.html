@@ -635,11 +635,11 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
       <div class="deck wide">
         <div class="card marketing-runner">
           <h2>콘텐츠 1건 안전 시험</h2>
-          <p class="sub">상품 정본만 사용해 DEMO 초안을 만들고 검수합니다.</p>
+          <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 예산 600원을 예약하며 실제 청구액과 다릅니다.</p>
           <div class="marketing-form">
             <label>상품<select id="marketingProduct"></select></label>
             <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option></select></label>
-            <button type="button" class="btn" id="marketingTrial">DEMO 초안 만들기</button>
+            <button type="button" class="btn" id="marketingTrial">AI 초안 1건 만들기</button>
           </div>
           <p class="marketing-progress" id="marketingProgress">대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.</p>
           <div id="marketingResult"></div>
@@ -1543,11 +1543,11 @@ function marketingMoney(value) {
 
 function paintMarketing(status, usage, catalog, approvals) {
   $('marketingState').innerHTML = [
-    ['운영 모드', esc(status.mode) + ' · DRY RUN'],
+    ['운영 모드', esc(status.mode) + ' · 외부 게시 차단'],
     ['AI 연결', esc(status.connection_label)],
     ['상품 정본', num(status.verified_count) + ' / ' + num(status.product_count) + '개 확인'],
     ['오늘 사용량', num(usage.requests) + ' / ' + num(usage.request_limit) + '회'],
-    ['오늘 예상 비용', marketingMoney(usage.estimated_cost_krw) + ' / ' + num(usage.cost_limit_krw) + '원'],
+    ['오늘 AI 예산 예약', marketingMoney(usage.estimated_cost_krw) + ' / ' + num(usage.cost_limit_krw) + '원'],
   ].map(([label, value]) => '<article><small>' + label + '</small><strong>' + value + '</strong></article>').join('');
 
   const items = catalog.products || [];
@@ -1617,13 +1617,15 @@ async function loadMarketing() {
     paintMarketingTeam(team);
     paintMarketingBundles(bundles.items || []);
     MARKETING_LOADED = true;
-    $('marketingProgress').textContent = '대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.';
+    $('marketingProgress').textContent = status.real_trial_enabled ? '수동 AI 1건 생성 가능 · 자동 작업은 DEMO · 외부 게시 차단' : 'AI 키 없음 · 자동 작업은 DEMO · 외부 게시 차단';
+    $('marketingTrial').disabled = !status.real_trial_enabled;
   } catch (ex) {
     $('marketingProgress').textContent = ex.message;
   }
 }
 
 async function runMarketingTrial() {
+  if (!confirm('실제 Gemini API를 1회 호출합니다. 사용량이 과금될 수 있으며 외부 게시는 하지 않습니다. 계속할까요?')) return;
   const button = $('marketingTrial');
   button.disabled = true;
   $('marketingProgress').textContent = '상품 정본 확인 → 초안 작성 → 사실 검수 중…';
@@ -1631,12 +1633,12 @@ async function runMarketingTrial() {
   try {
     const result = await marketingFetch('/trial', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: $('marketingProduct').value, platform: $('marketingPlatform').value, mode: 'DEMO' }),
+      body: JSON.stringify({ product_id: $('marketingProduct').value, platform: $('marketingPlatform').value, mode: 'REAL' }),
     });
     const d = result.draft || {};
     $('marketingResult').innerHTML = '<div class="marketing-output"><b>' + esc(d.title || '') + '</b>'
       + '<p>' + esc(d.hook || '') + '</p><p>' + esc(d.body || '') + '</p><p>' + esc(d.cta || '') + '</p>'
-      + '<small>사실 검수 ' + esc(result.review.status) + ' · ' + esc(result.cost_label) + '</small></div>';
+      + '<small>사실 검수 ' + esc(result.review.status) + ' · ' + esc((result.review.reasons || []).join(', ') || '차단 사유 없음') + ' · ' + esc(result.cost_label) + '</small></div>';
     $('marketingProgress').textContent = result.ok ? '검수 통과 · 승인 대기에 등록했습니다.' : '검수 실패 · 수정 대기로 보냈습니다.';
     await loadMarketing();
   } catch (ex) {

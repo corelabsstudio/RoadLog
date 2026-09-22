@@ -1,12 +1,13 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from typing import Any
 from .policy import BrandPolicy, review_draft
 from .ports import CatalogProvider, ContentProvider
 from .repository import MarketingRepository
 
-def now() -> str: return datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
+def now() -> str: return datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
 
 @dataclass(frozen=True)
 class UsagePolicy:
@@ -15,9 +16,10 @@ class UsagePolicy:
     per_agent_requests: int = 5
 
 class MarketingService:
-    def __init__(self, catalog: CatalogProvider, content: ContentProvider, repository: MarketingRepository, brand_policy: BrandPolicy, usage_policy: UsagePolicy = UsagePolicy()):
+    def __init__(self, catalog: CatalogProvider, content: ContentProvider, repository: MarketingRepository, brand_policy: BrandPolicy, usage_policy: UsagePolicy = UsagePolicy(), real_content: ContentProvider | None = None):
         self.catalog, self.content, self.repository = catalog, content, repository
         self.brand_policy, self.usage_policy = brand_policy, usage_policy
+        self.real_content = real_content
 
     def products(self) -> dict[str, Any]:
         items, meta = self.catalog.load(); self.repository.record_sync(meta, len(items))
@@ -25,20 +27,40 @@ class MarketingService:
 
     def status(self) -> dict[str, Any]:
         data = self.products(); items = data["products"]
-        return {"dry_run":True,"mode":"DEMO","provider":self.content.name,"model":self.content.model,"connected":self.content.connected,"connection_label":"연결됨" if self.content.connected else "AI 연결되지 않음","real_trial_enabled":False,"automatic_real_calls":False,"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
+        connected = bool(self.real_content and self.real_content.connected)
+        return {"dry_run":True,"dry_run_scope":"external_publishing","mode":"수동 AI / 자동 DEMO" if connected else "DEMO","provider":self.real_content.name if self.real_content else self.content.name,"model":self.real_content.model if self.real_content else self.content.model,"connected":connected,"connection_label":"키 설정됨 · 실제 호출 미검증" if connected else "AI 연결되지 않음","real_trial_enabled":connected,"automatic_real_calls":False,"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
 
     def usage(self) -> dict[str, Any]:
         day=now()[:10]; requests,cost=self.repository.usage(day); p=self.usage_policy
         return {"date":day,"requests":requests,"request_limit":p.daily_requests,"remaining_requests":max(0,p.daily_requests-requests),"estimated_cost_krw":cost,"cost_limit_krw":p.daily_cost,"remaining_cost_krw":max(0,p.daily_cost-cost),"cost_is_estimate":True,"agent_limit":p.per_agent_requests}
 
     def trial(self, product_id: str, platform: str, mode: str) -> dict[str, Any]:
-        if mode.upper()!="DEMO": raise PermissionError("실제 유료 AI 호출은 잠겨 있습니다.")
+        mode = mode.upper()
+        if mode not in ("DEMO", "REAL"): raise ValueError("지원하지 않는 생성 모드입니다.")
         data=self.products(); product=next((p for p in data["products"] if p["product_id"]==product_id),None)
         if not product: raise ValueError("상품을 찾지 못했습니다.")
         if product["facts_status"]!="VERIFIED": raise ValueError("상품 정본이 일치하지 않아 콘텐츠를 만들 수 없습니다.")
-        draft=self.content.generate(product,platform); reasons=review_draft(product,draft,self.brand_policy)
-        cid,aid=self.repository.save_trial(product,data["sync"],draft,reasons,now()); passed=not reasons
-        return {"ok":passed,"content_id":cid,"approval_id":aid,"status":"PENDING_APPROVAL" if passed else "REVISION_REQUESTED","review":{"status":"PASSED" if passed else "BLOCKED","reasons":reasons},"estimated_cost_krw":None,"cost_label":"예상 비용 단가 미설정","draft":draft}
+        run_id = None
+        provider = self.content
+        reservation = None
+        if mode == "REAL":
+            if not self.real_content or not self.real_content.connected: raise PermissionError("AI 연결되지 않음: 서버에 Gemini API 키가 없습니다.")
+            provider = self.real_content
+            # Budget allocation, not an upper bound on provider billing.
+            reservation = 600.0
+            p = self.usage_policy
+            run_id = self.repository.reserve_real_run(product_id, now(), p.daily_requests, p.per_agent_requests, p.daily_cost, reservation)
+        try:
+            writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"]}
+            draft=provider.generate(writing_product,platform); reasons=review_draft(product,draft,self.brand_policy)
+            cid,aid=self.repository.save_trial(product,data["sync"],draft,reasons,now(),mode,reservation); passed=not reasons
+            if run_id is not None:
+                usage = getattr(provider, "usage", {})
+                self.repository.finish_real_run(run_id, "COMPLETED", "검수 통과" if passed else "수정 대기", usage.get("input_tokens", 0), usage.get("output_tokens", 0))
+            return {"ok":passed,"content_id":cid,"approval_id":aid,"status":"PENDING_APPROVAL" if passed else "REVISION_REQUESTED","review":{"status":"PASSED" if passed else "BLOCKED","reasons":reasons},"estimated_cost_krw":reservation,"cost_label":"예산 예약액 600원 (실제 청구액 아님)" if mode == "REAL" else "외부 AI 호출 없음","draft":draft}
+        except Exception:
+            if run_id is not None: self.repository.finish_real_run(run_id, "FAILED", "AI 생성 또는 저장 실패")
+            raise
 
     def approvals(self) -> list[dict[str, Any]]: return self.repository.approvals()
 
