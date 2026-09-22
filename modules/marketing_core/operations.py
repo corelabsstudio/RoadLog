@@ -23,6 +23,8 @@ class TeamOperations:
             for aid,name,label in self.agent_defs:
                 db.execute("INSERT OR IGNORE INTO marketing_agents(tenant_id,agent_id,name,label,status,last_activity) VALUES(?,?,?,?,?,?)",(self.repo.tenant_id,aid,name,label,"IDLE",now()))
             db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task='실제 AI 생성 검증 대기',progress=0 WHERE tenant_id=? AND current_task LIKE '%DEMO%'", (self.repo.tenant_id,))
+            db.execute("UPDATE marketing_agents SET status='WAITING_CONTENT',current_task='실제 AI 초안 대기',progress=0 WHERE tenant_id=? AND current_task IN ('영상 대본·카드뉴스 문안 준비','채널별 초안 정리 · 외부 게시 차단','상품 사실 검수 결과 저장')", (self.repo.tenant_id,))
+            db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task='실제 AI 작업 계획 대기',progress=0 WHERE tenant_id=? AND current_task='오늘 상품 정본 기반 작업 배정'", (self.repo.tenant_id,))
 
     def dashboard(self) -> dict[str,Any]:
         with self.repo.connect() as db:

@@ -104,7 +104,7 @@ class MarketingRepository:
 
     def approvals(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.body,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
+            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.body,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? AND c.mode='REAL' ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
         return [dict(r) for r in rows]
 
     def bundles(self) -> list[dict[str, Any]]:
@@ -121,5 +121,5 @@ class MarketingRepository:
 
     def decide(self, approval_id: int, state: str, note: str, now: str) -> None:
         with self.connect() as conn:
-            if not conn.execute("SELECT id FROM marketing_approvals WHERE id=? AND tenant_id=? AND status='PENDING'", (approval_id,self.tenant_id)).fetchone(): raise ValueError("처리할 승인 항목이 없습니다.")
+            if not conn.execute("SELECT a.id FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.id=? AND a.tenant_id=? AND a.status='PENDING' AND c.mode='REAL'", (approval_id,self.tenant_id)).fetchone(): raise ValueError("처리할 REAL 승인 항목이 없습니다.")
             conn.execute("UPDATE marketing_approvals SET status=?,decision_note=?,decided_at=? WHERE id=? AND tenant_id=?", (state,note,now,approval_id,self.tenant_id))

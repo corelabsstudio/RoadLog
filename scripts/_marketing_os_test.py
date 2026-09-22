@@ -64,6 +64,10 @@ def main():
         check(started["status"] == "RUNNING" and [j["job"] for j in started["jobs"]] == ["kickoff"], "팀 시작은 상품 사실만 점검")
         check(not marketing_os.bundles(), "시작 시 가짜 묶음 없음")
         check(all(a["status"] != "IDLE" for a in marketing_os.team_dashboard()["agents"]), "8개 역할에 실제 작업 또는 대기 사유")
+        with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
+            conn.execute("UPDATE marketing_agents SET status='DONE',current_task='영상 대본·카드뉴스 문안 준비' WHERE tenant_id='roadlog' AND agent_id='creative_director'")
+        agents = marketing_os.team_dashboard()["agents"]
+        check(next(a for a in agents if a["agent_id"] == "creative_director")["status"] == "WAITING_CONTENT", "과거 DEMO 현재 직원 상태 정리")
         due_time = datetime.fromisoformat(day + "T11:05:00+09:00")
         check(not marketing_os.run_due(web, due_time), "첫 수동 성공·자동 활성화 전 유료 예약 없음")
         one = marketing_os.trial(web, product["product_id"], "블로그", "REAL")
@@ -82,6 +86,14 @@ def main():
         bundle = marketing_os.create_bundle(web, product["product_id"], product["confirmed_results"][0] + "은 무엇인가요?", "REAL")
         check(bundle["mode"] == "REAL" and len(bundle["items"]) == 3 and all(i["approval_id"] for i in bundle["items"]), "실제 AI 묶음 3건·검수")
         check(marketing_os.bundles()[0]["status"] == "REAL_REVIEWED", "REAL 묶음 저장")
+        with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
+            old_content = conn.execute("INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", ("roadlog", product["product_id"], product["name"], "블로그", "옛 DEMO", "", "", "", "", "PENDING_APPROVAL", "옛 기록", "[]", "{}", None, "DEMO", day)).lastrowid
+            old_approval = conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", ("roadlog", old_content, "PENDING", day)).lastrowid
+        check(all(a["id"] != old_approval for a in marketing_os.approvals()), "과거 DEMO 승인 대기 제외")
+        try:
+            marketing_os.decide(old_approval, "approve", "")
+            raise AssertionError("old demo approved")
+        except ValueError: print("OK 과거 DEMO 승인 API 차단")
         try:
             marketing_os.trial(web, product["product_id"], "블로그", "REAL")
             raise AssertionError("budget not enforced")
