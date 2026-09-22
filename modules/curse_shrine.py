@@ -30,12 +30,12 @@ DETAIL_SCHEMA = {
     "type": "object",
     "properties": {
         "title": {"type": "string", "description": "전체 결과 제목. 생년이 있으면 반드시 'XX년생 [별명]에게 내리는 저주' 형태"},
-        "opening": {"type": "string", "description": "무냥이가 의식을 마친 뒤 건네는 2문장"},
-        "curse": {"type": "string", "description": "실제 위해가 전혀 없는 생활형 불편 저주 3문장"},
-        "trigger": {"type": "string", "description": "이 저주가 발동하는 우스운 순간 2문장"},
-        "duration": {"type": "string", "description": "지속 기간을 과장된 운세처럼 표현한 1문장"},
-        "side_effect": {"type": "string", "description": "사용자에게 돌아오는 귀여운 부작용 2문장"},
-        "release": {"type": "string", "description": "마음을 놓아주는 현실적인 마무리 2문장"},
+        "opening": {"type": "string", "description": "무냥이가 의식을 마친 뒤 건네는 몰입감 있는 3~4문장"},
+        "curse": {"type": "string", "description": "실제 위해가 전혀 없는 생활형 불편 저주를 장면이 보이게 풀어 쓴 3~4문장"},
+        "trigger": {"type": "string", "description": "이 저주가 발동하는 우스운 순간을 구체적으로 그린 3~4문장"},
+        "duration": {"type": "string", "description": "지속 기간과 사그라드는 징조를 과장된 운세처럼 표현한 3~4문장"},
+        "side_effect": {"type": "string", "description": "사용자에게 돌아오는 귀여운 부작용과 주의점을 담은 3~4문장"},
+        "release": {"type": "string", "description": "마음을 놓아주는 현실적인 해제 의식을 이야기로 풀어 쓴 3~4문장"},
         "share_line": {"type": "string", "description": "친구에게 보내고 싶은 결과 한 줄. 32자 안쪽"},
     },
     "required": ["title", "opening", "curse", "trigger", "duration", "side_effect", "release", "share_line"],
@@ -80,8 +80,9 @@ def detail_result(target_type: str, target_name: str, birth_date: str, reason: s
         _SYSTEM,
         _payload(target_type, target_name, birth_date, reason, card, bool(photo))
         + "\n이미 보여 준 무료 결과: " + json.dumps(free or {}, ensure_ascii=False)[:900]
-        + "\n같은 카드의 상세 결과를 써라. 무료 결과와 모순되지 말고 각 항목은 서로 다른 장면을 다뤄라.",
-        temperature=1.0, max_tokens=1050, schema=DETAIL_SCHEMA, image_data=photo or None,
+        + "\n같은 카드의 상세 결과를 써라. 무료 결과와 모순되지 말고 각 항목은 서로 다른 장면을 다뤄라."
+        + " 저주 및 해설 내용은 단답형으로 끝내지 말고, 각 항목마다 최소 3~4문장의 풍부하고 몰입감 있는 주술적 스토리텔링으로 상세히 작성하라.",
+        temperature=1.0, max_tokens=1900, schema=DETAIL_SCHEMA, image_data=photo or None,
     )
     return json.loads(got["text"])
 
