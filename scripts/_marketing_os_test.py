@@ -64,6 +64,15 @@ def main() -> None:
         check("외부 공개는 실행하지 않았습니다" in decision["message"], "승인 후 외부 게시 차단")
         use = marketing_os.usage()
         check(use["requests"] == 0 and use["cost_is_estimate"], "DEMO는 유료 사용량에 미포함")
+        team = marketing_os.team_dashboard()
+        check(len(team["agents"]) == 8 and len(team["schedule"]) == 5, "AI 직원 8명과 작업 시간표 준비")
+        check(marketing_os.control("start")["status"] == "RUNNING", "AI 팀 시작")
+        job = marketing_os.run_job("market")
+        check(job["ok"] and marketing_os.team_dashboard()["activity"], "수동 작업과 활동 기록")
+        marketing_os.run_job("report")
+        check(bool(marketing_os.team_dashboard()["reports"]), "일일 보고서 생성")
+        check(marketing_os.control("pause")["status"] == "PAUSED", "AI 팀 일시정지")
+        check(marketing_os.control("stop")["status"] == "EMERGENCY_STOP", "AI 팀 긴급정지")
 
         class FakeCatalog:
             def load(self):

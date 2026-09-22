@@ -877,6 +877,30 @@ def admin_marketing_status(authorization: str | None = Header(default=None)):
     return marketing_ops.status(WEB)
 
 
+@app.get("/api/admin/marketing/team")
+def admin_marketing_team(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.team_dashboard()
+
+
+@app.post("/api/admin/marketing/control/{action}")
+def admin_marketing_control(action: str, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.control(action)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/admin/marketing/jobs/{job_key}")
+def admin_marketing_job(job_key: str, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.run_job(job_key)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.get("/api/admin/marketing/products")
 def admin_marketing_products(authorization: str | None = Header(default=None)):
     _require_admin(authorization)

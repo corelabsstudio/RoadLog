@@ -320,8 +320,10 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .marketing-output{border-top:1px solid var(--line);padding-top:13px}.marketing-output h3{margin:0 0 7px;font-size:1.05rem}.marketing-output p{max-width:65ch;color:var(--muted)}
 .marketing-approval{padding:11px 0;border-top:1px solid var(--line)}.marketing-approval:first-child{border-top:0}.marketing-approval h3{margin:0 0 4px;font-size:.95rem}.marketing-approval p{margin:0 0 8px;color:var(--muted);font-size:.86rem}
 .marketing-actions{display:flex;gap:7px}.marketing-actions button{font:inherit;border:1px solid var(--line);background:none;color:var(--ink);padding:6px 10px;border-radius:7px;cursor:pointer}.marketing-actions .approve{color:var(--up);border-color:#37614c}
+.marketing-command{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;margin-bottom:14px;background:#13101c;border:1px solid var(--line);border-left:3px solid var(--accent)}.marketing-command b,.marketing-command span{display:block}.marketing-command span{color:var(--muted);font-size:.84rem;margin-top:3px}.marketing-command-actions{display:flex;gap:8px;flex-wrap:wrap}.marketing-command-actions button{font:inherit;padding:8px 13px;border:1px solid var(--accent);background:var(--accent);color:#17151d;cursor:pointer}.marketing-command-actions .btn-line{background:none;color:var(--ink);border-color:var(--line)}.marketing-command-actions .danger{color:#ef9da5;border-color:#694049}.marketing-team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.marketing-agent{padding:14px 15px;background:var(--card);border:1px solid var(--line);min-height:132px}.marketing-agent header{display:flex;justify-content:space-between;gap:10px}.marketing-agent h3{font-size:.94rem;margin:0}.marketing-agent header span{font:700 .68rem ui-monospace,monospace;color:var(--up)}.marketing-agent p{color:var(--muted);font-size:.83rem;min-height:38px}.marketing-agent small{color:var(--faint)}.marketing-schedule article,.marketing-activity article{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.84rem}.marketing-schedule article:last-child,.marketing-activity article:last-child{border:0}.marketing-schedule time,.marketing-activity time{color:var(--accent);font-variant-numeric:tabular-nums}.marketing-schedule button{font:inherit;font-size:.78rem;padding:4px 8px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}.marketing-activity article{grid-template-columns:130px 1fr}.marketing-activity p{margin:2px 0 0;color:var(--muted);font-size:.8rem}.marketing-bottom{margin-top:14px}
 @media(max-width:900px){.marketing-state{grid-template-columns:1fr 1fr}.marketing-state article:nth-child(2){border-right:0}.marketing-form{grid-template-columns:1fr}}
-@media(max-width:560px){.marketing-state{grid-template-columns:1fr}.marketing-state article{border-right:0;border-bottom:1px solid var(--line)}.marketing-state article:last-child{border-bottom:0}}
+@media(max-width:1000px){.marketing-team-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.marketing-state,.marketing-team-grid{grid-template-columns:1fr}.marketing-state article{border-right:0;border-bottom:1px solid var(--line)}.marketing-state article:last-child{border-bottom:0}.marketing-command{align-items:flex-start;flex-direction:column}.marketing-activity article{grid-template-columns:1fr}.marketing-schedule article{grid-template-columns:50px 1fr}}
 </style>
 </head>
 <body>
@@ -680,6 +682,9 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 
     <section data-page="marketing-team" hidden>
       <div class="marketing-state" id="marketingState"></div>
+      <div class="marketing-command"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
+      <div class="marketing-team-grid" id="marketingAgents"></div>
+      <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
       <div class="deck wide">
         <div class="card marketing-runner">
           <h2>콘텐츠 1건 안전 시험</h2>
@@ -702,6 +707,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
         <p class="sub" id="marketingSyncMeta">불러오는 중…</p>
         <div class="scroll"><table><thead><tr><th>상품</th><th>가격</th><th>등불·결제</th><th>결과 항목</th><th>상태</th></tr></thead><tbody id="marketingProducts"></tbody></table></div>
       </div>
+      <div class="deck wide marketing-bottom"><div class="card"><div class="hd"><h2>콘텐츠 작업 기록</h2></div><div id="marketingContentLog" class="marketing-activity"></div></div><div class="card"><div class="hd"><h2>일일 보고서</h2><button type="button" class="btn btn-line" data-team-job="report">오늘 보고서 만들기</button></div><div id="marketingReports" class="marketing-activity"></div></div></div>
     </section>
 
     <section data-page="feedback" hidden>
@@ -1723,13 +1729,23 @@ function paintMarketing(status, usage, catalog, approvals) {
     + '</article>').join('') : '<p class="note">승인 대기 항목이 없습니다.</p>';
 }
 
+function paintMarketingTeam(team) {
+  $('marketingTeamStatus').textContent = (team.status.status || 'STOPPED') + ' · 마지막 변경 ' + (team.status.updated_at || 'UNKNOWN');
+  $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(a.last_activity || 'UNKNOWN') + '</small></article>').join('');
+  $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + '</b><button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button></article>').join('');
+  $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
+  $('marketingContentLog').innerHTML = (team.content || []).length ? team.content.map((c) => '<article><time>' + esc(c.created_at) + '</time><div><b>' + esc(c.title) + '</b><p>' + esc(c.product_name) + ' · ' + esc(c.status) + ' · ' + esc(c.review_result) + '</p></div></article>').join('') : '<p class="note">아직 콘텐츠 작업 기록이 없습니다.</p>';
+  $('marketingReports').innerHTML = (team.reports || []).length ? team.reports.map((r) => '<article><time>' + esc(r.report_date) + '</time><div><b>' + esc(r.title) + '</b><p>' + esc(r.body) + '</p></div></article>').join('') : '<p class="note">아직 보고서가 없습니다.</p>';
+}
+
 async function loadMarketing() {
   $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
   try {
-    const [status, usage, catalog, approvals] = await Promise.all([
-      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'),
+    const [status, usage, catalog, approvals, team] = await Promise.all([
+      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'),
     ]);
     paintMarketing(status, usage, catalog, approvals.items || []);
+    paintMarketingTeam(team);
     MARKETING_LOADED = true;
     $('marketingProgress').textContent = '대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.';
   } catch (ex) {
@@ -1780,6 +1796,18 @@ $('marketingApprovals').addEventListener('click', async (e) => {
   button.disabled = true;
   try { await decideMarketing(button.dataset.approval, button.dataset.marketingDecision); }
   catch (ex) { $('marketingProgress').textContent = ex.message; button.disabled = false; }
+});
+document.querySelector('[data-page="marketing-team"]').addEventListener('click', async (e) => {
+  const control = e.target.closest('[data-team-control]');
+  const job = e.target.closest('[data-team-job]');
+  if (!control && !job) return;
+  const button = control || job; button.disabled = true;
+  try {
+    const result = await marketingFetch(control ? '/control/' + control.dataset.teamControl : '/jobs/' + job.dataset.teamJob, { method: 'POST' });
+    $('marketingProgress').textContent = result.message || ('운영 상태 ' + result.status);
+    MARKETING_LOADED = false; await loadMarketing();
+  } catch (ex) { $('marketingProgress').textContent = ex.message; }
+  finally { button.disabled = false; }
 });
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',

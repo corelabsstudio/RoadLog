@@ -2,4 +2,5 @@
 from .policy import BrandPolicy, review_draft
 from .repository import MarketingRepository
 from .service import MarketingService, UsagePolicy
-__all__ = ["BrandPolicy", "MarketingRepository", "MarketingService", "UsagePolicy", "review_draft"]
+from .operations import TeamOperations
+__all__ = ["BrandPolicy", "MarketingRepository", "MarketingService", "UsagePolicy", "TeamOperations", "review_draft"]
