@@ -83,6 +83,7 @@ from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
 from modules import curse_shrine as curse_ops
+from modules import marketing_os as marketing_ops
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
@@ -251,6 +252,16 @@ class AuthBody(BaseModel):
     name: str = ""
     ref: str = ""      # 친구를 따라 들어온 분의 추천 코드
     via: str = ""      # 어느 길로 오셨는지 (utm / 들어온 사이트). 개인 식별값은 담지 않는다
+
+
+class MarketingTrialBody(BaseModel):
+    product_id: str
+    platform: str = "블로그"
+    mode: str = "DEMO"
+
+
+class MarketingDecisionBody(BaseModel):
+    note: str = ""
 
 
 class ForgotBody(BaseModel):
@@ -858,6 +869,57 @@ async def _count_visit(request: Request, call_next):
     except Exception:
         pass          # 통계 때문에 화면이 막히면 안 된다
     return resp
+
+
+@app.get("/api/admin/marketing/status")
+def admin_marketing_status(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.status(WEB)
+
+
+@app.get("/api/admin/marketing/products")
+def admin_marketing_products(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.products(WEB)
+
+
+@app.post("/api/admin/marketing/products/sync")
+def admin_marketing_products_sync(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.products(WEB)
+
+
+@app.get("/api/admin/marketing/usage")
+def admin_marketing_usage(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.usage()
+
+
+@app.post("/api/admin/marketing/trial")
+def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.trial(WEB, body.product_id, body.platform, body.mode)
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/admin/marketing/approvals")
+def admin_marketing_approvals(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return {"items": marketing_ops.approvals()}
+
+
+@app.post("/api/admin/marketing/approvals/{approval_id}/{decision}")
+def admin_marketing_decide(approval_id: int, decision: str, body: MarketingDecisionBody,
+                           authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.decide(approval_id, decision, body.note)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.delete("/api/admin/stats/visits")

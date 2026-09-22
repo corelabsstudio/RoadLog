@@ -309,6 +309,19 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .tools button:hover{border-color:var(--ink)}
 .foot{margin-top:44px;color:var(--faint);font-size:.9rem;
       border-top:1px solid var(--line);padding-top:16px}
+.marketing-state{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);margin-bottom:14px;background:var(--card)}
+.marketing-state article{padding:15px 17px;border-right:1px solid var(--line)}
+.marketing-state article:last-child{border-right:0}.marketing-state small,.marketing-state strong,.marketing-state span{display:block}
+.marketing-state small{color:var(--faint);font-size:.78rem}.marketing-state strong{margin:5px 0;font-size:1rem}.marketing-state span{color:var(--muted);font-size:.82rem}
+.marketing-state .safe{color:var(--up)}.marketing-state .locked{color:#e7c478}
+.marketing-form{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:10px;align-items:end;margin-top:14px}
+.marketing-form label{display:grid;gap:5px;color:var(--muted);font-size:.84rem}.marketing-form select{font:inherit;padding:10px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.marketing-progress{border-left:2px solid var(--accent);padding:10px 12px;background:var(--bg);color:var(--muted);font-size:.88rem;margin:14px 0}
+.marketing-output{border-top:1px solid var(--line);padding-top:13px}.marketing-output h3{margin:0 0 7px;font-size:1.05rem}.marketing-output p{max-width:65ch;color:var(--muted)}
+.marketing-approval{padding:11px 0;border-top:1px solid var(--line)}.marketing-approval:first-child{border-top:0}.marketing-approval h3{margin:0 0 4px;font-size:.95rem}.marketing-approval p{margin:0 0 8px;color:var(--muted);font-size:.86rem}
+.marketing-actions{display:flex;gap:7px}.marketing-actions button{font:inherit;border:1px solid var(--line);background:none;color:var(--ink);padding:6px 10px;border-radius:7px;cursor:pointer}.marketing-actions .approve{color:var(--up);border-color:#37614c}
+@media(max-width:900px){.marketing-state{grid-template-columns:1fr 1fr}.marketing-state article:nth-child(2){border-right:0}.marketing-form{grid-template-columns:1fr}}
+@media(max-width:560px){.marketing-state{grid-template-columns:1fr}.marketing-state article{border-right:0;border-bottom:1px solid var(--line)}.marketing-state article:last-child{border-bottom:0}}
 </style>
 </head>
 <body>
@@ -335,6 +348,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
     <button data-tab="ai">콘텐츠 · AI</button>
     <button data-tab="pay">결제</button>
     <button data-tab="mkt">마케팅</button>
+    <button data-tab="marketing-team">AI 마케팅 팀</button>
     <button data-tab="visit">유입</button>
     <button data-tab="feedback">피드백</button>
     <!-- 손님 화면으로 건너간다 (2026-09-11 온해님 「전환되는 버튼」).
@@ -662,6 +676,32 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
         </div>
       </div>
 
+    </section>
+
+    <section data-page="marketing-team" hidden>
+      <div class="marketing-state" id="marketingState"></div>
+      <div class="deck wide">
+        <div class="card marketing-runner">
+          <h2>콘텐츠 1건 안전 시험</h2>
+          <p class="sub">상품 정본만 사용해 DEMO 초안을 만들고 검수합니다.</p>
+          <div class="marketing-form">
+            <label>상품<select id="marketingProduct"></select></label>
+            <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option></select></label>
+            <button type="button" class="btn" id="marketingTrial">DEMO 초안 만들기</button>
+          </div>
+          <p class="marketing-progress" id="marketingProgress">대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.</p>
+          <div id="marketingResult"></div>
+        </div>
+        <div class="card">
+          <div class="hd"><h2>승인 대기</h2><button type="button" class="btn btn-line" id="marketingRefresh">새로고침</button></div>
+          <div id="marketingApprovals" class="marketing-approvals"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><h2>상품 정본</h2><button type="button" class="btn btn-line" id="marketingSync">다시 확인</button></div>
+        <p class="sub" id="marketingSyncMeta">불러오는 중…</p>
+        <div class="scroll"><table><thead><tr><th>상품</th><th>가격</th><th>등불·결제</th><th>결과 항목</th><th>상태</th></tr></thead><tbody id="marketingProducts"></tbody></table></div>
+      </div>
     </section>
 
     <section data-page="feedback" hidden>
@@ -1637,8 +1677,113 @@ window.addEventListener('resize', () => {
   reFlow = setTimeout(() => { if (DATA && DATA.daily) { drawSales(); drawVisit(); } }, 180);
 });
 
+let MARKETING_LOADED = false;
+
+async function marketingFetch(path, options = {}) {
+  const headers = { Authorization: 'Bearer ' + token(), ...(options.headers || {}) };
+  const response = await fetch('/api/admin/marketing' + path, { ...options, headers });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || 'AI 마케팅 팀 자료를 처리하지 못했습니다.');
+  return data;
+}
+
+function marketingMoney(value) {
+  return value === null || value === undefined ? '예상 비용 단가 미설정' : num(value) + '원';
+}
+
+function paintMarketing(status, usage, catalog, approvals) {
+  $('marketingState').innerHTML = [
+    ['운영 모드', esc(status.mode) + ' · DRY RUN'],
+    ['AI 연결', esc(status.connection_label)],
+    ['상품 정본', num(status.verified_count) + ' / ' + num(status.product_count) + '개 확인'],
+    ['오늘 사용량', num(usage.requests) + ' / ' + num(usage.request_limit) + '회'],
+    ['오늘 예상 비용', marketingMoney(usage.estimated_cost_krw) + ' / ' + num(usage.cost_limit_krw) + '원'],
+  ].map(([label, value]) => '<article><small>' + label + '</small><strong>' + value + '</strong></article>').join('');
+
+  const items = catalog.products || [];
+  $('marketingProduct').innerHTML = items.filter((p) => p.facts_status === 'VERIFIED').map((p) =>
+    '<option value="' + esc(p.product_id) + '">' + esc(p.name) + '</option>').join('');
+  $('marketingSyncMeta').textContent = '동기화 ' + esc(catalog.sync.synced_at || 'UNKNOWN')
+    + ' · 출처 ' + esc(catalog.sync.source_file || 'UNKNOWN');
+  $('marketingProducts').innerHTML = items.map((p) => '<tr>'
+    + '<td><b>' + esc(p.name) + '</b><br><span class="note">' + esc(p.product_id) + '</span></td>'
+    + '<td>' + (p.price_won === null || p.price_won === undefined ? 'UNKNOWN' : (p.free ? '무료' : num(p.price_won) + '원')) + '</td>'
+    + '<td>' + esc(String(p.lamp_price ?? 'UNKNOWN')) + '</td>'
+    + '<td style="white-space:normal">' + esc((p.confirmed_results || []).join(', ') || 'UNKNOWN') + '</td>'
+    + '<td>' + (p.facts_status === 'VERIFIED' ? '확인됨' : '불일치') + '</td></tr>').join('');
+
+  $('marketingApprovals').innerHTML = approvals.length ? approvals.map((a) => '<article class="marketing-approval">'
+    + '<div><b>' + esc(a.title) + '</b><span>' + esc(a.product_name) + ' · ' + esc(a.platform) + '</span></div>'
+    + '<p>' + esc(a.body) + '</p>'
+    + (a.status === 'PENDING' ? '<div class="marketing-actions">'
+      + '<button type="button" data-marketing-decision="approve" data-approval="' + a.id + '">승인 기록</button>'
+      + '<button type="button" class="btn-line" data-marketing-decision="revise" data-approval="' + a.id + '">수정 요청</button>'
+      + '<button type="button" class="btn-line" data-marketing-decision="reject" data-approval="' + a.id + '">반려</button></div>'
+      : '<small>' + esc(a.status) + ' · 외부 공개 없음</small>')
+    + '</article>').join('') : '<p class="note">승인 대기 항목이 없습니다.</p>';
+}
+
+async function loadMarketing() {
+  $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
+  try {
+    const [status, usage, catalog, approvals] = await Promise.all([
+      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'),
+    ]);
+    paintMarketing(status, usage, catalog, approvals.items || []);
+    MARKETING_LOADED = true;
+    $('marketingProgress').textContent = '대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.';
+  } catch (ex) {
+    $('marketingProgress').textContent = ex.message;
+  }
+}
+
+async function runMarketingTrial() {
+  const button = $('marketingTrial');
+  button.disabled = true;
+  $('marketingProgress').textContent = '상품 정본 확인 → 초안 작성 → 사실 검수 중…';
+  $('marketingResult').innerHTML = '';
+  try {
+    const result = await marketingFetch('/trial', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: $('marketingProduct').value, platform: $('marketingPlatform').value, mode: 'DEMO' }),
+    });
+    const d = result.draft || {};
+    $('marketingResult').innerHTML = '<div class="marketing-output"><b>' + esc(d.title || '') + '</b>'
+      + '<p>' + esc(d.hook || '') + '</p><p>' + esc(d.body || '') + '</p><p>' + esc(d.cta || '') + '</p>'
+      + '<small>사실 검수 ' + esc(result.review.status) + ' · ' + esc(result.cost_label) + '</small></div>';
+    $('marketingProgress').textContent = result.ok ? '검수 통과 · 승인 대기에 등록했습니다.' : '검수 실패 · 수정 대기로 보냈습니다.';
+    await loadMarketing();
+  } catch (ex) {
+    $('marketingProgress').textContent = ex.message;
+  } finally { button.disabled = false; }
+}
+
+async function decideMarketing(approvalId, decision) {
+  const note = decision === 'revise' ? (prompt('수정할 내용을 적어 주세요.') || '') : '';
+  const result = await marketingFetch('/approvals/' + approvalId + '/' + decision, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note }),
+  });
+  $('marketingProgress').textContent = result.message;
+  await loadMarketing();
+}
+
+$('marketingTrial').addEventListener('click', runMarketingTrial);
+$('marketingRefresh').addEventListener('click', loadMarketing);
+$('marketingSync').addEventListener('click', async () => {
+  $('marketingProgress').textContent = '상품 정본을 다시 확인하는 중…';
+  try { await marketingFetch('/products/sync', { method: 'POST' }); await loadMarketing(); }
+  catch (ex) { $('marketingProgress').textContent = ex.message; }
+});
+$('marketingApprovals').addEventListener('click', async (e) => {
+  const button = e.target.closest('[data-marketing-decision]');
+  if (!button) return;
+  button.disabled = true;
+  try { await decideMarketing(button.dataset.approval, button.dataset.marketingDecision); }
+  catch (ex) { $('marketingProgress').textContent = ex.message; button.disabled = false; }
+});
+
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
-                   pay: '결제', mkt: '마케팅', visit: '유입', feedback: '피드백' };
+                   pay: '결제', mkt: '마케팅', visit: '유입', 'marketing-team': 'AI 마케팅 팀', feedback: '피드백' };
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   // 🛑 「나가기」도 같은 상자에 있다. data-tab 이 있는 것만 고른다
@@ -1650,6 +1795,7 @@ $('tabs').addEventListener('click', (e) => {
   if (b.dataset.tab === 'ai' && !PROMPTS.length) { loadPrompts(); paintAssets(); }
   if (b.dataset.tab === 'mkt' && !COUPONS.length) loadCoupons();
   if (b.dataset.tab === 'mkt' && !DC_PROMOS_LOADED) loadDcPromos();
+  if (b.dataset.tab === 'marketing-team' && !MARKETING_LOADED) loadMarketing();
   if (b.dataset.tab === 'feedback') loadFeedback();
   window.scrollTo(0, 0);
 });

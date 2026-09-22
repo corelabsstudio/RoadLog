@@ -129,3 +129,16 @@ python scripts/_roadlog_suite_test.py --live
 ## 언어
 
 사용자와 **한국어**로 소통한다.
+
+## AI 마케팅 팀 관리자 통합 (2026-09-23 Codex)
+
+- 운영 관리자 `/admin/`에 `AI 마케팅 팀` 탭을 추가했다. 별도 Marketing OS 앱 대신 기존 `_require_admin()` 인증 안에서 동작한다.
+- `modules/marketing_os.py`가 `web/admin/marketing-products.json`을 서버 `lamps.py`와 대조하고, 별도 `DATA_DIR/marketing_os.db`에 동기화·초안·검수·승인·사용량 기록을 저장한다.
+- 첫 통합판은 `DRY RUN`·`DEMO` 고정이다. Gemini 키 존재 여부만 표시하며 REAL 호출과 자동 호출은 모두 잠겨 있다.
+- 거짓 가격, 검증되지 않은 할인, 없는 결과 항목, 보장 표현, 타 브랜드, AI 상투 표현을 승인 전에 차단한다.
+- 승인 버튼은 승인 이력만 남기며 외부 SNS 게시·광고·가격 변경·고객 메시지는 실행하지 않는다.
+- 테스트: `scripts/_marketing_os_test.py`. 상품 44개 대조, API 키 없음, 사실 검수, REAL 잠금, 승인 후 외부 게시 차단을 검사한다.
+- 로컬 확인용 `run_admin_local.ps1`은 전용 `.venv`로 서버를 켜고 `http://127.0.0.1:8501/admin/`을 자동으로 연다. 바탕화면 바로가기 `ROADLOG AI 마케팅 팀.lnk`가 이 파일을 실행한다.
+- SaaS 확장을 위해 `modules/marketing_core/`를 브랜드·웹 프레임워크 독립 코어로 분리했다. 포트, 검수 정책, 생성·승인 서비스, 저장소가 이 안에 있다.
+- `modules/marketing_roadlog.py`만 `lamps.py`, 상품 JSON, ROADLOG 문구를 안다. `modules/marketing_os.py`는 기존 API를 깨지 않도록 두 계층을 조립하는 얇은 파사드다.
+- 네 마케팅 테이블에 `tenant_id`를 추가하고 기존 행은 `roadlog`로 자동 이관한다. 테스트에서 두 테넌트의 승인 목록과 결정 권한이 섞이지 않는 것을 확인한다.
