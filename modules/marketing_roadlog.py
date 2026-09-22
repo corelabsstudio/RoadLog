@@ -26,4 +26,13 @@ class RoadLogDemoProvider:
         self.model=os.getenv("SAJU_MODEL","gemini-3.8-flash"); self.connected=bool((os.getenv("GEMINI_API_KEY") or "").strip())
     def generate(self,product:dict[str,Any],platform:str)->dict[str,Any]:
         price="무료" if product["free"] else f"{product['price_won']:,}원"; feature=(product.get("confirmed_results") or ["확인된 결과 항목 없음"])[0]
-        return {"platform":platform,"product_id":product["product_id"],"title":f"{product['name']}에서 확인할 수 있는 것","hook":f"지금 필요한 정보만 {price} 기준으로 확인해 보세요.","body":f"ROADLOG의 {product['name']}은 현재 {price}입니다. 확인된 결과 항목은 {feature}입니다.","cta":"상품 화면에서 현재 정보를 다시 확인해 주세요.","image_prompt":"ROADLOG 사주 결과를 차분하게 확인하는 장면, 글자와 가격 표기 없음","factual_claims":[feature] if product.get("confirmed_results") else [],"source_facts":product["product_id"],"uncertainty":[],"estimated_cost":None}
+        name=product["name"]
+        base=f"ROADLOG의 {name}은 현재 {price}입니다. 확인된 결과 항목은 {feature}입니다."
+        formats={
+            "원본":(f"{name} 상품 사실 원본",f"{name}에 대해 확인된 정보입니다.",base),
+            "블로그":(f"{name}에서 확인할 수 있는 것",f"{name}을 보기 전에 무엇을 확인할까요?",f"상품 정보\n{base}\n확인 전 참고\n결과 항목과 가격은 상품 화면에서 다시 확인해 주세요."),
+            "짧은 영상 대본":(f"{name} 짧은 영상 대본",f"{name}에는 어떤 결과 항목이 있을까요?",f"화면 1: {name}\n내레이션: {base}\n화면 2: 상품 화면에서 현재 정보를 확인해 주세요."),
+            "카드뉴스":(f"{name} 카드뉴스 문안",f"첫 장: {name}에서 확인할 수 있는 정보",f"2장: {feature}\n3장: {base}\n마지막 장: 상품 화면에서 현재 정보를 확인해 주세요."),
+        }
+        title,hook,body=formats.get(platform,(f"{name}에서 확인할 수 있는 것",f"지금 필요한 정보만 {price} 기준으로 확인해 보세요.",base))
+        return {"platform":platform,"product_id":product["product_id"],"title":title,"hook":hook,"body":body,"cta":"상품 화면에서 현재 정보를 다시 확인해 주세요.","image_prompt":"ROADLOG 사주 결과를 차분하게 확인하는 장면, 글자와 가격 표기 없음","factual_claims":[feature] if product.get("confirmed_results") else [],"source_facts":product["product_id"],"uncertainty":[],"estimated_cost":None}

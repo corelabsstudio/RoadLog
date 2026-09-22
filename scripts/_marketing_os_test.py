@@ -55,6 +55,18 @@ def main() -> None:
 
         result = marketing_os.trial(web, product["product_id"], "블로그", "DEMO")
         check(result["ok"] and result["approval_id"], "검수 통과만 승인 대기 등록")
+        bundle = marketing_os.create_bundle(web, product["product_id"], "이 상품에서 무엇을 확인할 수 있나요?", "DEMO")
+        check(bundle["dry_run"] and not bundle["published"] and len(bundle["items"]) == 4, "원본과 채널별 DEMO 4건 생성")
+        check(bundle["items"][0]["status"] == "SOURCE" and bundle["items"][0]["approval_id"] is None, "원본은 승인 대기에 넣지 않음")
+        check(all(item["approval_id"] for item in bundle["items"][1:]), "검수 통과한 채널별 초안만 승인 대기")
+        check(marketing_os.bundles()[0]["customer_question"] == "이 상품에서 무엇을 확인할 수 있나요?", "고객 질문과 콘텐츠 묶음 저장")
+        check(marketing_os.bundles()[0]["source_file"].endswith("marketing-products.json"), "상품 정본 출처 저장")
+        check(any("원본·채널별" in row["action"] for row in marketing_os.team_dashboard()["activity"]), "콘텐츠 담당 활동 기록")
+        try:
+            marketing_os.create_bundle(web, product["product_id"], "질문", "REAL")
+            raise AssertionError("묶음 REAL 호출이 차단되지 않음")
+        except PermissionError:
+            print("OK  묶음 REAL 유료 호출 잠금")
         try:
             marketing_os.trial(web, product["product_id"], "블로그", "REAL")
             raise AssertionError("REAL 호출이 차단되지 않음")
@@ -98,6 +110,15 @@ def main() -> None:
             raise AssertionError("다른 테넌트 승인 접근이 허용됨")
         except ValueError:
             print("OK  다른 테넌트 승인 접근 차단")
+        class BadVariantProvider(FakeProvider):
+            def generate(self, item, platform):
+                draft = super().generate(item, platform)
+                if platform == "블로그": draft["body"] = "현재 999,999원입니다."
+                return draft
+        bad_service = MarketingService(FakeCatalog(), BadVariantProvider(), MarketingRepository(marketing_os.DB, "tenant-b"), generic_policy)
+        bad_bundle = bad_service.create_bundle("p1", "가격이 궁금합니다")
+        check(bad_bundle["items"][1]["status"] == "REVISION_REQUESTED" and bad_bundle["items"][1]["approval_id"] is None, "거짓 가격 채널 초안 승인 차단")
+        check(not tenant_a.bundles() and len(tenant_b.bundles()) == 1, "콘텐츠 묶음 테넌트 격리")
         if old_key is not None:
             os.environ["GEMINI_API_KEY"] = old_key
     finally:

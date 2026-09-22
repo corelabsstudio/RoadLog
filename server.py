@@ -264,6 +264,12 @@ class MarketingDecisionBody(BaseModel):
     note: str = ""
 
 
+class MarketingBundleBody(BaseModel):
+    product_id: str
+    customer_question: str
+    mode: str = "DEMO"
+
+
 class ForgotBody(BaseModel):
     email: str
 
@@ -934,6 +940,23 @@ def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = 
 def admin_marketing_approvals(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     return {"items": marketing_ops.approvals()}
+
+
+@app.get("/api/admin/marketing/bundles")
+def admin_marketing_bundles(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return {"items": marketing_ops.bundles()}
+
+
+@app.post("/api/admin/marketing/bundles")
+def admin_marketing_create_bundle(body: MarketingBundleBody, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.create_bundle(WEB, body.product_id, body.customer_question, body.mode)
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/api/admin/marketing/approvals/{approval_id}/{decision}")

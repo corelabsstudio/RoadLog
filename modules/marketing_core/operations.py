@@ -40,6 +40,15 @@ class TeamOperations:
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="stop" else "INFO",stamp))
         return {"ok":True,"status":state}
 
+    def record_bundle(self, bundle_id: int, item_count: int) -> None:
+        stamp = now()
+        with self.repo.connect() as db:
+            db.execute("UPDATE marketing_agents SET last_activity=? WHERE tenant_id=? AND agent_id IN ('content_writer','quality_reviewer')", (stamp, self.repo.tenant_id))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                       (self.repo.tenant_id, "content_writer", "원본·채널별 DEMO 초안", "관리자 수동 실행", f"묶음 #{bundle_id} · {item_count}건 생성 · 외부 게시 없음", "INFO", stamp))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                       (self.repo.tenant_id, "quality_reviewer", "채널별 사실 검수", "상품 정본과 비교", f"묶음 #{bundle_id} · 검수 결과를 콘텐츠별로 저장", "INFO", stamp))
+
     def run_job(self, job_key: str) -> dict[str,Any]:
         jobs={"market":("market_researcher","RESEARCHING","시장 흐름 조사","검색 API가 연결되지 않아 확인 대기로 기록했습니다."),"seo":("seo_specialist","RESEARCHING","검색 기회 점검","검색 성과가 연결되지 않아 수치를 만들지 않았습니다."),"content":("content_writer","WRITING","콘텐츠 초안 준비","상품 정본을 사용한 수동 DEMO 생성 대기입니다."),"review":("quality_reviewer","REVIEWING","사실 검수","승인 대기 콘텐츠의 상품 사실을 확인했습니다."),"report":("marketing_director","WORKING","일일 보고서","오늘 운영 기록을 정리했습니다.")}
         if job_key not in jobs: raise ValueError("지원하지 않는 작업입니다.")

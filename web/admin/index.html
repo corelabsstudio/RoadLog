@@ -316,6 +316,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .marketing-state .safe{color:var(--up)}.marketing-state .locked{color:#e7c478}
 .marketing-form{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:10px;align-items:end;margin-top:14px}
 .marketing-form label{display:grid;gap:5px;color:var(--muted);font-size:.84rem}.marketing-form select{font:inherit;padding:10px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+.marketing-brief{display:grid;gap:10px;margin-top:12px}.marketing-brief label{display:grid;gap:6px;color:var(--muted);font-size:.84rem}.marketing-brief textarea{width:100%;min-height:72px;box-sizing:border-box;padding:10px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;font:inherit;resize:vertical}.marketing-brief button{justify-self:start}.marketing-bundle{padding:13px 0;border-top:1px solid var(--line)}.marketing-bundle:first-child{border-top:0}.marketing-bundle h3{margin:0 0 6px;font-size:.98rem}.marketing-bundle p{color:var(--muted);font-size:.84rem;margin:4px 0}.marketing-bundle details{padding:8px 0;border-top:1px solid var(--line)}.marketing-bundle summary{cursor:pointer}.marketing-bundle pre{white-space:pre-wrap;font:inherit;font-size:.82rem;color:var(--muted)}
 .marketing-progress{border-left:2px solid var(--accent);padding:10px 12px;background:var(--bg);color:var(--muted);font-size:.88rem;margin:14px 0}
 .marketing-output{border-top:1px solid var(--line);padding-top:13px}.marketing-output h3{margin:0 0 7px;font-size:1.05rem}.marketing-output p{max-width:65ch;color:var(--muted)}
 .marketing-approval{padding:11px 0;border-top:1px solid var(--line)}.marketing-approval:first-child{border-top:0}.marketing-approval h3{margin:0 0 4px;font-size:.95rem}.marketing-approval p{margin:0 0 8px;color:var(--muted);font-size:.86rem}
@@ -616,6 +617,19 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
       <div class="marketing-command"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <div class="marketing-team-grid" id="marketingAgents"></div>
       <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
+      <div class="deck wide">
+        <div class="card">
+          <h2>원본에서 여러 채널로</h2>
+          <p class="sub">고객 질문은 내부 기획 메모로 저장합니다. 상품 정본으로 DEMO 원본·블로그·짧은 영상 대본·카드뉴스 문안을 만들고 각각 검수합니다.</p>
+          <div class="marketing-brief">
+            <label>상품<select id="marketingBundleProduct"></select></label>
+            <label>고객 질문<textarea id="marketingQuestion" maxlength="300" placeholder="예: 오늘 운세 상품에서 무엇을 확인할 수 있나요?"></textarea></label>
+            <button type="button" class="btn" id="marketingBundleCreate">원본과 채널별 DEMO 초안 만들기</button>
+          </div>
+          <p class="marketing-progress" id="marketingBundleProgress">대기 중 · 외부 AI 호출·게시 없음</p>
+        </div>
+        <div class="card"><h2>콘텐츠 묶음·결과</h2><p class="sub">승인 기록과 실제 게시를 구분합니다. 유입 성과는 연결 전까지 표시하지 않습니다.</p><div id="marketingBundles" class="marketing-activity"></div></div>
+      </div>
       <div class="deck wide">
         <div class="card marketing-runner">
           <h2>콘텐츠 1건 안전 시험</h2>
@@ -1535,8 +1549,13 @@ function paintMarketing(status, usage, catalog, approvals) {
   ].map(([label, value]) => '<article><small>' + label + '</small><strong>' + value + '</strong></article>').join('');
 
   const items = catalog.products || [];
+  const selectedProduct = $('marketingProduct').value;
+  const selectedBundleProduct = $('marketingBundleProduct').value;
   $('marketingProduct').innerHTML = items.filter((p) => p.facts_status === 'VERIFIED').map((p) =>
     '<option value="' + esc(p.product_id) + '">' + esc(p.name) + '</option>').join('');
+  $('marketingBundleProduct').innerHTML = $('marketingProduct').innerHTML;
+  if (selectedProduct) $('marketingProduct').value = selectedProduct;
+  if (selectedBundleProduct) $('marketingBundleProduct').value = selectedBundleProduct;
   $('marketingSyncMeta').textContent = '동기화 ' + esc(catalog.sync.synced_at || 'UNKNOWN')
     + ' · 출처 ' + esc(catalog.sync.source_file || 'UNKNOWN');
   $('marketingProducts').innerHTML = items.map((p) => '<tr>'
@@ -1557,6 +1576,17 @@ function paintMarketing(status, usage, catalog, approvals) {
     + '</article>').join('') : '<p class="note">승인 대기 항목이 없습니다.</p>';
 }
 
+function paintMarketingBundles(items) {
+  $('marketingBundles').innerHTML = items.length ? items.map((bundle) => '<section class="marketing-bundle">'
+    + '<h3>' + esc(bundle.product_name) + ' · 묶음 #' + num(bundle.id) + '</h3>'
+    + '<p>고객 질문: ' + esc(bundle.customer_question) + '</p>'
+    + '<p>정본 출처: ' + esc(bundle.source_file) + ' · 생성 ' + esc(bundle.created_at) + '</p>'
+    + (bundle.contents || []).map((content) => '<details><summary>' + esc(content.platform) + ' · ' + esc(content.status)
+      + ' · ' + esc(content.review_result) + '</summary><b>' + esc(content.title) + '</b><pre>' + esc(content.hook) + '\n' + esc(content.body) + '\n' + esc(content.cta) + '</pre>'
+      + '<p>검수 사유: ' + esc((JSON.parse(content.review_reasons_json || '[]')).join(', ') || '없음') + '</p></details>').join('')
+    + '<p>외부 게시: 없음 · 유입·가입·구매 성과: 연결되지 않음</p></section>').join('') : '<p class="note">아직 콘텐츠 묶음이 없습니다.</p>';
+}
+
 function paintMarketingTeam(team) {
   $('marketingTeamStatus').textContent = (team.status.status || 'STOPPED') + ' · 마지막 변경 ' + (team.status.updated_at || 'UNKNOWN');
   $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(a.last_activity || 'UNKNOWN') + '</small></article>').join('');
@@ -1569,11 +1599,12 @@ function paintMarketingTeam(team) {
 async function loadMarketing() {
   $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
   try {
-    const [status, usage, catalog, approvals, team] = await Promise.all([
-      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'),
+    const [status, usage, catalog, approvals, team, bundles] = await Promise.all([
+      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'), marketingFetch('/bundles'),
     ]);
     paintMarketing(status, usage, catalog, approvals.items || []);
     paintMarketingTeam(team);
+    paintMarketingBundles(bundles.items || []);
     MARKETING_LOADED = true;
     $('marketingProgress').textContent = '대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.';
   } catch (ex) {
@@ -1612,6 +1643,17 @@ async function decideMarketing(approvalId, decision) {
 }
 
 $('marketingTrial').addEventListener('click', runMarketingTrial);
+$('marketingBundleCreate').addEventListener('click', async () => {
+  const button = $('marketingBundleCreate'); button.disabled = true;
+  $('marketingBundleProgress').textContent = '상품 정본 확인 → 원본 생성 → 채널별 변환 → 사실 검수 중…';
+  try {
+    const result = await marketingFetch('/bundles', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ product_id: $('marketingBundleProduct').value, customer_question: $('marketingQuestion').value, mode: 'DEMO' }) });
+    await loadMarketing();
+    $('marketingBundleProgress').textContent = '묶음 #' + result.bundle_id + ' · ' + result.items.length + '건 기록 · 실제 AI 호출·외부 게시 없음';
+  } catch (ex) { $('marketingBundleProgress').textContent = ex.message; }
+  finally { button.disabled = false; }
+});
 $('marketingRefresh').addEventListener('click', loadMarketing);
 $('marketingSync').addEventListener('click', async () => {
   $('marketingProgress').textContent = '상품 정본을 다시 확인하는 중…';

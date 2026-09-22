@@ -42,6 +42,23 @@ class MarketingService:
 
     def approvals(self) -> list[dict[str, Any]]: return self.repository.approvals()
 
+    def create_bundle(self, product_id: str, customer_question: str, mode: str = "DEMO") -> dict[str, Any]:
+        if mode.upper() != "DEMO": raise PermissionError("실제 유료 AI 호출은 잠겨 있습니다.")
+        question = customer_question.strip()
+        if not question or len(question) > 300: raise ValueError("고객 질문은 1~300자로 적어 주세요.")
+        data = self.products()
+        product = next((p for p in data["products"] if p["product_id"] == product_id), None)
+        if not product or product["facts_status"] != "VERIFIED": raise ValueError("확인된 상품 정본을 선택해 주세요.")
+        channels = ("원본", "블로그", "짧은 영상 대본", "카드뉴스")
+        drafts = [(draft, review_draft(product, draft, self.brand_policy))
+                  for draft in (self.content.generate(product, channel) for channel in channels)]
+        if drafts[0][1]: raise ValueError("원본 초안이 사실 검수를 통과하지 못했습니다.")
+        result = self.repository.save_bundle(product, data["sync"], question, drafts, now())
+        return {**result, "mode": "DEMO", "dry_run": True, "published": False,
+                "performance_label": "연결되지 않음", "cost_label": "외부 AI 호출 없음 · 예상 비용 0원"}
+
+    def bundles(self) -> list[dict[str, Any]]: return self.repository.bundles()
+
     def decide(self, approval_id: int, decision: str, note: str) -> dict[str, Any]:
         states={"approve":"APPROVED","reject":"REJECTED","revise":"REVISION_REQUESTED"}
         if decision not in states: raise ValueError("지원하지 않는 결정입니다.")
