@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>무냥이 저주 신단 · 로드로그</title>
-  <meta name="description" content="나를 열받게 한 사람에게 소심하고 킹받는 저주 카드 한 장. 무냥이와 장난스럽게 털고 가세요." />
+  <meta name="description" content="나를 열받게 한 사람에게 소심하고 킹받는 저주 카드 한 장. 무냥이와 장난스럽게 털고 가세요." />
+
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
@@ -21,9 +22,9 @@
   <meta name="twitter:description" content="나를 열받게 한 사람에게 소심하고 킹받는 저주 카드 한 장. 무냥이와 장난스럽게 털고 가세요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/curse.html" />
-  <script type="module" crossorigin src="/assets/curse-drHsfsoy.js"></script>
+  <script type="module" crossorigin src="/assets/curse-DPFfpeOv.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/browser-MwKTcFtb.js">
-  <link rel="stylesheet" crossorigin href="/assets/curse-wnDv1VMe.css">
+  <link rel="stylesheet" crossorigin href="/assets/curse-Dp5grTnR.css">
 </head>
 <body>
   <header class="shrine-top">
@@ -159,10 +160,15 @@
 
   <dialog id="authDialog" class="auth-dialog">
     <form method="dialog" class="auth-box" id="authForm">
-      <button class="close" value="cancel" aria-label="닫기">×</button>
+      <button type="button" class="close" id="authClose" aria-label="닫기">×</button>
       <p class="step-mark">결과를 간직하려면</p>
       <h2>로그인하고<br />상세 의식을 이어가요</h2>
       <div class="auth-tabs"><button type="button" class="on" data-mode="login">로그인</button><button type="button" data-mode="register">처음 왔어요</button></div>
+      <div class="curse-social" id="curseSocial" hidden>
+        <a id="curseKakao" class="curse-social-btn kakao" href="/api/auth/kakao/start" hidden>카카오로 시작하기</a>
+        <a id="curseGoogle" class="curse-social-btn google" href="/api/auth/google/start" hidden>구글로 시작하기</a>
+        <p>또는 이메일로 계속하기</p>
+      </div>
       <label>이메일<input type="email" name="email" autocomplete="email" required placeholder="you@example.com" /></label>
       <label>비밀번호<input type="password" name="password" minlength="8" autocomplete="current-password" required placeholder="8자 이상" /></label>
       <label id="nameField" hidden>부를 이름<input name="name" maxlength="20" autocomplete="nickname" placeholder="예: 온해" /></label>
@@ -181,6 +187,7 @@
       <button type="button" class="pay-option" id="cashPay"><b>1,500원 결제</b><span>카드·계좌이체·간편결제</span></button>
     </div>
   </dialog>
-
+
+
 </body>
 </html>
