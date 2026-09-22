@@ -109,6 +109,13 @@ class TeamOperations:
                 db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?", (state,task,100 if state == "DONE" else 0,stamp,self.repo.tenant_id,aid))
                 db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)", (self.repo.tenant_id,aid,task,"실제 Gemini 생성·정본 검수",f"콘텐츠 #{content_id} · 외부 게시 없음","INFO",stamp))
 
+    def record_content_skipped(self, reason: str) -> None:
+        stamp = now()
+        with self.repo.connect() as db:
+            db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task=?,progress=0,last_activity=? WHERE tenant_id=? AND agent_id='content_writer'", (reason, stamp, self.repo.tenant_id))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                (self.repo.tenant_id, "content_writer", "AI 초안 생성 건너뜀", "팀 즉시 실행", reason, "INFO", stamp))
+
     def record_report(self, day: str) -> None:
         stamp = now()
         with self.repo.connect() as db:

@@ -77,7 +77,9 @@ def control(action:str) -> dict[str,Any]:
                 ops.finish_due(day, "start_content", "AI 생성 실패. 오늘 자동 재호출 없음; 사용량과 작업 기록을 확인해 주세요.", failed=True)
                 jobs.append({"job":"content","status":"FAILED"})
         else:
-            jobs.append({"job":"content","status":"SKIPPED","reason":"AI 미연결 또는 오늘 팀 시작 초안 이미 실행"})
+            reason = "AI 미연결" if not provider or not provider.connected else "오늘 팀 시작 AI 초안 이미 실행"
+            ops.record_content_skipped(reason)
+            jobs.append({"job":"content","status":"SKIPPED","reason":reason})
         ops.record_report(day)
         jobs.append({"job":"report","status":"COMPLETED"})
         result["jobs"] = jobs
