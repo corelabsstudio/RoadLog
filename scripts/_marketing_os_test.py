@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import shutil
 import sys
 import tempfile
 import types
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,18 @@ def main() -> None:
         (web / "admin").mkdir(parents=True)
         shutil.copy2(ROOT / "web" / "admin" / "marketing-products.json", web / "admin" / "marketing-products.json")
         marketing_os.DB = temp / "marketing_os.db"
+
+        legacy_db = temp / "legacy_concurrent.db"
+        with sqlite3.connect(legacy_db) as conn:
+            conn.execute("CREATE TABLE marketing_content(id INTEGER PRIMARY KEY)")
+        def open_concurrently(_):
+            conn = MarketingRepository(legacy_db, "tenant-a").connect()
+            conn.close()
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(open_concurrently, range(16)))
+        with sqlite3.connect(legacy_db) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(marketing_content)")}
+        check("bundle_id" in columns and "tenant_id" in columns, "동시 관리자 요청의 DB 열 추가 충돌 방지")
 
         old_key = os.environ.pop("GEMINI_API_KEY", None)
         state = marketing_os.status(web)

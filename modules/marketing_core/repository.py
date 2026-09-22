@@ -21,13 +21,22 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_sync(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,source_path TEXT NOT NULL,source_hash TEXT NOT NULL,product_count INTEGER NOT NULL,warning_count INTEGER NOT NULL,synced_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_bundles(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,product_id TEXT NOT NULL,product_name TEXT NOT NULL,customer_question TEXT NOT NULL,source_file TEXT NOT NULL,source_hash TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
         """)
-        for table in ("marketing_content", "marketing_approvals", "marketing_runs", "marketing_sync"):
-            if "tenant_id" not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
-                conn.execute(f"ALTER TABLE {table} ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '{self.legacy_tenant_id}'")
-            conn.execute(f"CREATE INDEX IF NOT EXISTS ix_{table}_tenant ON {table}(tenant_id)")
-        if "bundle_id" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_content)")}:
-            conn.execute("ALTER TABLE marketing_content ADD COLUMN bundle_id INTEGER")
-        conn.execute("CREATE INDEX IF NOT EXISTS ix_marketing_bundles_tenant ON marketing_bundles(tenant_id)")
+        # Concurrent dashboard requests must not observe the same missing column
+        # and both attempt ALTER TABLE. Lock before checking the schema.
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            for table in ("marketing_content", "marketing_approvals", "marketing_runs", "marketing_sync"):
+                if "tenant_id" not in {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}:
+                    conn.execute(f"ALTER TABLE {table} ADD COLUMN tenant_id TEXT NOT NULL DEFAULT '{self.legacy_tenant_id}'")
+                conn.execute(f"CREATE INDEX IF NOT EXISTS ix_{table}_tenant ON {table}(tenant_id)")
+            if "bundle_id" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_content)")}:
+                conn.execute("ALTER TABLE marketing_content ADD COLUMN bundle_id INTEGER")
+            conn.execute("CREATE INDEX IF NOT EXISTS ix_marketing_bundles_tenant ON marketing_bundles(tenant_id)")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            conn.close()
+            raise
         return conn
 
     def record_sync(self, meta: dict[str, Any], count: int) -> None:
