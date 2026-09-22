@@ -22,6 +22,7 @@ class TeamOperations:
             db.execute("INSERT OR IGNORE INTO marketing_state(tenant_id,status,updated_at) VALUES(?,?,?)",(self.repo.tenant_id,"STOPPED",now()))
             for aid,name,label in self.agent_defs:
                 db.execute("INSERT OR IGNORE INTO marketing_agents(tenant_id,agent_id,name,label,status,last_activity) VALUES(?,?,?,?,?,?)",(self.repo.tenant_id,aid,name,label,"IDLE",now()))
+            db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task='실제 AI 생성 검증 대기',progress=0 WHERE tenant_id=? AND current_task LIKE '%DEMO%'", (self.repo.tenant_id,))
 
     def dashboard(self) -> dict[str,Any]:
         with self.repo.connect() as db:
@@ -43,6 +44,10 @@ class TeamOperations:
             if not state or state["status"] != "RUNNING": return []
             for item in self.schedule_defs:
                 if not item.get("automatic") or clock < item["time"]: continue
+                if item["job"] == "content":
+                    enabled = db.execute("SELECT enabled FROM marketing_automation WHERE tenant_id=?", (self.repo.tenant_id,)).fetchone()
+                    success = db.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' AND result_summary='수동 검수 통과' LIMIT 1", (self.repo.tenant_id,)).fetchone()
+                    if not enabled or not enabled["enabled"] or not success: continue
                 cur = db.execute("INSERT OR IGNORE INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
                     (self.repo.tenant_id,day,item["job"],"RUNNING",now()))
                 if cur.rowcount: claimed.append((day,item["job"]))
@@ -60,17 +65,17 @@ class TeamOperations:
                 db.execute("UPDATE marketing_agents SET status='ERROR',current_task=?,progress=0,last_activity=? WHERE tenant_id=? AND agent_id=?",
                     (result,stamp,self.repo.tenant_id,aid))
 
-    def record_kickoff(self, product_result: str) -> None:
-        """Record only work the local DEMO bundle actually supports, and name missing integrations."""
+    def record_kickoff(self, product_result: str, ai_ready: bool) -> None:
+        """Record verified catalog checks; never claim an AI draft was produced here."""
         stamp = now()
         outcomes = (
-            ("marketing_director", "DONE", "오늘 상품 정본 기반 작업 배정", product_result),
+            ("marketing_director", "DONE", "오늘 상품 정본 점검", product_result),
             ("market_researcher", "WAITING_DATA", "상품 정본 점검 · 외부 시장 데이터 미연결", "상품 사실은 확인했습니다. 시장 동향은 조사하지 않았습니다."),
             ("seo_specialist", "WAITING_DATA", "상품명 기반 주제 후보 확인 · 검색 API 미연결", "검색량·순위는 확인하지 않았습니다."),
-            ("content_writer", "DONE", "상품 정본 DEMO 초안 생성", product_result),
-            ("creative_director", "DONE", "영상 대본·카드뉴스 문안 준비", "내부 DEMO 묶음에 문안을 저장했습니다. 이미지·영상 제작은 하지 않았습니다."),
-            ("social_manager", "WAITING_APPROVAL", "채널별 초안 정리 · 외부 게시 차단", "블로그·짧은 영상·카드뉴스 문안만 준비됐습니다. 외부 게시 없음."),
-            ("quality_reviewer", "DONE", "상품 사실 검수 결과 저장", "채널별 검수 결과를 콘텐츠에 저장했습니다."),
+            ("content_writer", "WAITING_SCHEDULE" if ai_ready else "WAITING_AI", "실제 AI 초안 예약 대기" if ai_ready else "실제 AI 수동 1건 검증 대기", "새 AI 초안을 생성하지 않았습니다."),
+            ("creative_director", "WAITING_CONTENT", "영상 대본·카드뉴스 실제 초안 대기", "이미지·영상 제작은 연결되지 않았습니다."),
+            ("social_manager", "WAITING_CONTENT", "실제 초안 대기 · 외부 게시 차단", "외부 게시는 실행하지 않았습니다."),
+            ("quality_reviewer", "WAITING_CONTENT", "실제 초안의 사실 검수 대기", "검수할 새 AI 콘텐츠가 없습니다."),
             ("performance_analyst", "WAITING_DATA", "성과 데이터 연결 대기", "유입·가입·구매 성과 API 미연결. 성과 수치를 만들지 않았습니다."),
         )
         with self.repo.connect() as db:
@@ -78,13 +83,24 @@ class TeamOperations:
                 db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",
                     (status,task,100 if status == "DONE" else 0,stamp,self.repo.tenant_id,aid))
                 db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
-                    (self.repo.tenant_id,aid,task,"팀 시작 후 내부 DEMO 점검",result,"INFO",stamp))
+                    (self.repo.tenant_id,aid,task,"팀 시작 후 정본 점검",result,"INFO",stamp))
+
+    def record_real_content(self, content_id: int, passed: bool, product_name: str) -> None:
+        stamp = now()
+        with self.repo.connect() as db:
+            for aid, state, task in (
+                ("content_writer", "DONE", f"실제 AI 초안 #{content_id} 생성 · {product_name}"),
+                ("quality_reviewer", "DONE", "실제 AI 초안 정본 검수 " + ("통과" if passed else "차단")),
+                ("social_manager", "WAITING_APPROVAL" if passed else "WAITING_CONTENT", "승인 대기 · 외부 게시 차단" if passed else "검수 통과 초안 대기"),
+            ):
+                db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?", (state,task,100 if state == "DONE" else 0,stamp,self.repo.tenant_id,aid))
+                db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)", (self.repo.tenant_id,aid,task,"실제 Gemini 생성·정본 검수",f"콘텐츠 #{content_id} · 외부 게시 없음","INFO",stamp))
 
     def record_report(self, day: str) -> None:
         stamp = now()
         with self.repo.connect() as db:
-            counts = dict(db.execute("SELECT COUNT(*) total,COALESCE(SUM(status='PENDING_APPROVAL'),0) pending FROM marketing_content WHERE tenant_id=? AND date(created_at,'+9 hours')=?",(self.repo.tenant_id,day)).fetchone())
-            body = (f"# 일일 마케팅 보고서\n\n날짜: {day}\n\n- DEMO 초안: {counts['total']}건\n"
+            counts = dict(db.execute("SELECT COUNT(*) total,COALESCE(SUM(status='PENDING_APPROVAL'),0) pending FROM marketing_content WHERE tenant_id=? AND mode='REAL' AND substr(created_at,1,10)=?",(self.repo.tenant_id,day)).fetchone())
+            body = (f"# 일일 마케팅 보고서\n\n날짜: {day}\n\n- 실제 AI 초안: {counts['total']}건\n"
                     f"- 승인 대기: {counts['pending']}건\n- 외부 성과 API: 연결되지 않음\n- 실제 게시: 실행하지 않음\n")
             db.execute("INSERT INTO marketing_reports(tenant_id,report_date,title,body,created_at) VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,report_date) DO UPDATE SET body=excluded.body,created_at=excluded.created_at",
                 (self.repo.tenant_id,day,f"{day} 일일 보고서",body,stamp))
@@ -107,15 +123,15 @@ class TeamOperations:
     def record_bundle(self, bundle_id: int, item_count: int) -> None:
         stamp = now()
         with self.repo.connect() as db:
-            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='content_writer'", (f"DEMO 묶음 #{bundle_id} · {item_count}건 생성",stamp,self.repo.tenant_id))
-            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='quality_reviewer'", (f"DEMO 묶음 #{bundle_id} · 사실 검수 결과 저장",stamp,self.repo.tenant_id))
+            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='content_writer'", (f"실제 AI 묶음 #{bundle_id} · {item_count}건 생성",stamp,self.repo.tenant_id))
+            db.execute("UPDATE marketing_agents SET status='DONE',current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id='quality_reviewer'", (f"실제 AI 묶음 #{bundle_id} · 사실 검수 결과 저장",stamp,self.repo.tenant_id))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
-                       (self.repo.tenant_id, "content_writer", "원본·채널별 DEMO 초안", "관리자 수동 실행", f"묶음 #{bundle_id} · {item_count}건 생성 · 외부 게시 없음", "INFO", stamp))
+                       (self.repo.tenant_id, "content_writer", "채널별 실제 AI 초안", "관리자 수동 실행", f"묶음 #{bundle_id} · {item_count}건 생성 · 외부 게시 없음", "INFO", stamp))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
                        (self.repo.tenant_id, "quality_reviewer", "채널별 사실 검수", "상품 정본과 비교", f"묶음 #{bundle_id} · 검수 결과를 콘텐츠별로 저장", "INFO", stamp))
 
     def run_job(self, job_key: str) -> dict[str,Any]:
-        jobs={"market":("market_researcher","RESEARCHING","시장 흐름 조사","검색 API가 연결되지 않아 확인 대기로 기록했습니다."),"seo":("seo_specialist","RESEARCHING","검색 기회 점검","검색 성과가 연결되지 않아 수치를 만들지 않았습니다."),"content":("content_writer","WRITING","콘텐츠 초안 준비","상품 정본을 사용한 수동 DEMO 생성 대기입니다."),"review":("quality_reviewer","REVIEWING","사실 검수","승인 대기 콘텐츠의 상품 사실을 확인했습니다."),"report":("marketing_director","WORKING","일일 보고서","오늘 운영 기록을 정리했습니다.")}
+        jobs={"market":("market_researcher","WAITING_DATA","시장 데이터 연결 대기","시장 데이터 API가 연결되지 않아 조사 결과를 만들지 않았습니다."),"seo":("seo_specialist","WAITING_DATA","검색 데이터 연결 대기","검색 API가 연결되지 않아 검색량·순위를 만들지 않았습니다."),"review":("quality_reviewer","WAITING_CONTENT","실제 초안 사실 검수 대기","새 콘텐츠 생성 시 정본 검수를 실행합니다."),"report":("marketing_director","WORKING","일일 보고서","오늘 운영 기록을 정리했습니다.")}
         if job_key not in jobs: raise ValueError("지원하지 않는 작업입니다.")
         aid,status,task,result=jobs[job_key]; stamp=now()
         with self.repo.connect() as db:
@@ -123,7 +139,7 @@ class TeamOperations:
             if state!="RUNNING": raise ValueError("먼저 AI 팀을 시작해 주세요.")
             db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id=?",(status,task,stamp,self.repo.tenant_id,aid))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,aid,task,"관리자 수동 실행",result,"INFO",stamp))
-            final_status = "WAITING_DATA" if job_key in ("market", "seo") else "DONE"
-            db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",(final_status,result,0 if final_status == "WAITING_DATA" else 100,stamp,self.repo.tenant_id,aid))
+            final_status = "DONE" if job_key == "report" else status
+            db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",(final_status,result,100 if final_status == "DONE" else 0,stamp,self.repo.tenant_id,aid))
         if job_key=="report": self.record_report(datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat())
         return {"ok":True,"message":result}

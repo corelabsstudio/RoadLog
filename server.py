@@ -280,7 +280,7 @@ class AuthBody(BaseModel):
 class MarketingTrialBody(BaseModel):
     product_id: str
     platform: str = "블로그"
-    mode: str = "DEMO"
+    mode: str = "REAL"
 
 
 class MarketingDecisionBody(BaseModel):
@@ -290,7 +290,7 @@ class MarketingDecisionBody(BaseModel):
 class MarketingBundleBody(BaseModel):
     product_id: str
     customer_question: str
-    mode: str = "DEMO"
+    mode: str = "REAL"
     source_text: str = ""
 
 
@@ -922,12 +922,23 @@ def admin_marketing_control(action: str, authorization: str | None = Header(defa
         raise HTTPException(400, str(exc)) from exc
 
 
+@app.post("/api/admin/marketing/automation/{action}")
+def admin_marketing_automation(action: str, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    if action not in ("enable", "disable"):
+        raise HTTPException(400, "지원하지 않는 자동화 명령입니다.")
+    try:
+        return marketing_ops.set_auto_real(action == "enable")
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
+
+
 @app.post("/api/admin/marketing/jobs/{job_key}")
 def admin_marketing_job(job_key: str, authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     try:
         return marketing_ops.run_job(job_key)
-    except ValueError as exc:
+    except (ValueError, PermissionError) as exc:
         raise HTTPException(400, str(exc)) from exc
 
 

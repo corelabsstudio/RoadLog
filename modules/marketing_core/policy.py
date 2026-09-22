@@ -19,6 +19,8 @@ def review_draft(product: dict[str, Any], draft: dict[str, Any], policy: BrandPo
     actual_price = product.get("price_won")
     prices = {int(value.replace(",", "")) for value in PRICE.findall(full)}
     if prices and (actual_price is None or prices != {int(actual_price)}): reasons.append("정본과 다른 가격이 있습니다.")
+    without_prices = PRICE.sub("", full)
+    if re.search(r"\d", without_prices): reasons.append("출처 없는 수치가 있습니다.")
     if re.search(policy.discount_pattern, full): reasons.append("검증된 할인·쿠폰·이벤트 정보가 없습니다.")
     if re.search(policy.guarantee_pattern, full): reasons.append("효과·성과를 보장하는 표현이 있습니다.")
     if policy.blocked_brand_pattern and re.search(policy.blocked_brand_pattern, full, re.IGNORECASE): reasons.append("허용되지 않은 다른 브랜드 정보가 있습니다.")

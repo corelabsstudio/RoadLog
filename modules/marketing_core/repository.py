@@ -20,6 +20,7 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_runs(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,mode TEXT NOT NULL,agent_id TEXT NOT NULL,product_id TEXT,status TEXT NOT NULL,input_tokens INTEGER NOT NULL DEFAULT 0,output_tokens INTEGER NOT NULL DEFAULT 0,estimated_cost_krw REAL,result_summary TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_sync(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,source_path TEXT NOT NULL,source_hash TEXT NOT NULL,product_count INTEGER NOT NULL,warning_count INTEGER NOT NULL,synced_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_bundles(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,product_id TEXT NOT NULL,product_name TEXT NOT NULL,customer_question TEXT NOT NULL,source_file TEXT NOT NULL,source_hash TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_automation(tenant_id TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0);
         """)
         # Concurrent dashboard requests must not observe the same missing column
         # and both attempt ALTER TABLE. Lock before checking the schema.
@@ -69,42 +70,42 @@ class MarketingRepository:
         with self.connect() as conn:
             conn.execute("UPDATE marketing_runs SET status=?,result_summary=?,input_tokens=?,output_tokens=? WHERE id=? AND tenant_id=? AND mode='REAL'", (status, summary[:120], input_tokens, output_tokens, run_id, self.tenant_id))
 
-    def save_trial(self, product: dict[str, Any], meta: dict[str, Any], draft: dict[str, Any], reasons: list[str], now: str, mode: str = "DEMO", reservation_krw: float | None = None) -> tuple[int,int|None]:
+    def has_manual_real_success(self) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' AND result_summary='수동 검수 통과' LIMIT 1", (self.tenant_id,)).fetchone()
+        return row is not None
+
+    def auto_real_enabled(self) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("SELECT enabled FROM marketing_automation WHERE tenant_id=?", (self.tenant_id,)).fetchone()
+        return bool(row and row["enabled"])
+
+    def set_auto_real(self, enabled: bool) -> None:
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if enabled and not conn.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' AND result_summary='수동 검수 통과' LIMIT 1", (self.tenant_id,)).fetchone():
+                raise PermissionError("먼저 실제 AI 초안 1건을 수동 생성하고 검수를 통과해야 합니다.")
+            conn.execute("INSERT INTO marketing_automation(tenant_id,enabled) VALUES(?,?) ON CONFLICT(tenant_id) DO UPDATE SET enabled=excluded.enabled", (self.tenant_id,int(enabled)))
+
+    def group_trials(self, product: dict[str, Any], meta: dict[str, Any], question: str, source_text: str, focus_result: str, trials: list[dict[str, Any]], stamp: str) -> dict[str, Any]:
+        with self.connect() as conn:
+            bundle_id = int(conn.execute("INSERT INTO marketing_bundles(tenant_id,product_id,product_name,customer_question,source_file,source_hash,status,created_at,source_text,focus_result) VALUES(?,?,?,?,?,?,?,?,?,?)", (self.tenant_id, product["product_id"], product["name"], question, meta["source_file"], meta["source_hash"], "REAL_REVIEWED", stamp, source_text, focus_result)).lastrowid)
+            for trial in trials:
+                conn.execute("UPDATE marketing_content SET bundle_id=? WHERE id=? AND tenant_id=? AND mode='REAL'", (bundle_id, trial["content_id"], self.tenant_id))
+        return {"bundle_id": bundle_id, "items": [{"content_id": t["content_id"], "approval_id": t["approval_id"], "platform": t["draft"]["platform"], "status": t["status"], "review_reasons": t["review"]["reasons"], "draft": t["draft"]} for t in trials]}
+
+    def save_trial(self, product: dict[str, Any], meta: dict[str, Any], draft: dict[str, Any], reasons: list[str], now: str, mode: str = "REAL", reservation_krw: float | None = None) -> tuple[int,int|None]:
         passed = not reasons
         with self.connect() as conn:
             cur = conn.execute("INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (self.tenant_id,product["product_id"],product["name"],draft["platform"],draft["title"],draft["hook"],draft["body"],draft["cta"],draft["image_prompt"],"PENDING_APPROVAL" if passed else "REVISION_REQUESTED","상품 정본 및 표현 검수 통과" if passed else "검수 실패",json.dumps(reasons,ensure_ascii=False),json.dumps({**product,"source_file":meta["source_file"],"source_hash":meta["source_hash"]},ensure_ascii=False),reservation_krw,mode,now))
             cid, aid = int(cur.lastrowid), None
             if passed: aid = int(conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,cid,"PENDING",now)).lastrowid)
-            if mode == "DEMO": conn.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,product_id,status,result_summary,created_at) VALUES(?,?,?,?,?,?,?)", (self.tenant_id,"DEMO","content_writer",product["product_id"],"COMPLETED","검수 통과" if passed else "수정 대기",now))
         return cid, aid
 
     def approvals(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.body,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
         return [dict(r) for r in rows]
-
-    def save_bundle(self, product: dict[str, Any], meta: dict[str, Any], question: str, source_text: str, focus_result: str,
-                    drafts: list[tuple[dict[str, Any], list[str]]], stamp: str) -> dict[str, Any]:
-        with self.connect() as conn:
-            bundle_id = int(conn.execute(
-                "INSERT INTO marketing_bundles(tenant_id,product_id,product_name,customer_question,source_file,source_hash,status,created_at,source_text,focus_result) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                (self.tenant_id, product["product_id"], product["name"], question, meta["source_file"], meta["source_hash"], "DEMO_REVIEWED", stamp, source_text, focus_result),
-            ).lastrowid)
-            results = []
-            for index, (draft, reasons) in enumerate(drafts):
-                passed = not reasons
-                status = "SOURCE" if index == 0 else ("PENDING_APPROVAL" if passed else "REVISION_REQUESTED")
-                cid = int(conn.execute(
-                    "INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at,bundle_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                    (self.tenant_id, product["product_id"], product["name"], draft["platform"], draft["title"], draft["hook"], draft["body"], draft["cta"], draft["image_prompt"], status,
-                     "상품 정본 및 표현 검수 통과" if passed else "검수 실패", json.dumps(reasons, ensure_ascii=False),
-                     json.dumps({**product, "source_file": meta["source_file"], "source_hash": meta["source_hash"]}, ensure_ascii=False), None, "DEMO", stamp, bundle_id),
-                ).lastrowid)
-                aid = None
-                if index and passed:
-                    aid = int(conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id, cid, "PENDING", stamp)).lastrowid)
-                results.append({"content_id": cid, "approval_id": aid, "platform": draft["platform"], "status": status, "review_reasons": reasons, "draft": draft})
-        return {"bundle_id": bundle_id, "items": results}
 
     def bundles(self) -> list[dict[str, Any]]:
         with self.connect() as conn:

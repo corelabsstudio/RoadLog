@@ -615,33 +615,33 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 
     <section data-page="marketing-team" hidden>
       <div class="marketing-state" id="marketingState"></div>
-      <div class="marketing-command"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
+      <div class="marketing-command"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작</button><button type="button" id="marketingAuto" class="btn-line" disabled>실제 AI 자동 생성 꺼짐</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <div class="marketing-team-grid" id="marketingAgents"></div>
-      <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><p class="note">팀 시작 직후 상품 정본으로 내부 DEMO 점검·초안을 하루 한 번 실행합니다. 11시에는 추가 DEMO 초안, 18시에는 보고서를 실행합니다. 시장·검색·성과 외부 데이터가 필요한 역할은 연결 대기를 표시합니다. 실제 AI·외부 게시는 하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
+      <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><p class="note">팀 시작 시 상품 정본을 점검합니다. 수동 AI 1건이 검수를 통과한 뒤 자동 생성을 직접 켜면 매일 11시 실제 AI 초안 1건을 만듭니다. 요청은 하루 최대 5회, 내부 예산 예약은 3,000원까지입니다. 실제 API 요금의 상한은 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
       <div class="deck wide">
         <div class="card">
           <h2>원본에서 여러 채널로</h2>
-          <p class="sub">질문과 원본 대본에서 상품 정본과 일치하는 결과 항목만 골라 DEMO 초안으로 확장합니다. 확인되지 않은 원본 문장은 복사하지 않습니다.</p>
+          <p class="sub">질문과 원본 대본에서 상품 정본과 일치하는 결과 항목을 골라 실제 AI로 채널별 초안을 만듭니다. 최대 3회 API 호출이 발생합니다. 원본 문장 자체는 AI에 보내지 않습니다.</p>
           <div class="marketing-brief">
             <label>상품<select id="marketingBundleProduct"></select></label>
             <label>고객 질문<textarea id="marketingQuestion" maxlength="300" placeholder="예: 오늘 운세 상품에서 무엇을 확인할 수 있나요?"></textarea></label>
             <label>원본 대본 · 선택 입력<textarea id="marketingSource" maxlength="5000" placeholder="직접 작성한 글·영상 대본을 붙여 넣으세요. 상품 정본의 결과 항목 이름이 하나 이상 포함돼야 합니다. 개인정보는 넣지 마세요."></textarea></label>
-            <button type="button" class="btn" id="marketingBundleCreate">원본과 채널별 DEMO 초안 만들기</button>
+            <button type="button" class="btn" id="marketingBundleCreate">실제 AI 채널별 초안 만들기</button>
           </div>
-          <p class="marketing-progress" id="marketingBundleProgress">대기 중 · 외부 AI 호출·게시 없음</p>
+          <p class="marketing-progress" id="marketingBundleProgress">대기 중 · 외부 게시 없음</p>
         </div>
         <div class="card"><h2>콘텐츠 묶음·결과</h2><p class="sub">승인 기록과 실제 게시를 구분합니다. 유입 성과는 연결 전까지 표시하지 않습니다.</p><div id="marketingBundles" class="marketing-activity"></div></div>
       </div>
       <div class="deck wide">
         <div class="card marketing-runner">
-          <h2>콘텐츠 1건 안전 시험</h2>
+          <h2>실제 AI 콘텐츠 1건</h2>
           <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 예산 600원을 예약하며 실제 청구액과 다릅니다.</p>
           <div class="marketing-form">
             <label>상품<select id="marketingProduct"></select></label>
             <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option></select></label>
             <button type="button" class="btn" id="marketingTrial">AI 초안 1건 만들기</button>
           </div>
-          <p class="marketing-progress" id="marketingProgress">대기 중 · 실제 AI와 외부 게시는 호출하지 않습니다.</p>
+          <p class="marketing-progress" id="marketingProgress">대기 중 · 외부 게시 없음</p>
           <div id="marketingResult"></div>
         </div>
         <div class="card">
@@ -1528,6 +1528,7 @@ window.addEventListener('resize', () => {
 });
 
 let MARKETING_LOADED = false;
+let MARKETING_STATUS = {};
 
 async function marketingFetch(path, options = {}) {
   const headers = { Authorization: 'Bearer ' + token(), ...(options.headers || {}) };
@@ -1542,6 +1543,7 @@ function marketingMoney(value) {
 }
 
 function paintMarketing(status, usage, catalog, approvals) {
+  MARKETING_STATUS = status;
   $('marketingState').innerHTML = [
     ['운영 모드', esc(status.mode) + ' · 외부 게시 차단'],
     ['AI 연결', esc(status.connection_label)],
@@ -1599,7 +1601,7 @@ function paintMarketingTeam(team) {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => {
     const run = (team.scheduled_runs || []).find((r) => r.run_date === today && r.job_key === s.job);
-    const label = run ? ('자동 ' + run.status) : (s.automatic ? '자동 대기' : '수동 · 외부 연동 전');
+    const label = run ? ('자동 ' + run.status) : (s.job === 'content' && !MARKETING_STATUS.automatic_real_calls ? '실제 AI 자동 생성 꺼짐' : (s.automatic ? '자동 대기' : '수동 · 외부 연동 전'));
     return '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + ' · ' + esc(label) + '</b>' + (s.job === 'kickoff' ? '' : '<button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button>') + '</article>';
   }).join('');
   $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + (a.level === 'ERROR' ? '⚠ ' : '') + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
@@ -1617,8 +1619,11 @@ async function loadMarketing() {
     paintMarketingTeam(team);
     paintMarketingBundles(bundles.items || []);
     MARKETING_LOADED = true;
-    $('marketingProgress').textContent = status.real_trial_enabled ? '수동 AI 1건 생성 가능 · 자동 작업은 DEMO · 외부 게시 차단' : 'AI 키 없음 · 자동 작업은 DEMO · 외부 게시 차단';
+    $('marketingProgress').textContent = status.real_trial_enabled ? '실제 AI 생성 가능 · 외부 게시 차단' : 'AI 키 없음 · AI 초안 생성 대기 · 외부 게시 차단';
     $('marketingTrial').disabled = !status.real_trial_enabled;
+    $('marketingBundleCreate').disabled = !status.real_trial_enabled;
+    $('marketingAuto').disabled = !status.manual_real_success || !status.connected;
+    $('marketingAuto').textContent = status.automatic_real_calls ? '실제 AI 자동 생성 켜짐' : '실제 AI 자동 생성 꺼짐';
   } catch (ex) {
     $('marketingProgress').textContent = ex.message;
   }
@@ -1657,17 +1662,28 @@ async function decideMarketing(approvalId, decision) {
 
 $('marketingTrial').addEventListener('click', runMarketingTrial);
 $('marketingBundleCreate').addEventListener('click', async () => {
+  if (!confirm('실제 Gemini API를 최대 3회 호출합니다. 내부 예산 1,800원을 예약하지만 실제 청구액의 상한은 아닙니다. 외부 게시 없이 초안만 만들까요?')) return;
   const button = $('marketingBundleCreate'); button.disabled = true;
   $('marketingBundleProgress').textContent = '상품 정본 확인 → 원본 생성 → 채널별 변환 → 사실 검수 중…';
   try {
     const result = await marketingFetch('/bundles', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: $('marketingBundleProduct').value, customer_question: $('marketingQuestion').value, source_text: $('marketingSource').value, mode: 'DEMO' }) });
+      body: JSON.stringify({ product_id: $('marketingBundleProduct').value, customer_question: $('marketingQuestion').value, source_text: $('marketingSource').value, mode: 'REAL' }) });
     await loadMarketing();
-    $('marketingBundleProgress').textContent = '묶음 #' + result.bundle_id + ' · ' + result.items.length + '건 기록 · 실제 AI 호출·외부 게시 없음';
+    $('marketingBundleProgress').textContent = '묶음 #' + result.bundle_id + ' · ' + result.items.length + '건 기록 · ' + result.cost_label + ' · 외부 게시 없음' + (result.partial_error ? ' · ' + result.partial_error : '');
   } catch (ex) { $('marketingBundleProgress').textContent = ex.message; }
   finally { button.disabled = false; }
 });
 $('marketingRefresh').addEventListener('click', loadMarketing);
+$('marketingAuto').addEventListener('click', async () => {
+  const enable = !MARKETING_STATUS.automatic_real_calls;
+  if (enable && !confirm('팀이 실행 중이면 매일 11시 실제 Gemini API를 1회 자동 호출합니다. 오늘 11시가 지났다면 곧바로 1건을 호출할 수 있습니다. 하루 최대 5회·내부 예약액 3,000원 제한이며 실제 청구액 상한은 아닙니다. 자동 생성을 켤까요?')) return;
+  const button = $('marketingAuto'); button.disabled = true;
+  try {
+    const result = await marketingFetch('/automation/' + (enable ? 'enable' : 'disable'), { method: 'POST' });
+    await loadMarketing(); $('marketingProgress').textContent = result.message;
+  } catch (ex) { $('marketingProgress').textContent = ex.message; }
+  finally { button.disabled = false; }
+});
 $('marketingSync').addEventListener('click', async () => {
   $('marketingProgress').textContent = '상품 정본을 다시 확인하는 중…';
   try { await marketingFetch('/products/sync', { method: 'POST' }); await loadMarketing(); }
@@ -1684,6 +1700,8 @@ document.querySelector('[data-page="marketing-team"]').addEventListener('click',
   const control = e.target.closest('[data-team-control]');
   const job = e.target.closest('[data-team-job]');
   if (!control && !job) return;
+  if (job && job.dataset.teamJob === 'content' && !confirm('실제 Gemini API를 1회 호출합니다. 내부 예산 600원을 예약하지만 실제 청구액 상한은 아닙니다. 초안을 만들까요?')) return;
+  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.automatic_real_calls && !confirm('팀을 시작하면 오늘 11시가 지난 경우 실제 Gemini API 초안 1건을 바로 생성할 수 있습니다. 계속할까요?')) return;
   const button = control || job; button.disabled = true;
   try {
     const result = await marketingFetch(control ? '/control/' + control.dataset.teamControl : '/jobs/' + job.dataset.teamJob, { method: 'POST' });

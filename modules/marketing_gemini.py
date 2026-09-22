@@ -24,7 +24,7 @@ class RoadLogGeminiProvider:
         if not key:
             raise PermissionError("Gemini API 키가 없어 실제 AI 초안을 만들 수 없습니다.")
         snapshot = {field: product.get(field, "UNKNOWN") for field in (
-            "product_id", "name", "price_won", "free", "lamp_price", "premium", "confirmed_results", "forbidden_expressions", "synced_at", "source_file"
+            "product_id", "name", "price_won", "free", "lamp_price", "premium", "confirmed_results", "forbidden_expressions", "synced_at", "source_file", "marketing_focus_result"
         )}
         fields = {"platform": "STRING", "product_id": "STRING", "title": "STRING", "hook": "STRING",
                   "body": "STRING", "cta": "STRING", "image_prompt": "STRING", "factual_claims": "ARRAY",
