@@ -268,6 +268,7 @@ class MarketingBundleBody(BaseModel):
     product_id: str
     customer_question: str
     mode: str = "DEMO"
+    source_text: str = ""
 
 
 class ForgotBody(BaseModel):
@@ -952,7 +953,7 @@ def admin_marketing_bundles(authorization: str | None = Header(default=None)):
 def admin_marketing_create_bundle(body: MarketingBundleBody, authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     try:
-        return marketing_ops.create_bundle(WEB, body.product_id, body.customer_question, body.mode)
+        return marketing_ops.create_bundle(WEB, body.product_id, body.customer_question, body.mode, body.source_text)
     except PermissionError as exc:
         raise HTTPException(423, str(exc)) from exc
     except ValueError as exc:

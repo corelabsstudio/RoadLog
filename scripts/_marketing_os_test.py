@@ -44,7 +44,9 @@ def main() -> None:
             list(pool.map(open_concurrently, range(16)))
         with sqlite3.connect(legacy_db) as conn:
             columns = {row[1] for row in conn.execute("PRAGMA table_info(marketing_content)")}
-        check("bundle_id" in columns and "tenant_id" in columns, "동시 관리자 요청의 DB 열 추가 충돌 방지")
+            bundle_columns = {row[1] for row in conn.execute("PRAGMA table_info(marketing_bundles)")}
+        check("bundle_id" in columns and "tenant_id" in columns and {"source_text", "focus_result"} <= bundle_columns,
+              "동시 관리자 요청의 DB 열 추가 충돌 방지")
 
         old_key = os.environ.pop("GEMINI_API_KEY", None)
         state = marketing_os.status(web)
@@ -75,6 +77,18 @@ def main() -> None:
         check(all(item["approval_id"] for item in bundle["items"][1:]), "검수 통과한 채널별 초안만 승인 대기")
         check(marketing_os.bundles()[0]["customer_question"] == "이 상품에서 무엇을 확인할 수 있나요?", "고객 질문과 콘텐츠 묶음 저장")
         check(marketing_os.bundles()[0]["source_file"].endswith("marketing-products.json"), "상품 정본 출처 저장")
+        focus = product["confirmed_results"][1]
+        unsafe_source = f"{focus}을 다뤄요. 999,999원 할인, 재회를 100% 보장합니다."
+        focused = marketing_os.create_bundle(web, product["product_id"], f"{focus}은 무엇인가요?", "DEMO", unsafe_source)
+        saved = marketing_os.bundles()[0]
+        check(saved["focus_result"] == focus and saved["source_text"] == unsafe_source, "질문과 원본의 정본 항목·원문 기록")
+        check(all(focus in item["draft"]["body"] for item in focused["items"]), "정본에서 선택한 항목을 채널별 본문에 반영")
+        check(all("999,999" not in item["draft"]["body"] and "보장" not in item["draft"]["body"] for item in focused["items"]), "미검증 원본의 거짓 가격·보장 표현 복사 금지")
+        try:
+            marketing_os.create_bundle(web, product["product_id"], f"{focus}은 무엇인가요?", "DEMO", "근거 없는 새로운 기능")
+            raise AssertionError("정본 항목 없는 원본이 허용됨")
+        except ValueError:
+            print("OK  정본 항목 없는 원본 차단")
         check(any("원본·채널별" in row["action"] for row in marketing_os.team_dashboard()["activity"]), "콘텐츠 담당 활동 기록")
         try:
             marketing_os.create_bundle(web, product["product_id"], "질문", "REAL")

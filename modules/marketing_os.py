@@ -24,9 +24,9 @@ def status(web_root: Path) -> dict[str, Any]: return _service(web_root).status()
 def products(web_root: Path) -> dict[str, Any]: return _service(web_root).products()
 def usage() -> dict[str, Any]: return _service().usage()
 def trial(web_root: Path, product_id: str, platform: str, mode: str) -> dict[str, Any]: return _service(web_root).trial(product_id, platform, mode)
-def create_bundle(web_root: Path, product_id: str, customer_question: str, mode: str) -> dict[str, Any]:
+def create_bundle(web_root: Path, product_id: str, customer_question: str, mode: str, source_text: str = "") -> dict[str, Any]:
     ops = operations()
-    result = _service(web_root).create_bundle(product_id, customer_question, mode)
+    result = _service(web_root).create_bundle(product_id, customer_question, mode, source_text)
     ops.record_bundle(result["bundle_id"], len(result["items"]))
     return result
 def bundles() -> list[dict[str, Any]]: return _service().bundles()

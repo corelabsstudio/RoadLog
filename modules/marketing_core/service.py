@@ -42,20 +42,31 @@ class MarketingService:
 
     def approvals(self) -> list[dict[str, Any]]: return self.repository.approvals()
 
-    def create_bundle(self, product_id: str, customer_question: str, mode: str = "DEMO") -> dict[str, Any]:
+    def create_bundle(self, product_id: str, customer_question: str, mode: str = "DEMO", source_text: str = "") -> dict[str, Any]:
         if mode.upper() != "DEMO": raise PermissionError("실제 유료 AI 호출은 잠겨 있습니다.")
         question = customer_question.strip()
         if not question or len(question) > 300: raise ValueError("고객 질문은 1~300자로 적어 주세요.")
+        source_text = source_text.strip()
+        if len(source_text) > 5000: raise ValueError("원본 대본은 5,000자 이내로 적어 주세요.")
         data = self.products()
         product = next((p for p in data["products"] if p["product_id"] == product_id), None)
         if not product or product["facts_status"] != "VERIFIED": raise ValueError("확인된 상품 정본을 선택해 주세요.")
+        facts = product.get("confirmed_results") or []
+        source_facts = [fact for fact in facts if fact in source_text] if source_text else []
+        if source_text and not source_facts:
+            raise ValueError("원본 대본에서 선택한 상품의 확인된 결과 항목을 찾지 못했습니다. 정본에 있는 항목을 포함해 주세요.")
+        candidates = source_facts if source_text else facts
+        focus = next((fact for fact in candidates if fact in question), None)
+        focus = focus or (candidates[0] if candidates else "")
+        # Keep unverified source copy out of generation; only the matched catalog fact crosses this boundary.
+        writing_product = {**product, "marketing_focus_result": focus}
         channels = ("원본", "블로그", "짧은 영상 대본", "카드뉴스")
         drafts = [(draft, review_draft(product, draft, self.brand_policy))
-                  for draft in (self.content.generate(product, channel) for channel in channels)]
+                  for draft in (self.content.generate(writing_product, channel) for channel in channels)]
         if drafts[0][1]: raise ValueError("원본 초안이 사실 검수를 통과하지 못했습니다.")
-        result = self.repository.save_bundle(product, data["sync"], question, drafts, now())
+        result = self.repository.save_bundle(product, data["sync"], question, source_text, focus, drafts, now())
         return {**result, "mode": "DEMO", "dry_run": True, "published": False,
-                "performance_label": "연결되지 않음", "cost_label": "외부 AI 호출 없음 · 예상 비용 0원"}
+                "focus_result": focus or "UNKNOWN", "performance_label": "연결되지 않음", "cost_label": "외부 AI 호출 없음 · 예상 비용 0원"}
 
     def bundles(self) -> list[dict[str, Any]]: return self.repository.bundles()
 

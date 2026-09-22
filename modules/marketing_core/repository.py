@@ -31,6 +31,11 @@ class MarketingRepository:
                 conn.execute(f"CREATE INDEX IF NOT EXISTS ix_{table}_tenant ON {table}(tenant_id)")
             if "bundle_id" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_content)")}:
                 conn.execute("ALTER TABLE marketing_content ADD COLUMN bundle_id INTEGER")
+            bundle_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_bundles)")}
+            if "source_text" not in bundle_columns:
+                conn.execute("ALTER TABLE marketing_bundles ADD COLUMN source_text TEXT NOT NULL DEFAULT ''")
+            if "focus_result" not in bundle_columns:
+                conn.execute("ALTER TABLE marketing_bundles ADD COLUMN focus_result TEXT NOT NULL DEFAULT ''")
             conn.execute("CREATE INDEX IF NOT EXISTS ix_marketing_bundles_tenant ON marketing_bundles(tenant_id)")
             conn.commit()
         except Exception:
@@ -64,12 +69,12 @@ class MarketingRepository:
             rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.body,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
         return [dict(r) for r in rows]
 
-    def save_bundle(self, product: dict[str, Any], meta: dict[str, Any], question: str,
+    def save_bundle(self, product: dict[str, Any], meta: dict[str, Any], question: str, source_text: str, focus_result: str,
                     drafts: list[tuple[dict[str, Any], list[str]]], stamp: str) -> dict[str, Any]:
         with self.connect() as conn:
             bundle_id = int(conn.execute(
-                "INSERT INTO marketing_bundles(tenant_id,product_id,product_name,customer_question,source_file,source_hash,status,created_at) VALUES(?,?,?,?,?,?,?,?)",
-                (self.tenant_id, product["product_id"], product["name"], question, meta["source_file"], meta["source_hash"], "DEMO_REVIEWED", stamp),
+                "INSERT INTO marketing_bundles(tenant_id,product_id,product_name,customer_question,source_file,source_hash,status,created_at,source_text,focus_result) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (self.tenant_id, product["product_id"], product["name"], question, meta["source_file"], meta["source_hash"], "DEMO_REVIEWED", stamp, source_text, focus_result),
             ).lastrowid)
             results = []
             for index, (draft, reasons) in enumerate(drafts):

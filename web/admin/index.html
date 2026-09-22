@@ -620,10 +620,11 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
       <div class="deck wide">
         <div class="card">
           <h2>원본에서 여러 채널로</h2>
-          <p class="sub">고객 질문은 내부 기획 메모로 저장합니다. 상품 정본으로 DEMO 원본·블로그·짧은 영상 대본·카드뉴스 문안을 만들고 각각 검수합니다.</p>
+          <p class="sub">질문과 원본 대본에서 상품 정본과 일치하는 결과 항목만 골라 DEMO 초안으로 확장합니다. 확인되지 않은 원본 문장은 복사하지 않습니다.</p>
           <div class="marketing-brief">
             <label>상품<select id="marketingBundleProduct"></select></label>
             <label>고객 질문<textarea id="marketingQuestion" maxlength="300" placeholder="예: 오늘 운세 상품에서 무엇을 확인할 수 있나요?"></textarea></label>
+            <label>원본 대본 · 선택 입력<textarea id="marketingSource" maxlength="5000" placeholder="직접 작성한 글·영상 대본을 붙여 넣으세요. 상품 정본의 결과 항목 이름이 하나 이상 포함돼야 합니다. 개인정보는 넣지 마세요."></textarea></label>
             <button type="button" class="btn" id="marketingBundleCreate">원본과 채널별 DEMO 초안 만들기</button>
           </div>
           <p class="marketing-progress" id="marketingBundleProgress">대기 중 · 외부 AI 호출·게시 없음</p>
@@ -1580,6 +1581,8 @@ function paintMarketingBundles(items) {
   $('marketingBundles').innerHTML = items.length ? items.map((bundle) => '<section class="marketing-bundle">'
     + '<h3>' + esc(bundle.product_name) + ' · 묶음 #' + num(bundle.id) + '</h3>'
     + '<p>고객 질문: ' + esc(bundle.customer_question) + '</p>'
+    + '<p>선택된 정본 항목: ' + esc(bundle.focus_result || 'UNKNOWN') + ' · 원본 대본: ' + (bundle.source_text ? '관리자 입력 · 검증된 사실만 반영' : '없음') + '</p>'
+    + (bundle.source_text ? '<details><summary>입력 원본 대본 보기 · 문장 자체는 미검증</summary><pre>' + esc(bundle.source_text) + '</pre></details>' : '')
     + '<p>정본 출처: ' + esc(bundle.source_file) + ' · 생성 ' + esc(bundle.created_at) + '</p>'
     + (bundle.contents || []).map((content) => '<details><summary>' + esc(content.platform) + ' · ' + esc(content.status)
       + ' · ' + esc(content.review_result) + '</summary><b>' + esc(content.title) + '</b><pre>' + esc(content.hook) + '\n' + esc(content.body) + '\n' + esc(content.cta) + '</pre>'
@@ -1648,7 +1651,7 @@ $('marketingBundleCreate').addEventListener('click', async () => {
   $('marketingBundleProgress').textContent = '상품 정본 확인 → 원본 생성 → 채널별 변환 → 사실 검수 중…';
   try {
     const result = await marketingFetch('/bundles', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id: $('marketingBundleProduct').value, customer_question: $('marketingQuestion').value, mode: 'DEMO' }) });
+      body: JSON.stringify({ product_id: $('marketingBundleProduct').value, customer_question: $('marketingQuestion').value, source_text: $('marketingSource').value, mode: 'DEMO' }) });
     await loadMarketing();
     $('marketingBundleProgress').textContent = '묶음 #' + result.bundle_id + ' · ' + result.items.length + '건 기록 · 실제 AI 호출·외부 게시 없음';
   } catch (ex) { $('marketingBundleProgress').textContent = ex.message; }

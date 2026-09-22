@@ -132,6 +132,7 @@ python scripts/_roadlog_suite_test.py --live
 
 ## AI 마케팅 팀 관리자 통합 (2026-09-23 Codex)
 
+- 2026-09-23 영상(`https://youtu.be/NYxE3eJHCSE`) 벤치마킹 후 원본 대본 입력 흐름 추가: 관리자 화면에서 상품·고객 질문·선택적 원본 대본(최대 5,000자)을 받는다. 질문/원본과 상품 정본의 결과 항목이 일치하면 그 항목으로 원본·블로그·짧은 영상 대본·카드뉴스 문안을 구성한다. 원본 대본이 있는데 일치하는 항목이 없으면 생성 차단한다. 원본 문장 자체는 미검증으로 표시하고, 가격·할인·보장 표현을 초안에 복사하지 않는다. 묶음에 입력 원본과 선택된 정본 항목을 tenant별로 보관한다. 이전 묶음은 빈 원본/항목으로 자동 이관한다. 이 단계는 결정론적 DEMO 변환이며 영상의 실제 AI 전사·이미지 제작·자동 게시·성과 최적화를 구현했다는 뜻이 아니다.
 - 2026-09-23 영상 벤치마킹 1차 로컬 구현: 관리자 AI 마케팅 팀에 고객 질문(내부 기획 메모)과 상품을 선택해 `원본 → 블로그 → 짧은 영상 대본 → 카드뉴스 문안` DEMO 초안 4건을 묶어 만드는 화면/API를 추가했다. 각 초안은 상품 정본 사실 검수를 거치고, 원본은 승인 대기에서 제외한다. 채널별 검수 실패는 수정 대기로 저장하며 승인 대기에 넣지 않는다. 묶음에 질문·상품 출처 파일·해시·생성 시각을 저장하고, 담당 직원 활동 기록을 남긴다.
 - 이 버전은 실제 고객 질문 조사, 질문 내용에 맞춘 AI 생성, 이미지·영상 생성, 외부 게시, 유입 성과 API 연결을 하지 않는다. 질문은 공개 문안이 아닌 내부 메모다. GUI에는 유입·가입·구매 성과를 `연결되지 않음`으로 명시한다. 기존 `DEMO`·`DRY RUN`·REAL 잠금·외부 게시 차단 유지. 구현 파일: `modules/marketing_core/{repository,service,operations}.py`, `modules/marketing_roadlog.py`, `modules/marketing_os.py`, `server.py`, `web/admin/index.html`, `scripts/_marketing_os_test.py`.
 - 로컬 검사: 번들 Python으로 `scripts/_marketing_os_test.py` 통과, 변경 Python 파일 `py_compile` 통과, 관리자 HTML의 inline JS 구문 검사 통과, `git diff --check` 통과. 이전 기록의 「기존 `.venv`가 제거된 Python 경로를 가리킨다」는 진단은 **틀렸다**. 샌드박스 안에서 사용자 AppData의 Python 실행이 거부된 것이며, 권한 있는 실행에서는 `RoadLog/.venv/Scripts/python.exe --version`이 Python 3.12.10, FastAPI import가 0.141.1로 성공했다. 같은 오류가 나면 Python 고장이라고 단정하지 말고 샌드박스 권한을 확인하고 허용된 실행으로 재검사한다. 화면 검증과 배포를 권한 오류만으로 미루지 않는다.
