@@ -11,6 +11,7 @@ from modules.config import DATA_DIR
 from modules import saju_writer
 
 PRODUCT_ID = "curse"
+DETAIL_VERSION = 2
 _FILE = Path(DATA_DIR) / "curse_results.json"
 _LOCK = threading.RLock()
 _MAX_PER_USER = 40
@@ -30,12 +31,12 @@ DETAIL_SCHEMA = {
     "type": "object",
     "properties": {
         "title": {"type": "string", "description": "전체 결과 제목. 생년이 있으면 반드시 'XX년생 [별명]에게 내리는 저주' 형태"},
-        "opening": {"type": "string", "description": "무냥이가 의식을 마친 뒤 건네는 몰입감 있는 3~4문장"},
-        "curse": {"type": "string", "description": "실제 위해가 전혀 없는 생활형 불편 저주를 장면이 보이게 풀어 쓴 3~4문장"},
-        "trigger": {"type": "string", "description": "이 저주가 발동하는 우스운 순간을 구체적으로 그린 3~4문장"},
-        "duration": {"type": "string", "description": "지속 기간과 사그라드는 징조를 과장된 운세처럼 표현한 3~4문장"},
-        "side_effect": {"type": "string", "description": "사용자에게 돌아오는 귀여운 부작용과 주의점을 담은 3~4문장"},
-        "release": {"type": "string", "description": "마음을 놓아주는 현실적인 해제 의식을 이야기로 풀어 쓴 3~4문장"},
+        "opening": {"type": "string", "description": "무냥이가 의식을 마친 뒤 건네는 몰입감 있는 도입. 4~5문장, 220자 이상"},
+        "curse": {"type": "string", "description": "실제 위해가 전혀 없는 생활형 불편 저주를 구체적인 장면 2~3개로 풀어 쓴 6~8문장, 350~600자"},
+        "trigger": {"type": "string", "description": "이 저주가 발동하는 서로 다른 우스운 순간들을 구체적으로 그린 6~8문장, 350~600자"},
+        "duration": {"type": "string", "description": "지속 기간, 강약 변화, 사그라드는 징조를 과장된 운세처럼 표현한 6~8문장, 350~600자"},
+        "side_effect": {"type": "string", "description": "사용자에게 돌아오는 귀여운 부작용과 주의점, 안심시키는 마무리를 담은 6~8문장, 350~600자"},
+        "release": {"type": "string", "description": "마음을 놓아주는 현실적인 해제 의식을 시작부터 끝까지 이야기로 풀어 쓴 6~8문장, 350~600자"},
         "share_line": {"type": "string", "description": "친구에게 보내고 싶은 결과 한 줄. 32자 안쪽"},
     },
     "required": ["title", "opening", "curse", "trigger", "duration", "side_effect", "release", "share_line"],
@@ -76,15 +77,26 @@ def free_result(target_type: str, target_name: str, birth_date: str, reason: str
 
 def detail_result(target_type: str, target_name: str, birth_date: str, reason: str, card: str,
                   photo: str = "", free: dict[str, Any] | None = None) -> dict[str, Any]:
-    got = saju_writer._call(
-        _SYSTEM,
+    base = (
         _payload(target_type, target_name, birth_date, reason, card, bool(photo))
         + "\n이미 보여 준 무료 결과: " + json.dumps(free or {}, ensure_ascii=False)[:900]
-        + "\n같은 카드의 상세 결과를 써라. 무료 결과와 모순되지 말고 각 항목은 서로 다른 장면을 다뤄라."
-        + " 저주 및 해설 내용은 단답형으로 끝내지 말고, 각 항목마다 최소 3~4문장의 풍부하고 몰입감 있는 주술적 스토리텔링으로 상세히 작성하라.",
-        temperature=1.0, max_tokens=1900, schema=DETAIL_SCHEMA, image_data=photo or None,
+        + "\n같은 카드의 상세 결과를 써라. 무료 결과와 모순되지 말고 각 항목은 서로 다른 장면을 다뤄라. "
+        + "curse, trigger, duration, side_effect, release는 각각 반드시 6~8문장, 한글 기준 350자 이상으로 쓴다. "
+        + "기존 짧은 해설의 두 배가 넘는 분량이어야 하며 같은 상황이나 표현을 되풀이해 글자 수를 채우지 마라. "
+        + "각 항목마다 도입, 구체적인 장면 2~3개, 변화나 반전, 무냥이식 마무리가 모두 있어야 한다."
     )
-    return json.loads(got["text"])
+    detail_fields = ("curse", "trigger", "duration", "side_effect", "release")
+    last: dict[str, Any] = {}
+    for attempt in range(2):
+        prompt = base if attempt == 0 else base + "\n앞선 답은 분량이 부족했다. 다섯 상세 항목을 각각 350자 이상으로 완전히 다시 써라."
+        got = saju_writer._call(
+            _SYSTEM, prompt, temperature=.95, max_tokens=4300,
+            schema=DETAIL_SCHEMA, image_data=photo or None,
+        )
+        last = json.loads(got["text"])
+        if all(len(str(last.get(key, "")).strip()) >= 320 for key in detail_fields):
+            return last
+    return last
 
 
 def _read() -> dict[str, list[dict[str, Any]]]:
@@ -116,7 +128,7 @@ def get(email: str, ritual: str) -> dict[str, Any] | None:
 
 def save(email: str, ritual: str, pair: str, inputs: dict[str, str],
          free: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any]:
-    row = {"ritual": ritual, "pair": pair, "at": int(time.time() * 1000),
+    row = {"ritual": ritual, "pair": pair, "detailVersion": DETAIL_VERSION, "at": int(time.time() * 1000),
            "inputs": inputs, "free": free, "detail": detail}
     with _LOCK:
         data = _read()

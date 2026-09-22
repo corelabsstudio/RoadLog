@@ -1495,7 +1495,7 @@ def curse_detail(body: CurseBody, authorization: str | None = Header(default=Non
     if not data["ritual"] or not data["pair"]:
         raise HTTPException(400, "의식 번호가 비어 있어요.")
     saved = curse_ops.get(user["email"], data["ritual"])
-    if saved:
+    if saved and int(saved.get("detailVersion", 0)) >= curse_ops.DETAIL_VERSION:
         return {"ok": True, "saved": True, **saved}
     if not (_is_free(user) or lamps_ops.owns(user["email"], curse_ops.PRODUCT_ID, data["pair"])):
         raise HTTPException(402, "상세 결과를 먼저 열어 주세요.")
