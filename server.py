@@ -15,7 +15,9 @@ import json
 import os
 import re
 import secrets
+import threading
 import time
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
@@ -104,7 +106,28 @@ _cors_origins = cors_allow_origins()
 # credentials + "*" 조합은 브라우저에서 거부되므로 와일드카드일 때 credentials 비활성
 _cors_credentials = _cors_origins != ["*"]
 
-app = FastAPI(title=APP_FULL, version="3.1")
+@asynccontextmanager
+async def app_lifespan(_app: FastAPI):
+    stop_marketing = threading.Event()
+
+    def marketing_loop() -> None:
+        while not stop_marketing.is_set():
+            try:
+                marketing_ops.run_due(WEB)
+            except Exception as exc:
+                log.error("marketing scheduler check failed: %s", type(exc).__name__)
+            stop_marketing.wait(60)
+
+    worker = threading.Thread(target=marketing_loop, name="roadlog-marketing-demo", daemon=True)
+    worker.start()
+    try:
+        yield
+    finally:
+        stop_marketing.set()
+        worker.join(timeout=2)
+
+
+app = FastAPI(title=APP_FULL, version="3.1", lifespan=app_lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,

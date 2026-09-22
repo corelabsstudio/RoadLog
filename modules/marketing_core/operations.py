@@ -1,6 +1,7 @@
 from __future__ import annotations
-from datetime import date
+from datetime import datetime
 from typing import Any
+from zoneinfo import ZoneInfo
 from .repository import MarketingRepository
 from .service import now
 
@@ -16,6 +17,7 @@ class TeamOperations:
             CREATE TABLE IF NOT EXISTS marketing_activity(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,agent_id TEXT,action TEXT NOT NULL,reason TEXT,result TEXT,level TEXT NOT NULL,created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS marketing_state(tenant_id TEXT PRIMARY KEY,status TEXT NOT NULL,updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS marketing_reports(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,report_date TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(tenant_id,report_date));
+            CREATE TABLE IF NOT EXISTS marketing_scheduled_runs(tenant_id TEXT NOT NULL,run_date TEXT NOT NULL,job_key TEXT NOT NULL,status TEXT NOT NULL,result TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL,PRIMARY KEY(tenant_id,run_date,job_key));
             """)
             db.execute("INSERT OR IGNORE INTO marketing_state(tenant_id,status,updated_at) VALUES(?,?,?)",(self.repo.tenant_id,"STOPPED",now()))
             for aid,name,label in self.agent_defs:
@@ -28,7 +30,41 @@ class TeamOperations:
             state=db.execute("SELECT status,updated_at FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
             content=[dict(r) for r in db.execute("SELECT id,product_name,platform,title,status,review_result,created_at FROM marketing_content WHERE tenant_id=? ORDER BY id DESC LIMIT 30",(self.repo.tenant_id,))]
             reports=[dict(r) for r in db.execute("SELECT * FROM marketing_reports WHERE tenant_id=? ORDER BY report_date DESC LIMIT 30",(self.repo.tenant_id,))]
-        return {"status":dict(state),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports}
+            scheduled=[dict(r) for r in db.execute("SELECT * FROM marketing_scheduled_runs WHERE tenant_id=? ORDER BY run_date DESC,job_key LIMIT 20",(self.repo.tenant_id,))]
+        return {"status":dict(state),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports,"scheduled_runs":scheduled}
+
+    def claim_due(self, when: datetime | None = None) -> list[tuple[str,str]]:
+        local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
+        day, clock = local.date().isoformat(), local.strftime("%H:%M")
+        claimed = []
+        with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            state = db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            if not state or state["status"] != "RUNNING": return []
+            for item in self.schedule_defs:
+                if not item.get("automatic") or clock < item["time"]: continue
+                cur = db.execute("INSERT OR IGNORE INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
+                    (self.repo.tenant_id,day,item["job"],"RUNNING",now()))
+                if cur.rowcount: claimed.append((day,item["job"]))
+        return claimed
+
+    def finish_due(self, day: str, job_key: str, result: str, *, failed: bool = False) -> None:
+        stamp = now(); status = "FAILED" if failed else "COMPLETED"
+        aid = "content_writer" if job_key == "content" else "marketing_director"
+        with self.repo.connect() as db:
+            db.execute("UPDATE marketing_scheduled_runs SET status=?,result=?,updated_at=? WHERE tenant_id=? AND run_date=? AND job_key=?",
+                (status,result,stamp,self.repo.tenant_id,day,job_key))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                (self.repo.tenant_id,aid,"예약 작업 실패" if failed else "예약 작업 완료",f"{day} {job_key}",result,"ERROR" if failed else "INFO",stamp))
+
+    def record_report(self, day: str) -> None:
+        stamp = now()
+        with self.repo.connect() as db:
+            counts = dict(db.execute("SELECT COUNT(*) total,COALESCE(SUM(status='PENDING_APPROVAL'),0) pending FROM marketing_content WHERE tenant_id=? AND date(created_at,'+9 hours')=?",(self.repo.tenant_id,day)).fetchone())
+            body = (f"# 일일 마케팅 보고서\n\n날짜: {day}\n\n- DEMO 초안: {counts['total']}건\n"
+                    f"- 승인 대기: {counts['pending']}건\n- 외부 성과 API: 연결되지 않음\n- 실제 게시: 실행하지 않음\n")
+            db.execute("INSERT INTO marketing_reports(tenant_id,report_date,title,body,created_at) VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,report_date) DO UPDATE SET body=excluded.body,created_at=excluded.created_at",
+                (self.repo.tenant_id,day,f"{day} 일일 보고서",body,stamp))
 
     def control(self, action: str) -> dict[str,Any]:
         states={"start":"RUNNING","pause":"PAUSED","stop":"EMERGENCY_STOP"}
@@ -59,7 +95,5 @@ class TeamOperations:
             db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=100,last_activity=? WHERE tenant_id=? AND agent_id=?",(status,task,stamp,self.repo.tenant_id,aid))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,aid,task,"관리자 수동 실행",result,"INFO",stamp))
             db.execute("UPDATE marketing_agents SET status='IDLE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=? AND agent_id=?",(stamp,self.repo.tenant_id,aid))
-            if job_key=="report":
-                today=date.today().isoformat(); body=f"# 일일 마케팅 보고서\n\n날짜: {today}\n\n- 외부 성과 API: 연결되지 않음\n- 실제 게시: 실행하지 않음\n- 운영 상태: {state}\n"
-                db.execute("INSERT INTO marketing_reports(tenant_id,report_date,title,body,created_at) VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,report_date) DO UPDATE SET body=excluded.body,created_at=excluded.created_at",(self.repo.tenant_id,today,f"{today} 일일 보고서",body,stamp))
+        if job_key=="report": self.record_report(datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat())
         return {"ok":True,"message":result}

@@ -616,7 +616,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <div class="marketing-team-grid" id="marketingAgents"></div>
-      <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
+      <div class="deck wide"><div class="card"><div class="hd"><h2>오늘 작업 시간표</h2></div><p class="note">팀 시작 후 매일 11시 DEMO 초안, 18시 보고서를 자동 실행합니다. 지난 시간 작업은 시작 직후 하루 한 번만 실행됩니다. 실제 AI·외부 게시는 하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
       <div class="deck wide">
         <div class="card">
           <h2>원본에서 여러 채널로</h2>
@@ -1591,10 +1591,17 @@ function paintMarketingBundles(items) {
 }
 
 function paintMarketingTeam(team) {
-  $('marketingTeamStatus').textContent = (team.status.status || 'STOPPED') + ' · 마지막 변경 ' + (team.status.updated_at || 'UNKNOWN');
+  const failedRuns = (team.scheduled_runs || []).filter((r) => r.status === 'FAILED');
+  $('marketingTeamStatus').textContent = (team.status.status || 'STOPPED') + ' · 마지막 변경 ' + (team.status.updated_at || 'UNKNOWN')
+    + (failedRuns.length ? ' · ⚠ 예약 작업 실패 ' + failedRuns.length + '건 — 최근 활동 확인' : '');
   $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(a.last_activity || 'UNKNOWN') + '</small></article>').join('');
-  $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + '</b><button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button></article>').join('');
-  $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => {
+    const run = (team.scheduled_runs || []).find((r) => r.run_date === today && r.job_key === s.job);
+    const label = run ? ('자동 ' + run.status) : (s.automatic ? '자동 대기' : '수동 · 외부 연동 전');
+    return '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + ' · ' + esc(label) + '</b><button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button></article>';
+  }).join('');
+  $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + (a.level === 'ERROR' ? '⚠ ' : '') + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
   $('marketingContentLog').innerHTML = (team.content || []).length ? team.content.map((c) => '<article><time>' + esc(c.created_at) + '</time><div><b>' + esc(c.title) + '</b><p>' + esc(c.product_name) + ' · ' + esc(c.status) + ' · ' + esc(c.review_result) + '</p></div></article>').join('') : '<p class="note">아직 콘텐츠 작업 기록이 없습니다.</p>';
   $('marketingReports').innerHTML = (team.reports || []).length ? team.reports.map((r) => '<article><time>' + esc(r.report_date) + '</time><div><b>' + esc(r.title) + '</b><p>' + esc(r.body) + '</p></div></article>').join('') : '<p class="note">아직 보고서가 없습니다.</p>';
 }
