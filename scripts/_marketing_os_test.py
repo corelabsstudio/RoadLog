@@ -110,13 +110,18 @@ def main():
         marketing_os.RoadLogGeminiProvider = FalseGemini
         failed = marketing_os.trial(web, product["product_id"], "블로그", "REAL")
         check(not failed["ok"] and failed["approval_id"] is None and not marketing_os.approvals(), "거짓 가격·할인·보장 승인 차단")
+        check("응답 확인" in marketing_os.status(web)["connection_label"], "실제 공급자 응답과 검수 통과 구분")
         base = FakeGemini().generate(product, "블로그")
         check(any("결과 항목" in r for r in marketing_os.review_draft(product, {**base, "factual_claims": ["없는 기능"]})), "없는 결과 항목 차단")
         check(any("수치" in r for r in marketing_os.review_draft(product, {**base, "body": "사용자 100명이 만족했습니다."})), "출처 없는 수치 차단")
         os.environ["GEMINI_API_KEY"] = "TEST-ONLY-NOT-REAL"
         payload = FakeGemini().generate(product, "블로그")
         def response(text): return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": text}]}}], "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 7}})
-        with httpx.Client(transport=httpx.MockTransport(lambda req: response(json.dumps(payload)))) as client:
+        def structured_response(req):
+            schema = json.loads(req.content)["generationConfig"]["responseSchema"]
+            check(schema["properties"]["factual_claims"]["items"]["enum"] == product["confirmed_results"], "정본 결과 항목만 AI 스키마에서 허용")
+            return response(json.dumps(payload))
+        with httpx.Client(transport=httpx.MockTransport(structured_response)) as client:
             provider = RoadLogGeminiProvider(client=client, sleep=lambda _: None)
             check(provider.generate(product, "블로그")["source_facts"] == product["product_id"] and provider.usage["input_tokens"] == 5, "Gemini JSON·사용량 파싱")
         with httpx.Client(transport=httpx.MockTransport(lambda req: response("not json"))) as client:

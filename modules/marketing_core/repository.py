@@ -75,6 +75,11 @@ class MarketingRepository:
             row = conn.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' AND result_summary='수동 검수 통과' LIMIT 1", (self.tenant_id,)).fetchone()
         return row is not None
 
+    def has_real_provider_response(self) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' LIMIT 1", (self.tenant_id,)).fetchone()
+        return row is not None
+
     def auto_real_enabled(self) -> bool:
         with self.connect() as conn:
             row = conn.execute("SELECT enabled FROM marketing_automation WHERE tenant_id=?", (self.tenant_id,)).fetchone()

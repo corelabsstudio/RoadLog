@@ -30,7 +30,8 @@ class RoadLogGeminiProvider:
                   "body": "STRING", "cta": "STRING", "image_prompt": "STRING", "factual_claims": "ARRAY",
                   "source_facts": "STRING", "uncertainty": "ARRAY"}
         schema = {"type": "OBJECT", "properties": {name: ({"type": "ARRAY", "items": {"type": "STRING"}} if kind == "ARRAY" else {"type": kind}) for name, kind in fields.items()}, "required": list(fields)}
-        body = {"systemInstruction": {"parts": [{"text": "ROADLOG 마케팅 초안만 작성하세요. 제공된 상품 사실 외 가격·할인·기능·수치·효과 보장을 만들지 마세요. 불확실한 사실은 쓰지 말고 uncertainty에 적으세요. source_facts는 상품 ID입니다. 한국어로 자연스럽고 과장 없이 쓰세요."}]},
+        schema["properties"]["factual_claims"]["items"]["enum"] = product["confirmed_results"]
+        body = {"systemInstruction": {"parts": [{"text": "ROADLOG 마케팅 초안만 작성하세요. 제공된 상품 사실 외 가격·할인·기능·수치·효과 보장을 만들지 마세요. factual_claims에는 사용한 결과 항목을 confirmed_results에서 글자까지 동일하게 복사하세요. 해당 항목이 없으면 빈 배열로 두세요. 불확실한 사실은 쓰지 말고 uncertainty에 적으세요. source_facts는 상품 ID입니다. 한국어로 자연스럽고 과장 없이 쓰세요."}]},
                 "contents": [{"role": "user", "parts": [{"text": json.dumps({"platform": platform, "facts": snapshot}, ensure_ascii=False)}]}],
                 "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024, "thinkingConfig": {"thinkingBudget": 0}, "responseMimeType": "application/json", "responseSchema": schema}}
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
