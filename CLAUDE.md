@@ -142,3 +142,4 @@ python scripts/_roadlog_suite_test.py --live
 - SaaS 확장을 위해 `modules/marketing_core/`를 브랜드·웹 프레임워크 독립 코어로 분리했다. 포트, 검수 정책, 생성·승인 서비스, 저장소가 이 안에 있다.
 - `modules/marketing_roadlog.py`만 `lamps.py`, 상품 JSON, ROADLOG 문구를 안다. `modules/marketing_os.py`는 기존 API를 깨지 않도록 두 계층을 조립하는 얇은 파사드다.
 - 네 마케팅 테이블에 `tenant_id`를 추가하고 기존 행은 `roadlog`로 자동 이관한다. 테스트에서 두 테넌트의 승인 목록과 결정 권한이 섞이지 않는 것을 확인한다.
+- 2026-09-23 운영 배포: `a35291b`를 `main`에 푸시했고 Railway 배포 `d07f32a8-55a6-4e27-b176-3722cf7b6bc9`가 SUCCESS다. 라이브 `/api/health` 200, `/admin/`의 `AI 마케팅 팀` 탭, 상품 44개, 비로그인 마케팅 API 401을 확인했다.
