@@ -61,7 +61,8 @@ def main():
         marketing_os.RoadLogGeminiProvider = FakeGemini
         day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
         started = marketing_os.control("start")
-        check(started["status"] == "RUNNING" and [j["job"] for j in started["jobs"]] == ["kickoff"], "팀 시작은 상품 사실만 점검")
+        check(started["status"] == "RUNNING" and [j["job"] for j in started["jobs"]] == ["kickoff", "market", "seo", "content", "report"], "팀 시작 즉시 전 단계 실행")
+        check(started["jobs"][3]["status"] == "PENDING_APPROVAL", "팀 시작 즉시 모의 AI 초안·검수")
         check(not marketing_os.bundles(), "시작 시 가짜 묶음 없음")
         check(all(a["status"] != "IDLE" for a in marketing_os.team_dashboard()["agents"]), "8개 역할에 실제 작업 또는 대기 사유")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
@@ -69,15 +70,21 @@ def main():
         agents = marketing_os.team_dashboard()["agents"]
         check(next(a for a in agents if a["agent_id"] == "creative_director")["status"] == "WAITING_CONTENT", "과거 DEMO 현재 직원 상태 정리")
         due_time = datetime.fromisoformat(day + "T11:05:00+09:00")
-        check(not marketing_os.run_due(web, due_time), "첫 수동 성공·자동 활성화 전 유료 예약 없음")
+        check(not marketing_os.run_due(web, due_time), "시각 기반 AI 예약 없음")
+        repeated = marketing_os.control("start")
+        check(not repeated["changed"] and repeated["jobs"][3]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 1, "켜진 팀 재실행 중복 과금 없음")
+        marketing_os.control("pause")
+        resumed = marketing_os.control("start")
+        check(resumed["jobs"][3]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 1, "일시정지 후 재시작해도 하루 첫 호출만")
         one = marketing_os.trial(web, product["product_id"], "블로그", "REAL")
         check(one["ok"] and one["approval_id"], "모의 REAL 초안 검수 통과·승인 등록")
-        check(marketing_os.status(web)["manual_real_success"] and not marketing_os.status(web)["automatic_real_calls"], "수동 성공 후에도 자동 꺼짐")
-        marketing_os.set_auto_real(True)
-        check(marketing_os.status(web)["automatic_real_calls"], "관리자 선택 후 실제 AI 자동 켜짐")
+        check(marketing_os.status(web)["manual_real_success"] and not marketing_os.status(web)["automatic_real_calls"], "시간 예약 AI 생성 꺼짐")
+        try:
+            marketing_os.set_auto_real(True)
+            raise AssertionError("scheduled AI enabled")
+        except PermissionError: print("OK 시간 예약 AI 호출 거부")
         due = marketing_os.run_due(web, due_time)
-        check([r["job"] for r in due] == ["content"] and due[0]["status"] == "COMPLETED", "11시 실제 AI 초안 1건")
-        check(not marketing_os.run_due(web, due_time), "예약 중복 실행 차단")
+        check(not due and not marketing_os.run_due(web, due_time), "11시에도 예약 호출 없음")
         check(marketing_os.usage()["requests"] == 2 and marketing_os.usage()["estimated_cost_krw"] == 1200, "요청 2건·내부 예산 예약")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
             real = conn.execute("SELECT COUNT(*) n,MAX(input_tokens) tin FROM marketing_runs WHERE mode='REAL' AND tenant_id='roadlog'").fetchone()

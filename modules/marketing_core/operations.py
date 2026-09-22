@@ -55,14 +55,25 @@ class TeamOperations:
                 if cur.rowcount: claimed.append((day,item["job"]))
         return claimed
 
+    def claim_start_content(self, day: str) -> bool:
+        """At most one paid start-triggered draft per KST day, even across workers."""
+        with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT status FROM marketing_state WHERE tenant_id=?", (self.repo.tenant_id,)).fetchone()
+            if not row or row["status"] != "RUNNING": return False
+            cur = db.execute("INSERT OR IGNORE INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
+                (self.repo.tenant_id, day, "start_content", "RUNNING", now()))
+            return bool(cur.rowcount)
+
     def finish_due(self, day: str, job_key: str, result: str, *, failed: bool = False) -> None:
         stamp = now(); status = "FAILED" if failed else "COMPLETED"
         aid = "content_writer" if job_key == "content" else "marketing_director"
         with self.repo.connect() as db:
             db.execute("UPDATE marketing_scheduled_runs SET status=?,result=?,updated_at=? WHERE tenant_id=? AND run_date=? AND job_key=?",
                 (status,result,stamp,self.repo.tenant_id,day,job_key))
+            action = ("팀 시작 작업 실패" if failed else "팀 시작 작업 완료") if job_key == "start_content" else ("예약 작업 실패" if failed else "예약 작업 완료")
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
-                (self.repo.tenant_id,aid,"예약 작업 실패" if failed else "예약 작업 완료",f"{day} {job_key}",result,"ERROR" if failed else "INFO",stamp))
+                (self.repo.tenant_id,aid,action,f"{day} {job_key}",result,"ERROR" if failed else "INFO",stamp))
             if failed:
                 db.execute("UPDATE marketing_agents SET status='ERROR',current_task=?,progress=0,last_activity=? WHERE tenant_id=? AND agent_id=?",
                     (result,stamp,self.repo.tenant_id,aid))
@@ -74,7 +85,7 @@ class TeamOperations:
             ("marketing_director", "DONE", "오늘 상품 정본 점검", product_result),
             ("market_researcher", "WAITING_DATA", "상품 정본 점검 · 외부 시장 데이터 미연결", "상품 사실은 확인했습니다. 시장 동향은 조사하지 않았습니다."),
             ("seo_specialist", "WAITING_DATA", "상품명 기반 주제 후보 확인 · 검색 API 미연결", "검색량·순위는 확인하지 않았습니다."),
-            ("content_writer", "WAITING_SCHEDULE" if ai_ready else "WAITING_AI", "실제 AI 초안 예약 대기" if ai_ready else "실제 AI 수동 1건 검증 대기", "새 AI 초안을 생성하지 않았습니다."),
+            ("content_writer", "WORKING" if ai_ready else "WAITING_AI", "상품 정본 기반 AI 초안 생성 중" if ai_ready else "AI 연결 대기", "AI 초안 생성 결과는 잠시 뒤 기록됩니다." if ai_ready else "AI 키가 없어 초안을 생성하지 않았습니다."),
             ("creative_director", "WAITING_CONTENT", "영상 대본·카드뉴스 실제 초안 대기", "이미지·영상 제작은 연결되지 않았습니다."),
             ("social_manager", "WAITING_CONTENT", "실제 초안 대기 · 외부 게시 차단", "외부 게시는 실행하지 않았습니다."),
             ("quality_reviewer", "WAITING_CONTENT", "실제 초안의 사실 검수 대기", "검수할 새 AI 콘텐츠가 없습니다."),
@@ -112,15 +123,16 @@ class TeamOperations:
         if action not in states: raise ValueError("지원하지 않는 운영 명령입니다.")
         state=states[action]; stamp=now()
         with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
             current=db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
             if current and current["status"] == state:
-                return {"ok":True,"status":state}
+                return {"ok":True,"status":state,"changed":False}
             db.execute("UPDATE marketing_state SET status=?,updated_at=? WHERE tenant_id=?",(state,stamp,self.repo.tenant_id))
             if action=="start":
                 db.execute("UPDATE marketing_agents SET status='WAITING_NEXT_RUN',current_task='기존 작업 기록 유지 · 다음 예약 대기',progress=0,last_activity=? WHERE tenant_id=? AND status='OFFLINE'",(stamp,self.repo.tenant_id))
             if action=="stop": db.execute("UPDATE marketing_agents SET status='OFFLINE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=?",(stamp,self.repo.tenant_id))
             db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="stop" else "INFO",stamp))
-        return {"ok":True,"status":state}
+        return {"ok":True,"status":state,"changed":True}
 
     def record_bundle(self, bundle_id: int, item_count: int) -> None:
         stamp = now()

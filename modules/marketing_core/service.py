@@ -32,7 +32,7 @@ class MarketingService:
         connection_label = "AI 연결되지 않음"
         if connected:
             connection_label = "수동 생성·검수 성공" if manual_success else ("실제 AI 응답 확인 · 검수 통과 대기" if self.repository.has_real_provider_response() else "키 설정됨 · 실제 호출 미검증")
-        return {"dry_run":True,"dry_run_scope":"external_publishing","mode":"REAL · 실제 AI 초안" if connected else "AI 미연결","provider":self.real_content.name if self.real_content else self.content.name,"model":self.real_content.model if self.real_content else self.content.model,"connected":connected,"connection_label":connection_label,"real_trial_enabled":connected,"manual_real_success":manual_success,"automatic_real_calls":connected and manual_success and self.repository.auto_real_enabled(),"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
+        return {"dry_run":True,"dry_run_scope":"external_publishing","mode":"REAL · 실제 AI 초안" if connected else "AI 미연결","provider":self.real_content.name if self.real_content else self.content.name,"model":self.real_content.model if self.real_content else self.content.model,"connected":connected,"connection_label":connection_label,"real_trial_enabled":connected,"manual_real_success":manual_success,"automatic_real_calls":False,"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
 
     def usage(self) -> dict[str, Any]:
         day=now()[:10]; requests,cost=self.repository.usage(day); p=self.usage_policy

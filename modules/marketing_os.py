@@ -18,7 +18,7 @@ POLICY = BrandPolicy(
     blocked_brand_pattern=r"ChatGPT|챗GPT|포스텔러|점신|신한라이프",
 )
 AGENTS=[("marketing_director","Marketing Director","마케팅 디렉터"),("market_researcher","Market Researcher","시장 조사원"),("seo_specialist","SEO Specialist","검색 전략가"),("content_writer","Content Writer","콘텐츠 작가"),("creative_director","Creative Director","크리에이티브 디렉터"),("social_manager","Social Manager","채널 매니저"),("quality_reviewer","Quality Reviewer","품질 검수자"),("performance_analyst","Performance Analyst","성과 분석가")]
-SCHEDULE=[{"time":"00:00","job":"kickoff","name":"팀 시작 후 상품 정본 점검","automatic":True},{"time":"09:00","job":"market","name":"시장 흐름 점검","automatic":False},{"time":"10:00","job":"seo","name":"검색 기회 점검","automatic":False},{"time":"11:00","job":"content","name":"검증된 상품 AI 초안 1건","automatic":True},{"time":"14:00","job":"review","name":"사실 검수","automatic":False},{"time":"18:00","job":"report","name":"일일 보고서","automatic":True}]
+SCHEDULE=[{"time":"즉시","job":"kickoff","name":"상품 정본 점검","automatic":False},{"time":"즉시","job":"market","name":"시장 데이터 연결 상태 확인","automatic":False},{"time":"즉시","job":"seo","name":"검색 데이터 연결 상태 확인","automatic":False},{"time":"즉시","job":"content","name":"검증된 상품 AI 초안 1건","automatic":False},{"time":"즉시","job":"review","name":"새 초안 사실 검수","automatic":False},{"time":"즉시","job":"report","name":"일일 보고서","automatic":False}]
 
 def _service(web_root: Path = Path(".")) -> MarketingService:
     provider = RoadLogGeminiProvider()
@@ -41,15 +41,47 @@ def approvals() -> list[dict[str, Any]]: return _service().approvals()
 def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]: return _service().decide(approval_id, decision, note)
 def set_auto_real(enabled: bool) -> dict[str, Any]:
     repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
-    repo.set_auto_real(enabled)
-    return {"ok": True, "automatic_real_calls": enabled, "message": "실제 AI 자동 생성 켜짐 · 팀이 실행 중이면 매일 11시 1건" if enabled else "실제 AI 자동 생성 꺼짐"}
+    repo.set_auto_real(False)
+    if enabled: raise PermissionError("시간 예약 AI 호출은 종료됐습니다. 팀 시작 시 즉시 실행합니다.")
+    return {"ok": True, "automatic_real_calls": False, "message": "시간 예약 AI 호출 꺼짐"}
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
 def team_dashboard() -> dict[str,Any]: return operations().dashboard()
 def control(action:str) -> dict[str,Any]:
+    if action == "start":
+        MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID).set_auto_real(False)
     result = operations().control(action)
     if action == "start":
-        result["jobs"] = run_due(Path(__file__).resolve().parents[1] / "web")
+        web_root = Path(__file__).resolve().parents[1] / "web"
+        ops = operations()
+        day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
+        jobs = []
+        try:
+            product = _daily_product(web_root, day)
+            ops.record_kickoff(f"{product['name']} · 상품 정본 확인", bool(_service(web_root).real_content.connected))
+            jobs.append({"job":"kickoff","status":"COMPLETED"})
+        except Exception:
+            result["message"] = "팀은 켜졌지만 상품 정본 점검에 실패했습니다. 상품 정보를 확인해 주세요."
+            result["jobs"] = [{"job":"kickoff","status":"FAILED"}]
+            return result
+        for job in ("market", "seo"):
+            ops.run_job(job)
+            jobs.append({"job":job,"status":"WAITING_DATA"})
+        provider = _service(web_root).real_content
+        if provider and provider.connected and ops.claim_start_content(day):
+            try:
+                draft = trial(web_root, product["product_id"], "블로그", "REAL")
+                ops.finish_due(day, "start_content", f"실제 AI 초안 #{draft['content_id']} · {draft['status']} · 외부 게시 없음")
+                jobs.append({"job":"content","status":draft["status"]})
+            except Exception:
+                ops.finish_due(day, "start_content", "AI 생성 실패. 오늘 자동 재호출 없음; 사용량과 작업 기록을 확인해 주세요.", failed=True)
+                jobs.append({"job":"content","status":"FAILED"})
+        else:
+            jobs.append({"job":"content","status":"SKIPPED","reason":"AI 미연결 또는 오늘 팀 시작 초안 이미 실행"})
+        ops.record_report(day)
+        jobs.append({"job":"report","status":"COMPLETED"})
+        result["jobs"] = jobs
+        result["message"] = "팀 작업을 즉시 실행했습니다. " + ("AI 초안 생성 결과를 확인해 주세요." if jobs[-2]["status"] not in ("SKIPPED", "FAILED") else "AI 초안은 생성되지 않았습니다. 연결·사용량·활동 기록을 확인해 주세요.")
     return result
 def _daily_product(web_root: Path, day: str) -> dict[str, Any]:
     catalog = _service(web_root).products()["products"]
@@ -68,7 +100,6 @@ def run_job(job_key:str) -> dict[str,Any]:
     if job_key == "content":
         if operations().dashboard()["status"]["status"] != "RUNNING": raise ValueError("먼저 AI 팀을 시작해 주세요.")
         day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
-        if not MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID).auto_real_enabled(): raise PermissionError("자동 AI 생성이 꺼져 있습니다. 관리자 화면에서 켜 주세요.")
         return {"ok":True,"message":_real_daily_draft(Path(__file__).resolve().parents[1] / "web", day)}
     return operations().run_job(job_key)
 
