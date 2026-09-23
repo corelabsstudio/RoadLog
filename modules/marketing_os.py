@@ -11,6 +11,7 @@ from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingSe
 from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
 from modules.marketing_diagnosis import build_profile, diagnose
 from modules.marketing_research import BraveResearchProvider
+from modules.marketing_assets import MarketingAssetStore
 from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
@@ -49,10 +50,23 @@ def create_bundle(web_root: Path, product_id: str, customer_question: str, mode:
 def bundles() -> list[dict[str, Any]]: return _service().bundles()
 def approvals() -> list[dict[str, Any]]:
     items = _service().approvals()
+    assets = MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR))
     for item in items:
+        if item["status"] in {"PENDING", "APPROVED"}:
+            item["creative_assets"] = assets.list_for_approval(item["id"])
+            item["creative_status"] = "IMPORTED_UNVERIFIED" if item["creative_assets"] else "ASSET_REQUIRED"
+        else:
+            item["creative_assets"] = []
+            item["creative_status"] = "NOT_APPLICABLE"
         if item["platform"] == "인스타그램":
             item["caption"] = "\n\n".join(str(item.get(k) or "") for k in ("title", "hook", "body", "cta") if item.get(k))
     return items
+def creative_brief(approval_id: int) -> dict[str, Any]:
+    return MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR)).brief(approval_id)
+def import_creative_asset(approval_id: int, kind: str, mime: str, data_base64: str) -> dict[str, Any]:
+    return MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR)).import_base64(approval_id,kind,mime,data_base64)
+def creative_asset_file(asset_id: int) -> tuple[Path, str]:
+    return MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR)).private_file(asset_id)
 def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]: return _service().decide(approval_id, decision, note)
 
 def instagram_status() -> dict[str, Any]:
@@ -106,7 +120,7 @@ def team_dashboard() -> dict[str,Any]:
     result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
     result["providers"] = {
         "internal_analytics":"CONNECTED", "external_research":"CONNECTED" if BraveResearchProvider().connected else "NOT_CONNECTED",
-        "search_metrics":"NOT_CONNECTED", "creative_assets":"NEEDS_CONFIGURATION",
+        "search_metrics":"NOT_CONNECTED", "creative_assets":"LOCAL_ASSISTED_ONLY",
         "instagram":"MANUAL_UNVERIFIED" if instagram_configured() and instagram_publishing_enabled() else "NOT_CONNECTED",
     }
     return result

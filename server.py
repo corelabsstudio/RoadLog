@@ -292,6 +292,12 @@ class MarketingInstagramPublishBody(BaseModel):
     confirmed: bool = False
 
 
+class MarketingAssetImportBody(BaseModel):
+    kind: str
+    mime: str
+    data_base64: str
+
+
 class MarketingBundleBody(BaseModel):
     product_id: str
     customer_question: str
@@ -986,6 +992,34 @@ def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = 
 def admin_marketing_approvals(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     return {"items": marketing_ops.approvals()}
+
+
+@app.get("/api/admin/marketing/approvals/{approval_id}/creative-brief")
+def admin_marketing_creative_brief(approval_id: int, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.creative_brief(approval_id)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@app.post("/api/admin/marketing/approvals/{approval_id}/creative-assets")
+def admin_marketing_creative_import(approval_id: int, body: MarketingAssetImportBody, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.import_creative_asset(approval_id, body.kind, body.mime, body.data_base64)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.get("/api/admin/marketing/creative-assets/{asset_id}")
+def admin_marketing_creative_file(asset_id: int, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        path, mime = marketing_ops.creative_asset_file(asset_id)
+    except (ValueError, FileNotFoundError) as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return FileResponse(path, media_type=mime, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
 
 
 @app.get("/api/admin/marketing/instagram/status")

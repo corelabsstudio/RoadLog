@@ -27,6 +27,8 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_learning(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,product_id TEXT NOT NULL,evidence_type TEXT NOT NULL,observation TEXT NOT NULL,recommendation TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_site_profiles(tenant_id TEXT PRIMARY KEY,catalog_hash TEXT NOT NULL,profile_json TEXT NOT NULL,observed_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_assets(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,content_id INTEGER NOT NULL,kind TEXT NOT NULL,mime TEXT NOT NULL,filename TEXT NOT NULL,bytes INTEGER NOT NULL,sha256 TEXT NOT NULL,origin TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS ix_marketing_assets_content ON marketing_assets(tenant_id,content_id);
         CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_product ON marketing_campaigns(tenant_id,product_id,created_at);
         """)
         # Concurrent dashboard requests must not observe the same missing column

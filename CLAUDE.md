@@ -1,5 +1,11 @@
 # RoadLog — Claude Code 안내
 
+## AI 마케팅 무료 제작물 가져오기 (2026-09-24 Codex)
+
+- AI 인플루언서 프로젝트의 무료 제작 방식(Gemini 웹 이미지, Clipchamp 편집/음성, 검증된 로컬 FFmpeg·SadTalker)을 ROADLOG에서 쓸 수 있도록 `modules/marketing_assets.py`의 비공개 자산 보관 및 관리자 인증 API, `tools/build_marketing_video.py` 로컬 MP4 제작기를 추가했다. 상세 경로·한계는 `docs/marketing/FREE_CREATIVE.md`.
+- 관리자 승인 항목의 이미지 지시안·영상 구성 확인, 실제 JPEG/PNG·MP4 가져오기, 인증된 비공개 미리보기를 추가했다. 파일은 `IMPORTED_UNVERIFIED`이며 자동 생성 완료·READY_TO_PUBLISH·공개 게시로 표시하지 않는다. Railway가 개인 PC의 Gemini/Clipchamp 웹 세션이나 SadTalker를 무인 호출하는 기능은 없다. 기존 Instagram 게시 어댑터는 공개 JPEG URL이 필요하므로 비공개 가져오기 파일을 바로 게시하지 못한다.
+- 원본 AI 인플루언서 프로젝트는 읽기만 했다. 로컬 2초 영상 출력 시험은 기존 AI 생성 이미지를 입력으로 사용했고 파일을 확인한 뒤 시험 출력만 제거했다. 배포·운영 GUI 클릭 결과는 검증 후 이 항목에 별도 보충한다.
+
 ## AI 마케팅 실측 진단·공개 검색 경로 (2026-09-24 Codex · 로컬 변경)
 
 - `marketing_diagnosis.py`가 검증된 상품 정본과 `stats.overview` 집계로 `SiteMarketingProfile.v1`을 만든다. SQLite `marketing_site_profiles`에 저장하고 팀 실행 전 갱신한다. 상품별 열람은 누적값이며 방문·결제 전환율이 아니므로 `None`으로 둔다. 월간 전체 방문·가입만으로 보수적 진단을 내리고, 기존 날짜 랜덤 상품 선택 대신 최근 14일 중복을 피하며 누적 열람이 적은 검증 상품을 선택한다. 디렉터 AI에게 진단 근거를 전달하고 캠페인 사건으로 기록한다.

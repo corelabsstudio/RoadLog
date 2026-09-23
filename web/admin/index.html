@@ -1585,6 +1585,7 @@ function paintMarketing(status, usage, catalog, approvals, instagram) {
   $('marketingApprovals').innerHTML = approvals.length ? approvals.map((a) => '<article class="marketing-approval">'
     + '<div><b>' + esc(a.title) + '</b><span>' + esc(a.product_name) + ' · ' + esc(a.platform) + '</span></div>'
     + '<p>' + esc(a.body) + '</p>'
+    + (['PENDING', 'APPROVED'].includes(a.status) ? '<details><summary>무료 도구로 홍보물 제작 · ' + esc(a.creative_status || 'ASSET_REQUIRED') + '</summary><p class="note">이미지: Gemini 웹앱 등에서 AI로 생성한 파일을 가져오세요. 영상: 로컬 FFmpeg·SadTalker 또는 Clipchamp로 만든 MP4를 가져오세요. 파일을 가져와도 자동 게시되거나 제작 완료로 판정되지 않습니다.</p><button type="button" data-creative-brief="' + a.id + '">이미지 지시안·영상 제작안 보기</button><label>실제 이미지 파일 <input type="file" data-creative-upload="' + a.id + '" data-creative-kind="image" accept="image/jpeg,image/png"></label><label>실제 영상 파일 <input type="file" data-creative-upload="' + a.id + '" data-creative-kind="video" accept="video/mp4"></label><div data-creative-brief-output="' + a.id + '"></div><div data-creative-preview-output="' + a.id + '"></div>' + (a.creative_assets || []).map((asset) => '<p>' + esc(asset.kind) + ' · ' + esc(asset.status) + ' · ' + num(asset.bytes) + '바이트 <button type="button" data-creative-preview="' + asset.id + '" data-creative-approval="' + a.id + '" data-creative-mime="' + esc(asset.mime) + '">비공개 미리보기</button></p>').join('') + '</details>' : '')
     + (a.status === 'PENDING' ? '<div class="marketing-actions">'
       + '<button type="button" data-marketing-decision="approve" data-approval="' + a.id + '">승인 기록</button>'
       + '<button type="button" class="btn-line" data-marketing-decision="revise" data-approval="' + a.id + '">수정 요청</button>'
@@ -1740,6 +1741,29 @@ $('marketingSync').addEventListener('click', async () => {
   catch (ex) { $('marketingProgress').textContent = ex.message; }
 });
 $('marketingApprovals').addEventListener('click', async (e) => {
+  const brief = e.target.closest('[data-creative-brief]');
+  if (brief) {
+    try {
+      const item = await marketingFetch('/approvals/' + brief.dataset.creativeBrief + '/creative-brief');
+      document.querySelector('[data-creative-brief-output="' + brief.dataset.creativeBrief + '"]').textContent = '이미지 지시안: ' + item.image_prompt + '\n영상 구성: ' + item.title + ' → ' + item.hook + ' → ' + item.body + ' → ' + item.cta + '\n이미지는 Gemini 웹앱에서, 영상은 로컬 도구에서 실제 파일로 만들어 가져와야 합니다.';
+    } catch (ex) { $('marketingProgress').textContent = ex.message; }
+    return;
+  }
+  const preview = e.target.closest('[data-creative-preview]');
+  if (preview) {
+    try {
+      const response = await fetch('/api/admin/marketing/creative-assets/' + preview.dataset.creativePreview, {headers:{Authorization:'Bearer ' + token()}});
+      if (!response.ok) throw new Error('파일 미리보기를 열 수 없습니다.');
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const target = document.querySelector('[data-creative-preview-output="' + preview.dataset.creativeApproval + '"]');
+      const media = document.createElement(preview.dataset.creativeMime.startsWith('image/') ? 'img' : 'video');
+      media.src = blobUrl; media.style.maxWidth = 'min(100%, 360px)'; media.style.maxHeight = '420px';
+      if (media.tagName === 'VIDEO') media.controls = true;
+      media.onload = () => URL.revokeObjectURL(blobUrl);
+      target.replaceChildren(media);
+    } catch (ex) { $('marketingProgress').textContent = ex.message; }
+    return;
+  }
   const publish = e.target.closest('[data-instagram-publish]');
   if (publish) {
     const approvalId = publish.dataset.instagramPublish;
@@ -1759,6 +1783,19 @@ $('marketingApprovals').addEventListener('click', async (e) => {
   button.disabled = true;
   try { await decideMarketing(button.dataset.approval, button.dataset.marketingDecision); }
   catch (ex) { $('marketingProgress').textContent = ex.message; button.disabled = false; }
+});
+$('marketingApprovals').addEventListener('change', async (e) => {
+  const field = e.target.closest('[data-creative-upload]');
+  if (!field || !field.files?.length) return;
+  const file = field.files[0], kind = field.dataset.creativeKind;
+  if (file.size > (kind === 'image' ? 8 : 16) * 1024 * 1024) { $('marketingProgress').textContent = '파일 크기 제한을 넘었습니다.'; return; }
+  field.disabled = true;
+  try {
+    const encoded = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result).split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); });
+    const result = await marketingFetch('/approvals/' + field.dataset.creativeUpload + '/creative-assets', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind,mime:file.type,data_base64:encoded})});
+    await loadMarketing();
+    $('marketingProgress').textContent = '실제 파일 #' + result.id + ' 가져옴 · 아직 자산 검수 전 · 자동 게시 없음';
+  } catch (ex) { $('marketingProgress').textContent = ex.message; field.disabled = false; }
 });
 document.querySelector('[data-page="marketing-team"]').addEventListener('click', async (e) => {
   const control = e.target.closest('[data-team-control]');
