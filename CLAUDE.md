@@ -5,7 +5,7 @@
 - `marketing_diagnosis.py`가 검증된 상품 정본과 `stats.overview` 집계로 `SiteMarketingProfile.v1`을 만든다. SQLite `marketing_site_profiles`에 저장하고 팀 실행 전 갱신한다. 상품별 열람은 누적값이며 방문·결제 전환율이 아니므로 `None`으로 둔다. 월간 전체 방문·가입만으로 보수적 진단을 내리고, 기존 날짜 랜덤 상품 선택 대신 최근 14일 중복을 피하며 누적 열람이 적은 검증 상품을 선택한다. 디렉터 AI에게 진단 근거를 전달하고 캠페인 사건으로 기록한다.
 - `marketing_research.py`는 공식 Brave Web Search HTTP API 어댑터다. `BRAVE_SEARCH_API_KEY`와 `MARKETING_EXTERNAL_RESEARCH_ENABLED=true`가 모두 있어야 캠페인에서 1회 검색한다. 결과 제목·URL·설명·관찰 시각을 `marketing_research_sources`에 `EXTERNAL_SOURCE`로 보존하고 관리자 화면에 노출한다. 실패·미연결 때는 검색했다고 쓰지 않는다. 실제 Brave 계정 키가 없어 외부 live 호출은 미검증이며 MockTransport만 테스트했다.
 - 이 변경은 **실제 블로그 게시, 이미지·영상 생성, 상품별 방문/결제 귀속, 캠페인 결과의 학습 환류를 완성하지 않았다.** 기존 Instagram 수동 게시 경로 역시 Meta 설정이 없어 미검증이다. `AWAITING_APPROVAL`은 `READY_TO_PUBLISH`가 아니다. 사용자 요청의 전체 완료로 보고하지 말 것.
-- 이번 변경은 로컬 테스트·관리자 인라인 JS 문법 검사까지만 확인했다. 운영 반영 여부는 배포·라이브 검증 뒤 별도 갱신한다.
+- 배포 전 전체 `ship.py --check` 통과, Python 마케팅 회귀 테스트 통과, Vite 임시 빌드 통과. 요청 범위 서버 파일과 빌드된 관리자 HTML만 `31ff4d2`로 `RoadLog/main`에 푸시했다. 라이브 `/admin/` HTTP 200에서 `marketingDiagnosis` 표시가 존재하고 `/api/health` HTTP 200임을 확인했다. Railway CLI 인증이 없어 배포 ID와 로그인된 관리자 화면 클릭은 확인하지 못했다. 실제 Gemini·Brave·Meta 유료/외부 호출은 이 검증에서 하지 않았다.
 
 ## AI 마케팅 폐쇄 루프 1차 확장 (2026-09-24 Codex · 로컬, 미배포)
 
