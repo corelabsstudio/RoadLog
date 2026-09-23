@@ -323,6 +323,9 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .marketing-actions{display:flex;gap:7px}.marketing-actions button{font:inherit;border:1px solid var(--line);background:none;color:var(--ink);padding:6px 10px;border-radius:7px;cursor:pointer}.marketing-actions .approve{color:var(--up);border-color:#37614c}
 .marketing-command{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 18px;margin-bottom:14px;background:#13101c;border:1px solid var(--line);border-left:3px solid var(--accent)}.marketing-command b,.marketing-command span{display:block}.marketing-command span{color:var(--muted);font-size:.84rem;margin-top:3px}.marketing-command-actions{display:flex;gap:8px;flex-wrap:wrap}.marketing-command-actions button{font:inherit;padding:8px 13px;border:1px solid var(--accent);background:var(--accent);color:#17151d;cursor:pointer}.marketing-command-actions .btn-line{background:none;color:var(--ink);border-color:var(--line)}.marketing-command-actions .danger{color:#ef9da5;border-color:#694049}.marketing-team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.marketing-agent{padding:14px 15px;background:var(--card);border:1px solid var(--line);min-height:132px}.marketing-agent header{display:flex;justify-content:space-between;gap:10px}.marketing-agent h3{font-size:.94rem;margin:0}.marketing-agent header span{font:700 .68rem ui-monospace,monospace;color:var(--up)}.marketing-agent p{color:var(--muted);font-size:.83rem;min-height:38px}.marketing-agent small{color:var(--faint)}.marketing-schedule article,.marketing-activity article{display:grid;grid-template-columns:64px 1fr auto;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:.84rem}.marketing-schedule article:last-child,.marketing-activity article:last-child{border:0}.marketing-schedule time,.marketing-activity time{color:var(--accent);font-variant-numeric:tabular-nums}.marketing-schedule button{font:inherit;font-size:.78rem;padding:4px 8px;border:1px solid var(--line);background:none;color:var(--ink);cursor:pointer}.marketing-activity article{grid-template-columns:130px 1fr}.marketing-activity p{margin:2px 0 0;color:var(--muted);font-size:.8rem}.marketing-bottom{margin-top:14px}
 #marketingActivity{max-height:360px;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.marketing-activity time{line-height:1.55;white-space:nowrap}.marketing-activity time span{display:block}
+.marketing-fold{align-self:start}.marketing-fold>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-size:1.05rem;font-weight:700;word-break:keep-all}.marketing-fold>summary::-webkit-details-marker{display:none}.marketing-fold>summary::after{content:'펼치기 ↓';font-size:.78rem;font-weight:500;color:var(--accent);white-space:nowrap}.marketing-fold[open]>summary::after{content:'접기 ↑'}.marketing-fold>summary:focus-visible{outline:2px solid var(--accent);outline-offset:4px}.marketing-fold[open]>summary{margin-bottom:14px}.marketing-fold .marketing-team-grid{margin-bottom:0}
+section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
 .marketing-command[data-state="RUNNING"]{border-left-color:var(--up)}.marketing-command[data-state="RUNNING"] #marketingTeamStatus{color:var(--up)}.marketing-command[data-state="EMERGENCY_STOP"]{border-left-color:#ef9da5}.marketing-command[data-state="EMERGENCY_STOP"] #marketingTeamStatus{color:#ef9da5}.marketing-command-actions button:disabled{opacity:.62;cursor:default}
 @media(max-width:900px){.marketing-state{grid-template-columns:1fr 1fr}.marketing-state article:nth-child(2){border-right:0}.marketing-form{grid-template-columns:1fr}}
 @media(max-width:1000px){.marketing-team-grid{grid-template-columns:repeat(2,1fr)}}
@@ -617,11 +620,11 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
     <section data-page="marketing-team" hidden>
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
-      <div class="marketing-team-grid" id="marketingAgents"></div>
-      <div class="deck wide"><div class="card"><div class="hd"><h2>팀 시작 시 즉시 작업</h2></div><p class="note">상품 정본 점검 → 시장·검색 연결 상태 확인 → Gemini 초안 1건 생성·사실 검수 → 보고서 기록을 바로 실행합니다. AI 초안은 하루 첫 팀 시작에만 최대 1건 호출합니다. 내부 예산 예약 600원은 실제 API 요금의 상한이 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></div><div class="card"><div class="hd"><h2>최근 활동</h2></div><div id="marketingActivity" class="marketing-activity"></div></div></div>
+      <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
+      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">상품 정본 점검 → 시장·검색 연결 상태 확인 → Gemini 초안 1건 생성·사실 검수 → 보고서 기록을 바로 실행합니다. AI 초안은 하루 첫 팀 시작에만 최대 1건 호출합니다. 내부 예산 예약 600원은 실제 API 요금의 상한이 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <div class="deck wide">
-        <div class="card">
-          <h2>원본에서 여러 채널로</h2>
+        <details class="card marketing-fold">
+          <summary>원본에서 여러 채널로</summary>
           <p class="sub">질문과 원본 대본에서 상품 정본과 일치하는 결과 항목을 골라 실제 AI로 채널별 초안을 만듭니다. 최대 3회 API 호출이 발생합니다. 원본 문장 자체는 AI에 보내지 않습니다.</p>
           <div class="marketing-brief">
             <label>상품<select id="marketingBundleProduct"></select></label>
@@ -630,12 +633,12 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
             <button type="button" class="btn" id="marketingBundleCreate">실제 AI 채널별 초안 만들기</button>
           </div>
           <p class="marketing-progress" id="marketingBundleProgress">대기 중 · 외부 게시 없음</p>
-        </div>
-        <div class="card"><h2>콘텐츠 묶음·결과</h2><p class="sub">승인 기록과 실제 게시를 구분합니다. 유입 성과는 연결 전까지 표시하지 않습니다.</p><div id="marketingBundles" class="marketing-activity"></div></div>
+        </details>
+        <details class="card marketing-fold"><summary id="marketingBundlesSummary">콘텐츠 묶음·결과</summary><p class="sub">승인 기록과 실제 게시를 구분합니다. 유입 성과는 연결 전까지 표시하지 않습니다.</p><div id="marketingBundles" class="marketing-activity"></div></details>
       </div>
       <div class="deck wide">
-        <div class="card marketing-runner">
-          <h2>실제 AI 콘텐츠 1건</h2>
+        <details class="card marketing-fold marketing-runner">
+          <summary>실제 AI 콘텐츠 1건</summary>
           <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 예산 600원을 예약하며 실제 청구액과 다릅니다.</p>
           <div class="marketing-form">
             <label>상품<select id="marketingProduct"></select></label>
@@ -644,18 +647,18 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
           </div>
           <p class="marketing-progress" id="marketingProgress">대기 중 · 외부 게시 없음</p>
           <div id="marketingResult"></div>
-        </div>
-        <div class="card">
-          <div class="hd"><h2>승인 대기</h2><button type="button" class="btn btn-line" id="marketingRefresh">새로고침</button></div>
+        </details>
+        <details class="card marketing-fold">
+          <summary id="marketingApprovalsSummary">승인 대기</summary><button type="button" class="btn btn-line" id="marketingRefresh">새로고침</button>
           <div id="marketingApprovals" class="marketing-approvals"></div>
-        </div>
+        </details>
       </div>
-      <div class="card">
-        <div class="hd"><h2>상품 정본</h2><button type="button" class="btn btn-line" id="marketingSync">다시 확인</button></div>
+      <details class="card marketing-fold">
+        <summary id="marketingProductsSummary">상품 정본</summary><button type="button" class="btn btn-line" id="marketingSync">다시 확인</button>
         <p class="sub" id="marketingSyncMeta">불러오는 중…</p>
         <div class="scroll"><table><thead><tr><th>상품</th><th>가격</th><th>등불·결제</th><th>결과 항목</th><th>상태</th></tr></thead><tbody id="marketingProducts"></tbody></table></div>
-      </div>
-      <div class="deck wide marketing-bottom"><div class="card"><div class="hd"><h2>콘텐츠 작업 기록</h2></div><div id="marketingContentLog" class="marketing-activity"></div></div><div class="card"><div class="hd"><h2>일일 보고서</h2><button type="button" class="btn btn-line" data-team-job="report">오늘 보고서 만들기</button></div><div id="marketingReports" class="marketing-activity"></div></div></div>
+      </details>
+      <div class="deck wide marketing-bottom"><details class="card marketing-fold"><summary id="marketingContentSummary">콘텐츠 작업 기록</summary><div id="marketingContentLog" class="marketing-activity"></div></details><details class="card marketing-fold"><summary id="marketingReportsSummary">일일 보고서</summary><button type="button" class="btn btn-line" data-team-job="report">오늘 보고서 만들기</button><div id="marketingReports" class="marketing-activity"></div></details></div>
     </section>
 
     <section data-page="feedback" hidden>
@@ -1561,7 +1564,9 @@ function paintMarketing(status, usage, catalog, approvals) {
   $('marketingBundleProduct').innerHTML = $('marketingProduct').innerHTML;
   if (selectedProduct) $('marketingProduct').value = selectedProduct;
   if (selectedBundleProduct) $('marketingBundleProduct').value = selectedBundleProduct;
-  $('marketingSyncMeta').textContent = '동기화 ' + esc(catalog.sync.synced_at || 'UNKNOWN')
+  $('marketingProductsSummary').textContent = '상품 정본 · ' + items.length + '개';
+  $('marketingApprovalsSummary').textContent = '승인 대기 · ' + approvals.length + '건';
+  $('marketingSyncMeta').textContent = '동기화 ' + marketingTimeText(catalog.sync.synced_at)
     + ' · 출처 ' + esc(catalog.sync.source_file || 'UNKNOWN');
   $('marketingProducts').innerHTML = items.map((p) => '<tr>'
     + '<td><b>' + esc(p.name) + '</b><br><span class="note">' + esc(p.product_id) + '</span></td>'
@@ -1582,39 +1587,59 @@ function paintMarketing(status, usage, catalog, approvals) {
 }
 
 function paintMarketingBundles(items) {
+  $('marketingBundlesSummary').textContent = '콘텐츠 묶음·결과 · ' + items.length + '건';
   $('marketingBundles').innerHTML = items.length ? items.map((bundle) => '<section class="marketing-bundle">'
     + '<h3>' + esc(bundle.product_name) + ' · 묶음 #' + num(bundle.id) + '</h3>'
     + '<p>고객 질문: ' + esc(bundle.customer_question) + '</p>'
     + '<p>선택된 정본 항목: ' + esc(bundle.focus_result || 'UNKNOWN') + ' · 원본 대본: ' + (bundle.source_text ? '관리자 입력 · 검증된 사실만 반영' : '없음') + '</p>'
     + (bundle.source_text ? '<details><summary>입력 원본 대본 보기 · 문장 자체는 미검증</summary><pre>' + esc(bundle.source_text) + '</pre></details>' : '')
-    + '<p>정본 출처: ' + esc(bundle.source_file) + ' · 생성 ' + esc(bundle.created_at) + '</p>'
+    + '<p>정본 출처: ' + esc(bundle.source_file) + ' · 생성 ' + esc(marketingTimeText(bundle.created_at)) + '</p>'
     + (bundle.contents || []).map((content) => '<details><summary>' + esc(content.platform) + ' · ' + esc(content.status)
       + ' · ' + esc(content.review_result) + '</summary><b>' + esc(content.title) + '</b><pre>' + esc(content.hook) + '\n' + esc(content.body) + '\n' + esc(content.cta) + '</pre>'
       + '<p>검수 사유: ' + esc((JSON.parse(content.review_reasons_json || '[]')).join(', ') || '없음') + '</p></details>').join('')
     + '<p>외부 게시: 없음 · 유입·가입·구매 성과: 연결되지 않음</p></section>').join('') : '<p class="note">아직 콘텐츠 묶음이 없습니다.</p>';
 }
 
+const marketingKstFormat = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+function marketingTimeParts(value) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) return null;
+  const parts = Object.fromEntries(marketingKstFormat.formatToParts(date).map((part) => [part.type, part.value]));
+  const currentYear = marketingKstFormat.formatToParts(new Date()).find((part) => part.type === 'year').value;
+  return { date: (parts.year === currentYear ? '' : parts.year + '년 ') + parts.month + '월 ' + parts.day + '일', time: parts.dayPeriod + ' ' + parts.hour + ':' + parts.minute };
+}
+function marketingTimeText(value) {
+  const parts = marketingTimeParts(value);
+  return parts ? parts.date + ' ' + parts.time : 'UNKNOWN';
+}
+function marketingTimeTag(value) {
+  const parts = marketingTimeParts(value);
+  return parts ? '<time datetime="' + esc(value) + '" title="' + esc(value) + '"><span>' + esc(parts.date) + '</span><span>' + esc(parts.time) + '</span></time>' : '<time>UNKNOWN</time>';
+}
 function paintMarketingTeam(team) {
+  $('marketingActivitySummary').textContent = '최근 활동 · ' + (team.activity || []).length + '건';
+  $('marketingContentSummary').textContent = '콘텐츠 작업 기록 · ' + (team.content || []).length + '건';
+  $('marketingReportsSummary').textContent = '일일 보고서 · ' + (team.reports || []).length + '건';
   const failedRuns = (team.scheduled_runs || []).filter((r) => r.status === 'FAILED');
   const teamState = team.status.status || 'STOPPED';
   const teamLabels = { RUNNING: '● 팀 가동 중', PAUSED: 'Ⅱ 팀 일시정지', EMERGENCY_STOP: '■ 팀 긴급정지', STOPPED: '■ 팀 꺼짐' };
   $('marketingCommand').dataset.state = teamState;
-  $('marketingTeamStatus').textContent = (teamLabels[teamState] || '팀 상태 확인 필요') + ' · 마지막 변경 ' + (team.status.updated_at || 'UNKNOWN')
+  $('marketingTeamStatus').textContent = (teamLabels[teamState] || '팀 상태 확인 필요') + ' · 마지막 변경 ' + marketingTimeText(team.status.updated_at)
     + (failedRuns.length ? ' · ⚠ 작업 실패 ' + failedRuns.length + '건 — 최근 활동 확인' : '');
   for (const button of document.querySelectorAll('[data-team-control]')) {
     const action = button.dataset.teamControl;
     button.disabled = (action === 'pause' && teamState === 'PAUSED') || (action === 'stop' && teamState === 'EMERGENCY_STOP');
     button.textContent = action === 'start' && teamState === 'RUNNING' ? '오늘 작업 즉시 실행' : action === 'pause' && teamState === 'PAUSED' ? '일시정지됨' : action === 'stop' && teamState === 'EMERGENCY_STOP' ? '긴급정지됨' : { start: '팀 시작 · 즉시 실행', pause: '일시정지', stop: '긴급정지' }[action];
   }
-  $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(a.last_activity || 'UNKNOWN') + '</small></article>').join('');
+  $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(marketingTimeText(a.last_activity)) + '</small></article>').join('');
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => {
     const run = (team.scheduled_runs || []).find((r) => r.run_date === today && r.job_key === s.job);
     const label = run ? ('실행 ' + run.status) : '팀 시작 시 즉시 실행';
     return '<article><time>' + esc(s.time) + '</time><b>' + esc(s.name) + ' · ' + esc(label) + '</b>' + (s.job === 'kickoff' ? '' : '<button type="button" data-team-job="' + esc(s.job) + '">지금 실행</button>') + '</article>';
   }).join('');
-  $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article><time>' + esc(a.created_at) + '</time><div><b>' + (a.level === 'ERROR' ? '⚠ ' : '') + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
-  $('marketingContentLog').innerHTML = (team.content || []).length ? team.content.map((c) => '<article><time>' + esc(c.created_at) + '</time><div><b>' + esc(c.title) + '</b><p>' + esc(c.product_name) + ' · ' + esc(c.status) + ' · ' + esc(c.review_result) + '</p></div></article>').join('') : '<p class="note">아직 콘텐츠 작업 기록이 없습니다.</p>';
+  $('marketingActivity').innerHTML = (team.activity || []).length ? team.activity.map((a) => '<article>' + marketingTimeTag(a.created_at) + '<div><b>' + (a.level === 'ERROR' ? '⚠ ' : '') + esc(a.action) + '</b><p>' + esc(a.result || a.reason || '') + '</p></div></article>').join('') : '<p class="note">아직 활동 기록이 없습니다.</p>';
+  $('marketingContentLog').innerHTML = (team.content || []).length ? team.content.map((c) => '<article>' + marketingTimeTag(c.created_at) + '<div><b>' + esc(c.title) + '</b><p>' + esc(c.product_name) + ' · ' + esc(c.status) + ' · ' + esc(c.review_result) + '</p></div></article>').join('') : '<p class="note">아직 콘텐츠 작업 기록이 없습니다.</p>';
   $('marketingReports').innerHTML = (team.reports || []).length ? team.reports.map((r) => '<article><time>' + esc(r.report_date) + '</time><div><b>' + esc(r.title) + '</b><p>' + esc(r.body) + '</p></div></article>').join('') : '<p class="note">아직 보고서가 없습니다.</p>';
 }
 
