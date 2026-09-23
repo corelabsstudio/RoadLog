@@ -32,6 +32,6 @@ def performance_snapshot(days: int = 7) -> dict[str, Any]:
         "month": {key: int((report.get("month") or {}).get(key) or 0) for key in allowed},
         "by_source": [{"name": str(row.get("name") or "UNKNOWN")[:60], "uv": int(row.get("uv") or 0)} for row in (report.get("bySource") or [])[:5]],
         "by_campaign": [{"name": str(row.get("name") or "UNKNOWN")[:60], "uv": int(row.get("uv") or 0)} for row in (report.get("byCampaign") or [])[:5]],
-        "by_product": [{"product_id": str(row.get("product") or "UNKNOWN")[:60], "opens": int(row.get("opens") or 0)} for row in (report.get("byProduct") or [])[:10]],
+        "by_product": [{"product_id": str(row.get("product") or "UNKNOWN")[:60], "opens": int(row.get("opens") or 0)} for row in (report.get("byProduct") or []) if not str(row.get("product") or "").startswith("ask:")][:10],
         "limitations": ["검색 노출·검색량은 Search Console 미연결", "인스타 게시·노출·참여 성과 미연결"],
     }

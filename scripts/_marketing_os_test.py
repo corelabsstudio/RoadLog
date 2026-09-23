@@ -193,9 +193,9 @@ def main():
         check(any("수치" in reason for reason in review_metric_note("방문 999명",metrics,marketing_os.POLICY)), "출처 없는 성과 수치 차단")
         original_overview = marketing_roadlog.stats.overview
         try:
-            marketing_roadlog.stats.overview = lambda days: {"today":{"uv":12,"signups":2},"month":{"sales":2900},"bySource":[{"name":"직접","uv":5}],"byCampaign":[],"members":[{"email":"private@example.com"}]}
+            marketing_roadlog.stats.overview = lambda days: {"today":{"uv":12,"signups":2},"month":{"sales":2900},"bySource":[{"name":"직접","uv":5}],"byCampaign":[],"byProduct":[{"product":"ask:private","opens":9},{"product":"god","opens":3}],"members":[{"email":"private@example.com"}]}
             snapshot = marketing_roadlog.performance_snapshot()
-            check(snapshot["today"]["uv"] == 12 and "members" not in snapshot and "private@example.com" not in json.dumps(snapshot), "사이트 성과 정본 연결·개인정보 제외")
+            check(snapshot["today"]["uv"] == 12 and snapshot["by_product"] == [{"product_id":"god","opens":3}] and "members" not in snapshot and "private@example.com" not in json.dumps(snapshot), "사이트 성과 정본 연결·개인정보·질문 제외")
         finally:
             marketing_roadlog.stats.overview = original_overview
     finally:
