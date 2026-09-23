@@ -21,6 +21,7 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_sync(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,source_path TEXT NOT NULL,source_hash TEXT NOT NULL,product_count INTEGER NOT NULL,warning_count INTEGER NOT NULL,synced_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_bundles(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,product_id TEXT NOT NULL,product_name TEXT NOT NULL,customer_question TEXT NOT NULL,source_file TEXT NOT NULL,source_hash TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_automation(tenant_id TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS marketing_instagram_posts(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,approval_id INTEGER NOT NULL,content_id INTEGER NOT NULL,image_url TEXT NOT NULL,status TEXT NOT NULL,media_id TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(tenant_id,approval_id));
         """)
         # Concurrent dashboard requests must not observe the same missing column
         # and both attempt ALTER TABLE. Lock before checking the schema.
@@ -125,7 +126,7 @@ class MarketingRepository:
 
     def approvals(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.body,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? AND c.mode='REAL' ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
+            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.hook,c.body,c.cta,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? AND c.mode='REAL' ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
         return [dict(r) for r in rows]
 
     def bundles(self) -> list[dict[str, Any]]:
@@ -144,3 +145,30 @@ class MarketingRepository:
         with self.connect() as conn:
             if not conn.execute("SELECT a.id FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.id=? AND a.tenant_id=? AND a.status='PENDING' AND c.mode='REAL'", (approval_id,self.tenant_id)).fetchone(): raise ValueError("처리할 REAL 승인 항목이 없습니다.")
             conn.execute("UPDATE marketing_approvals SET status=?,decision_note=?,decided_at=? WHERE id=? AND tenant_id=?", (state,note,now,approval_id,self.tenant_id))
+
+    def begin_instagram_post(self, approval_id: int, image_url: str, stamp: str) -> dict[str, Any]:
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT a.content_id,c.platform,c.mode,c.title,c.hook,c.body,c.cta "
+                               "FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id "
+                               "WHERE a.id=? AND a.tenant_id=? AND a.status='APPROVED' AND c.status='PENDING_APPROVAL'",
+                               (approval_id,self.tenant_id)).fetchone()
+            if not row or row["mode"] != "REAL" or row["platform"] != "인스타그램":
+                raise ValueError("게시 가능한 인스타그램 승인 항목이 아닙니다.")
+            if conn.execute("SELECT 1 FROM marketing_instagram_posts WHERE tenant_id=? AND approval_id=?", (self.tenant_id,approval_id)).fetchone():
+                raise ValueError("이 항목은 이미 게시 요청했습니다. 중복 게시를 차단했습니다.")
+            conn.execute("INSERT INTO marketing_instagram_posts(tenant_id,approval_id,content_id,image_url,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+                         (self.tenant_id,approval_id,row["content_id"],image_url,"STARTED",stamp,stamp))
+            return dict(row)
+
+    def finish_instagram_post(self, approval_id: int, status: str, stamp: str, media_id: str | None = None) -> None:
+        if status not in {"PUBLISHED", "UNCERTAIN"}:
+            raise ValueError("지원하지 않는 게시 상태")
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_instagram_posts SET status=?,media_id=?,updated_at=? WHERE tenant_id=? AND approval_id=? AND status='STARTED'",
+                         (status,media_id,stamp,self.tenant_id,approval_id))
+
+    def instagram_posts(self) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT approval_id,status,media_id,image_url,created_at,updated_at FROM marketing_instagram_posts WHERE tenant_id=? ORDER BY id DESC LIMIT 30", (self.tenant_id,)).fetchall()
+        return [dict(row) for row in rows]

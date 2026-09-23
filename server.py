@@ -287,6 +287,11 @@ class MarketingDecisionBody(BaseModel):
     note: str = ""
 
 
+class MarketingInstagramPublishBody(BaseModel):
+    image_url: str
+    confirmed: bool = False
+
+
 class MarketingBundleBody(BaseModel):
     product_id: str
     customer_question: str
@@ -981,6 +986,28 @@ def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = 
 def admin_marketing_approvals(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     return {"items": marketing_ops.approvals()}
+
+
+@app.get("/api/admin/marketing/instagram/status")
+def admin_marketing_instagram_status(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.instagram_status()
+
+
+@app.post("/api/admin/marketing/approvals/{approval_id}/publish-instagram")
+def admin_marketing_publish_instagram(approval_id: int, body: MarketingInstagramPublishBody,
+                                      authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    if body.confirmed is not True:
+        raise HTTPException(400, "게시 직전 확인이 필요합니다.")
+    try:
+        return marketing_ops.publish_instagram(approval_id,body.image_url)
+    except PermissionError as exc:
+        raise HTTPException(423,str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400,str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(502,str(exc)) from exc
 
 
 @app.get("/api/admin/marketing/bundles")

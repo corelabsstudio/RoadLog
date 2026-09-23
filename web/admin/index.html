@@ -643,14 +643,14 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
           <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 내부 예산 10원을 예약하며 실제 청구액과 다릅니다.</p>
           <div class="marketing-form">
             <label>상품<select id="marketingProduct"></select></label>
-            <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option></select></label>
+            <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option><option>인스타그램</option></select></label>
             <button type="button" class="btn" id="marketingTrial">AI 초안 1건 만들기</button>
           </div>
           <p class="marketing-progress" id="marketingProgress">대기 중 · 외부 게시 없음</p>
           <div id="marketingResult"></div>
         </details>
         <details class="card marketing-fold">
-          <summary id="marketingApprovalsSummary">승인 대기</summary><button type="button" class="btn btn-line" id="marketingRefresh">새로고침</button>
+          <summary id="marketingApprovalsSummary">승인 대기</summary><button type="button" class="btn btn-line" id="marketingRefresh">새로고침</button><p class="note" id="marketingInstagramState">인스타그램 연결 상태 확인 중…</p>
           <div id="marketingApprovals" class="marketing-approvals"></div>
         </details>
       </div>
@@ -1548,10 +1548,10 @@ function marketingMoney(value) {
   return value === null || value === undefined ? '예상 비용 단가 미설정' : num(value) + '원';
 }
 
-function paintMarketing(status, usage, catalog, approvals) {
+function paintMarketing(status, usage, catalog, approvals, instagram) {
   MARKETING_STATUS = status;
   $('marketingState').innerHTML = [
-    ['운영 모드', esc(status.mode) + ' · 외부 게시 차단'],
+    ['운영 모드', esc(status.mode) + (instagram?.configured && instagram?.publishing_enabled ? ' · 인스타 건별 게시 준비' : ' · 외부 게시 차단')],
     ['AI 연결', esc(status.connection_label)],
     ['상품 정본', num(status.verified_count) + ' / ' + num(status.product_count) + '개 확인'],
     ['오늘 사용량', num(usage.requests) + ' / ' + num(usage.request_limit) + '회'],
@@ -1577,6 +1577,8 @@ function paintMarketing(status, usage, catalog, approvals) {
     + '<td style="white-space:normal">' + esc((p.confirmed_results || []).join(', ') || 'UNKNOWN') + '</td>'
     + '<td>' + (p.facts_status === 'VERIFIED' ? '확인됨' : '불일치') + '</td></tr>').join('');
 
+  $('marketingInstagramState').textContent = '인스타그램 @mumung_101 · ' + (instagram?.label || '연결 상태 확인 불가') + ' · 게시마다 온해님 직접 확인';
+  const instagramPosts = new Map((instagram?.posts || []).map(p => [p.approval_id, p]));
   $('marketingApprovals').innerHTML = approvals.length ? approvals.map((a) => '<article class="marketing-approval">'
     + '<div><b>' + esc(a.title) + '</b><span>' + esc(a.product_name) + ' · ' + esc(a.platform) + '</span></div>'
     + '<p>' + esc(a.body) + '</p>'
@@ -1584,7 +1586,8 @@ function paintMarketing(status, usage, catalog, approvals) {
       + '<button type="button" data-marketing-decision="approve" data-approval="' + a.id + '">승인 기록</button>'
       + '<button type="button" class="btn-line" data-marketing-decision="revise" data-approval="' + a.id + '">수정 요청</button>'
       + '<button type="button" class="btn-line" data-marketing-decision="reject" data-approval="' + a.id + '">반려</button></div>'
-      : '<small>' + esc(a.status) + ' · 외부 공개 없음</small>')
+      : '<small>' + esc(a.status) + (instagramPosts.has(a.id) ? ' · 인스타 게시 ' + esc(instagramPosts.get(a.id).status) : ' · 외부 공개 없음') + '</small>')
+    + (a.status === 'APPROVED' && a.platform === '인스타그램' && !instagramPosts.has(a.id) ? '<div class="marketing-form"><p>게시 문구(읽기 전용):</p><pre>' + esc(a.caption || '') + '</pre><label>ROADLOG 공개 JPEG 주소<input type="url" data-instagram-image="' + a.id + '" placeholder="https://roadlog.co.kr/assets/example.jpg"></label><button type="button" data-instagram-publish="' + a.id + '"' + (instagram?.configured && instagram?.publishing_enabled ? '' : ' disabled') + '>내용 확인 후 인스타 게시</button></div>' : '')
     + '</article>').join('') : '<p class="note">승인 대기 항목이 없습니다.</p>';
 }
 
@@ -1655,17 +1658,17 @@ function paintMarketingTeam(team) {
 async function loadMarketing() {
   $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
   try {
-    const [status, usage, catalog, approvals, team, bundles, insights] = await Promise.all([
-      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'), marketingFetch('/bundles'), marketingFetch('/insights').catch(() => null),
+    const [status, usage, catalog, approvals, team, bundles, insights, instagram] = await Promise.all([
+      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'), marketingFetch('/bundles'), marketingFetch('/insights').catch(() => null), marketingFetch('/instagram/status').catch(() => null),
     ]);
-    paintMarketing(status, usage, catalog, approvals.items || []);
+    paintMarketing(status, usage, catalog, approvals.items || [], instagram);
     paintMarketingTeam(team);
     paintMarketingBundles(bundles.items || []);
     $('marketingInsights').innerHTML = insights
       ? '<p>오늘 방문 ' + num(insights.today.uv) + '명 · 가입 ' + num(insights.today.signups) + '건 · 결제 ' + num(insights.today.charges) + '건</p><p>이번 달 매출 ' + num(insights.month.sales) + '원</p><p>최근 ' + num(insights.period_days) + '일 상품 열람 상위: ' + (insights.by_product || []).slice(0, 5).map(x => esc(x.product_id) + ' ' + num(x.opens) + '회').join(' · ') + '</p><p class="note">출처: ROADLOG 자체 집계. 외부 검색량·인스타 성과가 아닙니다.</p>'
       : '<p class="note">사이트 집계 연결 오류 · 잠시 후 다시 확인해 주세요.</p>';
     MARKETING_LOADED = true;
-    $('marketingProgress').textContent = status.real_trial_enabled ? '실제 AI 생성 가능 · 외부 게시 차단' : 'AI 키 없음 · AI 초안 생성 대기 · 외부 게시 차단';
+    $('marketingProgress').textContent = status.real_trial_enabled ? '실제 AI 생성 가능 · 인스타 게시에는 별도 연결·건별 확인 필요' : 'AI 키 없음 · AI 초안 생성 대기 · 외부 게시 차단';
     $('marketingTrial').disabled = !status.real_trial_enabled;
     $('marketingBundleCreate').disabled = !status.real_trial_enabled;
   } catch (ex) {
@@ -1727,6 +1730,20 @@ $('marketingSync').addEventListener('click', async () => {
   catch (ex) { $('marketingProgress').textContent = ex.message; }
 });
 $('marketingApprovals').addEventListener('click', async (e) => {
+  const publish = e.target.closest('[data-instagram-publish]');
+  if (publish) {
+    const approvalId = publish.dataset.instagramPublish;
+    const image = document.querySelector('[data-instagram-image="' + approvalId + '"]')?.value.trim() || '';
+    if (!/^https:\/\/roadlog\.co\.kr\/.+\.jpe?g$/i.test(image)) { $('marketingProgress').textContent = 'ROADLOG 공개 JPEG 주소가 필요합니다.'; return; }
+    if (!confirm('인스타그램 @mumung_101에 이 승인 항목을 지금 공개합니다. 본문과 이미지를 확인하셨나요? 게시 후 취소할 수 없습니다.')) return;
+    publish.disabled = true;
+    try {
+      const result = await marketingFetch('/approvals/' + approvalId + '/publish-instagram', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({image_url:image,confirmed:true})});
+      $('marketingProgress').textContent = result.message + ' · ID ' + result.media_id;
+      await loadMarketing();
+    } catch (ex) { $('marketingProgress').textContent = ex.message; await loadMarketing(); }
+    return;
+  }
   const button = e.target.closest('[data-marketing-decision]');
   if (!button) return;
   button.disabled = true;

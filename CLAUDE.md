@@ -1,5 +1,11 @@
 # RoadLog — Claude Code 안내
 
+## Instagram 공식 API 게시 경로 (2026-09-23 Codex)
+
+- `modules/marketing_instagram.py`는 ROADLOG 전용 Instagram Login Graph API 어댑터다. 외부 스크래핑·비공식 로그인 라이브러리를 사용하지 않는다. Meta 토큰은 Railway 환경변수에서만 읽고 DB·로그·응답에 넣지 않는다. 연결 준비 단계는 `docs/marketing/INSTAGRAM_API.md` 참고.
+- 관리자 인증 API `/api/admin/marketing/instagram/status`와 `/api/admin/marketing/approvals/{id}/publish-instagram`을 추가했다. `APPROVED`·REAL·채널 `인스타그램` 콘텐츠, ROADLOG HTTPS JPEG, 별도 `INSTAGRAM_PUBLISH_ENABLED=true`, `confirmed=true`가 모두 필요하다. 서버에서 대상 계정이 `@mumung_101`인지 확인한다. AI 팀/스케줄과는 연결하지 않으며 긴급정지 중 수동 게시도 차단한다. 승인 ID별 중복 차단, 결과 불확실 시 `UNCERTAIN`으로 기록·자동 재시도 금지.
+- 관리자 화면 정본 `roadlog-saju/public/admin/index.html`과 운영 복사본 `web/admin/index.html`에 인스타 채널·연결 상태·건별 게시 UI를 추가했다. 실제 Meta 앱/프로페셔널 계정/토큰/공개 JPEG가 아직 확인되지 않아 운영 게시 성공을 주장하지 않는다. 현재 Railway에는 Meta/Instagram 변수가 없으므로 버튼은 비활성화된다. 테스트는 MockTransport로만 실행한다.
+
 ## AI 마케팅 성과·시장 데이터 연결 (2026-09-23 Codex)
 
 - 2026-09-23 후속 결정: Instagram `@mumung_101` 연결 조사는 허용하지만 외부 게시는 **매 건 온해님이 직접 최종 확인**한다. 기존 관리자 `승인 기록`은 내부 승인일 뿐 게시 허가가 아니다. AI 팀·스케줄에서 게시 API를 자동 호출하지 않는다. Threads 접근 금지는 그대로다. 온해님도 계정이 프로페셔널/Meta 앱 연결 상태인지는 모른다고 답했다. Railway 운영 서비스 변수 이름에서 Meta/Instagram 관련 항목은 발견되지 않았다(값은 출력하지 않음). 계정 자격·앱·권한·이미지 자산은 아직 확인 전이다.

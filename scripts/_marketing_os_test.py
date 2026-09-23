@@ -19,6 +19,7 @@ from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_core.agents import TASKS
 from modules.marketing_core.policy import review_metric_note
 from modules import marketing_roadlog
+from modules.marketing_instagram import InstagramPublisher, image_url_ok
 
 def check(value, label):
     assert value, label
@@ -205,4 +206,75 @@ def main():
         else: os.environ["GEMINI_API_KEY"] = old_key
         shutil.rmtree(temp, ignore_errors=True)
 
-if __name__ == "__main__": main()
+def test_instagram_publishing():
+    original_db = marketing_os.DB
+    keys = ("INSTAGRAM_GRAPH_VERSION", "INSTAGRAM_USER_ID", "INSTAGRAM_ACCESS_TOKEN", "INSTAGRAM_PUBLISH_ENABLED")
+    previous = {key: os.environ.get(key) for key in keys}
+    temp = Path(tempfile.mkdtemp(prefix="roadlog_instagram_mock_"))
+    try:
+        marketing_os.DB = temp / "marketing.db"
+        for key in keys: os.environ.pop(key, None)
+        check(not marketing_os.instagram_status()["configured"], "Instagram 키 없으면 미연결")
+        check(image_url_ok("https://roadlog.co.kr/assets/card.jpg") and not image_url_ok("https://evil.example/card.jpg") and not image_url_ok("https://roadlog.co.kr.evil.example/card.jpg"), "이미지 URL 허용 도메인 제한")
+        repo = MarketingRepository(marketing_os.DB,"roadlog",legacy_tenant_id="roadlog")
+        product = {"product_id":"god","name":"내 등 뒤 보디가드"}
+        draft = {"platform":"인스타그램","title":"제목","hook":"첫 문장","body":"내용","cta":"로드로그에서 확인","image_prompt":"카드"}
+        meta = {"source_file":"test","source_hash":"test"}
+        _, aid = repo.save_trial(product,meta,draft,[],"2026-09-23T12:00:00+09:00")
+        try:
+            marketing_os.publish_instagram(aid,"https://roadlog.co.kr/assets/card.jpg")
+            raise AssertionError("missing key allowed")
+        except PermissionError: pass
+        check(not repo.instagram_posts(), "비활성화 상태 외부 요청·게시 기록 없음")
+        repo.decide(aid,"APPROVED","관리자 승인","2026-09-23T12:01:00+09:00")
+        os.environ.update({"INSTAGRAM_GRAPH_VERSION":"v26.0","INSTAGRAM_USER_ID":"123456",
+                           "INSTAGRAM_ACCESS_TOKEN":"FAKE-TEST-ONLY","INSTAGRAM_PUBLISH_ENABLED":"true"})
+        seen = []
+        def graph(req):
+            seen.append((req.method,req.url.path))
+            check(req.headers.get("Authorization") == "Bearer FAKE-TEST-ONLY", "Meta 토큰은 헤더로만 전달")
+            if req.url.path.endswith("/123456"):
+                return httpx.Response(200,json={"id":"123456","username":"mumung_101","account_type":"BUSINESS"})
+            if req.url.path.endswith("/123456/media"):
+                return httpx.Response(200,json={"id":"987654"})
+            if req.url.path.endswith("/987654"):
+                return httpx.Response(200,json={"status_code":"FINISHED"})
+            if req.url.path.endswith("/123456/media_publish"):
+                return httpx.Response(200,json={"id":"111222"})
+            raise AssertionError("unexpected Graph path")
+        with httpx.Client(transport=httpx.MockTransport(graph)) as client:
+            result = marketing_os.publish_instagram(aid,"https://roadlog.co.kr/assets/card.jpg",publisher=InstagramPublisher(client=client,sleep=lambda _: None))
+        check(result["media_id"] == "111222" and [p for _,p in seen][-1].endswith("/media_publish"), "승인 항목만 명시적 Graph 게시")
+        check(repo.instagram_posts()[0]["status"] == "PUBLISHED", "공개 결과 ID 보존")
+        try:
+            marketing_os.publish_instagram(aid,"https://roadlog.co.kr/assets/card.jpg")
+            raise AssertionError("duplicate publish allowed")
+        except ValueError: print("OK 중복 게시 차단")
+        _, second = repo.save_trial(product,meta,draft,[],"2026-09-23T12:02:00+09:00")
+        try:
+            marketing_os.publish_instagram(second,"https://roadlog.co.kr/assets/card.jpg")
+            raise AssertionError("pending publish allowed")
+        except ValueError: print("OK 내부 승인 전 게시 차단")
+        repo.decide(second,"APPROVED","관리자 승인","2026-09-23T12:03:00+09:00")
+        marketing_os.operations().control("stop")
+        try:
+            marketing_os.publish_instagram(second,"https://roadlog.co.kr/assets/card.jpg")
+            raise AssertionError("emergency stop ignored")
+        except PermissionError: print("OK 긴급정지 중 외부 게시 차단")
+        marketing_os.operations().control("start")
+        with httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(200,json={"id":"123456","username":"wrong","account_type":"BUSINESS"}))) as client:
+            try:
+                marketing_os.publish_instagram(second,"https://roadlog.co.kr/assets/card.jpg",publisher=InstagramPublisher(client=client,sleep=lambda _: None))
+                raise AssertionError("wrong account allowed")
+            except RuntimeError: print("OK 다른 인스타 계정 공개 차단")
+        check(repo.instagram_posts()[0]["status"] == "UNCERTAIN", "실패 시 자동 재시도 금지")
+    finally:
+        marketing_os.DB = original_db
+        for key, value in previous.items():
+            if value is None: os.environ.pop(key,None)
+            else: os.environ[key] = value
+        shutil.rmtree(temp,ignore_errors=True)
+
+if __name__ == "__main__":
+    main()
+    test_instagram_publishing()

@@ -10,6 +10,7 @@ from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
 from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
 from modules.marketing_gemini import RoadLogGeminiProvider
+from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
 
 DB = Path(DATA_DIR) / "marketing_os.db"
@@ -27,7 +28,11 @@ def _service(web_root: Path = Path(".")) -> MarketingService:
     provider = RoadLogGeminiProvider()
     return MarketingService(RoadLogCatalog(web_root), provider, MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID), POLICY, real_content=provider)
 
-def status(web_root: Path) -> dict[str, Any]: return _service(web_root).status()
+def status(web_root: Path) -> dict[str, Any]:
+    result = _service(web_root).status()
+    result["dry_run_scope"] = "automatic_external_publishing"
+    result["manual_instagram_publish_enabled"] = instagram_configured() and instagram_publishing_enabled()
+    return result
 def products(web_root: Path) -> dict[str, Any]: return _service(web_root).products()
 def usage() -> dict[str, Any]: return _service().usage()
 def trial(web_root: Path, product_id: str, platform: str, mode: str) -> dict[str, Any]:
@@ -40,8 +45,43 @@ def create_bundle(web_root: Path, product_id: str, customer_question: str, mode:
     ops.record_bundle(result["bundle_id"], len(result["items"]))
     return result
 def bundles() -> list[dict[str, Any]]: return _service().bundles()
-def approvals() -> list[dict[str, Any]]: return _service().approvals()
+def approvals() -> list[dict[str, Any]]:
+    items = _service().approvals()
+    for item in items:
+        if item["platform"] == "인스타그램":
+            item["caption"] = "\n\n".join(str(item.get(k) or "") for k in ("title", "hook", "body", "cta") if item.get(k))
+    return items
 def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]: return _service().decide(approval_id, decision, note)
+
+def instagram_status() -> dict[str, Any]:
+    configured = instagram_configured()
+    enabled = instagram_publishing_enabled()
+    return {"target": "@mumung_101", "configured": configured, "publishing_enabled": enabled,
+            "label": "Meta 연결 정보 없음" if not configured else "게시 비활성화" if not enabled else "키 설정됨 · 계정 검증은 게시 직전",
+            "posts": MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).instagram_posts()}
+
+def publish_instagram(approval_id: int, image_url: str, *, publisher: InstagramPublisher | None = None) -> dict[str, Any]:
+    """The only external publish path: a single explicit admin request per approved post."""
+    if operations().dashboard()["status"]["status"] == "EMERGENCY_STOP":
+        raise PermissionError("AI 마케팅 팀 긴급정지 중에는 외부 게시할 수 없습니다.")
+    if not instagram_publishing_enabled():
+        raise PermissionError("인스타그램 게시가 비활성화돼 있습니다.")
+    config = instagram_configuration()
+    if config is None:
+        raise PermissionError("Meta 연결 정보가 없습니다.")
+    if not image_url_ok(image_url):
+        raise ValueError("ROADLOG 공개 JPEG 주소만 사용할 수 있습니다.")
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    stamp = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+    item = repo.begin_instagram_post(approval_id,image_url,stamp)
+    caption = "\n\n".join(str(item[k]) for k in ("title","hook","body","cta") if item[k])
+    try:
+        result = (publisher or InstagramPublisher()).publish_image(image_url,caption,config)
+    except Exception:
+        repo.finish_instagram_post(approval_id,"UNCERTAIN",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        raise RuntimeError("인스타그램 게시 결과를 확인하지 못했습니다. 계정을 확인하기 전 재시도하지 마세요.") from None
+    repo.finish_instagram_post(approval_id,"PUBLISHED",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),result["media_id"])
+    return {"status":"PUBLISHED","media_id":result["media_id"],"message":"인스타그램 게시 완료"}
 def set_auto_real(enabled: bool) -> dict[str, Any]:
     repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
     repo.set_auto_real(False)
