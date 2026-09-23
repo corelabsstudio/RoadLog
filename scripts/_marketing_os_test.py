@@ -85,7 +85,7 @@ def main():
         except PermissionError: print("OK 시간 예약 AI 호출 거부")
         due = marketing_os.run_due(web, due_time)
         check(not due and not marketing_os.run_due(web, due_time), "11시에도 예약 호출 없음")
-        check(marketing_os.usage()["requests"] == 2 and marketing_os.usage()["estimated_cost_krw"] == 1200, "요청 2건·내부 예산 예약")
+        check(marketing_os.usage()["requests"] == 2 and marketing_os.usage()["estimated_cost_krw"] == 20, "요청 2건·내부 예산 예약")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
             real = conn.execute("SELECT COUNT(*) n,MAX(input_tokens) tin FROM marketing_runs WHERE mode='REAL' AND tenant_id='roadlog'").fetchone()
             demo = conn.execute("SELECT COUNT(*) n FROM marketing_runs WHERE mode='DEMO' AND tenant_id='roadlog'").fetchone()
@@ -104,7 +104,7 @@ def main():
         try:
             marketing_os.trial(web, product["product_id"], "블로그", "REAL")
             raise AssertionError("budget not enforced")
-        except PermissionError: print("OK 하루 5건·3,000원 예약 한도")
+        except PermissionError: print("OK 작성자 하루 5건 요청 한도")
         marketing_os.set_auto_real(False)
         check(not marketing_os.status(web)["automatic_real_calls"], "자동 생성 끄기")
         check("외부 공개는 실행하지 않았습니다" in marketing_os.decide(one["approval_id"], "approve", "")["message"], "승인 후 외부 게시 없음")

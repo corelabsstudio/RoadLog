@@ -1,5 +1,10 @@
 # RoadLog — Claude Code 안내
 
+## AI 마케팅 내부 예약 단가 (2026-09-23 Codex)
+
+- 온해님 지시에 따라 신규 Gemini 요청의 내부 예산 예약값을 1건당 600원에서 10원으로 변경했다. 이는 실제 Gemini 청구액의 추정·상한이 아니다. 오늘 사용량은 기존 기록의 600원과 변경 후 기록의 10원이 합산될 수 있으며 기존 기록은 소급 변경하지 않는다.
+- `modules/marketing_core/service.py`, 모의 검증 `scripts/_marketing_os_test.py`, 관리자 문구 `web/admin/index.html`을 변경했다. 화면 정본은 `roadlog-saju/public/admin/index.html`. 일일 내부 한도 3,000원, 작성자별 5건 및 전체 20건의 요청 한도는 그대로다.
+
 ## AI 마케팅 팀 접기·시각 표시 (2026-09-23 Codex)
 
 - 관리자 `web/admin/index.html`에 자료·기록·생성 카드를 기본 접힘으로 변경하고, 카드 제목에 현재 건수를 넣었다. ISO 시각은 화면에서만 한국 시간으로 변환해 날짜/오전·오후 시각을 읽기 쉽게 보여준다. 데이터/API 스키마는 그대로다. 화면 정본은 `roadlog-saju/public/admin/index.html`이다.

@@ -621,7 +621,7 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
-      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">상품 정본 점검 → 시장·검색 연결 상태 확인 → Gemini 초안 1건 생성·사실 검수 → 보고서 기록을 바로 실행합니다. AI 초안은 하루 첫 팀 시작에만 최대 1건 호출합니다. 내부 예산 예약 600원은 실제 API 요금의 상한이 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
+      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">상품 정본 점검 → 시장·검색 연결 상태 확인 → Gemini 초안 1건 생성·사실 검수 → 보고서 기록을 바로 실행합니다. AI 초안은 하루 첫 팀 시작에만 최대 1건 호출합니다. 내부 예산 예약 10원은 실제 API 요금의 상한이 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <div class="deck wide">
         <details class="card marketing-fold">
           <summary>원본에서 여러 채널로</summary>
@@ -639,7 +639,7 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
       <div class="deck wide">
         <details class="card marketing-fold marketing-runner">
           <summary>실제 AI 콘텐츠 1건</summary>
-          <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 예산 600원을 예약하며 실제 청구액과 다릅니다.</p>
+          <p class="sub">상품 정본만 전달해 실제 Gemini 초안 1건을 만들고 사실 검수합니다. 외부 게시는 하지 않습니다. 요청 1회당 내부 예산 10원을 예약하며 실제 청구액과 다릅니다.</p>
           <div class="marketing-form">
             <label>상품<select id="marketingProduct"></select></label>
             <label>채널<select id="marketingPlatform"><option>블로그</option><option>카카오</option><option>X</option></select></label>
@@ -1694,7 +1694,7 @@ async function decideMarketing(approvalId, decision) {
 
 $('marketingTrial').addEventListener('click', runMarketingTrial);
 $('marketingBundleCreate').addEventListener('click', async () => {
-  if (!confirm('실제 Gemini API를 최대 3회 호출합니다. 내부 예산 1,800원을 예약하지만 실제 청구액의 상한은 아닙니다. 외부 게시 없이 초안만 만들까요?')) return;
+  if (!confirm('실제 Gemini API를 최대 3회 호출합니다. 내부 예산 30원을 예약하지만 실제 청구액의 상한은 아닙니다. 외부 게시 없이 초안만 만들까요?')) return;
   const button = $('marketingBundleCreate'); button.disabled = true;
   $('marketingBundleProgress').textContent = '상품 정본 확인 → 원본 생성 → 채널별 변환 → 사실 검수 중…';
   try {
@@ -1722,8 +1722,8 @@ document.querySelector('[data-page="marketing-team"]').addEventListener('click',
   const control = e.target.closest('[data-team-control]');
   const job = e.target.closest('[data-team-job]');
   if (!control && !job) return;
-  if (job && job.dataset.teamJob === 'content' && !confirm('실제 Gemini API를 1회 호출합니다. 내부 예산 600원을 예약하지만 실제 청구액 상한은 아닙니다. 초안을 만들까요?')) return;
-  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 즉시 실제 Gemini API를 최대 1회 호출할 수 있습니다. 내부 예산 600원 예약은 실제 청구액 상한이 아닙니다. 시작할까요?')) return;
+  if (job && job.dataset.teamJob === 'content' && !confirm('실제 Gemini API를 1회 호출합니다. 내부 예산 10원을 예약하지만 실제 청구액 상한은 아닙니다. 초안을 만들까요?')) return;
+  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 즉시 실제 Gemini API를 최대 1회 호출할 수 있습니다. 내부 예산 10원 예약은 실제 청구액 상한이 아닙니다. 시작할까요?')) return;
   const button = control || job; button.disabled = true;
   let updated = false;
   try {
