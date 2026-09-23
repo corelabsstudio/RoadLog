@@ -2,12 +2,15 @@
 from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from threading import Thread
 from typing import Any
 from zoneinfo import ZoneInfo
 from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
 from modules.marketing_roadlog import RoadLogCatalog
 from modules.marketing_gemini import RoadLogGeminiProvider
+from modules.marketing_core.agents import TASKS
 
 DB = Path(DATA_DIR) / "marketing_os.db"
 TENANT_ID = "roadlog"
@@ -53,38 +56,96 @@ def control(action:str) -> dict[str,Any]:
     result = operations().control(action)
     if action == "start":
         web_root = Path(__file__).resolve().parents[1] / "web"
-        ops = operations()
         day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
-        jobs = []
-        try:
-            product = _daily_product(web_root, day)
-            ops.record_kickoff(f"{product['name']} · 상품 정본 확인", bool(_service(web_root).real_content.connected))
-            jobs.append({"job":"kickoff","status":"COMPLETED"})
-        except Exception:
-            result["message"] = "팀은 켜졌지만 상품 정본 점검에 실패했습니다. 상품 정보를 확인해 주세요."
-            result["jobs"] = [{"job":"kickoff","status":"FAILED"}]
+        ops = operations()
+        if not RoadLogGeminiProvider().connected:
+            ops.mark_ai_unavailable()
+            result["message"] = "Gemini API 키가 연결되지 않아 8명 AI 작업을 실행하지 않았습니다. 유료 요청은 0건입니다."
+            result["jobs"] = [{"job":"team_8","status":"WAITING_AI"}]
             return result
-        for job in ("market", "seo"):
-            ops.run_job(job)
-            jobs.append({"job":job,"status":"WAITING_DATA"})
-        provider = _service(web_root).real_content
-        if provider and provider.connected and ops.claim_start_content(day):
-            try:
-                draft = trial(web_root, product["product_id"], "블로그", "REAL")
-                ops.finish_due(day, "start_content", f"실제 AI 초안 #{draft['content_id']} · {draft['status']} · 외부 게시 없음")
-                jobs.append({"job":"content","status":draft["status"]})
-            except Exception:
-                ops.finish_due(day, "start_content", "AI 생성 실패. 오늘 자동 재호출 없음; 사용량과 작업 기록을 확인해 주세요.", failed=True)
-                jobs.append({"job":"content","status":"FAILED"})
-        else:
-            reason = "AI 미연결" if not provider or not provider.connected else "오늘 팀 시작 AI 초안 이미 실행"
-            ops.record_content_skipped(reason)
-            jobs.append({"job":"content","status":"SKIPPED","reason":reason})
-        ops.record_report(day)
-        jobs.append({"job":"report","status":"COMPLETED"})
-        result["jobs"] = jobs
-        result["message"] = "팀 작업을 즉시 실행했습니다. " + ("AI 초안 생성 결과를 확인해 주세요." if jobs[-2]["status"] not in ("SKIPPED", "FAILED") else "AI 초안은 생성되지 않았습니다. 연결·사용량·활동 기록을 확인해 주세요.")
+        if not ops.claim_team_start(day):
+            result["message"] = "오늘 8명 작업은 이미 시작했습니다. 팀원별 결과와 실패 기록을 확인해 주세요."
+            result["jobs"] = [{"job":"team_8","status":"SKIPPED"}]
+            return result
+        Thread(target=_run_team, args=(web_root,day), daemon=True, name="roadlog-marketing-team").start()
+        result["message"] = "독립 AI 팀원 8명의 작업을 시작했습니다. 화면을 새로고침해 역할별 결과를 확인해 주세요. 실제 청구액은 내부 예약액과 다릅니다. 외부 게시는 하지 않습니다."
+        result["jobs"] = [{"job":"team_8","status":"RUNNING"}]
     return result
+
+def _team_running() -> bool:
+    return operations().dashboard()["status"]["status"] == "RUNNING"
+
+def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dict[str,Any] | None = None) -> tuple[str,bool]:
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    ops = operations()
+    run_id = None
+    try:
+        if not _team_running(): raise PermissionError("팀이 일시정지 또는 긴급정지 상태입니다.")
+        run_id = repo.reserve_real_run(product["product_id"], datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
+                                       20, 5, 3000, 10.0, agent_id=task.agent_id)
+        provider = RoadLogGeminiProvider()
+        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft)
+        from modules.marketing_core.policy import review_draft
+        safe_draft = {"body": "\n".join([result["summary"], *result["recommendations"]]),
+                      "factual_claims": [], "source_facts": product["product_id"]}
+        reasons = review_draft(product,safe_draft,POLICY)
+        allowed = {product["product_id"],product["name"],*(product.get("confirmed_results") or [])}
+        if any(fact not in allowed for fact in result["source_facts"]): reasons.append("상품 정본에 없는 출처 사실")
+        if task.agent_id == "quality_reviewer" and not result["review_passed"]: reasons.append("AI 품질 검수에서 차단")
+        if reasons:
+            result["unknowns"].extend(reasons)
+            state = "REVISION_REQUESTED"
+        else:
+            state = "DONE"
+        repo.finish_real_run(run_id,"COMPLETED" if state == "DONE" else "BLOCKED",result["summary"],**provider.usage)
+        ops.record_agent_output(task.agent_id,run_id,product["product_id"],state,result)
+        return task.agent_id, state == "DONE"
+    except PermissionError as exc:
+        if run_id is not None: repo.finish_real_run(run_id,"FAILED","AI 역할 작업 중단")
+        budget = "PAUSED_BY_BUDGET" in str(exc)
+        ops.record_agent_output(task.agent_id,run_id or 0,product["product_id"],"PAUSED_BY_BUDGET" if budget else "PAUSED",{"summary":"요청 또는 내부 예산 한도에 도달했습니다." if budget else "팀이 일시정지 또는 긴급정지 상태입니다.","recommendations":[],"source_facts":[],"unknowns":[task.missing_data],"review_passed":False})
+        return task.agent_id,False
+    except Exception:
+        if run_id is not None: repo.finish_real_run(run_id,"FAILED","AI 역할 작업 실패")
+        ops.record_agent_output(task.agent_id,run_id or 0,product["product_id"],"ERROR",{"summary":"AI 역할 작업 실패. 연결·예산·활동 기록을 확인해 주세요.","recommendations":[],"source_facts":[],"unknowns":[task.missing_data],"review_passed":False})
+        return task.agent_id,False
+
+def _run_team(web_root: Path, day: str) -> None:
+    ops = operations()
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    failures = 0
+    try:
+        if not RoadLogGeminiProvider().connected:
+            ops.finish_due(day,"team_8","AI 키 미연결: 유료 요청을 실행하지 않았습니다.",failed=True)
+            return
+        data = _service(web_root).products()
+        product = _daily_product(web_root,day)
+        ops.record_kickoff(f"{product['name']} · 상품 정본 확인",True)
+        independent = [t for t in TASKS if t.agent_id not in ("content_writer","quality_reviewer")]
+        # Each role owns a fresh provider, reservation, output row and failure boundary.
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futures = [pool.submit(_run_role,t,product,data["sync"]) for t in independent]
+            writer = pool.submit(_service(web_root).trial,product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True)
+            for future in as_completed(futures):
+                if not future.result()[1]: failures += 1
+            try:
+                content = writer.result()
+                ops.record_agent_output("content_writer",content["run_id"],product["product_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",
+                                        {"summary":f"AI 블로그 초안 #{content['content_id']} · AI 품질 검수 대기", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
+            except Exception:
+                content = None
+                failures += 1
+                ops.record_agent_output("content_writer",0,product["product_id"],"ERROR",{"summary":"AI 초안 생성 실패", "recommendations":[],"source_facts":[],"unknowns":[],"review_passed":False})
+        reviewer = next(t for t in TASKS if t.agent_id == "quality_reviewer")
+        _,review_ok = _run_role(reviewer,product,data["sync"],content["draft"] if content else None)
+        if not review_ok: failures += 1
+        if content:
+            approved = repo.finalize_agent_review(content["content_id"],review_ok and _team_running(),datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            if not approved: failures += 1
+        ops.record_report(day)
+        ops.finish_due(day,"team_8",f"8명 역할별 AI 작업 종료 · 실패/차단 {failures}건 · 외부 게시 없음",failed=bool(failures))
+    except Exception:
+        ops.finish_due(day,"team_8","8명 작업 중단. 팀원별 결과와 실패 기록을 확인해 주세요. 외부 게시 없음",failed=True)
 def _daily_product(web_root: Path, day: str) -> dict[str, Any]:
     catalog = _service(web_root).products()["products"]
     verified = [p for p in catalog if p["facts_status"] == "VERIFIED" and p.get("confirmed_results")]

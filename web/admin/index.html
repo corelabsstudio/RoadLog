@@ -621,7 +621,7 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
-      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">상품 정본 점검 → 시장·검색 연결 상태 확인 → Gemini 초안 1건 생성·사실 검수 → 보고서 기록을 바로 실행합니다. AI 초안은 하루 첫 팀 시작에만 최대 1건 호출합니다. 내부 예산 예약 10원은 실제 API 요금의 상한이 아닙니다. 외부 게시·광고는 하지 않습니다. 시장·검색·성과는 데이터 연동 전까지 대기로 표시합니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
+      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">8명이 각자 Gemini 요청 1건과 산출물·사용량·실패 기록을 갖습니다. 콘텐츠 작가 초안은 상품 정본 검사와 품질 검수자의 별도 AI 검사 후에만 승인 대기에 들어갑니다. 하루 팀 시작 작업은 1회만 수행합니다. 8건의 내부 예산 예약액은 총 80원이며 실제 API 청구액의 상한이 아닙니다. 시장·검색·성과 데이터는 미연결이며 외부 게시·광고는 실행하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <div class="deck wide">
         <details class="card marketing-fold">
           <summary>원본에서 여러 채널로</summary>
@@ -1532,6 +1532,7 @@ window.addEventListener('resize', () => {
 });
 
 let MARKETING_LOADED = false;
+let MARKETING_TEAM_BUSY = false;
 let MARKETING_STATUS = {};
 
 async function marketingFetch(path, options = {}) {
@@ -1617,6 +1618,7 @@ function marketingTimeTag(value) {
   return parts ? '<time datetime="' + esc(value) + '" title="' + esc(value) + '"><span>' + esc(parts.date) + '</span><span>' + esc(parts.time) + '</span></time>' : '<time>UNKNOWN</time>';
 }
 function paintMarketingTeam(team) {
+  MARKETING_TEAM_BUSY = (team.scheduled_runs || []).some((r) => r.job_key === 'team_8' && r.status === 'RUNNING');
   $('marketingActivitySummary').textContent = '최근 활동 · ' + (team.activity || []).length + '건';
   $('marketingContentSummary').textContent = '콘텐츠 작업 기록 · ' + (team.content || []).length + '건';
   $('marketingReportsSummary').textContent = '일일 보고서 · ' + (team.reports || []).length + '건';
@@ -1631,7 +1633,13 @@ function paintMarketingTeam(team) {
     button.disabled = (action === 'pause' && teamState === 'PAUSED') || (action === 'stop' && teamState === 'EMERGENCY_STOP');
     button.textContent = action === 'start' && teamState === 'RUNNING' ? '오늘 작업 즉시 실행' : action === 'pause' && teamState === 'PAUSED' ? '일시정지됨' : action === 'stop' && teamState === 'EMERGENCY_STOP' ? '긴급정지됨' : { start: '팀 시작 · 즉시 실행', pause: '일시정지', stop: '긴급정지' }[action];
   }
-  $('marketingAgents').innerHTML = (team.agents || []).map((a) => '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '예약 작업 대기') + '</p><small>마지막 활동 ' + esc(marketingTimeText(a.last_activity)) + '</small></article>').join('');
+  $('marketingAgents').innerHTML = (team.agents || []).map((a) => {
+    const latest = (team.agent_outputs || []).find((o) => o.agent_id === a.agent_id);
+    let output = null;
+    try { output = latest ? JSON.parse(latest.result_json) : null; } catch (_) { output = null; }
+    return '<article class="marketing-agent"><header><h3>' + esc(a.label) + '</h3><span>' + esc(a.status) + '</span></header><p>' + esc(a.current_task || '작업 대기') + '</p><small>마지막 활동 ' + esc(marketingTimeText(a.last_activity)) + '</small>'
+      + (output ? '<details><summary>AI 산출물 · 요청 #' + esc(latest.run_id) + '</summary><p>' + esc(output.summary || '') + '</p><p>' + esc((output.recommendations || []).join(' · ')) + '</p><small>미확인: ' + esc((output.unknowns || []).join(' · ') || '없음') + '</small><br><small>토큰 입력 ' + esc(latest.input_tokens ?? 'UNKNOWN') + ' · 출력 ' + esc(latest.output_tokens ?? 'UNKNOWN') + ' · 내부 예약 ' + esc(latest.estimated_cost_krw ?? 'UNKNOWN') + '원 (실제 청구액 아님)</small></details>' : '') + '</article>';
+  }).join('');
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   $('marketingSchedule').innerHTML = (team.schedule || []).map((s) => {
     const run = (team.scheduled_runs || []).find((r) => r.run_date === today && r.job_key === s.job);
@@ -1660,6 +1668,9 @@ async function loadMarketing() {
     $('marketingProgress').textContent = ex.message;
   }
 }
+setInterval(() => {
+  if (MARKETING_TEAM_BUSY && !document.hidden) loadMarketing();
+}, 4000);
 
 async function runMarketingTrial() {
   if (!confirm('실제 Gemini API를 1회 호출합니다. 사용량이 과금될 수 있으며 외부 게시는 하지 않습니다. 계속할까요?')) return;
@@ -1723,7 +1734,7 @@ document.querySelector('[data-page="marketing-team"]').addEventListener('click',
   const job = e.target.closest('[data-team-job]');
   if (!control && !job) return;
   if (job && job.dataset.teamJob === 'content' && !confirm('실제 Gemini API를 1회 호출합니다. 내부 예산 10원을 예약하지만 실제 청구액 상한은 아닙니다. 초안을 만들까요?')) return;
-  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 즉시 실제 Gemini API를 최대 1회 호출할 수 있습니다. 내부 예산 10원 예약은 실제 청구액 상한이 아닙니다. 시작할까요?')) return;
+  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 시 Gemini API를 최대 8회 각각 호출합니다. 내부 예산 총 80원 예약은 실제 청구액 상한이 아닙니다. 외부 게시 없이 시작할까요?')) return;
   const button = control || job; button.disabled = true;
   let updated = false;
   try {

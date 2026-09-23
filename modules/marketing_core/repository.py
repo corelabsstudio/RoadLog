@@ -56,15 +56,31 @@ class MarketingRepository:
             r = conn.execute("SELECT COUNT(*) n,COALESCE(SUM(estimated_cost_krw),0) cost FROM marketing_runs WHERE tenant_id=? AND substr(created_at,1,10)=? AND mode='REAL'", (self.tenant_id,day)).fetchone()
         return int(r["n"]), float(r["cost"])
 
-    def reserve_real_run(self, product_id: str, stamp: str, daily_limit: int, agent_limit: int, cost_limit: float, reservation_krw: float) -> int:
+    def reserve_real_run(self, product_id: str, stamp: str, daily_limit: int, agent_limit: int, cost_limit: float, reservation_krw: float, agent_id: str = "content_writer") -> int:
         """Reserve before the external request; a failed request still consumes the allowance."""
         with self.connect() as conn:
             conn.execute("BEGIN IMMEDIATE")
             row = conn.execute("SELECT COUNT(*) n,COALESCE(SUM(estimated_cost_krw),0) cost FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND substr(created_at,1,10)=?", (self.tenant_id, stamp[:10])).fetchone()
-            writer = conn.execute("SELECT COUNT(*) n FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND substr(created_at,1,10)=?", (self.tenant_id, stamp[:10])).fetchone()
-            if row["n"] >= daily_limit or writer["n"] >= agent_limit or row["cost"] + reservation_krw > cost_limit:
+            agent = conn.execute("SELECT COUNT(*) n FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id=? AND substr(created_at,1,10)=?", (self.tenant_id, agent_id, stamp[:10])).fetchone()
+            if row["n"] >= daily_limit or agent["n"] >= agent_limit or row["cost"] + reservation_krw > cost_limit:
                 raise PermissionError("PAUSED_BY_BUDGET: 오늘 AI 요청 또는 예산 예약 한도를 넘었습니다.")
-            return int(conn.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,product_id,status,estimated_cost_krw,result_summary,created_at) VALUES(?,?,?,?,?,?,?,?)", (self.tenant_id,"REAL","content_writer",product_id,"RUNNING",reservation_krw,"수동 AI 초안 생성 중",stamp)).lastrowid)
+            return int(conn.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,product_id,status,estimated_cost_krw,result_summary,created_at) VALUES(?,?,?,?,?,?,?,?)", (self.tenant_id,"REAL",agent_id,product_id,"RUNNING",reservation_krw,"AI 역할 작업 중",stamp)).lastrowid)
+
+    def finalize_agent_review(self, content_id: int, passed: bool, stamp: str) -> bool:
+        """AI review must finish before any new team draft appears in approvals."""
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT review_reasons_json,status FROM marketing_content WHERE id=? AND tenant_id=?", (content_id, self.tenant_id)).fetchone()
+            if not row or row["status"] != "AWAITING_AI_REVIEW":
+                raise ValueError("검수 대기 콘텐츠를 찾지 못했습니다.")
+            reasons = json.loads(row["review_reasons_json"])
+            if not passed: reasons.append("AI 품질 검수 미통과 또는 실행 실패")
+            approved = not reasons
+            conn.execute("UPDATE marketing_content SET status=?,review_result=?,review_reasons_json=? WHERE id=? AND tenant_id=?",
+                         ("PENDING_APPROVAL" if approved else "REVISION_REQUESTED", "상품 정본 및 AI 검수 통과" if approved else "검수 실패", json.dumps(reasons, ensure_ascii=False), content_id, self.tenant_id))
+            if approved:
+                conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id, content_id, "PENDING", stamp))
+            return approved
 
     def finish_real_run(self, run_id: int, status: str, summary: str, input_tokens: int = 0, output_tokens: int = 0) -> None:
         with self.connect() as conn:
@@ -99,12 +115,12 @@ class MarketingRepository:
                 conn.execute("UPDATE marketing_content SET bundle_id=? WHERE id=? AND tenant_id=? AND mode='REAL'", (bundle_id, trial["content_id"], self.tenant_id))
         return {"bundle_id": bundle_id, "items": [{"content_id": t["content_id"], "approval_id": t["approval_id"], "platform": t["draft"]["platform"], "status": t["status"], "review_reasons": t["review"]["reasons"], "draft": t["draft"]} for t in trials]}
 
-    def save_trial(self, product: dict[str, Any], meta: dict[str, Any], draft: dict[str, Any], reasons: list[str], now: str, mode: str = "REAL", reservation_krw: float | None = None) -> tuple[int,int|None]:
+    def save_trial(self, product: dict[str, Any], meta: dict[str, Any], draft: dict[str, Any], reasons: list[str], now: str, mode: str = "REAL", reservation_krw: float | None = None, defer_approval: bool = False) -> tuple[int,int|None]:
         passed = not reasons
         with self.connect() as conn:
-            cur = conn.execute("INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (self.tenant_id,product["product_id"],product["name"],draft["platform"],draft["title"],draft["hook"],draft["body"],draft["cta"],draft["image_prompt"],"PENDING_APPROVAL" if passed else "REVISION_REQUESTED","상품 정본 및 표현 검수 통과" if passed else "검수 실패",json.dumps(reasons,ensure_ascii=False),json.dumps({**product,"source_file":meta["source_file"],"source_hash":meta["source_hash"]},ensure_ascii=False),reservation_krw,mode,now))
+            cur = conn.execute("INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (self.tenant_id,product["product_id"],product["name"],draft["platform"],draft["title"],draft["hook"],draft["body"],draft["cta"],draft["image_prompt"],"AWAITING_AI_REVIEW" if defer_approval else "PENDING_APPROVAL" if passed else "REVISION_REQUESTED","AI 품질 검수 대기" if defer_approval else "상품 정본 및 표현 검수 통과" if passed else "검수 실패",json.dumps(reasons,ensure_ascii=False),json.dumps({**product,"source_file":meta["source_file"],"source_hash":meta["source_hash"]},ensure_ascii=False),reservation_krw,mode,now))
             cid, aid = int(cur.lastrowid), None
-            if passed: aid = int(conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,cid,"PENDING",now)).lastrowid)
+            if passed and not defer_approval: aid = int(conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,cid,"PENDING",now)).lastrowid)
         return cid, aid
 
     def approvals(self) -> list[dict[str, Any]]:

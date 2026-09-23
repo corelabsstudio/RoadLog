@@ -70,3 +70,64 @@ class RoadLogGeminiProvider:
             if attempt < 2:
                 self.sleep(2 ** attempt)
         raise ValueError(last_error)
+
+    def generate_role(self, task: Any, product: dict[str, Any], *, draft: dict[str, Any] | None = None) -> dict[str, Any]:
+        """One separate Gemini request per role. No external metrics or full prompt is stored."""
+        key = os.getenv("GEMINI_API_KEY", "").strip()
+        if not key:
+            raise PermissionError("Gemini API 키가 없습니다.")
+        facts = {field: product.get(field, "UNKNOWN") for field in (
+            "product_id", "name", "price_won", "free", "lamp_price", "premium",
+            "confirmed_results", "forbidden_expressions", "synced_at", "source_file"
+        )}
+        schema = {"type": "OBJECT", "properties": {
+            "summary": {"type": "STRING"}, "recommendations": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "source_facts": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "unknowns": {"type": "ARRAY", "items": {"type": "STRING"}},
+            "review_passed": {"type": "BOOLEAN"},
+        }, "required": ["summary", "recommendations", "source_facts", "unknowns", "review_passed"]}
+        instructions = ("ROADLOG의 지정된 마케팅 역할 한 가지만 수행하세요. 제공되지 않은 가격·할인·기능·"
+                        "시장 수치·검색량·성과 수치를 만들지 마세요. 외부 게시를 제안할 수는 있으나 실행했다고 말하지 마세요. "
+                        "summary는 300자 이하, recommendations는 최대 3개로 제한하세요. "
+                        "source_facts에는 상품 ID 또는 confirmed_results의 원문만 글자까지 동일하게 복사하세요. 미연결 데이터는 unknowns에 쓰세요. "
+                        "품질 검수자 외에는 review_passed를 false로 두세요. 품질 검수자는 초안의 사실 불일치가 있으면 false로 두세요.")
+        payload = {"role": task.agent_id, "objective": task.objective, "missing_data": task.missing_data,
+                   "facts": facts, "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None}
+        body = {"systemInstruction": {"parts": [{"text": instructions}]},
+                "contents": [{"role": "user", "parts": [{"text": json.dumps(payload, ensure_ascii=False)}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 700,
+                                     "thinkingConfig": {"thinkingBudget": 0},
+                                     "responseMimeType": "application/json", "responseSchema": schema}}
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        last_error = "AI 응답 오류"
+        for attempt in range(3):
+            try:
+                response = (self.client.post if self.client else httpx.post)(url, params={"key": key}, json=body, timeout=20)
+                if response.status_code in (429, 500, 502, 503, 504):
+                    last_error = f"공급자 일시 오류 ({response.status_code})"
+                else:
+                    response.raise_for_status()
+                    raw = response.json()
+                    result = json.loads("".join(p.get("text", "") for p in raw["candidates"][0]["content"]["parts"]))
+                    if not isinstance(result, dict) or not isinstance(result.get("summary"), str) or len(result["summary"]) > 300:
+                        raise ValueError("역할 응답 형식 오류")
+                    for field in ("recommendations", "source_facts", "unknowns"):
+                        if not isinstance(result.get(field), list) or any(not isinstance(x, str) for x in result[field]):
+                            raise ValueError("역할 응답 형식 오류")
+                    if len(result["recommendations"]) > 3 or not isinstance(result.get("review_passed"), bool):
+                        raise ValueError("역할 응답 형식 오류")
+                    usage = raw.get("usageMetadata") or {}
+                    self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0),
+                                  "output_tokens": int(usage.get("candidatesTokenCount") or 0)}
+                    return result
+            except (httpx.TimeoutException, httpx.TransportError):
+                last_error = "AI 응답 시간 초과 또는 연결 오류"
+            except (ValueError, KeyError, IndexError, TypeError):
+                last_error = "AI 응답 구조 오류"
+                break
+            except httpx.HTTPStatusError:
+                last_error = f"공급자 요청 거부 ({response.status_code})"
+                break
+            if attempt < 2:
+                self.sleep(2 ** attempt)
+        raise ValueError(last_error)

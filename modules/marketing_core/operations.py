@@ -1,5 +1,6 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
+import json
 from typing import Any
 from zoneinfo import ZoneInfo
 from .repository import MarketingRepository
@@ -18,6 +19,7 @@ class TeamOperations:
             CREATE TABLE IF NOT EXISTS marketing_state(tenant_id TEXT PRIMARY KEY,status TEXT NOT NULL,updated_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS marketing_reports(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,report_date TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(tenant_id,report_date));
             CREATE TABLE IF NOT EXISTS marketing_scheduled_runs(tenant_id TEXT NOT NULL,run_date TEXT NOT NULL,job_key TEXT NOT NULL,status TEXT NOT NULL,result TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL,PRIMARY KEY(tenant_id,run_date,job_key));
+            CREATE TABLE IF NOT EXISTS marketing_agent_outputs(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,agent_id TEXT NOT NULL,run_id INTEGER NOT NULL,product_id TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT NOT NULL,created_at TEXT NOT NULL);
             """)
             db.execute("INSERT OR IGNORE INTO marketing_state(tenant_id,status,updated_at) VALUES(?,?,?)",(self.repo.tenant_id,"STOPPED",now()))
             for aid,name,label in self.agent_defs:
@@ -34,7 +36,27 @@ class TeamOperations:
             content=[dict(r) for r in db.execute("SELECT id,product_name,platform,title,status,review_result,created_at FROM marketing_content WHERE tenant_id=? ORDER BY id DESC LIMIT 30",(self.repo.tenant_id,))]
             reports=[dict(r) for r in db.execute("SELECT * FROM marketing_reports WHERE tenant_id=? ORDER BY report_date DESC LIMIT 30",(self.repo.tenant_id,))]
             scheduled=[dict(r) for r in db.execute("SELECT * FROM marketing_scheduled_runs WHERE tenant_id=? ORDER BY run_date DESC,job_key LIMIT 20",(self.repo.tenant_id,))]
-        return {"status":dict(state),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports,"scheduled_runs":scheduled}
+            outputs=[dict(r) for r in db.execute("SELECT o.*,r.input_tokens,r.output_tokens,r.estimated_cost_krw FROM marketing_agent_outputs o LEFT JOIN marketing_runs r ON r.id=o.run_id AND r.tenant_id=o.tenant_id WHERE o.tenant_id=? ORDER BY o.id DESC LIMIT 30",(self.repo.tenant_id,))]
+        return {"status":dict(state),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports,"scheduled_runs":scheduled,"agent_outputs":outputs}
+
+    def record_agent_output(self, agent_id: str, run_id: int, product_id: str, status: str, result: dict[str, Any]) -> None:
+        stamp = now()
+        summary = str(result.get("summary") or "AI 작업 실패")[:300]
+        with self.repo.connect() as db:
+            db.execute("INSERT INTO marketing_agent_outputs(tenant_id,agent_id,run_id,product_id,status,result_json,created_at) VALUES(?,?,?,?,?,?,?)",
+                       (self.repo.tenant_id,agent_id,run_id,product_id,status,json.dumps(result,ensure_ascii=False),stamp))
+            db.execute("UPDATE marketing_agents SET status=?,current_task=?,progress=?,last_activity=? WHERE tenant_id=? AND agent_id=?",
+                       (status,summary,100 if status == "DONE" else 0,stamp,self.repo.tenant_id,agent_id))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                       (self.repo.tenant_id,agent_id,"독립 AI 작업 완료" if status == "DONE" else "독립 AI 작업 실패",product_id,summary,"INFO" if status == "DONE" else "ERROR",stamp))
+
+    def mark_ai_unavailable(self) -> None:
+        stamp = now()
+        with self.repo.connect() as db:
+            db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task='Gemini API 키 미연결 · 유료 요청 없음',progress=0,last_activity=? WHERE tenant_id=?",
+                       (stamp,self.repo.tenant_id))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",
+                       (self.repo.tenant_id,None,"8명 AI 작업 대기","Gemini API 키 미연결","유료 API 요청 없음", "WARNING",stamp))
 
     def claim_due(self, when: datetime | None = None) -> list[tuple[str,str]]:
         local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
@@ -65,9 +87,36 @@ class TeamOperations:
                 (self.repo.tenant_id, day, "start_content", "RUNNING", now()))
             return bool(cur.rowcount)
 
+    def claim_team_start(self, day: str) -> bool:
+        """Exactly one eight-agent batch per KST day across web workers."""
+        with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            row = db.execute("SELECT status FROM marketing_state WHERE tenant_id=?", (self.repo.tenant_id,)).fetchone()
+            if not row or row["status"] != "RUNNING": return False
+            previous = db.execute("SELECT status,updated_at FROM marketing_scheduled_runs WHERE tenant_id=? AND run_date=? AND job_key='team_8'",
+                                  (self.repo.tenant_id,day)).fetchone()
+            if previous:
+                if previous["status"] != "RUNNING": return False
+                try:
+                    stale = datetime.fromisoformat(previous["updated_at"]) < datetime.now(ZoneInfo("Asia/Seoul")) - timedelta(minutes=10)
+                except ValueError:
+                    stale = False
+                if not stale: return False
+                db.execute("UPDATE marketing_scheduled_runs SET status='FAILED',result='작업자 재시작으로 중단; 관리자 재실행',updated_at=? WHERE tenant_id=? AND run_date=? AND job_key='team_8'",
+                           (now(),self.repo.tenant_id,day))
+                # A killed worker must not leave its unfinished draft approvable.
+                db.execute("UPDATE marketing_content SET status='REVISION_REQUESTED',review_result='AI 검수 작업 중단' WHERE tenant_id=? AND status='AWAITING_AI_REVIEW'",
+                           (self.repo.tenant_id,))
+                db.execute("UPDATE marketing_scheduled_runs SET status='RUNNING',result='',updated_at=? WHERE tenant_id=? AND run_date=? AND job_key='team_8'",
+                           (now(),self.repo.tenant_id,day))
+                return True
+            cur = db.execute("INSERT OR IGNORE INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
+                             (self.repo.tenant_id,day,"team_8","RUNNING",now()))
+            return bool(cur.rowcount)
+
     def finish_due(self, day: str, job_key: str, result: str, *, failed: bool = False) -> None:
         stamp = now(); status = "FAILED" if failed else "COMPLETED"
-        aid = "content_writer" if job_key == "content" else "marketing_director"
+        aid = "content_writer" if job_key == "content" else "team_8" if job_key == "team_8" else "marketing_director"
         with self.repo.connect() as db:
             db.execute("UPDATE marketing_scheduled_runs SET status=?,result=?,updated_at=? WHERE tenant_id=? AND run_date=? AND job_key=?",
                 (status,result,stamp,self.repo.tenant_id,day,job_key))

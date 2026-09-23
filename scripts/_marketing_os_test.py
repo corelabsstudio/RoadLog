@@ -1,6 +1,6 @@
 """Marketing real-mode regression; paid APIs are always mocked."""
 from __future__ import annotations
-import json, os, shutil, sqlite3, sys, tempfile, types
+import json, os, shutil, sqlite3, sys, tempfile, time, types
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +16,7 @@ if "dotenv" not in sys.modules:
 from modules import marketing_os
 from modules.marketing_core import MarketingRepository
 from modules.marketing_gemini import RoadLogGeminiProvider
+from modules.marketing_core.agents import TASKS
 
 def check(value, label):
     assert value, label
@@ -30,6 +31,9 @@ class FakeGemini:
                 "hook": "정본 항목을 살펴보세요.", "body": f"ROADLOG 상품은 {item['price_won']:,}원입니다. {focus} 항목을 확인해 보세요.",
                 "cta": "상품 화면에서 확인하세요.", "image_prompt": "차분한 사주 서비스 화면, 가격 글자 없음",
                 "factual_claims": [focus], "source_facts": item["product_id"], "uncertainty": [], "estimated_cost": None}
+    def generate_role(self, task, item, *, draft=None):
+        return {"summary": f"{task.agent_id} 상품 정본을 검토했습니다.", "recommendations": ["상품 설명 확인"],
+                "source_facts": [item["product_id"]], "unknowns": [task.missing_data], "review_passed": bool(draft)}
 
 def main():
     temp = Path(tempfile.mkdtemp(prefix="roadlog_marketing_real_"))
@@ -58,11 +62,21 @@ def main():
             marketing_os.set_auto_real(True)
             raise AssertionError("auto before proof")
         except PermissionError: print("OK 첫 수동 검증 전 자동 잠금")
+        no_key_start = marketing_os.control("start")
+        check(no_key_start["jobs"][0]["status"] == "WAITING_AI" and marketing_os.usage()["requests"] == 0, "키 없을 때 8명 대기 · 유료 호출 0")
         marketing_os.RoadLogGeminiProvider = FakeGemini
         day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
         started = marketing_os.control("start")
-        check(started["status"] == "RUNNING" and [j["job"] for j in started["jobs"]] == ["kickoff", "market", "seo", "content", "report"], "팀 시작 즉시 전 단계 실행")
-        check(started["jobs"][3]["status"] == "PENDING_APPROVAL", "팀 시작 즉시 모의 AI 초안·검수")
+        check(started["status"] == "RUNNING" and started["jobs"][0]["job"] == "team_8", "팀 시작 즉시 8명 배치")
+        for _ in range(100):
+            if any(j["job_key"] == "team_8" and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
+            time.sleep(0.05)
+        else: raise AssertionError("eight-agent batch did not finish")
+        team = marketing_os.team_dashboard()
+        check({o["agent_id"] for o in team["agent_outputs"]} == {a["agent_id"] for a in team["agents"]}, "8명 각각 결과 저장")
+        check(len({o["run_id"] for o in team["agent_outputs"]}) == 8 and all(o["run_id"] > 0 for o in team["agent_outputs"]), "8명 각각 독립 요청")
+        check(marketing_os.usage()["requests"] == 8 and marketing_os.usage()["estimated_cost_krw"] == 80, "8명 요청·내부 예약 80원")
+        check(len(marketing_os.approvals()) == 1, "작성자·AI 검수 통과 후 승인 등록")
         check(not marketing_os.bundles(), "시작 시 가짜 묶음 없음")
         check(all(a["status"] != "IDLE" for a in marketing_os.team_dashboard()["agents"]), "8개 역할에 실제 작업 또는 대기 사유")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
@@ -72,10 +86,10 @@ def main():
         due_time = datetime.fromisoformat(day + "T11:05:00+09:00")
         check(not marketing_os.run_due(web, due_time), "시각 기반 AI 예약 없음")
         repeated = marketing_os.control("start")
-        check(not repeated["changed"] and repeated["jobs"][3]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 1, "켜진 팀 재실행 중복 과금 없음")
+        check(not repeated["changed"] and repeated["jobs"][0]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 8, "켜진 팀 재실행 중복 과금 없음")
         marketing_os.control("pause")
         resumed = marketing_os.control("start")
-        check(resumed["jobs"][3]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 1, "일시정지 후 재시작해도 하루 첫 호출만")
+        check(resumed["jobs"][0]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 8, "일시정지 후 재시작해도 하루 첫 호출만")
         one = marketing_os.trial(web, product["product_id"], "블로그", "REAL")
         check(one["ok"] and one["approval_id"], "모의 REAL 초안 검수 통과·승인 등록")
         check(marketing_os.status(web)["manual_real_success"] and not marketing_os.status(web)["automatic_real_calls"], "시간 예약 AI 생성 꺼짐")
@@ -85,11 +99,11 @@ def main():
         except PermissionError: print("OK 시간 예약 AI 호출 거부")
         due = marketing_os.run_due(web, due_time)
         check(not due and not marketing_os.run_due(web, due_time), "11시에도 예약 호출 없음")
-        check(marketing_os.usage()["requests"] == 2 and marketing_os.usage()["estimated_cost_krw"] == 20, "요청 2건·내부 예산 예약")
+        check(marketing_os.usage()["requests"] == 9 and marketing_os.usage()["estimated_cost_krw"] == 90, "요청 9건·내부 예산 예약")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
             real = conn.execute("SELECT COUNT(*) n,MAX(input_tokens) tin FROM marketing_runs WHERE mode='REAL' AND tenant_id='roadlog'").fetchone()
             demo = conn.execute("SELECT COUNT(*) n FROM marketing_runs WHERE mode='DEMO' AND tenant_id='roadlog'").fetchone()
-        check(real["n"] == 2 and real["tin"] == 60 and demo["n"] == 0, "토큰 기록·새 DEMO 작업 없음")
+        check(real["n"] == 9 and real["tin"] == 60 and demo["n"] == 0, "토큰 기록·새 DEMO 작업 없음")
         bundle = marketing_os.create_bundle(web, product["product_id"], product["confirmed_results"][0] + "은 무엇인가요?", "REAL")
         check(bundle["mode"] == "REAL" and len(bundle["items"]) == 3 and all(i["approval_id"] for i in bundle["items"]), "실제 AI 묶음 3건·검수")
         check(marketing_os.bundles()[0]["status"] == "REAL_REVIEWED", "REAL 묶음 저장")
@@ -108,6 +122,25 @@ def main():
         marketing_os.set_auto_real(False)
         check(not marketing_os.status(web)["automatic_real_calls"], "자동 생성 끄기")
         check("외부 공개는 실행하지 않았습니다" in marketing_os.decide(one["approval_id"], "approve", "")["message"], "승인 후 외부 게시 없음")
+        class RejectReviewer(FakeGemini):
+            def generate_role(self, task, item, *, draft=None):
+                if task.agent_id == "market_researcher": raise ValueError("mock role failure")
+                result = super().generate_role(task,item,draft=draft)
+                if task.agent_id == "quality_reviewer": result["review_passed"] = False
+                return result
+        marketing_os.DB = temp / "review.db"
+        marketing_os.RoadLogGeminiProvider = RejectReviewer
+        rejected_start = marketing_os.control("start")
+        check(rejected_start["jobs"][0]["status"] == "RUNNING", "차단 사례 8명 작업 시작")
+        for _ in range(100):
+            runs = marketing_os.team_dashboard()["scheduled_runs"]
+            if any(j["job_key"] == "team_8" and j["status"] != "RUNNING" for j in runs): break
+            time.sleep(0.05)
+        else: raise AssertionError("rejected team did not finish")
+        blocked_team = marketing_os.team_dashboard()
+        check(not marketing_os.approvals() and blocked_team["content"][0]["status"] == "REVISION_REQUESTED", "AI 검수 실패 시 승인 대기 미등록")
+        check({o["agent_id"] for o in blocked_team["agent_outputs"]} == {a["agent_id"] for a in blocked_team["agents"]}
+              and next(o for o in blocked_team["agent_outputs"] if o["agent_id"] == "market_researcher")["status"] == "ERROR", "한 역할 실패해도 나머지 역할 격리")
         class FalseGemini(FakeGemini):
             def generate(self, item, platform):
                 draft = super().generate(item, platform)
@@ -131,6 +164,10 @@ def main():
         with httpx.Client(transport=httpx.MockTransport(structured_response)) as client:
             provider = RoadLogGeminiProvider(client=client, sleep=lambda _: None)
             check(provider.generate(product, "블로그")["source_facts"] == product["product_id"] and provider.usage["input_tokens"] == 5, "Gemini JSON·사용량 파싱")
+        role_payload = FakeGemini().generate_role(TASKS[0], product)
+        with httpx.Client(transport=httpx.MockTransport(lambda req: response(json.dumps(role_payload)))) as client:
+            provider = RoadLogGeminiProvider(client=client, sleep=lambda _: None)
+            check(provider.generate_role(TASKS[0], product)["summary"] == role_payload["summary"] and provider.usage["output_tokens"] == 7, "독립 역할 JSON·사용량 파싱")
         with httpx.Client(transport=httpx.MockTransport(lambda req: response("not json"))) as client:
             try:
                 RoadLogGeminiProvider(client=client, sleep=lambda _: None).generate(product, "블로그")
