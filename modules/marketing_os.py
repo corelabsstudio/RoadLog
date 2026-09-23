@@ -21,7 +21,7 @@ POLICY = BrandPolicy(
     blocked_brand_pattern=r"ChatGPT|챗GPT|포스텔러|점신|신한라이프",
 )
 AGENTS=[("marketing_director","Marketing Director","마케팅 디렉터"),("market_researcher","Market Researcher","시장 조사원"),("seo_specialist","SEO Specialist","검색 전략가"),("content_writer","Content Writer","콘텐츠 작가"),("creative_director","Creative Director","크리에이티브 디렉터"),("social_manager","Social Manager","채널 매니저"),("quality_reviewer","Quality Reviewer","품질 검수자"),("performance_analyst","Performance Analyst","성과 분석가")]
-SCHEDULE=[{"time":"즉시","job":"kickoff","name":"상품 정본 점검","automatic":False},{"time":"즉시","job":"market","name":"시장 데이터 연결 상태 확인","automatic":False},{"time":"즉시","job":"seo","name":"검색 데이터 연결 상태 확인","automatic":False},{"time":"즉시","job":"content","name":"검증된 상품 AI 초안 1건","automatic":False},{"time":"즉시","job":"review","name":"새 초안 사실 검수","automatic":False},{"time":"즉시","job":"report","name":"일일 보고서","automatic":False}]
+SCHEDULE=[{"time":"팀 시작","job":"team_8","name":"8명 독립 AI 작업 · 정본 검수 · 일일 보고서","automatic":False}]
 
 def _service(web_root: Path = Path(".")) -> MarketingService:
     provider = RoadLogGeminiProvider()
