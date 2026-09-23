@@ -32,13 +32,13 @@ class MarketingService:
         connection_label = "AI 연결되지 않음"
         if connected:
             connection_label = "수동 생성·검수 성공" if manual_success else ("실제 AI 응답 확인 · 검수 통과 대기" if self.repository.has_real_provider_response() else "키 설정됨 · 실제 호출 미검증")
-        return {"dry_run":True,"dry_run_scope":"external_publishing","mode":"REAL · 실제 AI 초안" if connected else "AI 미연결","provider":self.real_content.name if self.real_content else self.content.name,"model":self.real_content.model if self.real_content else self.content.model,"connected":connected,"connection_label":connection_label,"real_trial_enabled":connected,"manual_real_success":manual_success,"automatic_real_calls":False,"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
+        return {"dry_run":True,"dry_run_scope":"external_publishing","mode":"REAL · 실제 AI 초안" if connected else "AI 미연결","provider":self.real_content.name if self.real_content else self.content.name,"model":self.real_content.model if self.real_content else self.content.model,"connected":connected,"connection_label":connection_label,"real_trial_enabled":connected,"manual_real_success":manual_success,"automatic_real_calls":self.repository.auto_real_enabled(),"tenant_id":self.repository.tenant_id,"product_count":len(items),"verified_count":sum(p["facts_status"]=="VERIFIED" for p in items),"sync":data["sync"]}
 
     def usage(self) -> dict[str, Any]:
         day=now()[:10]; requests,cost=self.repository.usage(day); p=self.usage_policy
         return {"date":day,"requests":requests,"request_limit":p.daily_requests,"remaining_requests":max(0,p.daily_requests-requests),"estimated_cost_krw":cost,"cost_limit_krw":p.daily_cost,"remaining_cost_krw":max(0,p.daily_cost-cost),"cost_is_estimate":True,"agent_limit":p.per_agent_requests}
 
-    def trial(self, product_id: str, platform: str, mode: str, *, trigger: str = "MANUAL", focus_result: str = "", defer_approval: bool = False) -> dict[str, Any]:
+    def trial(self, product_id: str, platform: str, mode: str, *, trigger: str = "MANUAL", focus_result: str = "", defer_approval: bool = False, strategy_context: list[str] | None = None) -> dict[str, Any]:
         mode = mode.upper()
         if mode != "REAL": raise PermissionError("DEMO 생성은 종료됐습니다. 실제 AI 생성만 지원합니다.")
         if trigger not in ("MANUAL", "AUTO"): raise ValueError("지원하지 않는 실행 경로입니다.")
@@ -54,7 +54,7 @@ class MarketingService:
         p = self.usage_policy
         run_id = self.repository.reserve_real_run(product_id, now(), p.daily_requests, p.per_agent_requests, p.daily_cost, reservation)
         try:
-            writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"], "marketing_focus_result": focus_result}
+            writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"], "marketing_focus_result": focus_result, "strategy_context": (strategy_context or [])[:3]}
             draft=provider.generate(writing_product,platform); reasons=review_draft(product,draft,self.brand_policy)
             cid,aid=self.repository.save_trial(product,data["sync"],draft,reasons,now(),mode,reservation,defer_approval=defer_approval); passed=not reasons
             if run_id is not None:

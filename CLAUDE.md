@@ -1,5 +1,20 @@
 # RoadLog — Claude Code 안내
 
+## AI 마케팅 실측 진단·공개 검색 경로 (2026-09-24 Codex · 로컬 변경)
+
+- `marketing_diagnosis.py`가 검증된 상품 정본과 `stats.overview` 집계로 `SiteMarketingProfile.v1`을 만든다. SQLite `marketing_site_profiles`에 저장하고 팀 실행 전 갱신한다. 상품별 열람은 누적값이며 방문·결제 전환율이 아니므로 `None`으로 둔다. 월간 전체 방문·가입만으로 보수적 진단을 내리고, 기존 날짜 랜덤 상품 선택 대신 최근 14일 중복을 피하며 누적 열람이 적은 검증 상품을 선택한다. 디렉터 AI에게 진단 근거를 전달하고 캠페인 사건으로 기록한다.
+- `marketing_research.py`는 공식 Brave Web Search HTTP API 어댑터다. `BRAVE_SEARCH_API_KEY`와 `MARKETING_EXTERNAL_RESEARCH_ENABLED=true`가 모두 있어야 캠페인에서 1회 검색한다. 결과 제목·URL·설명·관찰 시각을 `marketing_research_sources`에 `EXTERNAL_SOURCE`로 보존하고 관리자 화면에 노출한다. 실패·미연결 때는 검색했다고 쓰지 않는다. 실제 Brave 계정 키가 없어 외부 live 호출은 미검증이며 MockTransport만 테스트했다.
+- 이 변경은 **실제 블로그 게시, 이미지·영상 생성, 상품별 방문/결제 귀속, 캠페인 결과의 학습 환류를 완성하지 않았다.** 기존 Instagram 수동 게시 경로 역시 Meta 설정이 없어 미검증이다. `AWAITING_APPROVAL`은 `READY_TO_PUBLISH`가 아니다. 사용자 요청의 전체 완료로 보고하지 말 것.
+- 이번 변경은 로컬 테스트·관리자 인라인 JS 문법 검사까지만 확인했다. 운영 반영 여부는 배포·라이브 검증 뒤 별도 갱신한다.
+
+## AI 마케팅 폐쇄 루프 1차 확장 (2026-09-24 Codex · 로컬, 미배포)
+
+- 붙여넣은 요청은 `CASE 5 게시`에서 잘려 있었다. 확인 가능한 요구 중 기존 8명 실행을 디렉터 결정 → 시장/검색 가설 → 작가 초안 → AI 검수 → 채널/크리에이티브/성과 순으로 바꾸고, 앞 단계 요약을 작가에게 `AI_INFERENCE` 맥락으로 전달했다. 디렉터의 `NO_ACTION`은 작성·검수 요청을 하지 않는다. 검수 실패는 작성자에게 최대 2회 수정 요청하고 각 초안을 다시 검수한다. 전체 최대 12회 요청/내부 예약 120원이며 실제 청구액 상한은 아니다. 실측 상품 사실과 섞지 않는다.
+- `marketing_campaigns`, `marketing_campaign_events`, `marketing_learning`을 기존 `marketing_os.db`에 추가했다. 실행 전 ROADLOG 내부 집계는 `MEASURED` 기초값으로만 저장하며 게시 성과로 오인하지 않는다. 관리자 화면에는 실제 캠페인 사건 순서만 표시한다.
+- 기존 자동 설정 API를 매일 09:00 KST 점검에 연결했다. 수동 AI 초안 검수 통과 및 관리자의 명시적 ON이 필요하고, 팀이 `RUNNING`일 때만 실행한다. 같은 날 수동 팀 작업이 있으면 건너뛰며 DB 유일 키로 중복 실행을 막는다. 디렉터의 `NO_ACTION`은 추가 작성 요청 없이 종료한다. 최근 48시간 내 승인 대기 캠페인도 다시 만들지 않는다. 작업자 재시작으로 15분 이상 진행 중인 자동 작업은 `FAILED`로 기록하고 같은 날 유료 자동 재시도하지 않는다.
+- 외부 게시 자동화는 구현/허용하지 않았다. 이전 지시대로 Instagram 공개는 건별 온해님 확인이 필요하며 Threads 접속 금지를 유지한다. 외부 시장·검색량 API와 이미지·영상 생성 공급자 연결은 아직 없으므로 `NOT_CONNECTED`/`NEEDS_CONFIGURATION`으로 표시한다. 학습은 실행 전 집계만 기록하며 실제 게시/캠페인 성과 환류는 아직 아니다.
+- 모의 Gemini 회귀 테스트, 관리자 인라인 JS 문법 검사, 임시 출력 폴더 Vite 빌드 통과. **운영 배포·실제 유료 Gemini 호출·실제 GUI 클릭 검증은 아직 하지 않았다.** 남은 일: 외부 조사·검색/크리에이티브 공급자 실제 연결, 게시 후 성과 귀속과 Learning 피드백, 캠페인별 콘텐츠/게시 상태 연결, 운영 UI 클릭 검증.
+
 ## Instagram 공식 API 게시 경로 (2026-09-23 Codex)
 
 - `modules/marketing_instagram.py`는 ROADLOG 전용 Instagram Login Graph API 어댑터다. 외부 스크래핑·비공식 로그인 라이브러리를 사용하지 않는다. Meta 토큰은 Railway 환경변수에서만 읽고 DB·로그·응답에 넣지 않는다. 연결 준비 단계는 `docs/marketing/INSTAGRAM_API.md` 참고.

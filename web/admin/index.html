@@ -619,9 +619,12 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
 
     <section data-page="marketing-team" hidden>
       <div class="marketing-state" id="marketingState"></div>
-      <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
+      <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span><small id="marketingAutoStatus">자동 운영 확인 중…</small></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" data-marketing-auto="enable" class="btn-line">매일 자동 점검 켜기</button><button type="button" data-marketing-auto="disable" class="btn-line">자동 점검 끄기</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
+      <p class="note" id="marketingProviders">연결된 자료와 채널 확인 중…</p>
+      <div class="card" id="marketingDiagnosis" role="status" aria-live="polite"><b>지금 AI 팀이 판단한 상황</b><p class="note">실측 사이트 진단을 불러오는 중…</p></div>
+      <details class="card marketing-fold"><summary>캠페인 진행 기록</summary><p class="note">실제 AI 실행 기록만 표시합니다. 외부 게시와 성과 측정은 별도 연결·건별 확인이 필요합니다.</p><div id="marketingCampaigns" class="marketing-activity"></div></details>
       <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
-      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">8명이 각자 Gemini 요청 1건과 산출물·사용량·실패 기록을 갖습니다. 콘텐츠 작가 초안은 상품 정본 검사와 품질 검수자의 별도 AI 검사 후에만 승인 대기에 들어갑니다. 하루 팀 시작 작업은 1회만 수행합니다. 8건의 내부 예산 예약액은 총 80원이며 실제 API 청구액의 상한이 아닙니다. ROADLOG 내부 방문·상품 관심·매출 집계는 연결됐습니다. 외부 시장·검색·인스타그램 성과와 외부 게시는 아직 연결되지 않았습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
+      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">디렉터가 먼저 실행 여부를 판단합니다. NO_ACTION이면 초안 요청 없이 끝나고, CREATE/OPTIMIZE일 때만 조사·검색 가설 → 작가 초안 → AI 검수 → 소재 지시안·채널 점검·내부 성과로 진행합니다. 검수 실패 시 최대 2회 수정·재검수하며 전체 최대 12회 Gemini 요청(내부 예약액 최대 120원)이 발생할 수 있습니다. 이 금액은 실제 청구액 상한이 아닙니다. 초안은 정본·AI 검수를 통과해야 승인 대기에 들어갑니다. 팀 시작은 하루 1회입니다. 외부 조사·검색량·이미지/영상 생성은 아직 미연결이고, 외부 게시는 자동 실행하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <details class="card marketing-fold"><summary>실제 사이트 성과 · 내부 관심도</summary><div id="marketingInsights" class="marketing-schedule"><p class="note">집계 불러오는 중…</p></div></details>
       <div class="deck wide">
         <details class="card marketing-fold">
@@ -1622,7 +1625,14 @@ function marketingTimeTag(value) {
   return parts ? '<time datetime="' + esc(value) + '" title="' + esc(value) + '"><span>' + esc(parts.date) + '</span><span>' + esc(parts.time) + '</span></time>' : '<time>UNKNOWN</time>';
 }
 function paintMarketingTeam(team) {
-  MARKETING_TEAM_BUSY = (team.scheduled_runs || []).some((r) => r.job_key === 'team_8' && r.status === 'RUNNING');
+  MARKETING_TEAM_BUSY = (team.scheduled_runs || []).some((r) => ['team_8', 'campaign_daily'].includes(r.job_key) && r.status === 'RUNNING');
+  $('marketingAutoStatus').textContent = team.automatic_real_calls ? '매일 09:00 KST 자동 점검 ON · 외부 게시 수동 확인' : '자동 점검 OFF · 외부 게시 수동 확인';
+  const providers = team.providers || {};
+  $('marketingProviders').textContent = '자료 연결: 사이트 내부 집계 ' + (providers.internal_analytics || 'UNKNOWN') + ' · 외부 시장 ' + (providers.external_research || 'UNKNOWN') + ' · 검색량 ' + (providers.search_metrics || 'UNKNOWN') + ' · 이미지/영상 ' + (providers.creative_assets || 'UNKNOWN') + ' · 인스타그램 ' + (providers.instagram || 'UNKNOWN') + ' · 실제 게시 건별 수동 확인';
+  document.querySelector('[data-marketing-auto="enable"]').disabled = !!team.automatic_real_calls;
+  document.querySelector('[data-marketing-auto="disable"]').disabled = !team.automatic_real_calls;
+  $('marketingCampaigns').innerHTML = (team.campaigns || []).length ? team.campaigns.map((c) => '<article><div><b>캠페인 #' + esc(c.id) + ' · ' + esc(c.product_id) + ' · ' + esc(c.status) + '</b><p>' + esc(c.reason) + ' · ' + esc(c.trigger_type) + ' · ' + esc(marketingTimeText(c.created_at)) + '</p><details><summary>실제 외부 조사 출처 ' + (c.sources || []).length + '건</summary>' + (c.sources || []).map((source) => '<p><a href="' + esc(source.url) + '" target="_blank" rel="noopener noreferrer">' + esc(source.title) + '</a> · ' + esc(source.summary) + '</p>').join('') + '</details><details><summary>팀원별 실제 진행 ' + (c.events || []).length + '건</summary>' + (c.events || []).map((ev) => '<p>' + esc(marketingTimeText(ev.created_at)) + ' · ' + esc(ev.agent_id) + ' · ' + esc(ev.status) + ' · ' + esc(ev.summary) + '</p>').join('') + '</details></div></article>').join('') : '<p class="note">기록된 캠페인이 없습니다.</p>';
+  $('marketingDiagnosis').innerHTML = '<b>지금 AI 팀이 판단한 상황</b>' + (team.diagnosis ? '<p>' + esc(team.diagnosis.reason) + '</p><p class="note">대상: ' + esc(team.diagnosis.product_name || '없음') + ' · 방향: ' + esc(team.diagnosis.objective || team.diagnosis.decision) + ' · 근거: ' + esc(team.diagnosis.evidence_type) + '</p><p><b>선택 방향:</b> ' + esc(team.diagnosis.selected_channel || '없음') + ' · ' + esc(team.diagnosis.selection_reason || '') + '</p><details><summary>검토한 전략 후보 ' + (team.diagnosis.candidates || []).length + '개</summary>' + (team.diagnosis.candidates || []).map((item) => '<p>' + esc(item.channel) + ' · ' + esc(item.goal) + ' · KPI ' + esc(item.kpi) + ' · 위험: ' + esc(item.risk) + ' (' + esc(item.evidence_type) + ')</p>').join('') + '</details><p class="note">상품별 방문·결제 전환율은 아직 측정되지 않습니다. 진단 시각: ' + esc(marketingTimeText(team.site_profile?.observed_at)) + '</p>' : '<p class="note">아직 실측 진단이 없습니다. 팀 실행 후 표시됩니다.</p>');
   $('marketingActivitySummary').textContent = '최근 활동 · ' + (team.activity || []).length + '건';
   $('marketingContentSummary').textContent = '콘텐츠 작업 기록 · ' + (team.content || []).length + '건';
   $('marketingReportsSummary').textContent = '일일 보고서 · ' + (team.reports || []).length + '건';
@@ -1753,13 +1763,15 @@ $('marketingApprovals').addEventListener('click', async (e) => {
 document.querySelector('[data-page="marketing-team"]').addEventListener('click', async (e) => {
   const control = e.target.closest('[data-team-control]');
   const job = e.target.closest('[data-team-job]');
-  if (!control && !job) return;
+  const auto = e.target.closest('[data-marketing-auto]');
+  if (!control && !job && !auto) return;
+  if (auto && auto.dataset.marketingAuto === 'enable' && !confirm('수동 AI 초안 검수 통과 후에만 매일 09:00 KST 최대 12회의 유료 Gemini 요청을 자동 실행할 수 있습니다. 내부 예약 최대 120원은 실제 청구액 상한이 아닙니다. 외부 게시는 자동 실행하지 않습니다. 켤까요?')) return;
   if (job && job.dataset.teamJob === 'content' && !confirm('실제 Gemini API를 1회 호출합니다. 내부 예산 10원을 예약하지만 실제 청구액 상한은 아닙니다. 초안을 만들까요?')) return;
-  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 시 Gemini API를 최대 8회 각각 호출합니다. 내부 예산 총 80원 예약은 실제 청구액 상한이 아닙니다. 외부 게시 없이 시작할까요?')) return;
-  const button = control || job; button.disabled = true;
+  if (control && control.dataset.teamControl === 'start' && MARKETING_STATUS.connected && !confirm('팀 시작 시 Gemini API를 최대 12회 호출할 수 있습니다(검수 실패 시 수정·재검수 포함). 내부 예약 최대 120원은 실제 청구액 상한이 아닙니다. 외부 게시 없이 시작할까요?')) return;
+  const button = control || job || auto; button.disabled = true;
   let updated = false;
   try {
-    const result = await marketingFetch(control ? '/control/' + control.dataset.teamControl : '/jobs/' + job.dataset.teamJob, { method: 'POST' });
+    const result = await marketingFetch(control ? '/control/' + control.dataset.teamControl : job ? '/jobs/' + job.dataset.teamJob : '/automation/' + auto.dataset.marketingAuto, { method: 'POST' });
     $('marketingProgress').textContent = result.message || ('운영 상태 ' + result.status);
     MARKETING_LOADED = false; await loadMarketing(); updated = MARKETING_LOADED;
   } catch (ex) { $('marketingProgress').textContent = ex.message; }

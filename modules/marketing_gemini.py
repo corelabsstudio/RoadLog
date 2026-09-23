@@ -31,8 +31,8 @@ class RoadLogGeminiProvider:
                   "source_facts": "STRING", "uncertainty": "ARRAY"}
         schema = {"type": "OBJECT", "properties": {name: ({"type": "ARRAY", "items": {"type": "STRING"}} if kind == "ARRAY" else {"type": kind}) for name, kind in fields.items()}, "required": list(fields)}
         schema["properties"]["factual_claims"]["items"]["enum"] = product["confirmed_results"]
-        body = {"systemInstruction": {"parts": [{"text": "ROADLOG 마케팅 초안만 작성하세요. 제공된 상품 사실 외 가격·할인·기능·수치·효과 보장을 만들지 마세요. factual_claims에는 사용한 결과 항목을 confirmed_results에서 글자까지 동일하게 복사하세요. 해당 항목이 없으면 빈 배열로 두세요. 불확실한 사실은 쓰지 말고 uncertainty에 적으세요. source_facts는 상품 ID입니다. 한국어로 자연스럽고 과장 없이 쓰세요."}]},
-                "contents": [{"role": "user", "parts": [{"text": json.dumps({"platform": platform, "facts": snapshot}, ensure_ascii=False)}]}],
+        body = {"systemInstruction": {"parts": [{"text": "ROADLOG 마케팅 초안만 작성하세요. 제공된 상품 사실 외 가격·할인·기능·수치·효과 보장을 만들지 마세요. factual_claims에는 사용한 결과 항목을 confirmed_results에서 글자까지 동일하게 복사하세요. 해당 항목이 없으면 빈 배열로 두세요. 불확실한 사실은 쓰지 말고 uncertainty에 적으세요. source_facts는 상품 ID입니다. strategy_context는 AI 추론이며 검증된 사실이나 수치로 인용하지 마세요. 한국어로 자연스럽고 과장 없이 쓰세요."}]},
+                "contents": [{"role": "user", "parts": [{"text": json.dumps({"platform": platform, "facts": snapshot, "strategy_context": product.get("strategy_context") or []}, ensure_ascii=False)}]}],
                 "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024, "thinkingConfig": {"thinkingBudget": 0}, "responseMimeType": "application/json", "responseSchema": schema}}
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         last_error = "AI 응답 오류"
@@ -71,7 +71,7 @@ class RoadLogGeminiProvider:
                 self.sleep(2 ** attempt)
         raise ValueError(last_error)
 
-    def generate_role(self, task: Any, product: dict[str, Any], *, draft: dict[str, Any] | None = None, metrics: dict[str, Any] | None = None) -> dict[str, Any]:
+    def generate_role(self, task: Any, product: dict[str, Any], *, draft: dict[str, Any] | None = None, metrics: dict[str, Any] | None = None, context: list[str] | None = None) -> dict[str, Any]:
         """One separate Gemini request per role. No external metrics or full prompt is stored."""
         key = os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
@@ -86,15 +86,20 @@ class RoadLogGeminiProvider:
             "unknowns": {"type": "ARRAY", "items": {"type": "STRING"}},
             "review_passed": {"type": "BOOLEAN"},
         }, "required": ["summary", "recommendations", "source_facts", "unknowns", "review_passed"]}
+        if task.agent_id == "marketing_director":
+            schema["properties"]["decision"] = {"type":"STRING","enum":["NO_ACTION","RESEARCH","CREATE","OPTIMIZE","PUBLISH_READY"]}
+            schema["required"].append("decision")
         instructions = ("ROADLOG의 지정된 마케팅 역할 한 가지만 수행하세요. 제공되지 않은 가격·할인·기능·"
                         "시장 수치·검색량·성과 수치를 만들지 마세요. 외부 게시를 제안할 수는 있으나 실행했다고 말하지 마세요. "
                         "summary는 300자 이하, recommendations는 최대 3개로 제한하세요. "
                         "source_facts에는 상품 ID, confirmed_results의 원문, 제공된 metrics.source만 글자까지 동일하게 복사하세요. "
                         "metrics가 있으면 그 수치만 인용하고 새 숫자는 만들지 마세요. 미연결 데이터는 unknowns에 쓰세요. "
-                        "품질 검수자 외에는 review_passed를 false로 두세요. 품질 검수자는 초안의 사실 불일치가 있으면 false로 두세요.")
+                        "품질 검수자 외에는 review_passed를 false로 두세요. 품질 검수자는 초안의 사실 불일치가 있으면 false로 두세요. "
+                        "context는 앞 단계 AI의 추론이며 검증된 외부 자료가 아닙니다. 마케팅 디렉터는 decision으로 행동 여부를 선택하세요.")
         payload = {"role": task.agent_id, "objective": task.objective, "missing_data": task.missing_data,
                    "facts": facts, "metrics": metrics,
-                   "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None}
+                   "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None,
+                   "context": (context or [])[:3]}
         body = {"systemInstruction": {"parts": [{"text": instructions}]},
                 "contents": [{"role": "user", "parts": [{"text": json.dumps(payload, ensure_ascii=False)}]}],
                 "generationConfig": {"temperature": 0.2, "maxOutputTokens": 700,
@@ -118,6 +123,8 @@ class RoadLogGeminiProvider:
                             raise ValueError("역할 응답 형식 오류")
                     if len(result["recommendations"]) > 3 or not isinstance(result.get("review_passed"), bool):
                         raise ValueError("역할 응답 형식 오류")
+                    if task.agent_id == "marketing_director" and result.get("decision") not in {"NO_ACTION","RESEARCH","CREATE","OPTIMIZE","PUBLISH_READY"}:
+                        raise ValueError("마케팅 결정 형식 오류")
                     usage = raw.get("usageMetadata") or {}
                     self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0),
                                   "output_tokens": int(usage.get("candidatesTokenCount") or 0)}

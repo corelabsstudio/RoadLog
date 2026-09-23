@@ -22,6 +22,12 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_bundles(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,product_id TEXT NOT NULL,product_name TEXT NOT NULL,customer_question TEXT NOT NULL,source_file TEXT NOT NULL,source_hash TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_automation(tenant_id TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0);
         CREATE TABLE IF NOT EXISTS marketing_instagram_posts(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,approval_id INTEGER NOT NULL,content_id INTEGER NOT NULL,image_url TEXT NOT NULL,status TEXT NOT NULL,media_id TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL,UNIQUE(tenant_id,approval_id));
+        CREATE TABLE IF NOT EXISTS marketing_campaigns(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,product_id TEXT NOT NULL,objective TEXT NOT NULL,status TEXT NOT NULL,trigger_type TEXT NOT NULL,decision TEXT NOT NULL,reason TEXT NOT NULL,created_at TEXT NOT NULL,completed_at TEXT);
+        CREATE TABLE IF NOT EXISTS marketing_campaign_events(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,agent_id TEXT NOT NULL,run_id INTEGER,status TEXT NOT NULL,summary TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_learning(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,product_id TEXT NOT NULL,evidence_type TEXT NOT NULL,observation TEXT NOT NULL,recommendation TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_site_profiles(tenant_id TEXT PRIMARY KEY,catalog_hash TEXT NOT NULL,profile_json TEXT NOT NULL,observed_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_product ON marketing_campaigns(tenant_id,product_id,created_at);
         """)
         # Concurrent dashboard requests must not observe the same missing column
         # and both attempt ALTER TABLE. Lock before checking the schema.
@@ -46,11 +52,76 @@ class MarketingRepository:
             raise
         return conn
 
+    def save_site_profile(self, profile: dict[str, Any]) -> None:
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_site_profiles(tenant_id,catalog_hash,profile_json,observed_at) VALUES(?,?,?,?) ON CONFLICT(tenant_id) DO UPDATE SET catalog_hash=excluded.catalog_hash,profile_json=excluded.profile_json,observed_at=excluded.observed_at",
+                         (self.tenant_id, profile["catalog_hash"], json.dumps(profile, ensure_ascii=False), profile["observed_at"]))
+
+    def site_profile(self) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT profile_json FROM marketing_site_profiles WHERE tenant_id=?", (self.tenant_id,)).fetchone()
+        return json.loads(row["profile_json"]) if row else None
+
+    def save_research_sources(self, campaign_id: int, items: list[dict[str, Any]]) -> None:
+        with self.connect() as conn:
+            for item in items:
+                conn.execute("INSERT INTO marketing_research_sources(tenant_id,campaign_id,title,url,summary,observed_at,source_type) VALUES(?,?,?,?,?,?,?)",
+                             (self.tenant_id,campaign_id,item["title"],item["url"],item["summary"],item["observedAt"],item["sourceType"]))
+
+    def research_sources(self, campaign_id: int) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT title,url,summary,observed_at,source_type FROM marketing_research_sources WHERE tenant_id=? AND campaign_id=? ORDER BY id", (self.tenant_id,campaign_id)).fetchall()
+        return [dict(row) for row in rows]
+
     def record_sync(self, meta: dict[str, Any], count: int) -> None:
         with self.connect() as conn:
             last = conn.execute("SELECT source_hash FROM marketing_sync WHERE tenant_id=? ORDER BY id DESC LIMIT 1", (self.tenant_id,)).fetchone()
             if not last or last["source_hash"] != meta["source_hash"]:
                 conn.execute("INSERT INTO marketing_sync(tenant_id,source_path,source_hash,product_count,warning_count,synced_at) VALUES(?,?,?,?,?,?)", (self.tenant_id,meta["source_file"],meta["source_hash"],count,len(meta.get("warnings",[])),meta["synced_at"]))
+
+    def begin_campaign(self, product_id: str, trigger_type: str, stamp: str) -> int:
+        if trigger_type not in {"MANUAL", "DAILY"}:
+            raise ValueError("지원하지 않는 캠페인 실행 유형")
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            return int(conn.execute(
+                "INSERT INTO marketing_campaigns(tenant_id,product_id,objective,status,trigger_type,decision,reason,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                (self.tenant_id,product_id,"검증된 상품 사실에 기반한 콘텐츠 기회 확인","RUNNING",trigger_type,"RESEARCH","내부 상품·성과 점검",stamp)
+            ).lastrowid)
+
+    def campaign_event(self, campaign_id: int, agent_id: str, run_id: int | None, status: str, summary: str, stamp: str) -> None:
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_campaign_events(tenant_id,campaign_id,agent_id,run_id,status,summary,created_at) VALUES(?,?,?,?,?,?,?)",
+                         (self.tenant_id,campaign_id,agent_id,run_id,status,summary[:300],stamp))
+
+    def finish_campaign(self, campaign_id: int, status: str, reason: str, stamp: str) -> None:
+        if status not in {"AWAITING_APPROVAL", "NEEDS_REVISION", "FAILED", "NO_ACTION"}:
+            raise ValueError("지원하지 않는 캠페인 상태")
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_campaigns SET status=?,decision=?,reason=?,completed_at=? WHERE tenant_id=? AND id=? AND status='RUNNING'",
+                         (status,"CREATE" if status == "AWAITING_APPROVAL" else status,reason[:300],stamp,self.tenant_id,campaign_id))
+
+    def recent_campaigns(self, limit: int = 15) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT * FROM marketing_campaigns WHERE tenant_id=? ORDER BY id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
+            return [{**dict(row),"sources":self.research_sources(row["id"]),"events":[dict(event) for event in conn.execute(
+                "SELECT agent_id,run_id,status,summary,created_at FROM marketing_campaign_events WHERE tenant_id=? AND campaign_id=? ORDER BY id",
+                (self.tenant_id,row["id"]))]} for row in rows]
+
+    def recent_campaign_product_ids(self, since: str) -> set[str]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT DISTINCT product_id FROM marketing_campaigns WHERE tenant_id=? AND created_at>=?",(self.tenant_id,since)).fetchall()
+        return {row["product_id"] for row in rows}
+
+    def recent_learning(self, limit: int = 5) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT product_id,evidence_type,observation,recommendation,created_at FROM marketing_learning WHERE tenant_id=? ORDER BY id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
+        return [dict(row) for row in rows]
+
+    def record_learning(self, campaign_id: int, product_id: str, observation: str, stamp: str) -> None:
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_learning(tenant_id,campaign_id,product_id,evidence_type,observation,recommendation,created_at) VALUES(?,?,?,?,?,?,?)",
+                         (self.tenant_id,campaign_id,product_id,"MEASURED",observation[:300],"실제 게시·캠페인 성과 연결 전까지 원인을 단정하지 않습니다.",stamp))
 
     def usage(self, day: str) -> tuple[int, float]:
         with self.connect() as conn:

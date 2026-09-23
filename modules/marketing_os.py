@@ -1,7 +1,7 @@
 """ROADLOG 어댑터를 Generic AI Marketing Core에 연결하는 호환 파사드."""
 from __future__ import annotations
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Thread
 from typing import Any
@@ -9,6 +9,8 @@ from zoneinfo import ZoneInfo
 from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
 from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
+from modules.marketing_diagnosis import build_profile, diagnose
+from modules.marketing_research import BraveResearchProvider
 from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
@@ -84,15 +86,31 @@ def publish_instagram(approval_id: int, image_url: str, *, publisher: InstagramP
     return {"status":"PUBLISHED","media_id":result["media_id"],"message":"인스타그램 게시 완료"}
 def set_auto_real(enabled: bool) -> dict[str, Any]:
     repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
-    repo.set_auto_real(False)
-    if enabled: raise PermissionError("시간 예약 AI 호출은 종료됐습니다. 팀 시작 시 즉시 실행합니다.")
-    return {"ok": True, "automatic_real_calls": False, "message": "시간 예약 AI 호출 꺼짐"}
+    repo.set_auto_real(enabled)
+    return {"ok": True, "automatic_real_calls": enabled,
+            "message": "매일 자동 점검 켜짐 · 실제 호출은 수동 검수 통과 후 · 외부 게시 없음" if enabled else "자동 점검 꺼짐"}
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
-def team_dashboard() -> dict[str,Any]: return operations().dashboard()
+def team_dashboard() -> dict[str,Any]:
+    result = operations().dashboard()
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    result["campaigns"] = repo.recent_campaigns()
+    profile = repo.site_profile()
+    if profile:
+        result["site_profile"] = {"observed_at": profile["observed_at"], "catalog_hash": profile["catalog_hash"], "product_count": len(profile["products"]), "limitations": profile["limitations"]}
+        recent = repo.recent_campaign_product_ids((datetime.now(ZoneInfo("Asia/Seoul"))-timedelta(days=14)).date().isoformat())
+        result["diagnosis"] = diagnose(profile, recent)
+    result["learning"] = repo.recent_learning()
+    result["automatic_real_calls"] = repo.auto_real_enabled()
+    result["approval_policy"] = "MANUAL_EVERY_PUBLICATION"
+    result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
+    result["providers"] = {
+        "internal_analytics":"CONNECTED", "external_research":"CONNECTED" if BraveResearchProvider().connected else "NOT_CONNECTED",
+        "search_metrics":"NOT_CONNECTED", "creative_assets":"NEEDS_CONFIGURATION",
+        "instagram":"MANUAL_UNVERIFIED" if instagram_configured() and instagram_publishing_enabled() else "NOT_CONNECTED",
+    }
+    return result
 def control(action:str) -> dict[str,Any]:
-    if action == "start":
-        MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID).set_auto_real(False)
     result = operations().control(action)
     if action == "start":
         web_root = Path(__file__).resolve().parents[1] / "web"
@@ -115,7 +133,7 @@ def control(action:str) -> dict[str,Any]:
 def _team_running() -> bool:
     return operations().dashboard()["status"]["status"] == "RUNNING"
 
-def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dict[str,Any] | None = None) -> tuple[str,bool]:
+def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dict[str,Any] | None = None, campaign_id: int | None = None, context: list[str] | None = None) -> tuple[str,bool,dict[str,Any] | None]:
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
     ops = operations()
     run_id = None
@@ -125,7 +143,8 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
                                        20, 5, 3000, 10.0, agent_id=task.agent_id)
         provider = RoadLogGeminiProvider()
         metrics = performance_snapshot() if task.agent_id in {"marketing_director", "market_researcher", "performance_analyst"} else None
-        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft,metrics=metrics)
+        if metrics is not None: metrics = {**metrics,"previous_learning":repo.recent_learning()}
+        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft,metrics=metrics,context=context)
         from modules.marketing_core.policy import review_draft, review_metric_note
         note = "\n".join([result["summary"], *result["recommendations"]])
         safe_draft = {"body": note,"factual_claims": [], "source_facts": product["product_id"]}
@@ -141,58 +160,146 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
             state = "DONE"
         repo.finish_real_run(run_id,"COMPLETED" if state == "DONE" else "BLOCKED",result["summary"],**provider.usage)
         ops.record_agent_output(task.agent_id,run_id,product["product_id"],state,result)
-        return task.agent_id, state == "DONE"
+        if campaign_id: repo.campaign_event(campaign_id,task.agent_id,run_id,state,result["summary"],datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        return task.agent_id, state == "DONE", result
     except PermissionError as exc:
         if run_id is not None: repo.finish_real_run(run_id,"FAILED","AI 역할 작업 중단")
         budget = "PAUSED_BY_BUDGET" in str(exc)
         ops.record_agent_output(task.agent_id,run_id or 0,product["product_id"],"PAUSED_BY_BUDGET" if budget else "PAUSED",{"summary":"요청 또는 내부 예산 한도에 도달했습니다." if budget else "팀이 일시정지 또는 긴급정지 상태입니다.","recommendations":[],"source_facts":[],"unknowns":[task.missing_data],"review_passed":False})
-        return task.agent_id,False
+        if campaign_id: repo.campaign_event(campaign_id,task.agent_id,run_id,"PAUSED_BY_BUDGET" if budget else "PAUSED","작업 중단",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        return task.agent_id,False,None
     except Exception:
         if run_id is not None: repo.finish_real_run(run_id,"FAILED","AI 역할 작업 실패")
         ops.record_agent_output(task.agent_id,run_id or 0,product["product_id"],"ERROR",{"summary":"AI 역할 작업 실패. 연결·예산·활동 기록을 확인해 주세요.","recommendations":[],"source_facts":[],"unknowns":[task.missing_data],"review_passed":False})
-        return task.agent_id,False
+        if campaign_id: repo.campaign_event(campaign_id,task.agent_id,run_id,"ERROR","AI 역할 작업 실패",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        return task.agent_id,False,None
 
-def _run_team(web_root: Path, day: str) -> None:
+def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
     ops = operations()
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
     failures = 0
+    campaign_id = None
     try:
         if not RoadLogGeminiProvider().connected:
-            ops.finish_due(day,"team_8","AI 키 미연결: 유료 요청을 실행하지 않았습니다.",failed=True)
+            ops.finish_due(day,job_key,"AI 키 미연결: 유료 요청을 실행하지 않았습니다.",failed=True)
             return
         data = _service(web_root).products()
-        product = _daily_product(web_root,day)
+        snapshot = performance_snapshot()
+        profile = build_profile(data["products"], snapshot, data["sync"]["source_hash"])
+        repo.save_site_profile(profile)
+        recent_ids = repo.recent_campaign_product_ids((datetime.fromisoformat(day)-timedelta(days=14)).date().isoformat())
+        diagnosis = diagnose(profile, recent_ids)
+        if diagnosis["decision"] == "NO_ACTION":
+            ops.finish_due(day,job_key,diagnosis["reason"])
+            return
+        product = next(p for p in data["products"] if p["product_id"] == diagnosis["product_id"])
+        if job_key == "campaign_daily":
+            previous = next((c for c in repo.recent_campaigns(10) if c["status"] == "AWAITING_APPROVAL"), None)
+            if previous:
+                try:
+                    elapsed = datetime.now(ZoneInfo("Asia/Seoul")) - datetime.fromisoformat(previous["created_at"])
+                except ValueError:
+                    elapsed = timedelta(days=99)
+                if elapsed < timedelta(days=2):
+                    campaign_id = repo.begin_campaign(product["product_id"],"DAILY",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                    repo.campaign_event(campaign_id,"marketing_director",None,"NO_ACTION","최근 48시간 내 승인 대기 캠페인이 있어 중복 제작하지 않았습니다.",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                    repo.finish_campaign(campaign_id,"NO_ACTION","최근 승인 대기 캠페인 점검 · 유료 요청 0건",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                    ops.finish_due(day,job_key,"NO_ACTION · 최근 캠페인 중복 방지 · 유료 요청 0건")
+                    return
+        campaign_id = repo.begin_campaign(product["product_id"],"MANUAL" if job_key == "team_8" else "DAILY",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        repo.campaign_event(campaign_id,"marketing_director",None,"DIAGNOSED",diagnosis["reason"],datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        if diagnosis["selected_channel"] != "사이트 블로그":
+            repo.finish_campaign(campaign_id,"NO_ACTION","상품 상세페이지 개선이 우선이지만 안전한 적용·검수 경로가 없어 블로그를 임의 생성하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            ops.finish_due(day,job_key,"상세페이지 개선 우선 · 자동 수정 경로 미연결 · 유료 AI 요청 0건")
+            return
+        try:
+            today = snapshot.get("today") or {}
+            repo.record_learning(campaign_id,product["product_id"],f"실행 전 사이트 집계: 방문 {int(today.get('uv') or 0)}, 가입 {int(today.get('signups') or 0)}, 결제 {int(today.get('charges') or 0)}. 캠페인 귀속 성과는 아님.",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        except Exception:
+            pass  # 내부 집계 장애는 팀 작업과 분리한다. 성과를 지어내지 않는다.
         ops.record_kickoff(f"{product['name']} · 상품 정본 확인",True)
-        independent = [t for t in TASKS if t.agent_id not in ("content_writer","quality_reviewer")]
-        # Each role owns a fresh provider, reservation, output row and failure boundary.
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            futures = [pool.submit(_run_role,t,product,data["sync"]) for t in independent]
-            writer = pool.submit(_service(web_root).trial,product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True)
-            for future in as_completed(futures):
-                if not future.result()[1]: failures += 1
+        tasks = {task.agent_id:task for task in TASKS}
+        _,director_ok,direction = _run_role(tasks["marketing_director"],product,data["sync"],campaign_id=campaign_id,context=[diagnosis["objective"],diagnosis["reason"]])
+        if not director_ok:
+            repo.finish_campaign(campaign_id,"FAILED","디렉터 결정 실패 · 콘텐츠 생성 안 함",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            ops.finish_due(day,job_key,"디렉터 결정 실패 · 외부 게시 없음",failed=True)
+            return
+        if direction["decision"] == "NO_ACTION":
+            repo.finish_campaign(campaign_id,"NO_ACTION","디렉터가 실행 불필요 결정 · 유료 작성 요청 없음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            ops.finish_due(day,job_key,"NO_ACTION · 디렉터 결정 · 외부 게시 없음")
+            return
+        if direction["decision"] not in {"CREATE","OPTIMIZE"}:
+            repo.finish_campaign(campaign_id,"NO_ACTION",f"디렉터 결정 {direction['decision']} · 조사/게시 자동 실행 미허용",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            ops.finish_due(day,job_key,f"{direction['decision']} · 콘텐츠 자동 생성 보류 · 외부 게시 없음")
+            return
+        strategy = [direction["summary"]]
+        research = BraveResearchProvider()
+        if research.connected:
             try:
-                content = writer.result()
+                sources = research.search(product["name"] + " 사주 이용 후기 질문")
+                repo.save_research_sources(campaign_id,sources)
+                repo.campaign_event(campaign_id,"market_researcher",None,"EXTERNAL_SOURCE",f"실제 공개 검색 결과 {len(sources)}건 저장",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                strategy.extend(f"EXTERNAL_SOURCE {item['title']} {item['url']}: {item['summary']}" for item in sources[:3])
+            except Exception:
+                repo.campaign_event(campaign_id,"market_researcher",None,"RESEARCH_FAILED","외부 검색 실패 · 검색한 것으로 표시하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        else:
+            repo.campaign_event(campaign_id,"market_researcher",None,"NOT_CONNECTED","외부 검색 미연결 · AI 추론과 구분",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [pool.submit(_run_role,tasks[aid],product,data["sync"],campaign_id=campaign_id,context=strategy)
+                       for aid in ("market_researcher","seo_specialist")]
+            for future in as_completed(futures):
+                _,ok,output = future.result()
+                if not ok: failures += 1
+                elif output: strategy.append(output["summary"])
+        try:
+            content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=strategy)
+            ops.record_agent_output("content_writer",content["run_id"],product["product_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",
+                                    {"summary":f"AI 블로그 초안 #{content['content_id']} · AI 품질 검수 대기", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
+            repo.campaign_event(campaign_id,"content_writer",content["run_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",f"AI 블로그 초안 #{content['content_id']}",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        except Exception:
+            content = None
+            failures += 1
+            ops.record_agent_output("content_writer",0,product["product_id"],"ERROR",{"summary":"AI 초안 생성 실패", "recommendations":[],"source_facts":[],"unknowns":[],"review_passed":False})
+            repo.campaign_event(campaign_id,"content_writer",None,"ERROR","AI 초안 생성 실패",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        reviewer = next(t for t in TASKS if t.agent_id == "quality_reviewer")
+        approved = False
+        revision = 0
+        while content and _team_running():
+            _,review_ok,review_note = _run_role(reviewer,product,data["sync"],content["draft"],campaign_id=campaign_id,context=strategy)
+            approved = repo.finalize_agent_review(content["content_id"],review_ok and _team_running(),datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            if approved: break
+            failures += 1
+            if revision >= 2: break
+            revision += 1
+            feedback = (content["review"]["reasons"] + ([review_note["summary"]] if review_note else []))[:3]
+            try:
+                content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=["수정 요청: " + " / ".join(feedback),*strategy])
                 ops.record_agent_output("content_writer",content["run_id"],product["product_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",
-                                        {"summary":f"AI 블로그 초안 #{content['content_id']} · AI 품질 검수 대기", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
+                                        {"summary":f"AI 수정 초안 #{content['content_id']} · {revision}차", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
+                repo.campaign_event(campaign_id,"content_writer",content["run_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",f"AI 수정 초안 #{content['content_id']} · {revision}차",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
             except Exception:
                 content = None
                 failures += 1
-                ops.record_agent_output("content_writer",0,product["product_id"],"ERROR",{"summary":"AI 초안 생성 실패", "recommendations":[],"source_facts":[],"unknowns":[],"review_passed":False})
-        reviewer = next(t for t in TASKS if t.agent_id == "quality_reviewer")
-        _,review_ok = _run_role(reviewer,product,data["sync"],content["draft"] if content else None)
-        if not review_ok: failures += 1
-        if content:
-            approved = repo.finalize_agent_review(content["content_id"],review_ok and _team_running(),datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-            if not approved: failures += 1
+                repo.campaign_event(campaign_id,"content_writer",None,"ERROR","AI 수정 초안 생성 실패",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                break
+        with ThreadPoolExecutor(max_workers=3) as pool:
+            futures = [pool.submit(_run_role,tasks[aid],product,data["sync"],draft=content["draft"] if content else None,campaign_id=campaign_id,context=strategy)
+                       for aid in ("creative_director","social_manager","performance_analyst")]
+            for future in as_completed(futures):
+                if not future.result()[1]: failures += 1
+        repo.finish_campaign(campaign_id,"AWAITING_APPROVAL" if content and approved else "NEEDS_REVISION",f"역할별 실패/차단 {failures}건 · 외부 게시 없음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
         ops.record_report(day)
-        ops.finish_due(day,"team_8",f"8명 역할별 AI 작업 종료 · 실패/차단 {failures}건 · 외부 게시 없음",failed=bool(failures))
+        ops.finish_due(day,job_key,f"8명 역할별 AI 작업 종료 · 실패/차단 {failures}건 · 외부 게시 없음",failed=bool(failures))
     except Exception:
-        ops.finish_due(day,"team_8","8명 작업 중단. 팀원별 결과와 실패 기록을 확인해 주세요. 외부 게시 없음",failed=True)
+        if campaign_id: repo.finish_campaign(campaign_id,"FAILED","팀 작업 중단 · 외부 게시 없음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        ops.finish_due(day,job_key,"8명 작업 중단. 팀원별 결과와 실패 기록을 확인해 주세요. 외부 게시 없음",failed=True)
 def _daily_product(web_root: Path, day: str) -> dict[str, Any]:
     catalog = _service(web_root).products()["products"]
     verified = [p for p in catalog if p["facts_status"] == "VERIFIED" and p.get("confirmed_results")]
     if not verified: raise ValueError("확인된 상품 정본과 결과 항목이 없습니다.")
-    product = verified[datetime.fromisoformat(day).date().toordinal() % len(verified)]
+    recent = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).recent_campaign_product_ids((datetime.fromisoformat(day)-timedelta(days=14)).date().isoformat())
+    candidates = [p for p in verified if p["product_id"] not in recent] or verified
+    product = candidates[datetime.fromisoformat(day).date().toordinal() % len(candidates)]
     return product
 
 def _real_daily_draft(web_root: Path, day: str) -> str:
@@ -212,6 +319,12 @@ def run_due(web_root: Path, when: datetime | None = None) -> list[dict[str, str]
     """Claim each KST daily job once; AI needs manual proof and explicit auto opt-in."""
     ops = operations()
     results = []
+    local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
+    if local.strftime("%H:%M") >= "09:00" and MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).auto_real_enabled():
+        day = local.date().isoformat()
+        if ops.claim_daily_campaign(day):
+            Thread(target=_run_team,args=(web_root,day,"campaign_daily"),daemon=True,name="roadlog-marketing-daily").start()
+            results.append({"date":day,"job":"campaign_daily","status":"RUNNING","result":"자동 캠페인 점검 시작 · 외부 게시 없음"})
     for day, job_key in ops.claim_due(when):
         try:
             if job_key == "kickoff":

@@ -114,6 +114,31 @@ class TeamOperations:
                              (self.repo.tenant_id,day,"team_8","RUNNING",now()))
             return bool(cur.rowcount)
 
+    def claim_daily_campaign(self, day: str) -> bool:
+        """Claim one opt-in paid campaign per KST day, never after a manual batch."""
+        with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute("SELECT status,updated_at FROM marketing_scheduled_runs WHERE tenant_id=? AND run_date=? AND job_key='campaign_daily'",(self.repo.tenant_id,day)).fetchone()
+            if existing:
+                try:
+                    stale = existing["status"] == "RUNNING" and datetime.fromisoformat(existing["updated_at"]) < datetime.now(ZoneInfo("Asia/Seoul")) - timedelta(minutes=15)
+                except ValueError:
+                    stale = False
+                if stale:
+                    db.execute("UPDATE marketing_scheduled_runs SET status='FAILED',result='작업자 중단 · 유료 요청 중복 방지를 위해 자동 재시도 없음',updated_at=? WHERE tenant_id=? AND run_date=? AND job_key='campaign_daily'",(now(),self.repo.tenant_id,day))
+                    db.execute("UPDATE marketing_content SET status='REVISION_REQUESTED',review_result='AI 검수 중단' WHERE tenant_id=? AND status='AWAITING_AI_REVIEW'",(self.repo.tenant_id,))
+                    db.execute("UPDATE marketing_campaigns SET status='FAILED',decision='FAILED',reason='작업자 중단 · 관리자 확인 필요',completed_at=? WHERE tenant_id=? AND trigger_type='DAILY' AND status='RUNNING'",(now(),self.repo.tenant_id))
+                return False
+            state = db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            enabled = db.execute("SELECT enabled FROM marketing_automation WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            proof = db.execute("SELECT 1 FROM marketing_runs WHERE tenant_id=? AND mode='REAL' AND agent_id='content_writer' AND status='COMPLETED' AND result_summary='수동 검수 통과' LIMIT 1",(self.repo.tenant_id,)).fetchone()
+            manual = db.execute("SELECT 1 FROM marketing_scheduled_runs WHERE tenant_id=? AND run_date=? AND job_key='team_8'",(self.repo.tenant_id,day)).fetchone()
+            if not state or state["status"] != "RUNNING" or not enabled or not enabled["enabled"] or not proof or manual:
+                return False
+            cur = db.execute("INSERT OR IGNORE INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
+                             (self.repo.tenant_id,day,"campaign_daily","RUNNING",now()))
+            return bool(cur.rowcount)
+
     def finish_due(self, day: str, job_key: str, result: str, *, failed: bool = False) -> None:
         stamp = now(); status = "FAILED" if failed else "COMPLETED"
         aid = "content_writer" if job_key == "content" else "team_8" if job_key == "team_8" else "marketing_director"
