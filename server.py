@@ -907,6 +907,12 @@ def admin_marketing_status(authorization: str | None = Header(default=None)):
     return marketing_ops.status(WEB)
 
 
+@app.get("/api/admin/marketing/insights")
+def admin_marketing_insights(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return marketing_ops.performance_snapshot()
+
+
 @app.get("/api/admin/marketing/team")
 def admin_marketing_team(authorization: str | None = Header(default=None)):
     _require_admin(authorization)

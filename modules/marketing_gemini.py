@@ -71,7 +71,7 @@ class RoadLogGeminiProvider:
                 self.sleep(2 ** attempt)
         raise ValueError(last_error)
 
-    def generate_role(self, task: Any, product: dict[str, Any], *, draft: dict[str, Any] | None = None) -> dict[str, Any]:
+    def generate_role(self, task: Any, product: dict[str, Any], *, draft: dict[str, Any] | None = None, metrics: dict[str, Any] | None = None) -> dict[str, Any]:
         """One separate Gemini request per role. No external metrics or full prompt is stored."""
         key = os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
@@ -89,10 +89,12 @@ class RoadLogGeminiProvider:
         instructions = ("ROADLOG의 지정된 마케팅 역할 한 가지만 수행하세요. 제공되지 않은 가격·할인·기능·"
                         "시장 수치·검색량·성과 수치를 만들지 마세요. 외부 게시를 제안할 수는 있으나 실행했다고 말하지 마세요. "
                         "summary는 300자 이하, recommendations는 최대 3개로 제한하세요. "
-                        "source_facts에는 상품 ID 또는 confirmed_results의 원문만 글자까지 동일하게 복사하세요. 미연결 데이터는 unknowns에 쓰세요. "
+                        "source_facts에는 상품 ID, confirmed_results의 원문, 제공된 metrics.source만 글자까지 동일하게 복사하세요. "
+                        "metrics가 있으면 그 수치만 인용하고 새 숫자는 만들지 마세요. 미연결 데이터는 unknowns에 쓰세요. "
                         "품질 검수자 외에는 review_passed를 false로 두세요. 품질 검수자는 초안의 사실 불일치가 있으면 false로 두세요.")
         payload = {"role": task.agent_id, "objective": task.objective, "missing_data": task.missing_data,
-                   "facts": facts, "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None}
+                   "facts": facts, "metrics": metrics,
+                   "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None}
         body = {"systemInstruction": {"parts": [{"text": instructions}]},
                 "contents": [{"role": "user", "parts": [{"text": json.dumps(payload, ensure_ascii=False)}]}],
                 "generationConfig": {"temperature": 0.2, "maxOutputTokens": 700,

@@ -17,6 +17,8 @@ from modules import marketing_os
 from modules.marketing_core import MarketingRepository
 from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_core.agents import TASKS
+from modules.marketing_core.policy import review_metric_note
+from modules import marketing_roadlog
 
 def check(value, label):
     assert value, label
@@ -31,15 +33,19 @@ class FakeGemini:
                 "hook": "정본 항목을 살펴보세요.", "body": f"ROADLOG 상품은 {item['price_won']:,}원입니다. {focus} 항목을 확인해 보세요.",
                 "cta": "상품 화면에서 확인하세요.", "image_prompt": "차분한 사주 서비스 화면, 가격 글자 없음",
                 "factual_claims": [focus], "source_facts": item["product_id"], "uncertainty": [], "estimated_cost": None}
-    def generate_role(self, task, item, *, draft=None):
+    seen_metrics = []
+    def generate_role(self, task, item, *, draft=None, metrics=None):
+        if metrics: self.seen_metrics.append(metrics)
         return {"summary": f"{task.agent_id} 상품 정본을 검토했습니다.", "recommendations": ["상품 설명 확인"],
-                "source_facts": [item["product_id"]], "unknowns": [task.missing_data], "review_passed": bool(draft)}
+                "source_facts": [metrics["source"] if metrics else item["product_id"]], "unknowns": [task.missing_data], "review_passed": bool(draft)}
 
 def main():
     temp = Path(tempfile.mkdtemp(prefix="roadlog_marketing_real_"))
     original_provider = marketing_os.RoadLogGeminiProvider
+    original_snapshot = marketing_os.performance_snapshot
     old_key = os.environ.pop("GEMINI_API_KEY", None)
     try:
+        marketing_os.performance_snapshot = lambda: {"source":"roadlog.stats.overview","period_days":7,"today":{"uv":12,"signups":2},"month":{"sales":2900},"by_source":[],"by_campaign":[],"limitations":["인스타 미연결"]}
         web = temp / "web"
         (web / "admin").mkdir(parents=True)
         shutil.copy2(ROOT / "web/admin/marketing-products.json", web / "admin/marketing-products.json")
@@ -76,6 +82,7 @@ def main():
         check({o["agent_id"] for o in team["agent_outputs"]} == {a["agent_id"] for a in team["agents"]}, "8명 각각 결과 저장")
         check(len({o["run_id"] for o in team["agent_outputs"]}) == 8 and all(o["run_id"] > 0 for o in team["agent_outputs"]), "8명 각각 독립 요청")
         check(marketing_os.usage()["requests"] == 8 and marketing_os.usage()["estimated_cost_krw"] == 80, "8명 요청·내부 예약 80원")
+        check(len(FakeGemini.seen_metrics) == 3 and all(m["today"]["uv"] == 12 for m in FakeGemini.seen_metrics), "디렉터·시장 조사원·성과 분석가에게 실제 집계 구조 전달")
         check(len(marketing_os.approvals()) == 1, "작성자·AI 검수 통과 후 승인 등록")
         check(not marketing_os.bundles(), "시작 시 가짜 묶음 없음")
         check(all(a["status"] != "IDLE" for a in marketing_os.team_dashboard()["agents"]), "8개 역할에 실제 작업 또는 대기 사유")
@@ -123,9 +130,9 @@ def main():
         check(not marketing_os.status(web)["automatic_real_calls"], "자동 생성 끄기")
         check("외부 공개는 실행하지 않았습니다" in marketing_os.decide(one["approval_id"], "approve", "")["message"], "승인 후 외부 게시 없음")
         class RejectReviewer(FakeGemini):
-            def generate_role(self, task, item, *, draft=None):
+            def generate_role(self, task, item, *, draft=None, metrics=None):
                 if task.agent_id == "market_researcher": raise ValueError("mock role failure")
-                result = super().generate_role(task,item,draft=draft)
+                result = super().generate_role(task,item,draft=draft,metrics=metrics)
                 if task.agent_id == "quality_reviewer": result["review_passed"] = False
                 return result
         marketing_os.DB = temp / "review.db"
@@ -181,8 +188,19 @@ def main():
         with httpx.Client(transport=httpx.MockTransport(timeout_twice)) as client:
             RoadLogGeminiProvider(client=client, sleep=lambda _: None).generate(product, "블로그")
         check(len(attempts) == 3, "timeout 최대 3회 재시도")
+        metrics = marketing_os.performance_snapshot()
+        check(not review_metric_note("방문 12명, 가입 2명",metrics,marketing_os.POLICY), "출처 있는 성과 수치 허용")
+        check(any("수치" in reason for reason in review_metric_note("방문 999명",metrics,marketing_os.POLICY)), "출처 없는 성과 수치 차단")
+        original_overview = marketing_roadlog.stats.overview
+        try:
+            marketing_roadlog.stats.overview = lambda days: {"today":{"uv":12,"signups":2},"month":{"sales":2900},"bySource":[{"name":"직접","uv":5}],"byCampaign":[],"members":[{"email":"private@example.com"}]}
+            snapshot = marketing_roadlog.performance_snapshot()
+            check(snapshot["today"]["uv"] == 12 and "members" not in snapshot and "private@example.com" not in json.dumps(snapshot), "사이트 성과 정본 연결·개인정보 제외")
+        finally:
+            marketing_roadlog.stats.overview = original_overview
     finally:
         marketing_os.RoadLogGeminiProvider = original_provider
+        marketing_os.performance_snapshot = original_snapshot
         if old_key is None: os.environ.pop("GEMINI_API_KEY", None)
         else: os.environ["GEMINI_API_KEY"] = old_key
         shutil.rmtree(temp, ignore_errors=True)

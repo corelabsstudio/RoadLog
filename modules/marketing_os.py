@@ -8,7 +8,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
-from modules.marketing_roadlog import RoadLogCatalog
+from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
 from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_core.agents import TASKS
 
@@ -84,12 +84,14 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
         run_id = repo.reserve_real_run(product["product_id"], datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
                                        20, 5, 3000, 10.0, agent_id=task.agent_id)
         provider = RoadLogGeminiProvider()
-        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft)
-        from modules.marketing_core.policy import review_draft
-        safe_draft = {"body": "\n".join([result["summary"], *result["recommendations"]]),
-                      "factual_claims": [], "source_facts": product["product_id"]}
-        reasons = review_draft(product,safe_draft,POLICY)
+        metrics = performance_snapshot() if task.agent_id in {"marketing_director", "market_researcher", "performance_analyst"} else None
+        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft,metrics=metrics)
+        from modules.marketing_core.policy import review_draft, review_metric_note
+        note = "\n".join([result["summary"], *result["recommendations"]])
+        safe_draft = {"body": note,"factual_claims": [], "source_facts": product["product_id"]}
+        reasons = review_metric_note(note,metrics,POLICY) if metrics else review_draft(product,safe_draft,POLICY)
         allowed = {product["product_id"],product["name"],*(product.get("confirmed_results") or [])}
+        if metrics: allowed.add(metrics["source"])
         if any(fact not in allowed for fact in result["source_facts"]): reasons.append("상품 정본에 없는 출처 사실")
         if task.agent_id == "quality_reviewer" and not result["review_passed"]: reasons.append("AI 품질 검수에서 차단")
         if reasons:

@@ -621,7 +621,8 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
-      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">8명이 각자 Gemini 요청 1건과 산출물·사용량·실패 기록을 갖습니다. 콘텐츠 작가 초안은 상품 정본 검사와 품질 검수자의 별도 AI 검사 후에만 승인 대기에 들어갑니다. 하루 팀 시작 작업은 1회만 수행합니다. 8건의 내부 예산 예약액은 총 80원이며 실제 API 청구액의 상한이 아닙니다. 시장·검색·성과 데이터는 미연결이며 외부 게시·광고는 실행하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
+      <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">8명이 각자 Gemini 요청 1건과 산출물·사용량·실패 기록을 갖습니다. 콘텐츠 작가 초안은 상품 정본 검사와 품질 검수자의 별도 AI 검사 후에만 승인 대기에 들어갑니다. 하루 팀 시작 작업은 1회만 수행합니다. 8건의 내부 예산 예약액은 총 80원이며 실제 API 청구액의 상한이 아닙니다. ROADLOG 내부 방문·상품 관심·매출 집계는 연결됐습니다. 외부 시장·검색·인스타그램 성과와 외부 게시는 아직 연결되지 않았습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
+      <details class="card marketing-fold"><summary>실제 사이트 성과 · 내부 관심도</summary><div id="marketingInsights" class="marketing-schedule"><p class="note">집계 불러오는 중…</p></div></details>
       <div class="deck wide">
         <details class="card marketing-fold">
           <summary>원본에서 여러 채널로</summary>
@@ -1654,12 +1655,15 @@ function paintMarketingTeam(team) {
 async function loadMarketing() {
   $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
   try {
-    const [status, usage, catalog, approvals, team, bundles] = await Promise.all([
-      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'), marketingFetch('/bundles'),
+    const [status, usage, catalog, approvals, team, bundles, insights] = await Promise.all([
+      marketingFetch('/status'), marketingFetch('/usage'), marketingFetch('/products'), marketingFetch('/approvals'), marketingFetch('/team'), marketingFetch('/bundles'), marketingFetch('/insights').catch(() => null),
     ]);
     paintMarketing(status, usage, catalog, approvals.items || []);
     paintMarketingTeam(team);
     paintMarketingBundles(bundles.items || []);
+    $('marketingInsights').innerHTML = insights
+      ? '<p>오늘 방문 ' + num(insights.today.uv) + '명 · 가입 ' + num(insights.today.signups) + '건 · 결제 ' + num(insights.today.charges) + '건</p><p>이번 달 매출 ' + num(insights.month.sales) + '원</p><p>최근 ' + num(insights.period_days) + '일 상품 열람 상위: ' + (insights.by_product || []).slice(0, 5).map(x => esc(x.product_id) + ' ' + num(x.opens) + '회').join(' · ') + '</p><p class="note">출처: ROADLOG 자체 집계. 외부 검색량·인스타 성과가 아닙니다.</p>'
+      : '<p class="note">사이트 집계 연결 오류 · 잠시 후 다시 확인해 주세요.</p>';
     MARKETING_LOADED = true;
     $('marketingProgress').textContent = status.real_trial_enabled ? '실제 AI 생성 가능 · 외부 게시 차단' : 'AI 키 없음 · AI 초안 생성 대기 · 외부 게시 차단';
     $('marketingTrial').disabled = !status.real_trial_enabled;
