@@ -1,5 +1,9 @@
 # RoadLog — Claude Code 안내
 
+## AI 마케팅 상태 한국어 표기 (2026-09-24 Codex)
+
+- 20개 자동화 능력의 사용자용 상태를 `docs/marketing/AUTOMATION_CAPABILITIES.md`에서 `작동/부분 구현/연결 필요/미구현`으로 바꿨다. 관리자 정본 UI `roadlog-saju/public/admin/index.html`은 8명 AI의 개별 상태와 담당 도구 상태까지 같은 방식으로 표시한다. 내부 DB/API 영문 enum은 호환성을 위해 유지한다.
+
 ## AI 마케팅 자동 제작 방향 수정 (2026-09-24 Codex)
 
 - 수동 무료 제작물 가져오기는 fallback이다. `modules/marketing_creative.py`에 Gemini 3.1 Flash Image 공식 API Provider를 추가했고 팀 캠페인에서 텍스트 검수 후 실제 이미지 파일을 생성·비공개 저장하는 조건부 경로를 연결했다. 이미지 API는 별도 과금 가능하므로 `MARKETING_IMAGE_GENERATION_ENABLED=false`가 기본값이다. 운영 실호출·시각 검수는 미검증, 저장 상태는 `GENERATED_UNVERIFIED`이며 `READY_TO_PUBLISH`가 아니다.
