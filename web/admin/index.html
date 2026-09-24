@@ -331,6 +331,10 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
 @media(max-width:1000px){.marketing-team-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:560px){.marketing-state,.marketing-team-grid{grid-template-columns:1fr}.marketing-state article{border-right:0;border-bottom:1px solid var(--line)}.marketing-state article:last-child{border-bottom:0}.marketing-command{align-items:flex-start;flex-direction:column}.marketing-activity article{grid-template-columns:1fr}.marketing-schedule article{grid-template-columns:50px 1fr}}
 </style>
+<style>
+.marketing-overview{display:grid;gap:14px;margin-bottom:16px}.marketing-overview h2{font-size:1.1rem;margin:0 0 10px}.marketing-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.marketing-overview-grid article,.marketing-overview-team article,.marketing-overview-content article{background:var(--card);border:1px solid var(--line);padding:13px;min-width:0}.marketing-overview-grid small,.marketing-overview-grid strong,.marketing-overview-grid span{display:block}.marketing-overview-grid small,.marketing-overview-grid span,.marketing-overview-team small,.marketing-overview-content small{color:var(--muted);font-size:.79rem}.marketing-overview-grid strong{font-size:1.2rem;margin:5px 0;font-variant-numeric:tabular-nums}.marketing-overview-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.marketing-overview-row>.card{margin:0}.marketing-overview-counts,.marketing-overview-nav{display:flex;gap:10px;flex-wrap:wrap}.marketing-overview-counts{margin:12px 0}.marketing-overview-nav a,.marketing-overview-action{display:inline-block;color:var(--ink);text-decoration:none;border:1px solid var(--line);padding:7px 10px;font-size:.84rem}.marketing-overview-nav a:hover,.marketing-overview-action:hover{border-color:var(--accent)}.marketing-overview-team{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.marketing-overview-team b,.marketing-overview-team small{display:block}.marketing-overview-timeline{max-height:220px;overflow:auto}.marketing-overview-timeline article{border-bottom:1px solid var(--line);padding:7px 0;font-size:.84rem}.marketing-overview-timeline time{color:var(--accent);margin-right:8px}.marketing-overview-content{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.marketing-overview-content b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:900px){.marketing-overview-team{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.marketing-overview-row{grid-template-columns:1fr}.marketing-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.marketing-overview-content{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -618,10 +622,18 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
     </section>
 
     <section data-page="marketing-team" hidden>
+      <div class="marketing-overview" aria-label="AI 마케팅 팀 운영 요약">
+        <div class="marketing-overview-row"><div><h2>AI 마케팅 팀</h2><p id="marketingOverviewStatus" role="status">운영 상태 확인 중…</p></div></div>
+        <div class="marketing-overview-grid" id="marketingOverviewMetrics">실제 집계를 불러오는 중…</div>
+        <div class="marketing-overview-row"><div class="card"><h2>AI 팀 현재 판단</h2><p id="marketingOverviewDecision">운영 기록을 불러오는 중…</p><div class="marketing-overview-counts" id="marketingOverviewCounts"></div><a class="marketing-overview-action" href="#marketingApprovalsPanel">승인 대기 확인하기</a></div><div class="card"><h2>오늘 진행 상황</h2><div class="marketing-overview-timeline" id="marketingOverviewTimeline"></div></div></div>
+        <div class="card"><h2>AI 팀 · 8명</h2><div class="marketing-overview-team" id="marketingOverviewTeam"></div></div>
+        <div class="card"><h2>최근 콘텐츠</h2><div class="marketing-overview-content" id="marketingOverviewContent"></div></div>
+        <nav class="marketing-overview-nav" aria-label="AI 마케팅 상세 바로가기"><a href="#marketingCampaignPanel">캠페인</a><a href="#marketingContentPanel">콘텐츠</a><a href="#marketingAgentsPanel">AI 팀</a><a href="#marketingInsightsPanel">성과</a><a href="#marketingActivityPanel">활동 기록</a><a href="#marketingSafetyPanel">운영 설정 · 시스템 진단</a></nav>
+      </div>
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span><small id="marketingAutoStatus">자동 운영 확인 중…</small></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" data-marketing-auto="enable" class="btn-line">매일 자동 점검 켜기</button><button type="button" data-marketing-auto="disable" class="btn-line">자동 점검 끄기</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <p class="note" id="marketingProviders">연결된 자료와 채널 확인 중…</p>
-      <details class="card marketing-fold"><summary>외부 API 안전 상태 · TEST 캠페인</summary>
+      <details class="card marketing-fold" id="marketingSafetyPanel"><summary>외부 API 안전 상태 · TEST 캠페인</summary>
         <p class="note" id="marketingSafety">안전 상태 확인 중…</p>
         <div class="marketing-form"><label>실제 상품<select id="marketingTestProduct"></select></label>
           <label><input type="checkbox" id="marketingTestSearch"> 외부 검색 사용 계획</label>
@@ -639,8 +651,8 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
         <p class="note" id="marketingDiagnosticResult" role="status" aria-live="polite">실행 전 · 외부 호출 0회</p>
       </details>
       <div class="card" id="marketingDiagnosis" role="status" aria-live="polite"><b>지금 AI 팀이 판단한 상황</b><p class="note">실측 사이트 진단을 불러오는 중…</p></div>
-      <details class="card marketing-fold"><summary>캠페인 진행 기록</summary><p class="note">실제 운영 기록과 TEST 계획 기록을 구분합니다. TEST는 AI 생성·게시·성과가 아닙니다.</p><div id="marketingCampaigns" class="marketing-activity"></div></details>
-      <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
+      <details class="card marketing-fold" id="marketingCampaignPanel"><summary>캠페인 진행 기록</summary><p class="note">실제 운영 기록과 TEST 계획 기록을 구분합니다. TEST는 AI 생성·게시·성과가 아닙니다.</p><div id="marketingCampaigns" class="marketing-activity"></div></details>
+      <details class="card marketing-fold" id="marketingAgentsPanel"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
       <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">디렉터가 먼저 실행 여부를 판단합니다. NO_ACTION이면 초안 요청 없이 끝나고, CREATE/OPTIMIZE일 때만 조사·검색 가설 → 작가 초안 → AI 검수 → 소재 지시안·채널 점검·내부 성과로 진행합니다. 검수 실패 시 최대 2회 수정·재검수하며 전체 최대 12회 Gemini 요청(내부 예약액 최대 120원)이 발생할 수 있습니다. 이 금액은 실제 청구액 상한이 아닙니다. 초안은 정본·AI 검수를 통과해야 승인 대기에 들어갑니다. 팀 시작은 하루 1회입니다. 외부 조사·검색량·이미지/영상 생성은 아직 미연결이고, 외부 게시는 자동 실행하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <details class="card marketing-fold"><summary>실제 사이트 성과 · 내부 관심도</summary><div id="marketingInsights" class="marketing-schedule"><p class="note">집계 불러오는 중…</p></div></details>
       <div class="deck wide">
@@ -1770,6 +1782,36 @@ function paintMarketingTeam(team) {
   $('marketingReports').innerHTML = (team.reports || []).length ? team.reports.map((r) => '<article><time>' + esc(r.report_date) + '</time><div><b>' + esc(r.title) + '</b><p>' + esc(r.body) + '</p></div></article>').join('') : '<p class="note">아직 보고서가 없습니다.</p>';
 }
 
+function paintMarketingOverview(team, insights, approvals) {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const teamState = team.status?.status;
+  $('marketingOverviewStatus').textContent = (teamState === 'RUNNING' ? '● 팀 가동 중' : teamState === 'PAUSED' ? 'Ⅱ 일시정지' : teamState === 'EMERGENCY_STOP' ? '■ 긴급정지' : '■ 팀 꺼짐') + ' · ' + (team.automatic_real_calls ? '매일 자동 점검 켜짐' : '매일 자동 점검 꺼짐') + ' · 외부 게시 건별 확인';
+  const measured = insights?.today;
+  const metric = (label, value, note) => '<article><small>' + label + '</small><strong>' + value + '</strong><span>' + note + '</span></article>';
+  $('marketingOverviewMetrics').innerHTML = metric('오늘 매출', measured ? marketingMoney(measured.sales) : '연결되지 않음', 'ROADLOG 자체 결제 집계')
+    + metric('오늘 방문자', measured ? num(measured.uv) + '명' : '연결되지 않음', 'ROADLOG 자체 순 방문자')
+    + metric('오늘 결제', measured ? num(measured.charges) + '건' : '연결되지 않음', '전환율이 아닌 결제 건수')
+    + metric('광고비', '연결되지 않음', '광고 계정 미연결');
+  const diagnosis = team.diagnosis;
+  $('marketingOverviewDecision').textContent = diagnosis
+    ? (diagnosis.reason || '판단 사유가 기록되지 않았습니다.') + ' 대상: ' + (diagnosis.product_name || '확인되지 않음') + ' · 근거: ' + marketingStatusLabel(diagnosis.evidence_type)
+    : '아직 기록된 AI 팀 판단이 없습니다. 팀 실행 후 실제 진단 결과가 여기에 표시됩니다.';
+  const runs = (team.scheduled_runs || []).filter((run) => run.run_date === today);
+  const pending = (approvals || []).filter((item) => item.status === 'PENDING').length;
+  $('marketingOverviewCounts').innerHTML = '<span>진행 중 <b>' + runs.filter((run) => run.status === 'RUNNING').length + '</b></span><span>오늘 완료 <b>' + runs.filter((run) => run.status === 'COMPLETED').length + '</b></span><span>승인 필요 <b>' + pending + '</b></span>';
+  const activities = (team.activity || []).filter((item) => item.created_at && new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(new Date(item.created_at)) === today).slice(0, 6);
+  $('marketingOverviewTimeline').innerHTML = activities.length ? activities.map((item) => '<article>' + marketingTimeTag(item.created_at) + '<b>' + esc(item.action) + '</b><span> · ' + esc(item.result || item.reason || '') + '</span></article>').join('') : '<p class="note">오늘 기록된 활동이 없습니다.</p>';
+  $('marketingOverviewTeam').innerHTML = (team.agents || []).map((agent) => '<article><b>' + esc(agent.label || marketingAgentLabel(agent.agent_id)) + ' · ' + esc(marketingStatusLabel(agent.status)) + '</b><small>' + esc(agent.current_task || '작업 대기') + '</small></article>').join('') || '<p>팀 상태를 확인할 수 없습니다.</p>';
+  $('marketingOverviewContent').innerHTML = (team.content || []).slice(0, 3).map((content) => '<article><b title="' + esc(content.title) + '">' + esc(content.title) + '</b><small>' + esc(content.product_name) + ' · ' + esc(marketingStatusLabel(content.status)) + '</small></article>').join('') || '<p class="note">최근 콘텐츠가 없습니다. 성과 순위는 게시·추적 후 표시할 수 있습니다.</p>';
+}
+for (const [summaryId, panelId] of [['marketingApprovalsSummary', 'marketingApprovalsPanel'], ['marketingActivitySummary', 'marketingActivityPanel'], ['marketingContentSummary', 'marketingContentPanel']]) {
+  $(summaryId).closest('details').id = panelId;
+}
+document.querySelectorAll('.marketing-overview a[href^="#marketing"]').forEach((link) => link.addEventListener('click', () => {
+  const panel = document.querySelector(link.getAttribute('href'));
+  if (panel?.tagName === 'DETAILS') panel.open = true;
+}));
+
 async function loadMarketing() {
   $('marketingProgress').textContent = '상품 정본과 기록을 불러오는 중…';
   try {
@@ -1778,6 +1820,7 @@ async function loadMarketing() {
     ]);
     paintMarketing(status, usage, catalog, approvals.items || [], instagram);
     paintMarketingTeam(team);
+    paintMarketingOverview(team, insights, approvals.items || []);
     paintMarketingBundles(bundles.items || []);
     $('marketingInsights').innerHTML = insights
       ? '<p>오늘 방문 ' + num(insights.today.uv) + '명 · 가입 ' + num(insights.today.signups) + '건 · 결제 ' + num(insights.today.charges) + '건</p><p>이번 달 매출 ' + num(insights.month.sales) + '원</p><p>최근 ' + num(insights.period_days) + '일 상품 열람 상위: ' + (insights.by_product || []).slice(0, 5).map(x => esc(x.product_id) + ' ' + num(x.opens) + '회').join(' · ') + '</p><p class="note">출처: ROADLOG 자체 집계. 외부 검색량·인스타 성과가 아닙니다.</p>'
