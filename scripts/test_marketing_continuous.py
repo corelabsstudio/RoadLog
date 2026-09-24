@@ -33,6 +33,7 @@ def main() -> None:
             marketing_os.Thread = DormantThread
             os.environ["GEMINI_API_KEY"] = "test-not-sent"
             assert marketing_safety.cost_status()["paid_enabled"] == 0
+            assert marketing_os.status(Path(__file__).resolve().parents[1] / "web")["connection_label"] == "키 설정됨 · 팀 시작 시 AI 호출 허용"
             result = marketing_os.control("start")
             assert result["status"] == "RUNNING"
             assert marketing_safety.cost_status()["paid_enabled"] == 1

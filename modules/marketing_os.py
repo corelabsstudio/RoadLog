@@ -42,6 +42,10 @@ def _service(web_root: Path = Path(".")) -> MarketingService:
 
 def status(web_root: Path) -> dict[str, Any]:
     result = _service(web_root).status()
+    if (not result["connected"] and os.getenv("GEMINI_API_KEY", "").strip()
+            and marketing_safety.enabled("gemini") and not marketing_safety.cost_settings()["paid_enabled"]):
+        result["mode"] = "AI 대기 · 팀 시작 필요"
+        result["connection_label"] = "키 설정됨 · 팀 시작 시 AI 호출 허용"
     result["dry_run_scope"] = "automatic_external_publishing"
     result["manual_instagram_publish_enabled"] = instagram_configured() and instagram_publishing_enabled()
     result["safety"] = marketing_safety.board()
