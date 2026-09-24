@@ -26,7 +26,7 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_campaign_events(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,agent_id TEXT NOT NULL,run_id INTEGER,status TEXT NOT NULL,summary TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_learning(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,product_id TEXT NOT NULL,evidence_type TEXT NOT NULL,observation TEXT NOT NULL,recommendation TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_site_profiles(tenant_id TEXT PRIMARY KEY,catalog_hash TEXT NOT NULL,profile_json TEXT NOT NULL,observed_at TEXT NOT NULL);
-        CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',provider TEXT NOT NULL DEFAULT '');
         CREATE TABLE IF NOT EXISTS marketing_assets(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,content_id INTEGER NOT NULL,kind TEXT NOT NULL,mime TEXT NOT NULL,filename TEXT NOT NULL,bytes INTEGER NOT NULL,sha256 TEXT NOT NULL,origin TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE INDEX IF NOT EXISTS ix_marketing_assets_content ON marketing_assets(tenant_id,content_id);
         CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_product ON marketing_campaigns(tenant_id,product_id,created_at);
@@ -46,6 +46,11 @@ class MarketingRepository:
                 conn.execute("ALTER TABLE marketing_bundles ADD COLUMN source_text TEXT NOT NULL DEFAULT ''")
             if "focus_result" not in bundle_columns:
                 conn.execute("ALTER TABLE marketing_bundles ADD COLUMN focus_result TEXT NOT NULL DEFAULT ''")
+            research_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_research_sources)")}
+            if "query_text" not in research_columns:
+                conn.execute("ALTER TABLE marketing_research_sources ADD COLUMN query_text TEXT NOT NULL DEFAULT ''")
+            if "provider" not in research_columns:
+                conn.execute("ALTER TABLE marketing_research_sources ADD COLUMN provider TEXT NOT NULL DEFAULT ''")
             conn.execute("CREATE INDEX IF NOT EXISTS ix_marketing_bundles_tenant ON marketing_bundles(tenant_id)")
             conn.commit()
         except Exception:
@@ -67,12 +72,12 @@ class MarketingRepository:
     def save_research_sources(self, campaign_id: int, items: list[dict[str, Any]]) -> None:
         with self.connect() as conn:
             for item in items:
-                conn.execute("INSERT INTO marketing_research_sources(tenant_id,campaign_id,title,url,summary,observed_at,source_type) VALUES(?,?,?,?,?,?,?)",
-                             (self.tenant_id,campaign_id,item["title"],item["url"],item["summary"],item["observedAt"],item["sourceType"]))
+                conn.execute("INSERT INTO marketing_research_sources(tenant_id,campaign_id,title,url,summary,observed_at,source_type,query_text,provider) VALUES(?,?,?,?,?,?,?,?,?)",
+                             (self.tenant_id,campaign_id,item["title"],item["url"],item["summary"],item["observedAt"],item["sourceType"],item.get("query", ""),item.get("source", "")))
 
     def research_sources(self, campaign_id: int) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT title,url,summary,observed_at,source_type FROM marketing_research_sources WHERE tenant_id=? AND campaign_id=? ORDER BY id", (self.tenant_id,campaign_id)).fetchall()
+            rows = conn.execute("SELECT title,url,summary,observed_at,source_type,query_text,provider FROM marketing_research_sources WHERE tenant_id=? AND campaign_id=? ORDER BY id", (self.tenant_id,campaign_id)).fetchall()
         return [dict(row) for row in rows]
 
     def record_sync(self, meta: dict[str, Any], count: int) -> None:

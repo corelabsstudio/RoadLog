@@ -40,5 +40,5 @@ class BraveResearchProvider:
                 continue
             safe.append({"title": str(item.get("title") or "")[:200], "url": url[:1000],
                          "observedAt": observed_at, "summary": str(item.get("description") or "")[:500],
-                         "sourceType": "EXTERNAL_SOURCE"})
+                         "sourceType": "EXTERNAL_SOURCE", "query": query, "source": "Brave Web Search"})
         return safe

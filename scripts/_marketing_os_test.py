@@ -86,7 +86,7 @@ def main():
         else: raise AssertionError("eight-agent batch did not finish")
         team = marketing_os.team_dashboard()
         check({o["agent_id"] for o in team["agent_outputs"]} == {a["agent_id"] for a in team["agents"]}, "8명 각각 결과 저장")
-        check(len(team["campaigns"]) == 1 and len(team["campaigns"][0]["events"]) == 10 and team["campaigns"][0]["status"] == "AWAITING_APPROVAL", "진단·검색 연결 상태 + 캠페인 8명 시간순 기록·승인 대기")
+        check(len(team["campaigns"]) == 1 and len(team["campaigns"][0]["events"]) == 11 and any(e["status"] == "CONFIG_REQUIRED" and e["agent_id"] == "creative_director" for e in team["campaigns"][0]["events"]) and team["campaigns"][0]["status"] == "AWAITING_APPROVAL", "진단·검색·이미지 연결 상태 + 캠페인 8명 시간순 기록·초안 승인 대기")
         check(not team["campaigns"][0]["sources"], "검색 미연결 시 외부 출처를 꾸며내지 않음")
         transport = httpx.MockTransport(lambda request: httpx.Response(200,json={"web":{"results":[{"title":"검증 자료","url":"https://example.com/one","description":"공개 설명"}]}}))
         research = BraveResearchProvider(httpx.Client(transport=transport),key="test")

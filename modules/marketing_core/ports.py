@@ -14,9 +14,12 @@ class ResearchProvider(Protocol):
     connected: bool
     def search(self, query: str) -> list[dict[str, Any]]: ...
 
-class CreativeProvider(Protocol):
+class ImageGenerationProvider(Protocol):
     connected: bool
     def generate_image(self, brief: dict[str, Any]) -> dict[str, Any]: ...
+
+class VideoGenerationProvider(Protocol):
+    connected: bool
     def generate_video(self, brief: dict[str, Any]) -> dict[str, Any]: ...
     def generation_status(self, job_id: str) -> dict[str, Any]: ...
 

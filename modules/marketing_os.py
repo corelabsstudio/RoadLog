@@ -12,6 +12,8 @@ from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
 from modules.marketing_diagnosis import build_profile, diagnose
 from modules.marketing_research import BraveResearchProvider
 from modules.marketing_assets import MarketingAssetStore
+from modules.marketing_creative import GeminiImageProvider
+from modules.marketing_tools import tool_registry
 from modules.marketing_gemini import RoadLogGeminiProvider
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
@@ -120,9 +122,11 @@ def team_dashboard() -> dict[str,Any]:
     result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
     result["providers"] = {
         "internal_analytics":"CONNECTED", "external_research":"CONNECTED" if BraveResearchProvider().connected else "NOT_CONNECTED",
-        "search_metrics":"NOT_CONNECTED", "creative_assets":"LOCAL_ASSISTED_ONLY",
+        "search_metrics":"NOT_CONNECTED", "creative_assets":"CONFIGURED_UNVERIFIED" if GeminiImageProvider().connected else "CONFIG_REQUIRED",
+        "manual_creative_import":"AVAILABLE_FALLBACK",
         "instagram":"MANUAL_UNVERIFIED" if instagram_configured() and instagram_publishing_enabled() else "NOT_CONNECTED",
     }
+    result["tool_registry"] = tool_registry()
     return result
 def control(action:str) -> dict[str,Any]:
     result = operations().control(action)
@@ -296,6 +300,25 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
                 failures += 1
                 repo.campaign_event(campaign_id,"content_writer",None,"ERROR","AI 수정 초안 생성 실패",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
                 break
+        # Image generation is a separate, potentially billed API capability.
+        # The opt-in defaults to false; a real file remains unverified until
+        # visual/brand quality review, and never implies publication readiness.
+        if content and approved and _team_running():
+            image_provider = GeminiImageProvider()
+            if image_provider.connected:
+                image_run_id = None
+                try:
+                    image_run_id = repo.reserve_real_run(product["product_id"],datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),20,1,3000,1000.0,agent_id="creative_director")
+                    generated = image_provider.generate_image({"product_id": product["product_id"], "image_prompt": content["draft"]["image_prompt"]})
+                    asset = MarketingAssetStore(repo,Path(DATA_DIR)).save_generated_image(content["content_id"],generated["mime"],generated["data"],generated["provider"])
+                    repo.finish_real_run(image_run_id,"COMPLETED","이미지 파일 생성 · 시각 검수 전",int(generated["usage"].get("promptTokenCount") or 0),int(generated["usage"].get("candidatesTokenCount") or 0))
+                    repo.campaign_event(campaign_id,"creative_director",image_run_id,"GENERATED_UNVERIFIED",f"실제 이미지 파일 #{asset['id']} 저장 · 시각 검수 전",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+                except Exception:
+                    failures += 1
+                    if image_run_id is not None: repo.finish_real_run(image_run_id,"FAILED","이미지 생성 또는 저장 실패")
+                    repo.campaign_event(campaign_id,"creative_director",image_run_id,"ERROR","이미지 생성 실패 · 게시 준비 상태 아님",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            else:
+                repo.campaign_event(campaign_id,"creative_director",None,"CONFIG_REQUIRED","이미지 API 미연결 · 수동 제작물 가져오기는 별도 fallback",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
         with ThreadPoolExecutor(max_workers=3) as pool:
             futures = [pool.submit(_run_role,tasks[aid],product,data["sync"],draft=content["draft"] if content else None,campaign_id=campaign_id,context=strategy)
                        for aid in ("creative_director","social_manager","performance_analyst")]

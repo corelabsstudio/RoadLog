@@ -87,6 +87,27 @@ class MarketingAssetStore:
             raise
         return {"id": asset_id, "kind": kind, "mime": mime, "bytes": len(data), "origin": "USER_SUPPLIED_FREE_TOOL", "status": "IMPORTED_UNVERIFIED", "created_at": stamp}
 
+    def save_generated_image(self, content_id: int, mime: str, data: bytes, provider: str) -> dict[str, Any]:
+        """Persist only genuine provider bytes, never a prompt or placeholder."""
+        validate_asset("image", mime, data)
+        with self._connection() as conn:
+            row = conn.execute("SELECT id FROM marketing_content WHERE tenant_id=? AND id=? AND mode='REAL'", (self.repository.tenant_id, content_id)).fetchone()
+            if not row:
+                raise ValueError("실제 콘텐츠를 찾지 못했습니다.")
+        self.root.mkdir(parents=True, exist_ok=True)
+        filename = uuid.uuid4().hex + MIME[mime]
+        path = self.root / filename
+        with path.open("xb") as file:
+            file.write(data)
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        try:
+            with self._connection() as conn:
+                asset_id = int(conn.execute("INSERT INTO marketing_assets(tenant_id,content_id,kind,mime,filename,bytes,sha256,origin,status,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)", (self.repository.tenant_id, content_id, "image", mime, filename, len(data), hashlib.sha256(data).hexdigest(), provider[:80], "GENERATED_UNVERIFIED", stamp)).lastrowid)
+        except Exception:
+            path.unlink(missing_ok=True)
+            raise
+        return {"id": asset_id, "kind": "image", "mime": mime, "bytes": len(data), "origin": provider[:80], "status": "GENERATED_UNVERIFIED", "created_at": stamp}
+
     def list_for_approval(self, approval_id: int) -> list[dict[str, Any]]:
         with self._connection() as conn:
             content_id = self._approval_content(conn, approval_id)
