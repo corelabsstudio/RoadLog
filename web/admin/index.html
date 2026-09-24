@@ -333,6 +333,7 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
 </style>
 <style>
 .marketing-overview{display:grid;gap:14px;margin-bottom:16px}.marketing-overview h2{font-size:1.1rem;margin:0 0 10px}.marketing-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.marketing-overview-grid article,.marketing-overview-team article,.marketing-overview-content article{background:var(--card);border:1px solid var(--line);padding:13px;min-width:0}.marketing-overview-grid small,.marketing-overview-grid strong,.marketing-overview-grid span{display:block}.marketing-overview-grid small,.marketing-overview-grid span,.marketing-overview-team small,.marketing-overview-content small{color:var(--muted);font-size:.79rem}.marketing-overview-grid strong{font-size:1.2rem;margin:5px 0;font-variant-numeric:tabular-nums}.marketing-overview-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.marketing-overview-row>.card{margin:0}.marketing-overview-counts,.marketing-overview-nav{display:flex;gap:10px;flex-wrap:wrap}.marketing-overview-counts{margin:12px 0}.marketing-overview-nav a,.marketing-overview-action{display:inline-block;color:var(--ink);text-decoration:none;border:1px solid var(--line);padding:7px 10px;font-size:.84rem}.marketing-overview-nav a:hover,.marketing-overview-action:hover{border-color:var(--accent)}.marketing-overview-team{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.marketing-overview-team b,.marketing-overview-team small{display:block}.marketing-overview-timeline{max-height:220px;overflow:auto}.marketing-overview-timeline article{border-bottom:1px solid var(--line);padding:7px 0;font-size:.84rem}.marketing-overview-timeline time{color:var(--accent);margin-right:8px}.marketing-overview-content{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.marketing-overview-content b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.marketing-overview-team small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5;min-height:2.4em}
 @media(max-width:900px){.marketing-overview-team{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.marketing-overview-row{grid-template-columns:1fr}.marketing-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.marketing-overview-content{grid-template-columns:1fr}}
 </style>
 </head>
@@ -1677,7 +1678,7 @@ function paintMarketing(status, usage, catalog, approvals, instagram) {
   if ($('marketingTestGemini').disabled) $('marketingTestGemini').checked = false;
   marketingTestEstimate();
   $('marketingProductsSummary').textContent = '상품 정본 · ' + items.length + '개';
-  $('marketingApprovalsSummary').textContent = '승인 대기 · ' + approvals.length + '건';
+  $('marketingApprovalsSummary').textContent = '승인 기록 · 전체 ' + approvals.length + '건 · 대기 ' + approvals.filter((item) => item.status === 'PENDING').length + '건';
   $('marketingSyncMeta').textContent = '동기화 ' + marketingTimeText(catalog.sync.synced_at)
     + ' · 출처 ' + esc(catalog.sync.source_file || '확인되지 않음');
   $('marketingProducts').innerHTML = items.map((p) => '<tr>'
@@ -1793,9 +1794,10 @@ function paintMarketingOverview(team, insights, approvals) {
     + metric('오늘 결제', measured ? num(measured.charges) + '건' : '연결되지 않음', '전환율이 아닌 결제 건수')
     + metric('광고비', '연결되지 않음', '광고 계정 미연결');
   const diagnosis = team.diagnosis;
+  const director = (team.agents || []).find((agent) => agent.agent_id === 'marketing_director');
   $('marketingOverviewDecision').textContent = diagnosis
     ? (diagnosis.reason || '판단 사유가 기록되지 않았습니다.') + ' 대상: ' + (diagnosis.product_name || '확인되지 않음') + ' · 근거: ' + marketingStatusLabel(diagnosis.evidence_type)
-    : '아직 기록된 AI 팀 판단이 없습니다. 팀 실행 후 실제 진단 결과가 여기에 표시됩니다.';
+    : director?.current_task ? '최근 디렉터 기록 (' + marketingTimeText(director.last_activity) + '): ' + director.current_task : '아직 기록된 AI 팀 판단이 없습니다. 팀 실행 후 실제 진단 결과가 여기에 표시됩니다.';
   const runs = (team.scheduled_runs || []).filter((run) => run.run_date === today);
   const pending = (approvals || []).filter((item) => item.status === 'PENDING').length;
   $('marketingOverviewCounts').innerHTML = '<span>진행 중 <b>' + runs.filter((run) => run.status === 'RUNNING').length + '</b></span><span>오늘 완료 <b>' + runs.filter((run) => run.status === 'COMPLETED').length + '</b></span><span>승인 필요 <b>' + pending + '</b></span>';
