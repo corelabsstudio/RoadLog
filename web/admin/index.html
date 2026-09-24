@@ -1900,7 +1900,6 @@ setInterval(() => {
 }, 4000);
 
 async function runMarketingTrial() {
-  if (!confirm('실제 Gemini API를 1회 호출합니다. 사용량이 과금될 수 있으며 외부 게시는 하지 않습니다. 계속할까요?')) return;
   const button = $('marketingTrial');
   button.disabled = true;
   $('marketingProgress').textContent = '상품 정본 확인 → 초안 작성 → 사실 검수 중…';
