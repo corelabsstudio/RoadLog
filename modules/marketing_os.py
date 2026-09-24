@@ -171,6 +171,10 @@ def refresh_campaign_learning(repo: MarketingRepository) -> None:
 
 def team_dashboard() -> dict[str,Any]:
     result = operations().dashboard()
+    if os.getenv("GEMINI_API_KEY", "").strip() and marketing_safety.enabled("gemini"):
+        for agent in result["agents"]:
+            if agent["status"] == "WAITING_AI" and agent.get("current_task") == "Gemini API 키 미연결 · 유료 요청 없음":
+                agent["current_task"] = "이전 대기 기록 · 팀 시작 후 새 작업으로 갱신"
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
     result["jobs"] = MarketingJobQueue(repo).recent()
     try:
