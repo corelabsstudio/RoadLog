@@ -235,7 +235,11 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
             refresh_campaign_learning(repo)
             previous = repo.recent_campaigns(5, production_only=True)
             metrics = {**metrics,"previous_learning":repo.recent_learning(),
-                       "previous_campaigns":[{"id":c["id"],"product_id":c["product_id"],"status":c["status"],"stage":c["stage"],"scorecard":c["scorecard"]} for c in previous if c["id"] != campaign_id]}
+                       "previous_campaigns":[{"id":c["id"],"product_id":c["product_id"],"status":c["status"],"stage":c["stage"],
+                                              "scorecard":c["scorecard"],"strategy":c["strategy"],
+                                              "publications":[{"channel":p["channel"],"status":p["status"],"published_url":p["published_url"]}
+                                                              for p in c["publications"]]}
+                                             for c in previous if c["id"] != campaign_id]}
         result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"],"campaign_id":campaign_id or 0},draft=draft,metrics=metrics,context=context)
         if task.agent_id == "marketing_director" and metrics:
             prior = [c for c in metrics["previous_campaigns"] if c["product_id"] == product["product_id"] and c["scorecard"]]

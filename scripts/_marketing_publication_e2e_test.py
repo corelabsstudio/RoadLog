@@ -30,6 +30,7 @@ def main() -> None:
         meta = {"source_file":"test-catalog.json","source_hash":"test"}
         draft = {"platform":"블로그","title":"오늘의 흐름","hook":"실제 검수된 설명","body":"검증된 상품 설명","cta":"상품 살펴보기","image_prompt":""}
         campaign_a = repo.begin_campaign("today","MANUAL",stamp)
+        repo.save_strategy(campaign_a,{"selectedStrategy":"SEO_CONTENT","objective":"오늘의 흐름 설명"})
         content, approval = repo.save_trial(product,meta,draft,[],stamp,defer_approval=True)
         assert approval is None
         assert repo.finalize_agent_review(content,True,stamp)
@@ -56,6 +57,11 @@ def main() -> None:
             assert paid.status_code == 200, paid.text
             score = repo.save_scorecard(campaign_a,{},attribution.stamp())
             assert score["visits"] == 1 and score["unique_visitors"] == 1 and score["signups"] == 1 and score["purchases"] == 1 and score["revenue_krw"] == 1000, score
+            dashboard = client.get("/api/admin/marketing/team")
+            assert dashboard.status_code == 200, dashboard.text
+            campaign_on_screen = next(c for c in dashboard.json()["campaigns"] if c["id"] == campaign_a)
+            assert campaign_on_screen["publications"][0]["published_url"] == published["published_url"]
+            assert campaign_on_screen["scorecard"]["signups"] == 1 and campaign_on_screen["scorecard"]["revenue_krw"] == 1000
             assert client.post("/api/lamps/charge",json={"paymentId":"fake-payment-1"}).status_code == 200
             assert repo.save_scorecard(campaign_a,{},attribution.stamp())["purchases"] == 1
             repo.learn_from_scorecard(campaign_a,attribution.stamp())
@@ -74,6 +80,7 @@ def main() -> None:
                 assert role == "marketing_director" and state
                 assert fake_ops.return_value.record_agent_output.called
             assert any(c["id"] == campaign_a and c["scorecard"]["purchases"] == 1 for c in director_input["previous_campaigns"])
+            assert any(c["id"] == campaign_a and c["strategy"]["selectedStrategy"] == "SEO_CONTENT" and c["publications"][0]["published_url"] == published["published_url"] for c in director_input["previous_campaigns"])
             assert any(item["campaign_id"] == campaign_a and item["measured"]["revenue_krw"] == 1000 for item in director_input["previous_learning"])
             repo.refund_attributed_purchase(attribution.payment_key("fake-payment-1"),attribution.stamp())
             refunded = repo.save_scorecard(campaign_a,{},attribution.stamp())

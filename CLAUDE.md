@@ -263,3 +263,9 @@ python scripts/_roadlog_suite_test.py --live
 - UTM/캠페인/게시물 ID를 가진 링크를 생성한다. 기존 `stats.overview`의 UTM 방문 집계만 scorecard에 실측 저장한다. 상위 30개 제한으로 집계에서 밀리면 방문도 미확인으로 표시한다. 캠페인별 CTA 클릭·가입·구매·매출은 현재 귀속 경로가 없어 NULL이다. 사이트 전체 수치를 캠페인 성과로 쓰지 않는다. 이전 캠페인 scorecard를 다음 Director의 metrics에 전달한다.
 - 키가 없어도 팀 시작 시 내부 상품·사이트 진단을 갱신한다. AI 작성은 키/자동화 조건 없으면 대기한다. 외부 검색·Search Console·이미지·영상·Meta 게시를 구현/연결했다는 뜻이 아니다. 현재 블로그도 게시 준비/승인까지만 가능하고 내부 블로그 발행기는 없다. 과거 수동 초안/인스타 승인 경로는 새 게시 준비 게이트와 별개인 레거시 경로이므로 완전한 통합을 후속 작업으로 남긴다.
 - 테스트: `scripts/_marketing_os_test.py`, `scripts/_marketing_closed_loop_test.py`는 모의 공급자/로컬 SQLite만 사용한다. 실계정·실유료 호출은 하지 않는다.
+# 2026-09-24 AI 마케팅 블로그 폐쇄 루프 재검증 (Codex)
+
+- 기존 production 경로는 `READY_TO_PUBLISH` → 관리자 승인 → `BlogPublisher.publish()` → `/blog/ai-{publicationId}.html` 동적 게시, 서명 쿠키 방문 → 가입 → PortOne 검증 결제 귀속 → 실측 scorecard → 규칙 기반 Learning → 다음 Director 입력으로 이어진다. 공개 테스트 글/실제 결제/유료 API 호출은 하지 않았다.
+- 다음 Director의 `metrics.previous_campaigns`에 기존 scorecard 외에 실제 선택 전략과 게시 상태/URL을 추가했다. 이전 전략을 확인하지 못하던 빈틈을 E2E의 Campaign A→B 검증으로 재현 후 수정했다.
+- 로컬 `scripts/_marketing_publication_e2e_test.py`는 임시 DB·가짜 가입/결제로 실제 FastAPI 게시 라우트, 관리자 캠페인 API, 귀속, Learning, 다음 Director context를 통과했다. 마케팅 모의 회귀 5개 스크립트 통과. 구형 `scripts/_roadlog_suite_test.py`는 UTF-8 출력 설정 후 13/37이며, `docs/marketing/LEGACY_TEST_AUDIT.md` 분류대로 옛 운행일지 API/자산 테스트가 남는다. 삭제하지 않았다.
+- 미확인: 운영 실제 공개 게시물과 실고객 전환은 만들지 않았으므로 라이브 퍼널 데이터 검증은 하지 않았다. `performance_analyst` 후속 Learning은 유료 AI가 아닌 규칙 기반 해석이다.
