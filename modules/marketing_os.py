@@ -34,7 +34,7 @@ POLICY = BrandPolicy(
     blocked_brand_pattern=r"ChatGPT|챗GPT|포스텔러|점신|신한라이프",
 )
 AGENTS=[("marketing_director","Marketing Director","마케팅 디렉터"),("market_researcher","Market Researcher","시장 조사원"),("seo_specialist","SEO Specialist","검색 전략가"),("content_writer","Content Writer","콘텐츠 작가"),("creative_director","Creative Director","크리에이티브 디렉터"),("social_manager","Social Manager","채널 매니저"),("quality_reviewer","Quality Reviewer","품질 검수자"),("performance_analyst","Performance Analyst","성과 분석가")]
-SCHEDULE=[{"time":"팀 시작","job":"team_8","name":"8명 독립 AI 작업 · 정본 검수 · 일일 보고서","automatic":False}]
+SCHEDULE=[{"time":"팀 가동 중","job":"team_cycle","name":"2시간 간격으로 새 작업 확인 · 중복/비용 한도 적용","automatic":False}]
 
 def _service(web_root: Path = Path(".")) -> MarketingService:
     provider = RoadLogGeminiProvider()
@@ -151,18 +151,11 @@ def publish_instagram(approval_id: int, image_url: str, *, publisher: InstagramP
     repo.finish_instagram_post(approval_id,"PUBLISHED",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),result["media_id"])
     return {"status":"PUBLISHED","media_id":result["media_id"],"message":"인스타그램 게시 완료"}
 def set_auto_real(enabled: bool) -> dict[str, Any]:
-    if enabled and not marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED"):
-        raise PermissionError("자동 팀 운영은 서버에서 비활성화되어 있습니다.")
-    if enabled and operations().dashboard()["status"]["status"] == "EMERGENCY_STOP":
-        raise PermissionError("긴급정지 상태입니다. 자동 운영을 켜기 전에 관리자가 정지 사유를 확인해야 합니다.")
-    repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
-    repo.set_auto_real(enabled)
     if enabled:
-        # The single Auto ON control arms the daily cycle; it does not run a
-        # paid campaign immediately. The separate Start button remains manual.
-        operations().control("start")
-    return {"ok": True, "automatic_real_calls": enabled,
-            "message": "매일 09:00 자동 캠페인 실행 켜짐 · 외부 게시는 건별 승인" if enabled else "매일 자동 캠페인 꺼짐"}
+        raise ValueError("옛 매일 09시 설정은 사용하지 않습니다. '팀 시작' 버튼으로 계속 운영하세요.")
+    repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
+    repo.set_auto_real(False)
+    return {"ok": True, "automatic_real_calls": False, "message": "옛 매일 09시 설정 꺼짐"}
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
 def refresh_campaign_learning(repo: MarketingRepository) -> None:
@@ -187,11 +180,12 @@ def team_dashboard() -> dict[str,Any]:
         recent = repo.recent_campaign_product_ids((datetime.now(ZoneInfo("Asia/Seoul"))-timedelta(days=14)).date().isoformat())
         result["diagnosis"] = diagnose(profile, recent)
     result["learning"] = repo.recent_learning()
-    result["automatic_real_calls"] = repo.auto_real_enabled() and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini")
-    result["automatic_team_configured"] = marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED")
+    cost = marketing_safety.cost_status()
+    result["automatic_real_calls"] = bool(result["continuous"]["enabled"] and result["status"]["status"] == "RUNNING" and cost["paid_enabled"] and marketing_safety.enabled("gemini") and not cost["kill_reason"] and cost["calls"] < cost["daily_requests"] and cost["reserved_cost_krw"] < cost["daily_budget_krw"])
+    result["automatic_team_configured"] = marketing_safety.enabled("gemini")
     result["safety"] = marketing_safety.board()
     result["approval_policy"] = "MANUAL_EVERY_PUBLICATION"
-    result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
+    result["next_run"] = result["continuous"]["next_run_at"] if result["automatic_real_calls"] else None
     result["providers"] = {
         "internal_analytics":"CONNECTED", "external_research":"CONFIGURED_UNVERIFIED" if TavilyResearchProvider().connected else "NOT_CONNECTED",
         "search_metrics":"NOT_CONNECTED", "creative_assets":"PAUSED_APPROVAL",
@@ -201,31 +195,28 @@ def team_dashboard() -> dict[str,Any]:
     result["tool_registry"] = tool_registry()
     return result
 def control(action:str) -> dict[str,Any]:
+    if action == "start":
+        repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+        MarketingJobQueue(repo)
+        with repo.connect() as db:
+            active=db.execute("SELECT 1 FROM marketing_job_queue WHERE tenant_id=? AND job_key LIKE 'team_cycle_%' AND status IN ('running','waiting_approval') LIMIT 1",(TENANT_ID,)).fetchone()
+        if active:
+            raise PermissionError("이전 팀 작업이 진행 중이거나 결과가 불확실합니다. 작업 기록을 확인한 뒤 재시작해 주세요.")
+        if not marketing_safety.enabled("gemini") or not os.getenv("GEMINI_API_KEY", "").strip():
+            raise PermissionError("Gemini 연결 설정이 없어 팀을 시작할 수 없습니다. 서버 설정을 확인해 주세요.")
+        cost = marketing_safety.cost_status()
+        if cost["kill_reason"] or cost["calls"] >= cost["daily_requests"] or cost["reserved_cost_krw"] >= cost["daily_budget_krw"]:
+            raise PermissionError("오늘 유료 API 한도 또는 긴급 차단 상태입니다. 내일 다시 시작해 주세요.")
+        marketing_safety.update_cost_settings(paid_enabled=True)
     result = operations().control(action)
     if action == "start":
-        web_root = Path(__file__).resolve().parents[1] / "web"
-        day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
-        ops = operations()
-        if not RoadLogGeminiProvider().connected:
-            try:
-                data = _service(web_root).products()
-                snapshot = performance_snapshot()
-                profile = build_profile(data["products"],snapshot,data["sync"]["source_hash"])
-                MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).save_site_profile(profile)
-                result["diagnosis"] = diagnose(profile,set())
-            except Exception:
-                result["diagnosis"] = {"decision":"NO_ACTION","reason":"내부 상품·성과 분석 자료를 읽지 못했습니다."}
-            ops.mark_ai_unavailable()
-            result["message"] = "내부 상품·성과 진단을 갱신했습니다. 마케팅 외부 API 차단 또는 Gemini 미연결로 유료 요청은 0건입니다."
-            result["jobs"] = [{"job":"team_8","status":"WAITING_AI"}]
-            return result
-        if not ops.claim_team_start(day):
-            result["message"] = "오늘 8명 작업은 이미 시작했습니다. 팀원별 결과와 실패 기록을 확인해 주세요."
-            result["jobs"] = [{"job":"team_8","status":"SKIPPED"}]
-            return result
-        Thread(target=_run_team, args=(web_root,day), daemon=True, name="roadlog-marketing-team").start()
-        result["message"] = "독립 AI 팀원 8명의 작업을 시작했습니다. 화면을 새로고침해 역할별 결과를 확인해 주세요. 실제 청구액은 내부 예약액과 다릅니다. 외부 게시는 하지 않습니다."
-        result["jobs"] = [{"job":"team_8","status":"RUNNING"}]
+        if result["changed"]:
+            run_due(Path(__file__).resolve().parents[1] / "web")
+        result["message"] = "AI 팀 가동 중 · 즉시 첫 작업, 이후 2시간 간격으로 새 작업 확인 · 비용 한도 적용 · 외부 게시는 매 건 승인"
+    elif action in {"stop", "pause", "emergency"}:
+        marketing_safety.update_cost_settings(paid_enabled=False)
+        MarketingJobQueue(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)).cancel_queued()
+        result["message"] = "팀을 중지하고 다음 유료 호출과 대기 작업을 차단했습니다. 이미 전송한 API 요청은 취소할 수 없습니다."
     return result
 
 def _team_running() -> bool:
@@ -308,7 +299,7 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
             ops.finish_due(day,job_key,diagnosis["reason"])
             return
         product = next(p for p in data["products"] if p["product_id"] == diagnosis["product_id"])
-        if job_key == "campaign_daily":
+        if job_key == "campaign_daily" or job_key.startswith("team_cycle_"):
             previous = next((c for c in repo.recent_campaigns(10) if c["status"] == "AWAITING_APPROVAL"), None)
             if previous:
                 try:
@@ -482,23 +473,51 @@ def _run_queued_team(web_root: Path, day: str, job_id: int) -> None:
         # An uncertain external attempt must not be repeated automatically.
         queue.finish(job_id, success=False, result='자동 캠페인 실패 · 관리자 확인 필요', safe_to_retry=False)
 
+def _run_continuous_team(web_root: Path, day: str, job_key: str, job_id: int) -> None:
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    queue = MarketingJobQueue(repo)
+    try:
+        if not _team_running() or not operations().dashboard()["continuous"]["enabled"]:
+            queue.finish(job_id,success=False,result="팀 종료로 작업 건너뜀",safe_to_retry=False)
+            return
+        _run_team(web_root,day,job_key)
+        with repo.connect() as db:
+            row=db.execute("SELECT status,result FROM marketing_scheduled_runs WHERE tenant_id=? AND run_date=? AND job_key=?",(TENANT_ID,day,job_key)).fetchone()
+        success=bool(row and row["status"]=="COMPLETED")
+        queue.finish(job_id,success=success,result=row["result"] if row else "결과 확인 불가",safe_to_retry=False)
+        if not success and _team_running():
+            operations().control("pause")
+            marketing_safety.update_cost_settings(paid_enabled=False)
+    except Exception:
+        queue.finish(job_id,success=False,result="작업 결과 불확실 · 자동 재시도 금지",safe_to_retry=False)
+        if _team_running():
+            operations().control("pause")
+            marketing_safety.update_cost_settings(paid_enabled=False)
+
 
 def run_due(web_root: Path, when: datetime | None = None) -> list[dict[str, str]]:
-    """Server-side daily orchestration; browser presence is irrelevant."""
+    """Server-side continuous orchestration; browser presence is irrelevant."""
     ops = operations()
     results = []
     local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
     queue = MarketingJobQueue(repo)
     queue.recover_stale(local)
-    if local.strftime("%H:%M") >= "09:00" and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini") and marketing_safety.cost_settings()["paid_enabled"] and repo.auto_real_enabled():
-        day = local.date().isoformat()
-        if not queue.exists("campaign_daily", day) and ops.claim_daily_campaign(day):
-            queue.enqueue("campaign_daily", day, local)
-        claimed = queue.claim_ready(local)
-        if claimed:
-            Thread(target=_run_queued_team,args=(web_root,claimed['run_date'],claimed['id']),daemon=True,name="roadlog-marketing-daily").start()
-            results.append({"date":claimed['run_date'],"job":"campaign_daily","status":"RUNNING","result":"자동 캠페인 실행 시작 · 외부 게시 없음"})
+    continuous = ops.dashboard()["continuous"]
+    if continuous["enabled"] and ops.dashboard()["status"]["status"] == "RUNNING":
+        cost = marketing_safety.cost_status()
+        with repo.connect() as db:
+            uncertain=db.execute("SELECT 1 FROM marketing_job_queue WHERE tenant_id=? AND job_key LIKE 'team_cycle_%' AND status='waiting_approval' LIMIT 1",(TENANT_ID,)).fetchone()
+        if (marketing_safety.enabled("gemini") and cost["paid_enabled"] and not cost["kill_reason"]
+                and not uncertain and cost["calls"] < cost["daily_requests"] and cost["reserved_cost_krw"] < cost["daily_budget_krw"]):
+            claimed_cycle = ops.claim_continuous_cycle(local)
+            if claimed_cycle:
+                cycle_day, cycle_key = claimed_cycle
+                queue.enqueue(cycle_key,cycle_day,local)
+            claimed_job = queue.claim_ready(local,job_prefix="team_cycle_")
+            if claimed_job:
+                Thread(target=_run_continuous_team,args=(web_root,claimed_job["run_date"],claimed_job["job_key"],claimed_job["id"]),daemon=True,name="roadlog-marketing-continuous").start()
+                results.append({"date":claimed_job["run_date"],"job":claimed_job["job_key"],"status":"RUNNING","result":"팀 자동 작업 시작 · 외부 게시 없음"})
     for day, job_key in ops.claim_due(when):
         try:
             if job_key == "kickoff":

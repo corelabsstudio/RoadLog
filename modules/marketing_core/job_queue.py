@@ -54,15 +54,22 @@ class MarketingJobQueue:
                                 (now.isoformat(timespec="seconds"), self.repo.tenant_id, cutoff))
             return result.rowcount
 
-    def claim_ready(self, when: datetime | None = None) -> dict | None:
+    def claim_ready(self, when: datetime | None = None, *, job_prefix: str | None = None) -> dict | None:
         stamp = (when or datetime.now(KST)).isoformat(timespec="seconds")
         with self.repo.connect() as db:
             db.execute("BEGIN IMMEDIATE")
-            row = db.execute("SELECT * FROM marketing_job_queue WHERE tenant_id=? AND status='queued' AND run_after<=? ORDER BY id LIMIT 1", (self.repo.tenant_id, stamp)).fetchone()
+            row = db.execute("SELECT * FROM marketing_job_queue WHERE tenant_id=? AND status='queued' AND run_after<=? AND (? IS NULL OR substr(job_key,1,length(?))=?) ORDER BY id LIMIT 1", (self.repo.tenant_id, stamp,job_prefix,job_prefix,job_prefix)).fetchone()
             if not row:
                 return None
             db.execute("UPDATE marketing_job_queue SET status='running',attempts=attempts+1,updated_at=? WHERE id=? AND tenant_id=? AND status='queued'", (stamp, row['id'], self.repo.tenant_id))
             return dict(row)
+
+    def cancel_queued(self, *, result: str = '관리자 종료') -> int:
+        stamp = datetime.now(KST).isoformat(timespec='seconds')
+        with self.repo.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            changed = db.execute("UPDATE marketing_job_queue SET status='skipped',result=?,updated_at=? WHERE tenant_id=? AND status='queued' AND job_key LIKE 'team_cycle_%'",(result,stamp,self.repo.tenant_id))
+            return changed.rowcount
 
     def finish(self, job_id: int, *, success: bool, result: str, safe_to_retry: bool = False, when: datetime | None = None) -> str:
         now = when or datetime.now(KST)

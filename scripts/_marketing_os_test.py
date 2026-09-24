@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json, os, shutil, sqlite3, sys, tempfile, time, types
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 import httpx
@@ -85,15 +85,18 @@ def main():
         try:
             marketing_os.set_auto_real(True)
             raise AssertionError("auto before proof")
-        except PermissionError: print("OK 첫 수동 검증 전 자동 잠금")
-        no_key_start = marketing_os.control("start")
-        check(no_key_start["jobs"][0]["status"] == "WAITING_AI" and marketing_os.usage()["requests"] == 0, "키 없을 때 8명 대기 · 유료 호출 0")
+        except ValueError: print("OK 폐기된 매일 자동 실행 잠금")
+        try:
+            marketing_os.control("start")
+            raise AssertionError("keyless continuous start allowed")
+        except PermissionError: print("OK 키 없을 때 팀 가동 거부 · 유료 호출 0")
+        os.environ["GEMINI_API_KEY"] = "test-not-sent"
         marketing_os.RoadLogGeminiProvider = FakeGemini
         day = datetime.now(ZoneInfo("Asia/Seoul")).date().isoformat()
         started = marketing_os.control("start")
-        check(started["status"] == "RUNNING" and started["jobs"][0]["job"] == "team_8", "팀 시작 즉시 8명 배치")
+        check(started["status"] == "RUNNING" and marketing_os.team_dashboard()["continuous"]["enabled"], "팀 시작 즉시 8명 배치")
         for _ in range(100):
-            if any(j["job_key"] == "team_8" and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
+            if any(j["job_key"].startswith("team_cycle_") and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
             time.sleep(0.05)
         else: raise AssertionError("eight-agent batch did not finish")
         team = marketing_os.team_dashboard()
@@ -132,19 +135,16 @@ def main():
         agents = marketing_os.team_dashboard()["agents"]
         check(next(a for a in agents if a["agent_id"] == "creative_director")["status"] == "WAITING_CONTENT", "과거 DEMO 현재 직원 상태 정리")
         due_time = datetime.fromisoformat(day + "T11:05:00+09:00")
-        check(not marketing_os.run_due(web, due_time), "시각 기반 AI 예약 없음")
+        check(not marketing_os.run_due(web, datetime.now(ZoneInfo("Asia/Seoul")) + timedelta(minutes=1)), "다음 간격 전 중복 실행 없음")
         repeated = marketing_os.control("start")
-        check(not repeated["changed"] and repeated["jobs"][0]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 8, "켜진 팀 재실행 중복 과금 없음")
-        marketing_os.control("pause")
-        resumed = marketing_os.control("start")
-        check(resumed["jobs"][0]["status"] == "SKIPPED" and marketing_os.usage()["requests"] == 8, "일시정지 후 재시작해도 하루 첫 호출만")
+        check(not repeated["changed"] and marketing_os.usage()["requests"] == 8, "켜진 팀 재실행 중복 과금 없음")
         one = marketing_os.trial(web, product["product_id"], "블로그", "REAL")
         check(one["ok"] and one["approval_id"], "모의 REAL 초안 검수 통과·승인 등록")
         check(marketing_os.status(web)["manual_real_success"] and not marketing_os.status(web)["automatic_real_calls"], "시간 예약 AI 생성 꺼짐")
-        marketing_os.set_auto_real(True)
-        check(marketing_os.status(web)["automatic_real_calls"], "수동 검수 통과 후 명시적 자동 점검 켜기")
-        due = marketing_os.run_due(web, due_time)
-        check(not due and not marketing_os.run_due(web, due_time), "오늘 수동 실행 후 자동 중복 호출 없음")
+        try:
+            marketing_os.set_auto_real(True)
+            raise AssertionError("legacy daily switch enabled")
+        except ValueError: print("OK 폐기된 매일 09시 스위치 차단")
         check(marketing_os.usage()["requests"] == 9 and marketing_os.usage()["estimated_cost_krw"] == 180, "요청 9건·내부 예산 예약")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
             real = conn.execute("SELECT COUNT(*) n,MAX(input_tokens) tin FROM marketing_runs WHERE mode='REAL' AND tenant_id='roadlog'").fetchone()
@@ -165,34 +165,8 @@ def main():
             marketing_os.trial(web, product["product_id"], "블로그", "REAL")
             raise AssertionError("budget not enforced")
         except PermissionError: print("OK 작성자 하루 5건 요청 한도")
-        marketing_os.set_auto_real(False)
-        check(not marketing_os.status(web)["automatic_real_calls"], "자동 생성 끄기")
-        marketing_os.DB = temp / "daily.db"
-        daily_repo = MarketingRepository(marketing_os.DB, "roadlog")
-        with daily_repo.connect() as conn:
-            conn.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,product_id,status,result_summary,created_at) VALUES(?,?,?,?,?,?,?)",
-                         ("roadlog","REAL","content_writer",product["product_id"],"COMPLETED","수동 검수 통과","2026-01-01T10:00:00+09:00"))
-        marketing_os.operations().control("start")
-        marketing_os.set_auto_real(True)
-        scheduled = marketing_os.run_due(web, due_time)
-        check(len(scheduled) == 1 and scheduled[0]["job"] == "campaign_daily", "매일 자동 캠페인 1회 등록")
-        for _ in range(100):
-            if any(j["job_key"] == "campaign_daily" and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
-            time.sleep(0.05)
-        else: raise AssertionError("daily campaign did not finish")
-        check(not marketing_os.run_due(web, due_time), "같은 날 자동 캠페인 중복 차단")
-        check(marketing_os.team_dashboard()["campaigns"][0]["trigger_type"] == "DAILY", "자동 캠페인 실행 기록")
-        marketing_os.DB = temp / "stale_daily.db"
-        stale_ops = marketing_os.operations()
-        stale_ops.control("start")
-        with MarketingRepository(marketing_os.DB,"roadlog").connect() as conn:
-            conn.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,product_id,status,result_summary,created_at) VALUES(?,?,?,?,?,?,?)",
-                         ("roadlog","REAL","content_writer",product["product_id"],"COMPLETED","수동 검수 통과","2026-01-01T10:00:00+09:00"))
-            conn.execute("INSERT INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",
-                         ("roadlog",day,"campaign_daily","RUNNING","2026-01-01T10:00:00+09:00"))
-        marketing_os.set_auto_real(True)
-        check(not stale_ops.claim_daily_campaign(day) and marketing_os.usage()["requests"] == 0
-              and marketing_os.team_dashboard()["scheduled_runs"][0]["status"] == "FAILED", "중단된 자동 작업은 실패 기록 · 유료 재시도 없음")
+        marketing_os.control("stop")
+        marketing_safety.update_cost_settings(paid_enabled=True)  # isolated MockTransport assertions below
         class NoActionGemini(FakeGemini):
             def generate_role(self, task, item, *, draft=None, metrics=None, context=None):
                 result = super().generate_role(task,item,draft=draft,metrics=metrics,context=context)
@@ -201,9 +175,9 @@ def main():
         marketing_os.DB = temp / "no_action.db"
         marketing_os.RoadLogGeminiProvider = NoActionGemini
         no_action_start = marketing_os.control("start")
-        check(no_action_start["jobs"][0]["status"] == "RUNNING", "NO_ACTION 판단 시작")
+        check(no_action_start["status"] == "RUNNING", "NO_ACTION 판단 시작")
         for _ in range(100):
-            if any(j["job_key"] == "team_8" and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
+            if any(j["job_key"].startswith("team_cycle_") and j["status"] != "RUNNING" for j in marketing_os.team_dashboard()["scheduled_runs"]): break
             time.sleep(0.05)
         else: raise AssertionError("no action campaign did not finish")
         check(marketing_os.usage()["requests"] == 1 and not marketing_os.approvals() and marketing_os.team_dashboard()["campaigns"][0]["status"] == "NO_ACTION", "NO_ACTION은 작성·승인·추가 과금 없음")
@@ -219,10 +193,10 @@ def main():
         marketing_os.DB = temp / "review.db"
         marketing_os.RoadLogGeminiProvider = RejectReviewer
         rejected_start = marketing_os.control("start")
-        check(rejected_start["jobs"][0]["status"] == "RUNNING", "차단 사례 8명 작업 시작")
+        check(rejected_start["status"] == "RUNNING", "차단 사례 8명 작업 시작")
         for _ in range(100):
             runs = marketing_os.team_dashboard()["scheduled_runs"]
-            if any(j["job_key"] == "team_8" and j["status"] != "RUNNING" for j in runs): break
+            if any(j["job_key"].startswith("team_cycle_") and j["status"] != "RUNNING" for j in runs): break
             time.sleep(0.05)
         else: raise AssertionError("rejected team did not finish")
         blocked_team = marketing_os.team_dashboard()
@@ -248,6 +222,7 @@ def main():
         base = FakeGemini().generate(product, "블로그")
         check(any("결과 항목" in r for r in marketing_os.review_draft(product, {**base, "factual_claims": ["없는 기능"]})), "없는 결과 항목 차단")
         check(any("수치" in r for r in marketing_os.review_draft(product, {**base, "body": "사용자 100명이 만족했습니다."})), "출처 없는 수치 차단")
+        marketing_safety.update_cost_settings(paid_enabled=True)  # mock-only adapter checks below
         os.environ["GEMINI_API_KEY"] = "TEST-ONLY-NOT-REAL"
         payload = FakeGemini().generate(product, "블로그")
         def response(text): return httpx.Response(200, json={"candidates": [{"content": {"parts": [{"text": text}]}}], "usageMetadata": {"promptTokenCount": 5, "candidatesTokenCount": 7}})
@@ -342,7 +317,7 @@ def test_instagram_publishing():
             raise AssertionError("pending publish allowed")
         except ValueError: print("OK 내부 승인 전 게시 차단")
         repo.decide(second,"APPROVED","관리자 승인","2026-09-23T12:03:00+09:00")
-        marketing_os.operations().control("stop")
+        marketing_os.operations().control("emergency")
         try:
             marketing_os.publish_instagram(second,"https://roadlog.co.kr/assets/card.jpg")
             raise AssertionError("emergency stop ignored")

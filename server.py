@@ -972,6 +972,8 @@ def admin_marketing_control(action: str, authorization: str | None = Header(defa
         return marketing_ops.control(action)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
 
 
 @app.post("/api/admin/marketing/automation/{action}")
@@ -983,6 +985,8 @@ def admin_marketing_automation(action: str, authorization: str | None = Header(d
         return marketing_ops.set_auto_real(action == "enable")
     except PermissionError as exc:
         raise HTTPException(423, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @app.post("/api/admin/marketing/jobs/{job_key}")

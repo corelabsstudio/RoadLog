@@ -57,8 +57,11 @@ def main() -> None:
             with auto_repo.connect() as db:
                 db.execute("INSERT INTO marketing_runs(tenant_id,mode,agent_id,status,result_summary,created_at) VALUES(?,?,?,?,?,?)",
                            ('roadlog', 'REAL', 'content_writer', 'COMPLETED', '수동 검수 통과', now.isoformat()))
-            assert marketing_os.set_auto_real(True)['automatic_real_calls']
-            assert marketing_os.operations().dashboard()['status']['status'] == 'RUNNING'
+            try:
+                marketing_os.set_auto_real(True)
+                raise AssertionError('폐기된 매일 09시 작업이 켜졌습니다.')
+            except ValueError:
+                pass
             assert not auto_repo.recent_campaigns()
             launched = []
             class NoBrowserThread:
@@ -70,13 +73,12 @@ def main() -> None:
             due = now.replace(hour=9, minute=1, second=0, microsecond=0)
             marketing_os.run_due(Path(directory), due)
             marketing_os.run_due(Path(directory), due)
-            assert len(launched) == 1
-            assert MarketingJobQueue(auto_repo).recent()[0]['status'] == 'running'
-            marketing_os.operations().control('stop')
+            assert len(launched) == 0
+            marketing_os.operations().control('emergency')
             try:
                 marketing_os.set_auto_real(True)
                 raise AssertionError('긴급정지 중 자동 운영이 재개됐습니다.')
-            except PermissionError:
+            except ValueError:
                 pass
         finally:
             marketing_os.DB, marketing_os.marketing_safety.on = old_db, old_on

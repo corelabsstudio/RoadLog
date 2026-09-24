@@ -17,11 +17,13 @@ class TeamOperations:
             CREATE TABLE IF NOT EXISTS marketing_agents(tenant_id TEXT NOT NULL,agent_id TEXT NOT NULL,name TEXT NOT NULL,label TEXT NOT NULL,status TEXT NOT NULL,current_task TEXT,progress INTEGER NOT NULL DEFAULT 0,last_activity TEXT NOT NULL,PRIMARY KEY(tenant_id,agent_id));
             CREATE TABLE IF NOT EXISTS marketing_activity(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,agent_id TEXT,action TEXT NOT NULL,reason TEXT,result TEXT,level TEXT NOT NULL,created_at TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS marketing_state(tenant_id TEXT PRIMARY KEY,status TEXT NOT NULL,updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS marketing_continuous(tenant_id TEXT PRIMARY KEY,enabled INTEGER NOT NULL DEFAULT 0,next_run_at TEXT NOT NULL DEFAULT '',generation INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS marketing_reports(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,report_date TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(tenant_id,report_date));
             CREATE TABLE IF NOT EXISTS marketing_scheduled_runs(tenant_id TEXT NOT NULL,run_date TEXT NOT NULL,job_key TEXT NOT NULL,status TEXT NOT NULL,result TEXT NOT NULL DEFAULT '',updated_at TEXT NOT NULL,PRIMARY KEY(tenant_id,run_date,job_key));
             CREATE TABLE IF NOT EXISTS marketing_agent_outputs(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,agent_id TEXT NOT NULL,run_id INTEGER NOT NULL,product_id TEXT NOT NULL,status TEXT NOT NULL,result_json TEXT NOT NULL,created_at TEXT NOT NULL);
             """)
             db.execute("INSERT OR IGNORE INTO marketing_state(tenant_id,status,updated_at) VALUES(?,?,?)",(self.repo.tenant_id,"STOPPED",now()))
+            db.execute("INSERT OR IGNORE INTO marketing_continuous(tenant_id) VALUES(?)",(self.repo.tenant_id,))
             for aid,name,label in self.agent_defs:
                 db.execute("INSERT OR IGNORE INTO marketing_agents(tenant_id,agent_id,name,label,status,last_activity) VALUES(?,?,?,?,?,?)",(self.repo.tenant_id,aid,name,label,"IDLE",now()))
             db.execute("UPDATE marketing_agents SET status='WAITING_AI',current_task='실제 AI 생성 검증 대기',progress=0 WHERE tenant_id=? AND current_task LIKE '%DEMO%'", (self.repo.tenant_id,))
@@ -33,11 +35,31 @@ class TeamOperations:
             agents=[dict(r) for r in db.execute("SELECT * FROM marketing_agents WHERE tenant_id=? ORDER BY rowid",(self.repo.tenant_id,))]
             activity=[dict(r) for r in db.execute("SELECT * FROM marketing_activity WHERE tenant_id=? ORDER BY id DESC LIMIT 30",(self.repo.tenant_id,))]
             state=db.execute("SELECT status,updated_at FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            continuous=db.execute("SELECT enabled,next_run_at,generation FROM marketing_continuous WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
             content=[dict(r) for r in db.execute("SELECT id,product_name,platform,title,status,review_result,created_at FROM marketing_content WHERE tenant_id=? ORDER BY id DESC LIMIT 30",(self.repo.tenant_id,))]
             reports=[dict(r) for r in db.execute("SELECT * FROM marketing_reports WHERE tenant_id=? ORDER BY report_date DESC LIMIT 30",(self.repo.tenant_id,))]
             scheduled=[dict(r) for r in db.execute("SELECT * FROM marketing_scheduled_runs WHERE tenant_id=? ORDER BY run_date DESC,job_key LIMIT 20",(self.repo.tenant_id,))]
             outputs=[dict(r) for r in db.execute("SELECT o.*,r.input_tokens,r.output_tokens,r.estimated_cost_krw FROM marketing_agent_outputs o LEFT JOIN marketing_runs r ON r.id=o.run_id AND r.tenant_id=o.tenant_id WHERE o.tenant_id=? ORDER BY o.id DESC LIMIT 30",(self.repo.tenant_id,))]
-        return {"status":dict(state),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports,"scheduled_runs":scheduled,"agent_outputs":outputs}
+        return {"status":dict(state),"continuous":dict(continuous),"agents":agents,"activity":activity,"schedule":self.schedule_defs,"content":content,"reports":reports,"scheduled_runs":scheduled,"agent_outputs":outputs}
+
+    def claim_continuous_cycle(self, when: datetime) -> tuple[str,str] | None:
+        """One durable cycle per interval across workers; old RUNNING state alone cannot arm it."""
+        stamp = when.astimezone(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+        day = stamp[:10]
+        with self.repo.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            state=db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            setting=db.execute("SELECT enabled,next_run_at,generation FROM marketing_continuous WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            if not state or state["status"]!="RUNNING" or not setting or not setting["enabled"] or setting["next_run_at"]>stamp:
+                return None
+            stale_cutoff=(when-timedelta(minutes=20)).isoformat(timespec="seconds")
+            db.execute("UPDATE marketing_scheduled_runs SET status='FAILED',result='작업자 중단 · 결과 불확실, 자동 재시도 금지',updated_at=? WHERE tenant_id=? AND job_key LIKE 'team_cycle_%' AND status='RUNNING' AND updated_at<?",(stamp,self.repo.tenant_id,stale_cutoff))
+            active=db.execute("SELECT 1 FROM marketing_scheduled_runs WHERE tenant_id=? AND job_key LIKE 'team_cycle_%' AND status='RUNNING' LIMIT 1",(self.repo.tenant_id,)).fetchone()
+            if active: return None
+            job_key=f"team_cycle_{setting['generation']}_{when.strftime('%Y%m%d%H%M%S')}"
+            db.execute("INSERT INTO marketing_scheduled_runs(tenant_id,run_date,job_key,status,updated_at) VALUES(?,?,?,?,?)",(self.repo.tenant_id,day,job_key,"RUNNING",stamp))
+            db.execute("UPDATE marketing_continuous SET next_run_at=? WHERE tenant_id=?",((when+timedelta(hours=2)).isoformat(timespec="seconds"),self.repo.tenant_id))
+            return day,job_key
 
     def record_agent_output(self, agent_id: str, run_id: int, product_id: str, status: str, result: dict[str, Any]) -> None:
         stamp = now()
@@ -200,19 +222,24 @@ class TeamOperations:
                 (self.repo.tenant_id,day,f"{day} 일일 보고서",body,stamp))
 
     def control(self, action: str) -> dict[str,Any]:
-        states={"start":"RUNNING","pause":"PAUSED","stop":"EMERGENCY_STOP"}
+        states={"start":"RUNNING","pause":"PAUSED","stop":"STOPPED","emergency":"EMERGENCY_STOP"}
         if action not in states: raise ValueError("지원하지 않는 운영 명령입니다.")
         state=states[action]; stamp=now()
         with self.repo.connect() as db:
             db.execute("BEGIN IMMEDIATE")
             current=db.execute("SELECT status FROM marketing_state WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
-            if current and current["status"] == state:
+            continuous=db.execute("SELECT enabled FROM marketing_continuous WHERE tenant_id=?",(self.repo.tenant_id,)).fetchone()
+            if current and current["status"] == state and (action!="start" or continuous and continuous["enabled"]):
                 return {"ok":True,"status":state,"changed":False}
             db.execute("UPDATE marketing_state SET status=?,updated_at=? WHERE tenant_id=?",(state,stamp,self.repo.tenant_id))
             if action=="start":
+                db.execute("UPDATE marketing_continuous SET enabled=1,next_run_at=?,generation=generation+1 WHERE tenant_id=?",(stamp,self.repo.tenant_id))
+            else:
+                db.execute("UPDATE marketing_continuous SET enabled=0,next_run_at='' WHERE tenant_id=?",(self.repo.tenant_id,))
+            if action=="start":
                 db.execute("UPDATE marketing_agents SET status='WAITING_NEXT_RUN',current_task='기존 작업 기록 유지 · 다음 예약 대기',progress=0,last_activity=? WHERE tenant_id=? AND status='OFFLINE'",(stamp,self.repo.tenant_id))
-            if action=="stop": db.execute("UPDATE marketing_agents SET status='OFFLINE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=?",(stamp,self.repo.tenant_id))
-            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="stop" else "INFO",stamp))
+            if action in {"stop","emergency"}: db.execute("UPDATE marketing_agents SET status='OFFLINE',current_task=NULL,progress=0,last_activity=? WHERE tenant_id=?",(stamp,self.repo.tenant_id))
+            db.execute("INSERT INTO marketing_activity(tenant_id,agent_id,action,reason,result,level,created_at) VALUES(?,?,?,?,?,?,?)",(self.repo.tenant_id,"marketing_director",{"start":"AI 팀을 시작했습니다","pause":"AI 팀을 일시정지했습니다","stop":"AI 팀을 종료했습니다","emergency":"긴급 정지를 실행했습니다"}[action],"관리자 요청","외부 게시 차단 유지","WARNING" if action=="emergency" else "INFO",stamp))
         return {"ok":True,"status":state,"changed":True}
 
     def record_bundle(self, bundle_id: int, item_count: int) -> None:
