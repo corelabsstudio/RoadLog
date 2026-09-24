@@ -4,7 +4,8 @@
 
 - 수동 무료 제작물 가져오기는 fallback이다. `modules/marketing_creative.py`에 Gemini 3.1 Flash Image 공식 API Provider를 추가했고 팀 캠페인에서 텍스트 검수 후 실제 이미지 파일을 생성·비공개 저장하는 조건부 경로를 연결했다. 이미지 API는 별도 과금 가능하므로 `MARKETING_IMAGE_GENERATION_ENABLED=false`가 기본값이다. 운영 실호출·시각 검수는 미검증, 저장 상태는 `GENERATED_UNVERIFIED`이며 `READY_TO_PUBLISH`가 아니다.
 - `modules/marketing_tools.py`의 tool registry가 외부 조사/검색/내부 집계/글/이미지/AI 영상/게시/성과의 연결 상태를 각각 표시한다. 관리자 화면에도 실제 자동화 능력을 분리 표시한다. `docs/marketing/AUTOMATION_CAPABILITIES.md`에 요청된 능력별 실제 상태와 미완 범위를 기록했다. API 키·Meta 계정·이미지 API 과금 동의·영상 공급자 결정이 없으므로 전체 자동화 완료로 말하지 말 것.
-- 무료 웹앱 브라우저 무인 조작은 구현하지 않았다. 이미지 단가·무료 여부는 Google 공식 가격표를 기준으로 확인하고, 실제 이미지 API/Meta/Brave 호출은 실행하지 않았다. 이미지 provider MockTransport 및 로컬 파일 저장 테스트와 기존 팀 회귀 검사를 실행했다. 배포 여부는 후속 기록으로 갱신한다.
+- 무료 웹앱 브라우저 무인 조작은 구현하지 않았다. 이미지 단가·무료 여부는 Google 공식 가격표를 기준으로 확인하고, 실제 이미지 API/Meta/Brave 호출은 실행하지 않았다. 이미지 provider MockTransport 및 로컬 파일 저장 테스트와 기존 팀 회귀 검사를 실행했다.
+- 2026-09-24 후속 검증: `scripts/test_marketing_creative.py`·`scripts/test_marketing_assets.py` 총 6건 통과, `scripts/_marketing_os_test.py` 통과, `roadlog-saju` 전체 `ship.py --check`와 Vite 빌드 통과. 서버/관리자 빌드 `2ac91af`를 `RoadLog/main`, UI 원본 `5e7cbce`를 `roadlog-saju/main`에 푸시했다. 라이브 `/admin/` HTTP 200에서 `자동화 능력: 사이트 분석` 표시 반영 확인. 로그인 관리자 클릭·실제 과금 이미지 생성은 미검증.
 
 ## AI 마케팅 무료 제작물 가져오기 (2026-09-24 Codex)
 
