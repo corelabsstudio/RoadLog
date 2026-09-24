@@ -6,6 +6,9 @@
 - Railway 관리 API의 변수 확인이 403으로 실패해 이번 코드 자체에 `RELEASE_HOLD=True`를 고정했다. 따라서 운영 변수가 예상과 다르더라도 이 릴리스는 마케팅 외부 HTTP를 호출하지 않는다. 해제는 별도 배포에서만 한다.
 - `marketing_campaigns.mode=TEST`는 관리자 DRY RUN 전용. 실제 정본·내부 진단으로 계획/예상 경로만 기록하며 AI 초안·승인·공개·성과 학습은 만들지 않는다. 외부 호출 감사와 관리자 안전 보드를 추가했다.
 - `.env.example`과 `docs/marketing/SAFE_DEPLOYMENT.md`에 운영 스위치/단독 API 검증 경계를 기록했다. 실제 Gemini/Tavily/Meta 호출과 공개 게시를 실행하지 않는다. 실제 배포 및 라이브 검증 결과는 아래 후속 기록에서 확인할 것.
+- 운영 서버 커밋 `897c3e0`을 `RoadLog/main`에 푸시했다. Railway 관리 API/CLI는 인증 403/Unauthorized였으므로 배포 ID 자체는 확인하지 못했다. 다만 라이브 `/admin/`에서 TEST 캠페인 UI 반영을 확인하고 로그인된 관리자 화면에서 실제 상품 `오늘 운세 한 조각` TEST #1을 실행했다. 분석→진단→조사·디렉터·작가·검수 계획→게시 준비 예상 경로 7건, 실제 외부 호출 신규 감사 0건, 오늘 AI 사용량 0/20건, 기존 승인 대기 1건 그대로 확인했다. 자동 점검 OFF, 전체 외부 API/공급자/자동 게시 OFF 표시.
+- 라이브 `/api/health`, `/admin/`, `/blog/`, `/saju/today.html`, `/pay.html`, `/api/auth/social/ready` 모두 HTTP 200. 이 점검은 결제·가입·게시 동작을 수행하지 않았다. 관리자 UI 원본은 `roadlog-saju/main`의 `3245d34`로 동기화했다. `roadlog-saju` 미추적 영상·Blender 파일과 `RoadLog/data/marketing_os.db`는 커밋/삭제/이동하지 않았다.
+- 현재 회귀 `_marketing_safety_test.py`, `_marketing_strategy_test.py`, `_marketing_os_test.py` main 통과, `test_marketing_creative.py`/`test_marketing_assets.py` 6건 중 4건 통과·2건 구형 이미지 성공 모의 skip. 전체 37건 구형 테스트는 이번 릴리스의 합격 기준이 아니며 기존 13/37 분류를 `LEGACY_TEST_AUDIT.md`에 유지했다. 다음 단계는 별도 승인 후 Tavily 단독 1건 → Gemini 단독 1건 → 팀 실호출 순서. 이번 릴리스의 `RELEASE_HOLD` 해제는 그때 별도 코드 배포가 필요하다.
 
 ## 조사·전략 근거 계층 (2026-09-24 Codex, 로컬 검증)
 
