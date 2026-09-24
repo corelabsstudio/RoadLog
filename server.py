@@ -86,6 +86,7 @@ from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
 from modules import curse_shrine as curse_ops
 from modules import marketing_os as marketing_ops
+from modules import marketing_diagnostics as marketing_diag
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_core.repository import MarketingRepository
@@ -287,6 +288,12 @@ class MarketingTrialBody(BaseModel):
     product_id: str
     platform: str = "블로그"
     mode: str = "REAL"
+
+
+class MarketingProviderTestBody(BaseModel):
+    live: bool = False
+    product_id: str = ""
+    query: str = ""
 
 
 class MarketingDecisionBody(BaseModel):
@@ -1003,6 +1010,29 @@ def admin_marketing_safety(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     from modules.marketing_safety import board
     return board()
+
+
+@app.get("/api/admin/marketing/providers")
+def admin_marketing_providers(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    return {"items": marketing_diag.provider_status(_marketing_repo(), WEB)}
+
+
+@app.post("/api/admin/marketing/providers/{provider}/test")
+def admin_marketing_provider_test(provider: str, body: MarketingProviderTestBody,
+                                  authorization: str | None = Header(default=None)):
+    administrator = _require_admin(authorization)
+    if provider != "tavily":
+        raise HTTPException(423, "이 공급자의 실제 진단 호출은 비활성화되어 있습니다.")
+    try:
+        return marketing_diag.test_tavily(_marketing_repo(), WEB, administrator["email"],
+                                          body.product_id, body.query, live=body.live)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 @app.post("/api/admin/marketing/test-campaign")

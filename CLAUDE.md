@@ -269,3 +269,9 @@ python scripts/_roadlog_suite_test.py --live
 - 다음 Director의 `metrics.previous_campaigns`에 기존 scorecard 외에 실제 선택 전략과 게시 상태/URL을 추가했다. 이전 전략을 확인하지 못하던 빈틈을 E2E의 Campaign A→B 검증으로 재현 후 수정했다.
 - 로컬 `scripts/_marketing_publication_e2e_test.py`는 임시 DB·가짜 가입/결제로 실제 FastAPI 게시 라우트, 관리자 캠페인 API, 귀속, Learning, 다음 Director context를 통과했다. 마케팅 모의 회귀 5개 스크립트 통과. 구형 `scripts/_roadlog_suite_test.py`는 UTF-8 출력 설정 후 13/37이며, `docs/marketing/LEGACY_TEST_AUDIT.md` 분류대로 옛 운행일지 API/자산 테스트가 남는다. 삭제하지 않았다.
 - 미확인: 운영 실제 공개 게시물과 실고객 전환은 만들지 않았으므로 라이브 퍼널 데이터 검증은 하지 않았다. `performance_analyst` 후속 Learning은 유료 AI가 아닌 규칙 기반 해석이다.
+# 2026-09-24 · Marketing Provider Diagnostics
+
+- 관리자 인증 전용 `GET /api/admin/marketing/providers`, `POST /api/admin/marketing/providers/{provider}/test`를 추가했다. 6개 도구의 설정·활성·최근 검사 상태를 읽기 전용으로 보여주며 키 값은 반환하지 않는다.
+- 실제 진단 실행은 Tavily만 지원한다. `MARKETING_DIAGNOSTICS_LIVE_ENABLED=true`, 기존 글로벌/Research 안전 스위치, Tavily 키, 명시적 `live=true`, 검증된 상품 선택이 모두 필요하다. 기본은 OFF이고 하루 1회 DB 선점으로 중복을 차단한다. 전체 팀·스케줄러·Gemini·게시를 호출하지 않는다.
+- 기존 `TavilyResearchProvider.search`와 외부 호출 감사 로그를 그대로 쓴다. 감사 operation `diagnostic:tavily_search`, 관리자 식별자는 비복원 해시로 남긴다. 결과는 기존 Research 저장소에 `EXTERNAL_SOURCE`/`PROVIDER_DIAGNOSTIC`로 저장 후 재조회한다. 오류 시 재시도하지 않으며 오류 종류만 반환한다.
+- 검증: `scripts/_marketing_diagnostics_test.py`의 오프라인 MockTransport 경로 통과. 실제 Tavily 호출 여부와 운영 배포 상태는 별도 확인 기록을 따른다.

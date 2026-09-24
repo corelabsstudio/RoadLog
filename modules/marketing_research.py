@@ -59,7 +59,8 @@ class TavilyResearchProvider:
         self.connected = bool(self.key and self.enabled and marketing_safety.enabled("research"))
         self.client = client
 
-    def search(self, query: str, max_results: int = 5, campaign_id: int = 0) -> list[dict]:
+    def search(self, query: str, max_results: int = 5, campaign_id: int = 0, *,
+               audit_operation: str = "tavily_search", audit_agent_id: str = "market_researcher") -> list[dict]:
         if not self.connected:
             raise PermissionError("외부 검색 키 또는 활성화 설정이 없습니다.")
         if not marketing_safety.enabled("research"):
@@ -69,7 +70,7 @@ class TavilyResearchProvider:
             raise ValueError("검색어가 비었습니다.")
         client = self.client or httpx.Client(timeout=8.0)
         try:
-            audit_id = marketing_safety.before_call("research", "tavily_search", campaign_id=campaign_id, agent_id="market_researcher")
+            audit_id = marketing_safety.before_call("research", audit_operation, campaign_id=campaign_id, agent_id=audit_agent_id)
             response = client.post(self.endpoint, headers={"Authorization": f"Bearer {self.key}"},
                                    json={"query": query, "search_depth": "basic", "max_results": max(1, min(max_results, 5)),
                                          "country": "south korea", "language": "ko", "include_answer": False,

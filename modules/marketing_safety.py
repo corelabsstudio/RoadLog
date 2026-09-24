@@ -52,6 +52,12 @@ def audit_count() -> int:
         return int(conn.execute("SELECT COUNT(*) FROM marketing_external_call_audit").fetchone()[0])
 
 
+def diagnostic_audit_count(diagnostic_id: int) -> int:
+    with _connect() as conn:
+        return int(conn.execute("SELECT COUNT(*) FROM marketing_external_call_audit WHERE campaign_id=? AND provider='research' AND operation='diagnostic:tavily_search'",
+                                (-diagnostic_id,)).fetchone()[0])
+
+
 def before_call(provider: str, operation: str, *, campaign_id: int = 0, agent_id: str = "manual") -> int:
     if not enabled(provider):
         raise PermissionError("마케팅 외부 API가 비활성화되어 있습니다.")

@@ -29,6 +29,7 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_learning(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,product_id TEXT NOT NULL,evidence_type TEXT NOT NULL,observation TEXT NOT NULL,recommendation TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_site_profiles(tenant_id TEXT PRIMARY KEY,catalog_hash TEXT NOT NULL,profile_json TEXT NOT NULL,observed_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',provider TEXT NOT NULL DEFAULT '');
+        CREATE TABLE IF NOT EXISTS marketing_provider_diagnostics(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,provider TEXT NOT NULL,test_day TEXT NOT NULL,administrator TEXT NOT NULL,query_text TEXT NOT NULL,status TEXT NOT NULL,request_count INTEGER NOT NULL DEFAULT 0,tested_at TEXT NOT NULL,error_kind TEXT NOT NULL DEFAULT '',UNIQUE(tenant_id,provider,test_day));
         CREATE TABLE IF NOT EXISTS marketing_strategy_decisions(tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,decision_json TEXT NOT NULL,PRIMARY KEY(tenant_id,campaign_id));
         CREATE TABLE IF NOT EXISTS marketing_search_cache(tenant_id TEXT NOT NULL,query_text TEXT NOT NULL,provider TEXT NOT NULL,items_json TEXT NOT NULL,observed_at TEXT NOT NULL,PRIMARY KEY(tenant_id,query_text,provider));
         CREATE TABLE IF NOT EXISTS marketing_search_usage(tenant_id TEXT NOT NULL,day TEXT NOT NULL,used INTEGER NOT NULL,PRIMARY KEY(tenant_id,day));
@@ -78,6 +79,8 @@ class MarketingRepository:
                 conn.execute("ALTER TABLE marketing_research_sources ADD COLUMN query_text TEXT NOT NULL DEFAULT ''")
             if "provider" not in research_columns:
                 conn.execute("ALTER TABLE marketing_research_sources ADD COLUMN provider TEXT NOT NULL DEFAULT ''")
+            if "origin" not in research_columns:
+                conn.execute("ALTER TABLE marketing_research_sources ADD COLUMN origin TEXT NOT NULL DEFAULT 'CAMPAIGN'")
             campaign_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_campaigns)")}
             if "mode" not in campaign_columns:
                 conn.execute("ALTER TABLE marketing_campaigns ADD COLUMN mode TEXT NOT NULL DEFAULT 'PRODUCTION'")
@@ -99,11 +102,13 @@ class MarketingRepository:
             row = conn.execute("SELECT profile_json FROM marketing_site_profiles WHERE tenant_id=?", (self.tenant_id,)).fetchone()
         return json.loads(row["profile_json"]) if row else None
 
-    def save_research_sources(self, campaign_id: int, items: list[dict[str, Any]]) -> None:
+    def save_research_sources(self, campaign_id: int, items: list[dict[str, Any]], *, origin: str = "CAMPAIGN") -> None:
+        if origin not in {"CAMPAIGN", "PROVIDER_DIAGNOSTIC"}:
+            raise ValueError("지원하지 않는 조사 출처")
         with self.connect() as conn:
             for item in items:
-                conn.execute("INSERT INTO marketing_research_sources(tenant_id,campaign_id,title,url,summary,observed_at,source_type,query_text,provider) VALUES(?,?,?,?,?,?,?,?,?)",
-                             (self.tenant_id,campaign_id,item["title"],item["url"],item["summary"],item["observedAt"],item["sourceType"],item.get("query", ""),item.get("source", "")))
+                conn.execute("INSERT INTO marketing_research_sources(tenant_id,campaign_id,title,url,summary,observed_at,source_type,query_text,provider,origin) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                             (self.tenant_id,campaign_id,item["title"],item["url"],item["summary"],item["observedAt"],item["sourceType"],item.get("query", ""),item.get("source", ""),origin))
 
     def save_strategy(self, campaign_id: int, decision: dict[str, Any]) -> None:
         with self.connect() as conn:
@@ -137,8 +142,26 @@ class MarketingRepository:
 
     def research_sources(self, campaign_id: int) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT title,url,summary,observed_at,source_type,query_text,provider FROM marketing_research_sources WHERE tenant_id=? AND campaign_id=? ORDER BY id", (self.tenant_id,campaign_id)).fetchall()
+            rows = conn.execute("SELECT title,url,summary,observed_at,source_type,query_text,provider,origin FROM marketing_research_sources WHERE tenant_id=? AND campaign_id=? ORDER BY id", (self.tenant_id,campaign_id)).fetchall()
         return [dict(row) for row in rows]
+
+    def claim_provider_diagnostic(self, provider: str, day: str, administrator: str, query: str, stamp: str) -> int | None:
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("INSERT OR IGNORE INTO marketing_provider_diagnostics(tenant_id,provider,test_day,administrator,query_text,status,tested_at) VALUES(?,?,?,?,?,'ATTEMPTED',?)",
+                               (self.tenant_id,provider,day,administrator,query,stamp))
+            return int(row.lastrowid) if row.rowcount else None
+
+    def finish_provider_diagnostic(self, diagnostic_id: int, status: str, request_count: int, error_kind: str = "") -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_provider_diagnostics SET status=?,request_count=?,error_kind=? WHERE tenant_id=? AND id=? AND status='ATTEMPTED'",
+                         (status,request_count,error_kind[:60],self.tenant_id,diagnostic_id))
+
+    def provider_diagnostic(self, provider: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT id,provider,test_day,status,query_text,request_count,tested_at,error_kind FROM marketing_provider_diagnostics WHERE tenant_id=? AND provider=? ORDER BY id DESC LIMIT 1",
+                               (self.tenant_id,provider)).fetchone()
+        return dict(row) if row else None
 
     def record_sync(self, meta: dict[str, Any], count: int) -> None:
         with self.connect() as conn:
