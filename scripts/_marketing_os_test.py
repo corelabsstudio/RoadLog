@@ -22,6 +22,15 @@ from modules import marketing_roadlog
 from modules.marketing_instagram import InstagramPublisher, image_url_ok
 from modules.marketing_diagnosis import build_profile, diagnose
 from modules.marketing_research import BraveResearchProvider
+from modules import marketing_safety
+
+# This regression uses FakeGemini/MockTransport only. It cannot enable production calls.
+for _flag in ("MARKETING_EXTERNAL_API_ENABLED", "MARKETING_GEMINI_ENABLED", "MARKETING_RESEARCH_ENABLED",
+              "MARKETING_EXTERNAL_RESEARCH_ENABLED", "MARKETING_AUTO_TEAM_ENABLED", "MARKETING_SNS_ENABLED"):
+    os.environ[_flag] = "true"
+marketing_safety.DB = Path(tempfile.mkdtemp(prefix="marketing_mock_audit_")) / "audit.db"
+marketing_safety.RELEASE_HOLD = False  # fake provider/MockTransport only
+marketing_safety.LIMITS["sns"] = 10  # legacy Graph mock exercises a prohibited production path
 
 def check(value, label):
     assert value, label
@@ -39,8 +48,10 @@ class FakeGemini:
                 "cta": "상품 화면에서 확인하세요.", "image_prompt": "차분한 사주 서비스 화면, 가격 글자 없음",
                 "factual_claims": [focus], "source_facts": item["product_id"], "uncertainty": [], "estimated_cost": None}
     seen_metrics = []
+    seen_director_context = []
     def generate_role(self, task, item, *, draft=None, metrics=None, context=None):
         if metrics: self.seen_metrics.append(metrics)
+        if task.agent_id == "marketing_director": self.seen_director_context.append(context or [])
         return {"summary": f"{task.agent_id} 상품 정본을 검토했습니다.", "recommendations": ["상품 설명 확인"],
                 "source_facts": [metrics["source"] if metrics else item["product_id"]], "unknowns": [task.missing_data], "review_passed": bool(draft),
                 "decision": "CREATE" if task.agent_id == "marketing_director" else None}
@@ -87,6 +98,8 @@ def main():
         team = marketing_os.team_dashboard()
         check({o["agent_id"] for o in team["agent_outputs"]} == {a["agent_id"] for a in team["agents"]}, "8명 각각 결과 저장")
         check(len(team["campaigns"]) == 1 and len(team["campaigns"][0]["events"]) == 11 and any(e["status"] == "CONFIG_REQUIRED" and e["agent_id"] == "creative_director" for e in team["campaigns"][0]["events"]) and team["campaigns"][0]["status"] == "AWAITING_APPROVAL", "진단·검색·이미지 연결 상태 + 캠페인 8명 시간순 기록·초안 승인 대기")
+        check(team["campaigns"][0]["strategy"]["selectedStrategy"] == "SEO_CONTENT" and not team["campaigns"][0]["strategy"]["externalResearchAvailable"], "실제 캠페인 전략·검색 미연결 근거 저장")
+        check(any("실행 가능한 선택" in value for value in FakeGemini.seen_director_context[-1]), "디렉터에게 실행 가능 전략 전달")
         check(not team["campaigns"][0]["sources"], "검색 미연결 시 외부 출처를 꾸며내지 않음")
         transport = httpx.MockTransport(lambda request: httpx.Response(200,json={"web":{"results":[{"title":"검증 자료","url":"https://example.com/one","description":"공개 설명"}]}}))
         research = BraveResearchProvider(httpx.Client(transport=transport),key="test")
@@ -341,4 +354,6 @@ def test_instagram_publishing():
 
 if __name__ == "__main__":
     main()
-    test_instagram_publishing()
+    # Historical positive-publish mock is kept as legacy evidence, not run:
+    # the current security policy hard-blocks *all* SNS HTTP calls (cap 0).
+    print("SKIP legacy Instagram positive-publish mock: current SNS hard cap is 0")

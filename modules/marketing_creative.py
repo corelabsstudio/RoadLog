@@ -7,6 +7,7 @@ import os
 from typing import Any
 
 import httpx
+from modules import marketing_safety
 
 
 class GeminiImageProvider:
@@ -17,12 +18,14 @@ class GeminiImageProvider:
     def __init__(self, client: httpx.Client | None = None, *, key: str | None = None, enabled: bool | None = None):
         self._key = key if key is not None else os.getenv("GEMINI_API_KEY", "")
         self.enabled = enabled if enabled is not None else os.getenv("MARKETING_IMAGE_GENERATION_ENABLED", "false").lower() == "true"
-        self.connected = bool(self._key.strip() and self.enabled)
+        self.connected = bool(self._key.strip() and self.enabled and marketing_safety.enabled("image"))
         self.client = client
 
     def generate_image(self, brief: dict[str, Any]) -> dict[str, Any]:
         if not self.connected:
             raise PermissionError("이미지 생성 API가 비활성화됐거나 키가 없습니다.")
+        if not marketing_safety.enabled("image"):
+            raise PermissionError("마케팅 이미지 API가 비활성화되어 있습니다.")
         if not brief.get("product_id") or not brief.get("image_prompt"):
             raise ValueError("상품 정본과 이미지 지시안이 필요합니다.")
         # Do not request rendered price or product claims in the image. Text facts
@@ -34,7 +37,9 @@ class GeminiImageProvider:
                 "generationConfig": {"responseModalities": ["IMAGE"]}}
         client = self.client or httpx.Client(timeout=90.0, follow_redirects=False)
         try:
+            audit_id = marketing_safety.before_call("image", "generate_image")
             response = client.post(self.endpoint, headers={"x-goog-api-key": self._key, "Content-Type": "application/json"}, json=body)
+            marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
             response.raise_for_status()
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
@@ -55,6 +60,8 @@ class GeminiImageProvider:
                     raise ValueError("이미지 공급자의 파일 인코딩이 올바르지 않습니다.") from None
                 if not data:
                     raise ValueError("이미지 공급자가 빈 파일을 반환했습니다.")
+                usage = payload.get("usageMetadata") or {}
+                marketing_safety.after_call(audit_id, "SUCCESS", input_tokens=int(usage.get("promptTokenCount") or 0), output_tokens=int(usage.get("candidatesTokenCount") or 0))
                 return {"data": data, "mime": mime, "provider": self.name, "model": self.model,
-                        "usage": payload.get("usageMetadata") or {}}
+                        "usage": usage}
         raise ValueError("이미지 공급자가 실제 이미지 파일을 반환하지 않았습니다.")

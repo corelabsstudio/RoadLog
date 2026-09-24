@@ -38,7 +38,7 @@ class MarketingService:
         day=now()[:10]; requests,cost=self.repository.usage(day); p=self.usage_policy
         return {"date":day,"requests":requests,"request_limit":p.daily_requests,"remaining_requests":max(0,p.daily_requests-requests),"estimated_cost_krw":cost,"cost_limit_krw":p.daily_cost,"remaining_cost_krw":max(0,p.daily_cost-cost),"cost_is_estimate":True,"agent_limit":p.per_agent_requests}
 
-    def trial(self, product_id: str, platform: str, mode: str, *, trigger: str = "MANUAL", focus_result: str = "", defer_approval: bool = False, strategy_context: list[str] | None = None) -> dict[str, Any]:
+    def trial(self, product_id: str, platform: str, mode: str, *, trigger: str = "MANUAL", focus_result: str = "", defer_approval: bool = False, strategy_context: list[str] | None = None, campaign_id: int = 0) -> dict[str, Any]:
         mode = mode.upper()
         if mode != "REAL": raise PermissionError("DEMO 생성은 종료됐습니다. 실제 AI 생성만 지원합니다.")
         if trigger not in ("MANUAL", "AUTO"): raise ValueError("지원하지 않는 실행 경로입니다.")
@@ -54,7 +54,7 @@ class MarketingService:
         p = self.usage_policy
         run_id = self.repository.reserve_real_run(product_id, now(), p.daily_requests, p.per_agent_requests, p.daily_cost, reservation)
         try:
-            writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"], "marketing_focus_result": focus_result, "strategy_context": (strategy_context or [])[:3]}
+            writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"], "marketing_focus_result": focus_result, "strategy_context": (strategy_context or [])[:3], "campaign_id": campaign_id}
             draft=provider.generate(writing_product,platform); reasons=review_draft(product,draft,self.brand_policy)
             cid,aid=self.repository.save_trial(product,data["sync"],draft,reasons,now(),mode,reservation,defer_approval=defer_approval); passed=not reasons
             if run_id is not None:

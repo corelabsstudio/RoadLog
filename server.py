@@ -998,6 +998,25 @@ def admin_marketing_usage(authorization: str | None = Header(default=None)):
     return marketing_ops.usage()
 
 
+@app.get("/api/admin/marketing/safety")
+def admin_marketing_safety(authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules.marketing_safety import board
+    return board()
+
+
+@app.post("/api/admin/marketing/test-campaign")
+def admin_marketing_test_campaign(body: dict, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    try:
+        return marketing_ops.test_campaign(WEB, str(body.get("product_id", "")),
+                                           body.get("use_search") is True, body.get("use_gemini") is True)
+    except PermissionError as exc:
+        raise HTTPException(423, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
 @app.post("/api/admin/marketing/trial")
 def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = Header(default=None)):
     _require_admin(authorization)

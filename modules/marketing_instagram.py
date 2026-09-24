@@ -10,6 +10,7 @@ import time
 from urllib.parse import urlsplit
 
 import httpx
+from modules import marketing_safety
 
 
 TARGET_USERNAME = "mumung_101"
@@ -54,8 +55,12 @@ class InstagramPublisher:
         self.sleep = sleep
 
     def _request(self, method: str, path: str, config: dict[str, str], **kwargs) -> dict:
+        if not marketing_safety.enabled("sns"):
+            raise PermissionError("마케팅 SNS API가 비활성화되어 있습니다.")
+        audit_id = marketing_safety.before_call("sns", "instagram_graph", agent_id="social_manager")
         url = f"https://graph.instagram.com/{config['version']}/{path}"
         response = self.client.request(method, url, headers={"Authorization": f"Bearer {config['token']}"}, **kwargs)
+        marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
         response.raise_for_status()
         data = response.json()
         if not isinstance(data, dict):

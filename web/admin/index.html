@@ -621,8 +621,17 @@ section[data-page="marketing-team"]>details.marketing-fold{margin-bottom:14px}
       <div class="marketing-state" id="marketingState"></div>
       <div class="marketing-command" id="marketingCommand"><div><b>AI 마케팅 팀 운영</b><span id="marketingTeamStatus" role="status" aria-live="polite">상태 확인 중…</span><small id="marketingAutoStatus">자동 운영 확인 중…</small></div><div class="marketing-command-actions"><button type="button" data-team-control="start">팀 시작 · 즉시 실행</button><button type="button" data-marketing-auto="enable" class="btn-line">매일 자동 점검 켜기</button><button type="button" data-marketing-auto="disable" class="btn-line">자동 점검 끄기</button><button type="button" class="btn-line" data-team-control="pause">일시정지</button><button type="button" class="btn-line danger" data-team-control="stop">긴급정지</button></div></div>
       <p class="note" id="marketingProviders">연결된 자료와 채널 확인 중…</p>
+      <details class="card marketing-fold"><summary>외부 API 안전 상태 · TEST 캠페인</summary>
+        <p class="note" id="marketingSafety">안전 상태 확인 중…</p>
+        <div class="marketing-form"><label>실제 상품<select id="marketingTestProduct"></select></label>
+          <label><input type="checkbox" id="marketingTestSearch"> 외부 검색 사용 계획</label>
+          <label><input type="checkbox" id="marketingTestGemini"> Gemini 사용 계획</label>
+          <button type="button" class="btn" id="marketingTestRun">TEST 캠페인 DRY RUN</button></div>
+        <p class="note" id="marketingTestEstimate">실행 전 최대 호출: Gemini 0건 · 검색 0건 · 이미지·영상·SNS 0건</p>
+        <pre id="marketingTestResult" class="note">TEST는 외부 API·게시를 호출하지 않고 계획만 기록합니다.</pre>
+      </details>
       <div class="card" id="marketingDiagnosis" role="status" aria-live="polite"><b>지금 AI 팀이 판단한 상황</b><p class="note">실측 사이트 진단을 불러오는 중…</p></div>
-      <details class="card marketing-fold"><summary>캠페인 진행 기록</summary><p class="note">실제 AI 실행 기록만 표시합니다. 외부 게시와 성과 측정은 별도 연결·건별 확인이 필요합니다.</p><div id="marketingCampaigns" class="marketing-activity"></div></details>
+      <details class="card marketing-fold"><summary>캠페인 진행 기록</summary><p class="note">실제 운영 기록과 TEST 계획 기록을 구분합니다. TEST는 AI 생성·게시·성과가 아닙니다.</p><div id="marketingCampaigns" class="marketing-activity"></div></details>
       <details class="card marketing-fold"><summary>팀원 8명 작업 상태</summary><div class="marketing-team-grid" id="marketingAgents"></div></details>
       <div class="deck wide"><details class="card marketing-fold"><summary>팀 시작 시 즉시 작업</summary><p class="note">디렉터가 먼저 실행 여부를 판단합니다. NO_ACTION이면 초안 요청 없이 끝나고, CREATE/OPTIMIZE일 때만 조사·검색 가설 → 작가 초안 → AI 검수 → 소재 지시안·채널 점검·내부 성과로 진행합니다. 검수 실패 시 최대 2회 수정·재검수하며 전체 최대 12회 Gemini 요청(내부 예약액 최대 120원)이 발생할 수 있습니다. 이 금액은 실제 청구액 상한이 아닙니다. 초안은 정본·AI 검수를 통과해야 승인 대기에 들어갑니다. 팀 시작은 하루 1회입니다. 외부 조사·검색량·이미지/영상 생성은 아직 미연결이고, 외부 게시는 자동 실행하지 않습니다.</p><div id="marketingSchedule" class="marketing-schedule"></div></details><details class="card marketing-fold"><summary id="marketingActivitySummary">최근 활동</summary><div id="marketingActivity" class="marketing-activity"></div></details></div>
       <details class="card marketing-fold"><summary>실제 사이트 성과 · 내부 관심도</summary><div id="marketingInsights" class="marketing-schedule"><p class="note">집계 불러오는 중…</p></div></details>
@@ -1623,11 +1632,29 @@ function paintMarketing(status, usage, catalog, approvals, instagram) {
   const items = catalog.products || [];
   const selectedProduct = $('marketingProduct').value;
   const selectedBundleProduct = $('marketingBundleProduct').value;
+  const selectedTestProduct = $('marketingTestProduct').value;
   $('marketingProduct').innerHTML = items.filter((p) => p.facts_status === 'VERIFIED').map((p) =>
     '<option value="' + esc(p.product_id) + '">' + esc(p.name) + '</option>').join('');
   $('marketingBundleProduct').innerHTML = $('marketingProduct').innerHTML;
+  $('marketingTestProduct').innerHTML = $('marketingProduct').innerHTML;
   if (selectedProduct) $('marketingProduct').value = selectedProduct;
   if (selectedBundleProduct) $('marketingBundleProduct').value = selectedBundleProduct;
+  if (selectedTestProduct) $('marketingTestProduct').value = selectedTestProduct;
+  const safety = status.safety || {};
+  const providers = safety.providers || {};
+  $('marketingSafety').textContent = '전체 외부 API ' + (safety.external_api_enabled ? '켜짐' : '꺼짐')
+    + ' · Gemini ' + (providers.gemini?.enabled ? '켜짐' : '꺼짐')
+    + ' · 검색 ' + (providers.research?.enabled ? '켜짐' : '꺼짐')
+    + ' · 이미지 ' + (providers.image?.enabled ? '켜짐' : '꺼짐')
+    + ' · 영상 ' + (providers.video?.enabled ? '켜짐' : '꺼짐')
+    + ' · SNS ' + (providers.sns?.enabled ? '켜짐' : '꺼짐')
+    + ' · 자동 게시 ' + (safety.automatic_publishing_enabled ? '켜짐' : '꺼짐')
+    + ' · 기록된 실제 외부 호출 ' + num(safety.actual_calls_recorded || 0) + '건';
+  $('marketingTestSearch').disabled = !providers.research?.enabled;
+  $('marketingTestGemini').disabled = !providers.gemini?.enabled;
+  if ($('marketingTestSearch').disabled) $('marketingTestSearch').checked = false;
+  if ($('marketingTestGemini').disabled) $('marketingTestGemini').checked = false;
+  marketingTestEstimate();
   $('marketingProductsSummary').textContent = '상품 정본 · ' + items.length + '개';
   $('marketingApprovalsSummary').textContent = '승인 대기 · ' + approvals.length + '건';
   $('marketingSyncMeta').textContent = '동기화 ' + marketingTimeText(catalog.sync.synced_at)
@@ -1694,8 +1721,11 @@ function paintMarketingTeam(team) {
   $('marketingCampaigns').innerHTML = (team.campaigns || []).length ? team.campaigns.map((c) => {
     const score = c.scorecard;
     const publications = (c.publications || []).map((p) => '<p>게시물 #' + num(p.id) + ' · ' + esc(marketingStatusLabel(p.status)) + (p.published_url ? ' · <a href="' + esc(p.published_url) + '" target="_blank" rel="noopener noreferrer">게시 URL</a> · 게시 ' + esc(marketingTimeText(p.published_at)) + ' · 콘텐츠 ID ' + esc(p.external_content_id) : '') + ' · 추적 링크: <code>' + esc(p.tracking_url) + '</code></p>').join('');
-    const measured = score ? '<p>누적 실측 · 방문 ' + num(score.visits) + '건 · 순 방문자 ' + num(score.unique_visitors) + '명 · 귀속 가입 ' + num(score.signups) + '건 · 귀속 구매 ' + num(score.purchases) + '건 · 환불 제외 매출 ' + num(score.revenue_krw) + '원</p><p>가입 전환율 ' + (score.signup_conversion_rate == null ? '측정 불가' : (score.signup_conversion_rate * 100).toFixed(1) + '%') + ' · 구매 전환율 ' + (score.purchase_conversion_rate == null ? '측정 불가' : (score.purchase_conversion_rate * 100).toFixed(1) + '%') + ' · 방문자당 매출 ' + (score.revenue_per_visitor == null ? '측정 불가' : num(score.revenue_per_visitor) + '원') + '</p>' : '<p>캠페인 성과: 게시 후 측정</p>';
-    return '<article><div><b>캠페인 #' + esc(c.id) + ' · ' + esc(c.product_id) + ' · ' + esc(marketingStatusLabel(c.stage || c.status)) + '</b><p>' + esc(c.reason) + ' · ' + esc(marketingTimeText(c.created_at)) + '</p>' + publications + measured + '<details><summary>팀원별 진행 ' + (c.events || []).length + '건</summary>' + (c.events || []).map((ev) => '<p>' + esc(marketingAgentLabel(ev.agent_id)) + ' · ' + esc(ev.summary) + '</p>').join('') + '</details></div></article>';
+    const measured = c.mode === 'TEST' ? '<p>TEST 계획만 기록 · 실제 콘텐츠/승인/게시/성과 없음</p>' : score ? '<p>누적 실측 · 방문 ' + num(score.visits) + '건 · 순 방문자 ' + num(score.unique_visitors) + '명 · 귀속 가입 ' + num(score.signups) + '건 · 귀속 구매 ' + num(score.purchases) + '건 · 환불 제외 매출 ' + num(score.revenue_krw) + '원</p><p>가입 전환율 ' + (score.signup_conversion_rate == null ? '측정 불가' : (score.signup_conversion_rate * 100).toFixed(1) + '%') + ' · 구매 전환율 ' + (score.purchase_conversion_rate == null ? '측정 불가' : (score.purchase_conversion_rate * 100).toFixed(1) + '%') + ' · 방문자당 매출 ' + (score.revenue_per_visitor == null ? '측정 불가' : num(score.revenue_per_visitor) + '원') + '</p>' : '<p>캠페인 성과: 게시 후 측정</p>';
+    const strategy = c.strategy;
+    const sourceDetails = (c.sources || []).length ? '<details><summary>실제 검색 결과 제목·설명 ' + (c.sources || []).length + '건</summary>' + c.sources.map((s) => '<p><b>' + esc(s.title) + '</b> · ' + esc(s.query_text) + '<br>' + esc(s.summary) + '<br>' + esc(marketingTimeText(s.observed_at)) + ( /^https?:\/\//.test(s.url || '') ? ' · <a href="' + esc(s.url) + '" target="_blank" rel="noopener noreferrer">원문 열기</a>' : '') + '</p>').join('') + '</details>' : '';
+    const why = c.mode === 'TEST' ? '<p>외부 호출 최대 허용 계획: Gemini ' + num(strategy?.maximum_calls?.gemini || 0) + '건 · 검색 ' + num(strategy?.maximum_calls?.research || 0) + '건 · 이 실행의 실제 호출 0건</p>' : strategy ? '<details><summary>왜 이 전략인가 · ' + esc(strategy.selectedStrategy || '실행 보류') + '</summary><p>' + esc(strategy.reason) + '</p><p>기존 콘텐츠 비교: ' + esc(strategy.contentGap?.status || '확인되지 않음') + '</p><p>외부 조사: ' + (strategy.externalResearchAvailable ? '검색 결과 있음 · 원문 검증 필요' : '연결되지 않음 또는 결과 없음') + '</p>' + (strategy.candidates || []).map((item) => '<p>' + esc(item.strategy) + ' · ' + (item.executable ? '실행 가능' : '도구 미연결 또는 중복 위험') + ' · ' + esc(item.objective) + '</p>').join('') + (strategy.evidence || []).map((e) => '<p><b>' + esc(({MEASURED:'내부 실측', EXTERNAL_SOURCE:'외부 조사', PAST_CAMPAIGN:'과거 캠페인', AI_INFERENCE:'규칙·AI 추론'})[e.type] || e.type) + '</b> · ' + esc(e.value) + ' · ' + esc(e.source) + ' · ' + esc(marketingTimeText(e.observedAt)) + (e.type === 'EXTERNAL_SOURCE' && /^https?:\/\//.test(e.url || '') ? ' · <a href="' + esc(e.url) + '" target="_blank" rel="noopener noreferrer">출처 열기</a>' : '') + '</p>').join('') + '</details>' : '';
+    return '<article><div><b>' + (c.mode === 'TEST' ? 'TEST 계획 #' : '캠페인 #') + esc(c.id) + ' · ' + esc(c.product_id) + ' · ' + (c.mode === 'TEST' ? 'DRY RUN 완료' : esc(marketingStatusLabel(c.stage || c.status))) + '</b><p>' + esc(c.reason) + ' · ' + esc(marketingTimeText(c.created_at)) + '</p>' + why + sourceDetails + publications + measured + '<details><summary>' + (c.mode === 'TEST' ? '예상 단계 ' : '팀원별 진행 ') + (c.events || []).length + '건</summary>' + (c.events || []).map((ev) => '<p>' + esc(marketingAgentLabel(ev.agent_id)) + ' · ' + esc(ev.summary) + '</p>').join('') + '</details></div></article>';
   }).join('') : '<p class="note">기록된 캠페인이 없습니다.</p>';
   if ((team.learning || []).length) $('marketingCampaigns').innerHTML += '<details><summary>실측 성과와 다음 전략 학습 · ' + (team.learning || []).length + '건</summary>' + team.learning.map((l) => '<p><b>캠페인 #' + num(l.campaign_id) + ' · ' + esc(l.product_id) + '</b><br>실측(MEASURED): 방문 ' + num(l.measured?.visits || 0) + '건, 가입 ' + num(l.measured?.signups || 0) + '건, 구매 ' + num(l.measured?.purchases || 0) + '건, 매출 ' + num(l.measured?.revenue_krw || 0) + '원<br>해석(규칙 기반 추론): ' + esc(l.interpretation) + '<br>다음 제안: ' + esc(l.recommendation) + '<br>재시도 조건: ' + esc(l.reason_for_retry) + '</p>').join('') + '</details>';
   $('marketingDiagnosis').innerHTML = '<b>지금 AI 팀이 판단한 상황</b>' + (team.diagnosis ? '<p>' + esc(team.diagnosis.reason) + '</p><p class="note">대상: ' + esc(team.diagnosis.product_name || '없음') + ' · 방향: ' + esc(marketingStatusLabel(team.diagnosis.objective || team.diagnosis.decision)) + ' · 근거: ' + esc(marketingStatusLabel(team.diagnosis.evidence_type)) + '</p><p><b>선택 방향:</b> ' + esc(team.diagnosis.selected_channel || '없음') + ' · ' + esc(team.diagnosis.selection_reason || '') + '</p><details><summary>검토한 전략 후보 ' + (team.diagnosis.candidates || []).length + '개</summary>' + (team.diagnosis.candidates || []).map((item) => '<p>' + esc(item.channel) + ' · ' + esc(item.goal) + ' · 핵심 지표 ' + esc(item.kpi) + ' · 위험: ' + esc(item.risk) + ' (' + esc(marketingStatusLabel(item.evidence_type)) + ')</p>').join('') + '</details><p class="note">상품별 방문·결제 전환율은 아직 측정되지 않습니다. 진단 시각: ' + esc(marketingTimeText(team.site_profile?.observed_at)) + '</p>' : '<p class="note">아직 실측 진단이 없습니다. 팀 실행 후 표시됩니다.</p>');
@@ -1862,6 +1892,25 @@ $('marketingApprovals').addEventListener('change', async (e) => {
     await loadMarketing();
     $('marketingProgress').textContent = '실제 파일 #' + result.id + ' 가져옴 · 아직 자산 검수 전 · 자동 게시 없음';
   } catch (ex) { $('marketingProgress').textContent = ex.message; field.disabled = false; }
+});
+function marketingTestEstimate() {
+  const research = $('marketingTestSearch').checked ? 2 : 0;
+  const gemini = $('marketingTestGemini').checked ? 10 : 0;
+  $('marketingTestEstimate').textContent = '허용 상한: Gemini ' + gemini + '건 · 검색 ' + research
+    + '건 · 이미지·영상·SNS 0건. 이 TEST 실행의 실제 외부 호출은 모두 0건입니다.';
+}
+['marketingTestSearch','marketingTestGemini'].forEach((id) => $(id).addEventListener('change', marketingTestEstimate));
+$('marketingTestRun').addEventListener('click', async () => {
+  const button = $('marketingTestRun'); button.disabled = true;
+  try {
+    const result = await marketingFetch('/test-campaign', {method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({product_id:$('marketingTestProduct').value,
+        use_search:$('marketingTestSearch').checked,use_gemini:$('marketingTestGemini').checked})});
+    $('marketingTestResult').textContent = 'TEST #' + result.campaign_id + ' 완료 · 분석 → 진단 → 조사 계획 → 디렉터 계획 → 작가 계획 → 검수 계획 → 게시 준비 예상 경로\n'
+      + '실제 외부 호출 0건 · 실제 콘텐츠/승인/게시 0건 · 출처 ' + result.source_file;
+    await loadMarketing();
+  } catch (ex) { $('marketingTestResult').textContent = ex.message; }
+  finally { button.disabled = false; }
 });
 document.querySelector('[data-page="marketing-team"]').addEventListener('click', async (e) => {
   const control = e.target.closest('[data-team-control]');

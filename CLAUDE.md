@@ -1,5 +1,20 @@
 # RoadLog — Claude Code 안내
 
+## 마케팅 외부 호출 안전 배포 (2026-09-24 Codex)
+
+- `modules/marketing_safety.py`의 글로벌/공급자 기본 OFF를 마케팅 HTTP 진입점에 적용했다. 이미지·영상·SNS 외부 호출 상한 0건, Gemini 캠페인별 10건, 검색 5건. 자동 팀은 `MARKETING_AUTO_TEAM_ENABLED=false` 기본값으로 과거 DB 설정과 관계없이 차단한다.
+- Railway 관리 API의 변수 확인이 403으로 실패해 이번 코드 자체에 `RELEASE_HOLD=True`를 고정했다. 따라서 운영 변수가 예상과 다르더라도 이 릴리스는 마케팅 외부 HTTP를 호출하지 않는다. 해제는 별도 배포에서만 한다.
+- `marketing_campaigns.mode=TEST`는 관리자 DRY RUN 전용. 실제 정본·내부 진단으로 계획/예상 경로만 기록하며 AI 초안·승인·공개·성과 학습은 만들지 않는다. 외부 호출 감사와 관리자 안전 보드를 추가했다.
+- `.env.example`과 `docs/marketing/SAFE_DEPLOYMENT.md`에 운영 스위치/단독 API 검증 경계를 기록했다. 실제 Gemini/Tavily/Meta 호출과 공개 게시를 실행하지 않는다. 실제 배포 및 라이브 검증 결과는 아래 후속 기록에서 확인할 것.
+
+## 조사·전략 근거 계층 (2026-09-24 Codex, 로컬 검증)
+
+- `marketing_research.py`에 Tavily Search 기본 검색 어댑터를 추가하고 운영 선택을 Brave에서 Tavily로 바꿨다. Brave 일반 약관은 검색 결과 보관 제한이 있어 기존 Brave 저장 경로를 더 이상 운영에서 사용하지 않는다. `TAVILY_API_KEY`와 `MARKETING_EXTERNAL_RESEARCH_ENABLED=true`를 모두 설정해야 외부 검색을 한다. 실제 키·한국어 결과는 미검증, 유료 호출 0건.
+- `marketing_strategy.py`와 저장소에 출처 4종(MEASURED/EXTERNAL_SOURCE/PAST_CAMPAIGN/AI_INFERENCE), 기존 블로그 제목 중복 검사, 실행 가능한 블로그 전략 우선·이미지/영상 후보 차단을 넣었다. 조사→전략 저장→AI 디렉터 순서이며 선택 이유와 링크는 관리자 캠페인 기록에서 확인한다. 외부 검색 실패·미연결이면 내부 자료로 계속한다. 일일 10검색·동일 query 6시간 캐시·결과 최대 5건.
+- `scripts/_marketing_strategy_test.py`, 기존 `scripts/_marketing_os_test.py` 모의 회귀 통과. 37개 구형 모음은 13/37을 재현했고 전 항목을 `docs/marketing/LEGACY_TEST_AUDIT.md`에 분류했다. 검사 방법/한계는 `docs/marketing/RESEARCH_STRATEGY.md`.
+- `scripts/marketing_learning_probe.py`에 게시 캠페인의 점수표→Learning 확인과 명시적 `--live-ai`일 때만 실제 Gemini 1회 테스트 경로를 만들었다. 이번 작업에서는 유료 호출을 실행하지 않았다.
+- 아직 운영 배포·관리자 로그인 화면 클릭·실제 Tavily/Gemini 호출·테스트 캠페인 버튼은 하지 않았다. 이미지·영상·SNS 무인 게시를 추가하지 않았고 실제 공개는 온해님 건별 확인이 필요하다. 이 변경이 완전 자동 리서치를 의미하지 않는다.
+
 ## AI 마케팅 상태 한국어 표기 (2026-09-24 Codex)
 
 - 20개 자동화 능력의 사용자용 상태를 `docs/marketing/AUTOMATION_CAPABILITIES.md`에서 `작동/부분 구현/연결 필요/미구현`으로 바꿨다. 관리자 정본 UI `roadlog-saju/public/admin/index.html`은 8명 AI의 개별 상태와 담당 도구 상태까지 같은 방식으로 표시한다. 내부 DB/API 영문 enum은 호환성을 위해 유지한다.

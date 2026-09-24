@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 import httpx
+from modules import marketing_safety
 
 
 class RoadLogGeminiProvider:
@@ -14,7 +15,7 @@ class RoadLogGeminiProvider:
 
     def __init__(self, client: httpx.Client | None = None, sleep=time.sleep):
         self.model = os.getenv("SAJU_MODEL", "gemini-3.8-flash")
-        self.connected = bool(os.getenv("GEMINI_API_KEY", "").strip())
+        self.connected = bool(os.getenv("GEMINI_API_KEY", "").strip()) and marketing_safety.enabled("gemini")
         self.client = client
         self.sleep = sleep
         self.usage: dict[str, int] = {}
@@ -23,6 +24,8 @@ class RoadLogGeminiProvider:
         key = os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
             raise PermissionError("Gemini API 키가 없어 실제 AI 초안을 만들 수 없습니다.")
+        if not marketing_safety.enabled("gemini"):
+            raise PermissionError("마케팅 Gemini API가 비활성화되어 있습니다.")
         snapshot = {field: product.get(field, "UNKNOWN") for field in (
             "product_id", "name", "price_won", "free", "lamp_price", "premium", "confirmed_results", "forbidden_expressions", "synced_at", "source_file", "marketing_focus_result"
         )}
@@ -38,10 +41,12 @@ class RoadLogGeminiProvider:
         last_error = "AI 응답 오류"
         for attempt in range(3):
             try:
+                audit_id = marketing_safety.before_call("gemini", "generate_content", campaign_id=int(product.get("campaign_id") or 0), agent_id="content_writer")
                 if self.client is None:
                     response = httpx.post(url, params={"key": key}, json=body, timeout=20)
                 else:
                     response = self.client.post(url, params={"key": key}, json=body, timeout=20)
+                marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
                 if response.status_code in (429, 500, 502, 503, 504):
                     last_error = f"공급자 일시 오류 ({response.status_code})"
                 else:
@@ -57,6 +62,7 @@ class RoadLogGeminiProvider:
                         raise ValueError("필드 형식이 잘못된 AI 응답")
                     usage = payload.get("usageMetadata") or {}
                     self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0), "output_tokens": int(usage.get("candidatesTokenCount") or 0)}
+                    marketing_safety.after_call(audit_id, "SUCCESS", **self.usage)
                     draft["estimated_cost"] = None
                     return draft
             except (httpx.TimeoutException, httpx.TransportError):
@@ -76,6 +82,8 @@ class RoadLogGeminiProvider:
         key = os.getenv("GEMINI_API_KEY", "").strip()
         if not key:
             raise PermissionError("Gemini API 키가 없습니다.")
+        if not marketing_safety.enabled("gemini"):
+            raise PermissionError("마케팅 Gemini API가 비활성화되어 있습니다.")
         facts = {field: product.get(field, "UNKNOWN") for field in (
             "product_id", "name", "price_won", "free", "lamp_price", "premium",
             "confirmed_results", "forbidden_expressions", "synced_at", "source_file"
@@ -110,7 +118,9 @@ class RoadLogGeminiProvider:
         last_error = "AI 응답 오류"
         for attempt in range(3):
             try:
+                audit_id = marketing_safety.before_call("gemini", "generate_role", campaign_id=int(product.get("campaign_id") or 0), agent_id=task.agent_id)
                 response = (self.client.post if self.client else httpx.post)(url, params={"key": key}, json=body, timeout=20)
+                marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
                 if response.status_code in (429, 500, 502, 503, 504):
                     last_error = f"공급자 일시 오류 ({response.status_code})"
                 else:
@@ -129,6 +139,7 @@ class RoadLogGeminiProvider:
                     usage = raw.get("usageMetadata") or {}
                     self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0),
                                   "output_tokens": int(usage.get("candidatesTokenCount") or 0)}
+                    marketing_safety.after_call(audit_id, "SUCCESS", **self.usage)
                     return result
             except (httpx.TimeoutException, httpx.TransportError):
                 last_error = "AI 응답 시간 초과 또는 연결 오류"

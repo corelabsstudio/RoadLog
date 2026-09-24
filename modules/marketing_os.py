@@ -1,5 +1,7 @@
 """ROADLOG 어댑터를 Generic AI Marketing Core에 연결하는 호환 파사드."""
 from __future__ import annotations
+import os
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -10,11 +12,13 @@ from modules.config import DATA_DIR
 from modules.marketing_core import BrandPolicy, MarketingRepository, MarketingService, TeamOperations, review_draft as core_review
 from modules.marketing_roadlog import RoadLogCatalog, performance_snapshot
 from modules.marketing_diagnosis import build_profile, diagnose
-from modules.marketing_research import BraveResearchProvider
+from modules.marketing_research import TavilyResearchProvider
+from modules.marketing_strategy import build_strategy
 from modules.marketing_assets import MarketingAssetStore
 from modules.marketing_creative import GeminiImageProvider
 from modules.marketing_tools import tool_registry
 from modules.marketing_gemini import RoadLogGeminiProvider
+from modules import marketing_safety
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
@@ -38,9 +42,43 @@ def status(web_root: Path) -> dict[str, Any]:
     result = _service(web_root).status()
     result["dry_run_scope"] = "automatic_external_publishing"
     result["manual_instagram_publish_enabled"] = instagram_configured() and instagram_publishing_enabled()
+    result["safety"] = marketing_safety.board()
     return result
 def products(web_root: Path) -> dict[str, Any]: return _service(web_root).products()
 def usage() -> dict[str, Any]: return _service().usage()
+def test_campaign(web_root: Path, product_id: str, use_search: bool = False, use_gemini: bool = False) -> dict[str, Any]:
+    data = _service(web_root).products()
+    product = next((item for item in data["products"] if item["product_id"] == product_id), None)
+    if not product or product.get("facts_status") != "VERIFIED":
+        raise ValueError("확인된 실제 상품을 선택해 주세요.")
+    if use_search and not marketing_safety.enabled("research"):
+        raise PermissionError("외부 검색은 차단 상태입니다. 체크를 해제하고 DRY RUN을 진행하세요.")
+    if use_gemini and not marketing_safety.enabled("gemini"):
+        raise PermissionError("Gemini는 차단 상태입니다. 체크를 해제하고 DRY RUN을 진행하세요.")
+    stamp = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+    snapshot = performance_snapshot()
+    profile = build_profile(data["products"],snapshot,data["sync"]["source_hash"])
+    diagnosis = diagnose(profile,set())
+    research = TavilyResearchProvider()
+    queries = [research.question_query(product),research.competitor_query(product)] if use_search else []
+    stages = [
+        ("ANALYZING","marketing_director",f"상품 정본 {product_id} · 내부 분석 계획"),
+        ("DIAGNOSING","performance_analyst",f"내부 진단 {diagnosis.get('decision','NO_ACTION')} · 실제 성과는 별도 확인"),
+        ("RESEARCH_PLAN","market_researcher",f"외부 검색 계획 {len(queries)}건 · 실행 0건"),
+        ("DIRECTOR_PLAN","marketing_director","전략 선택은 실제 AI 없이 계획만 기록"),
+        ("WRITER_PLAN","content_writer","실제 AI 초안 생성 0건 · 콘텐츠 없음"),
+        ("REVIEW_PLAN","quality_reviewer","정본 사실 검수 예정 · 검수 통과를 가장하지 않음"),
+        ("READY_TO_PUBLISH_EXPECTED","social_manager","게시 준비 예상 경로만 확인 · 승인 대기/게시 등록 없음"),
+    ]
+    plan = {"mode":"TEST", "dry_run":True, "product_id":product_id,
+            "source_file":data["sync"]["source_file"],"synced_at":data["sync"]["synced_at"],
+            "planned_providers":{"gemini":bool(use_gemini),"research":bool(use_search),"image":False,"video":False,"sns":False},
+            "planned_queries":queries,"planned_agents":[agent for _,agent,_ in stages],
+            "maximum_calls":{"gemini":10 if use_gemini else 0,"research":min(5,len(queries)) if use_search else 0,"image":0,"video":0,"sns":0},
+            "actual_calls":{"gemini":0,"research":0,"image":0,"video":0,"sns":0},
+            "stages":stages,"ready_to_publish":"EXPECTED_ONLY_NOT_CREATED"}
+    campaign_id = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).save_test_campaign(product_id,plan,stamp)
+    return {"campaign_id":campaign_id,**plan}
 def trial(web_root: Path, product_id: str, platform: str, mode: str) -> dict[str, Any]:
     result = _service(web_root).trial(product_id, platform, mode)
     operations().record_real_content(result["content_id"], result["ok"], result["draft"]["product_id"])
@@ -111,6 +149,8 @@ def publish_instagram(approval_id: int, image_url: str, *, publisher: InstagramP
     repo.finish_instagram_post(approval_id,"PUBLISHED",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),result["media_id"])
     return {"status":"PUBLISHED","media_id":result["media_id"],"message":"인스타그램 게시 완료"}
 def set_auto_real(enabled: bool) -> dict[str, Any]:
+    if enabled and not marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED"):
+        raise PermissionError("자동 팀 운영은 서버에서 비활성화되어 있습니다.")
     repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
     repo.set_auto_real(enabled)
     return {"ok": True, "automatic_real_calls": enabled,
@@ -138,11 +178,12 @@ def team_dashboard() -> dict[str,Any]:
         recent = repo.recent_campaign_product_ids((datetime.now(ZoneInfo("Asia/Seoul"))-timedelta(days=14)).date().isoformat())
         result["diagnosis"] = diagnose(profile, recent)
     result["learning"] = repo.recent_learning()
-    result["automatic_real_calls"] = repo.auto_real_enabled()
+    result["automatic_real_calls"] = repo.auto_real_enabled() and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini")
+    result["safety"] = marketing_safety.board()
     result["approval_policy"] = "MANUAL_EVERY_PUBLICATION"
     result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
     result["providers"] = {
-        "internal_analytics":"CONNECTED", "external_research":"CONNECTED" if BraveResearchProvider().connected else "NOT_CONNECTED",
+        "internal_analytics":"CONNECTED", "external_research":"CONFIGURED_UNVERIFIED" if TavilyResearchProvider().connected else "NOT_CONNECTED",
         "search_metrics":"NOT_CONNECTED", "creative_assets":"PAUSED_APPROVAL",
         "manual_creative_import":"AVAILABLE_FALLBACK",
         "instagram":"MANUAL_UNVERIFIED" if instagram_configured() and instagram_publishing_enabled() else "NOT_CONNECTED",
@@ -165,7 +206,7 @@ def control(action:str) -> dict[str,Any]:
             except Exception:
                 result["diagnosis"] = {"decision":"NO_ACTION","reason":"내부 상품·성과 분석 자료를 읽지 못했습니다."}
             ops.mark_ai_unavailable()
-            result["message"] = "내부 상품·성과 진단을 갱신했습니다. Gemini 키가 없어 AI 작성은 대기 중입니다. 유료 요청은 0건입니다."
+            result["message"] = "내부 상품·성과 진단을 갱신했습니다. 마케팅 외부 API 차단 또는 Gemini 미연결로 유료 요청은 0건입니다."
             result["jobs"] = [{"job":"team_8","status":"WAITING_AI"}]
             return result
         if not ops.claim_team_start(day):
@@ -192,10 +233,10 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
         metrics = performance_snapshot() if task.agent_id in {"marketing_director", "market_researcher", "performance_analyst"} else None
         if metrics is not None:
             refresh_campaign_learning(repo)
-            previous = repo.recent_campaigns(5)
+            previous = repo.recent_campaigns(5, production_only=True)
             metrics = {**metrics,"previous_learning":repo.recent_learning(),
                        "previous_campaigns":[{"id":c["id"],"product_id":c["product_id"],"status":c["status"],"stage":c["stage"],"scorecard":c["scorecard"]} for c in previous if c["id"] != campaign_id]}
-        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft,metrics=metrics,context=context)
+        result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"],"campaign_id":campaign_id or 0},draft=draft,metrics=metrics,context=context)
         if task.agent_id == "marketing_director" and metrics:
             prior = [c for c in metrics["previous_campaigns"] if c["product_id"] == product["product_id"] and c["scorecard"]]
             if prior and result.get("decision") != "NO_ACTION" and not str(result.get("reasonForRetry") or "").strip():
@@ -207,6 +248,9 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
         reasons = review_metric_note(note,metrics,POLICY) if metrics else review_draft(product,safe_draft,POLICY)
         allowed = {product["product_id"],product["name"],*(product.get("confirmed_results") or [])}
         if metrics: allowed.add(metrics["source"])
+        if campaign_id:
+            for source in repo.research_sources(campaign_id):
+                allowed.update((source["url"],source["title"]))
         if any(fact not in allowed for fact in result["source_facts"]): reasons.append("상품 정본에 없는 출처 사실")
         if task.agent_id == "quality_reviewer" and not result["review_passed"]: reasons.append("AI 품질 검수에서 차단")
         if reasons:
@@ -265,14 +309,48 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
         campaign_id = repo.begin_campaign(product["product_id"],"MANUAL" if job_key == "team_8" else "DAILY",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
         repo.campaign_stage(campaign_id,"ANALYZING")
         repo.campaign_event(campaign_id,"marketing_director",None,"DIAGNOSED",diagnosis["reason"],datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-        if diagnosis["selected_channel"] != "사이트 블로그":
-            repo.finish_campaign(campaign_id,"NO_ACTION","상품 상세페이지 개선이 우선이지만 안전한 적용·검수 경로가 없어 블로그를 임의 생성하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-            ops.finish_due(day,job_key,"상세페이지 개선 우선 · 자동 수정 경로 미연결 · 유료 AI 요청 0건")
+        repo.campaign_stage(campaign_id,"RESEARCHING")
+        research = TavilyResearchProvider()
+        sources = []
+        if research.connected:
+            try:
+                limit = max(1,min(int(os.getenv("MARKETING_RESEARCH_DAILY_LIMIT","10")),30))
+                campaign_limit = max(1,min(int(os.getenv("MARKETING_RESEARCH_CAMPAIGN_LIMIT","2")),2))
+                queries = [research.question_query(product),research.competitor_query(product)][:campaign_limit]
+                failed_queries = 0
+                for query in queries:
+                    try:
+                        sources.extend(repo.search_with_budget(query,research,daily_limit=limit,campaign_id=campaign_id))
+                    except Exception:
+                        failed_queries += 1
+                repo.save_research_sources(campaign_id,sources)
+                repo.campaign_event(campaign_id,"market_researcher",None,"EXTERNAL_SOURCE" if sources else "RESEARCH_FAILED",f"공개 검색 결과 {len(sources)}건 · 실패/한도 {failed_queries}건 · 원문 사실은 별도 검증 필요",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            except Exception:
+                repo.campaign_event(campaign_id,"market_researcher",None,"RESEARCH_FAILED","외부 검색 실패 또는 한도 도달 · 내부 조사로 계속",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        else:
+            repo.campaign_event(campaign_id,"market_researcher",None,"NOT_CONNECTED","외부 검색 미연결 · 검색했다고 표시하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        existing_titles = [p["title"] for p in repo.blog_posts(100)]
+        for path in (web_root / "blog").glob("*.html"):
+            if path.stem == "index": continue
+            match = re.search(r"<title[^>]*>(.*?)</title>",path.read_text(encoding="utf-8"),re.I | re.S)
+            if match: existing_titles.append(re.sub(r"\s+"," ",match.group(1)).strip())
+        capabilities = tool_registry()
+        capabilities["contentGeneration"]["status"] = "CONFIGURED_UNVERIFIED" if RoadLogGeminiProvider().connected else "CONFIG_REQUIRED"
+        strategy_decision = build_strategy(profile,product,sources,repo.recent_campaigns(15, production_only=True),existing_titles,capabilities)
+        repo.save_strategy(campaign_id,strategy_decision)
+        if not strategy_decision["selectedStrategy"]:
+            repo.finish_campaign(campaign_id,"NO_ACTION",strategy_decision["reason"],datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+            ops.finish_due(day,job_key,"실행 가능 전략 없음 · 유료 작성 요청 0건")
             return
         ops.record_kickoff(f"{product['name']} · 상품 정본 확인",True)
         tasks = {task.agent_id:task for task in TASKS}
         repo.campaign_stage(campaign_id,"PLANNING")
-        _,director_ok,direction = _run_role(tasks["marketing_director"],product,data["sync"],campaign_id=campaign_id,context=[diagnosis["objective"],diagnosis["reason"]])
+        director_context = [diagnosis["objective"],diagnosis["reason"],strategy_decision["reason"],
+                            "실행 가능한 선택: " + strategy_decision["selectedStrategy"],
+                            "상품별 전환율은 미측정. 외부 검색 결과는 원문 검증 전 참고 자료."]
+        director_context.extend(f"EXTERNAL_SOURCE {item['title']} {item['url']}: {item['summary']}" for item in sources[:3])
+        director_context.extend(f"PAST_CAMPAIGN {item['source']}: {item['value']}" for item in strategy_decision["evidence"] if item["type"] == "PAST_CAMPAIGN")
+        _,director_ok,direction = _run_role(tasks["marketing_director"],product,data["sync"],campaign_id=campaign_id,context=director_context)
         if not director_ok:
             repo.finish_campaign(campaign_id,"FAILED","디렉터 결정 실패 · 콘텐츠 생성 안 함",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
             ops.finish_due(day,job_key,"디렉터 결정 실패 · 외부 게시 없음",failed=True)
@@ -285,19 +363,7 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
             repo.finish_campaign(campaign_id,"NO_ACTION",f"디렉터 결정 {direction['decision']} · 조사/게시 자동 실행 미허용",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
             ops.finish_due(day,job_key,f"{direction['decision']} · 콘텐츠 자동 생성 보류 · 외부 게시 없음")
             return
-        strategy = [direction["summary"]]
-        repo.campaign_stage(campaign_id,"RESEARCHING")
-        research = BraveResearchProvider()
-        if research.connected:
-            try:
-                sources = research.search(product["name"] + " 사주 이용 후기 질문")
-                repo.save_research_sources(campaign_id,sources)
-                repo.campaign_event(campaign_id,"market_researcher",None,"EXTERNAL_SOURCE",f"실제 공개 검색 결과 {len(sources)}건 저장",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-                strategy.extend(f"EXTERNAL_SOURCE {item['title']} {item['url']}: {item['summary']}" for item in sources[:3])
-            except Exception:
-                repo.campaign_event(campaign_id,"market_researcher",None,"RESEARCH_FAILED","외부 검색 실패 · 검색한 것으로 표시하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-        else:
-            repo.campaign_event(campaign_id,"market_researcher",None,"NOT_CONNECTED","외부 검색 미연결 · AI 추론과 구분",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
+        strategy = [direction["summary"],*director_context]
         with ThreadPoolExecutor(max_workers=2) as pool:
             futures = [pool.submit(_run_role,tasks[aid],product,data["sync"],campaign_id=campaign_id,context=strategy)
                        for aid in ("market_researcher","seo_specialist")]
@@ -307,7 +373,7 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
                 elif output: strategy.append(output["summary"])
         try:
             repo.campaign_stage(campaign_id,"CREATING")
-            content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=strategy)
+            content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=strategy,campaign_id=campaign_id)
             ops.record_agent_output("content_writer",content["run_id"],product["product_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",
                                     {"summary":f"AI 블로그 초안 #{content['content_id']} · AI 품질 검수 대기", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
             repo.campaign_event(campaign_id,"content_writer",content["run_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",f"AI 블로그 초안 #{content['content_id']}",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
@@ -337,7 +403,7 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
             previous_content_id = content["content_id"]
             feedback_text = " / ".join(feedback)
             try:
-                content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=["수정 요청: " + " / ".join(feedback),*strategy])
+                content = _service(web_root).trial(product["product_id"],"블로그","REAL",trigger="AUTO",defer_approval=True,strategy_context=["수정 요청: " + " / ".join(feedback),*strategy],campaign_id=campaign_id)
                 ops.record_agent_output("content_writer",content["run_id"],product["product_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",
                                         {"summary":f"AI 수정 초안 #{content['content_id']} · {revision}차", "recommendations":[],"source_facts":[product["product_id"]],"unknowns":content["review"]["reasons"],"review_passed":False})
                 repo.campaign_event(campaign_id,"content_writer",content["run_id"],"DONE" if content["ok"] else "REVISION_REQUESTED",f"AI 수정 초안 #{content['content_id']} · {revision}차",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
@@ -390,7 +456,7 @@ def run_due(web_root: Path, when: datetime | None = None) -> list[dict[str, str]
     ops = operations()
     results = []
     local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
-    if local.strftime("%H:%M") >= "09:00" and MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).auto_real_enabled():
+    if local.strftime("%H:%M") >= "09:00" and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini") and MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).auto_real_enabled():
         day = local.date().isoformat()
         if ops.claim_daily_campaign(day):
             Thread(target=_run_team,args=(web_root,day,"campaign_daily"),daemon=True,name="roadlog-marketing-daily").start()
