@@ -15,7 +15,7 @@ class BraveResearchProvider:
     def __init__(self, client: httpx.Client | None = None, key: str | None = None):
         self.key = key if key is not None else os.getenv("BRAVE_SEARCH_API_KEY", "")
         self.enabled = os.getenv("MARKETING_EXTERNAL_RESEARCH_ENABLED", "false").lower() == "true"
-        self.connected = bool(self.key and self.enabled and marketing_safety.enabled("research"))
+        self.connected = bool(self.key and self.enabled and marketing_safety.enabled("research") and marketing_safety.cost_settings()["paid_enabled"])
         self.client = client
 
     def search(self, query: str) -> list[dict]:
@@ -69,6 +69,7 @@ class TavilyResearchProvider:
         if not query:
             raise ValueError("검색어가 비었습니다.")
         client = self.client or httpx.Client(timeout=8.0)
+        audit_id = None
         try:
             audit_id = marketing_safety.before_call("research", audit_operation, campaign_id=campaign_id, agent_id=audit_agent_id)
             response = client.post(self.endpoint, headers={"Authorization": f"Bearer {self.key}"},
@@ -78,6 +79,18 @@ class TavilyResearchProvider:
             marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
             response.raise_for_status()
             results = response.json().get("results", [])
+            if not isinstance(results, list):
+                raise ValueError("검색 결과 형식 오류")
+            marketing_safety.after_call(audit_id, "SUCCESS", actual_cost_estimate_krw=16)
+        except (httpx.TimeoutException, httpx.TransportError):
+            if audit_id is not None:
+                marketing_safety.after_call(audit_id, "TRANSPORT_ERROR")
+            raise
+        except (ValueError, TypeError):
+            if audit_id is not None:
+                marketing_safety.after_call(audit_id, "USAGE_INVALID")
+                marketing_safety.trip_kill("검색 응답 형식 오류")
+            raise
         finally:
             if self.client is None:
                 client.close()

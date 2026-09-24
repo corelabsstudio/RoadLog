@@ -9,6 +9,8 @@ from .repository import MarketingRepository
 
 def now() -> str: return datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
 
+REQUEST_BUDGET_RESERVATION_KRW = 20.0  # Internal planning amount, not a provider billing cap.
+
 @dataclass(frozen=True)
 class UsagePolicy:
     daily_requests: int = 20
@@ -36,7 +38,9 @@ class MarketingService:
 
     def usage(self) -> dict[str, Any]:
         day=now()[:10]; requests,cost=self.repository.usage(day); p=self.usage_policy
-        return {"date":day,"requests":requests,"request_limit":p.daily_requests,"remaining_requests":max(0,p.daily_requests-requests),"estimated_cost_krw":cost,"cost_limit_krw":p.daily_cost,"remaining_cost_krw":max(0,p.daily_cost-cost),"cost_is_estimate":True,"agent_limit":p.per_agent_requests}
+        from modules import marketing_safety
+        external = marketing_safety.cost_status()
+        return {"date":day,"requests":requests,"request_limit":external["daily_requests"],"remaining_requests":max(0,external["daily_requests"]-external["calls"]),"estimated_cost_krw":cost,"cost_limit_krw":external["daily_budget_krw"],"remaining_cost_krw":max(0,external["daily_budget_krw"]-external["reserved_cost_krw"]),"cost_is_estimate":True,"agent_limit":external["per_agent_requests"],"external_calls":external["calls"],"external_reserved_cost_krw":external["reserved_cost_krw"],"actual_cost_estimate_krw":external["actual_cost_estimate_krw"]}
 
     def trial(self, product_id: str, platform: str, mode: str, *, trigger: str = "MANUAL", focus_result: str = "", defer_approval: bool = False, strategy_context: list[str] | None = None, campaign_id: int = 0) -> dict[str, Any]:
         mode = mode.upper()
@@ -50,9 +54,10 @@ class MarketingService:
         if not self.real_content or not self.real_content.connected: raise PermissionError("AI 연결되지 않음: 서버에 Gemini API 키가 없습니다.")
         provider = self.real_content
         # Budget allocation, not an upper bound on provider billing.
-        reservation = 10.0
-        p = self.usage_policy
-        run_id = self.repository.reserve_real_run(product_id, now(), p.daily_requests, p.per_agent_requests, p.daily_cost, reservation)
+        reservation = REQUEST_BUDGET_RESERVATION_KRW
+        from modules import marketing_safety
+        p = marketing_safety.cost_settings()
+        run_id = self.repository.reserve_real_run(product_id, now(), p["daily_requests"], p["per_agent_requests"], p["daily_budget_krw"], reservation)
         try:
             writing_product = {**product, "synced_at": data["sync"]["synced_at"], "source_file": data["sync"]["source_file"], "marketing_focus_result": focus_result, "strategy_context": (strategy_context or [])[:3], "campaign_id": campaign_id}
             draft=provider.generate(writing_product,platform); reasons=review_draft(product,draft,self.brand_policy)
@@ -60,7 +65,7 @@ class MarketingService:
             if run_id is not None:
                 usage = getattr(provider, "usage", {})
                 self.repository.finish_real_run(run_id, "COMPLETED", f"{ '수동' if trigger == 'MANUAL' else '자동' } 검수 통과" if passed else "수정 대기", usage.get("input_tokens", 0), usage.get("output_tokens", 0))
-            return {"ok":passed,"content_id":cid,"run_id":run_id,"approval_id":aid,"status":"AWAITING_AI_REVIEW" if defer_approval else "PENDING_APPROVAL" if passed else "REVISION_REQUESTED","review":{"status":"PASSED" if passed else "BLOCKED","reasons":reasons},"estimated_cost_krw":reservation,"cost_label":"예산 예약액 10원 (실제 청구액 아님)","draft":draft}
+            return {"ok":passed,"content_id":cid,"run_id":run_id,"approval_id":aid,"status":"AWAITING_AI_REVIEW" if defer_approval else "PENDING_APPROVAL" if passed else "REVISION_REQUESTED","review":{"status":"PASSED" if passed else "BLOCKED","reasons":reasons},"estimated_cost_krw":reservation,"cost_label":"예산 예약액 20원 (실제 청구액 아님)","draft":draft}
         except Exception:
             if run_id is not None: self.repository.finish_real_run(run_id, "FAILED", "AI 생성 또는 저장 실패")
             raise
@@ -95,7 +100,7 @@ class MarketingService:
                 break
         result = self.repository.group_trials(product, data["sync"], question, source_text, focus, trials, now())
         return {**result, "mode": "REAL", "dry_run": True, "published": False,
-                "focus_result": focus or "UNKNOWN", "performance_label": "연결되지 않음", "cost_label": f"AI {len(trials)}회 · 예산 예약액 {10 * len(trials):,}원 (실제 청구액 아님)", "partial_error": partial_error}
+                "focus_result": focus or "UNKNOWN", "performance_label": "연결되지 않음", "cost_label": f"AI {len(trials)}회 · 예산 예약액 {REQUEST_BUDGET_RESERVATION_KRW * len(trials):,.0f}원 (실제 청구액 아님)", "partial_error": partial_error}
 
     def bundles(self) -> list[dict[str, Any]]: return self.repository.bundles()
 

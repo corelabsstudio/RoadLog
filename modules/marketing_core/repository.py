@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
 from pathlib import Path
 from typing import Any
@@ -122,7 +123,7 @@ class MarketingRepository:
 
     def search_with_budget(self, query: str, provider: Any, daily_limit: int = 10, cache_hours: int = 6, campaign_id: int = 0) -> list[dict[str, Any]]:
         """Cache only configured provider results; reserve daily calls before network I/O."""
-        now = datetime.now().astimezone()
+        now = datetime.now(ZoneInfo("Asia/Seoul"))
         with self.connect() as conn:
             row = conn.execute("SELECT items_json,observed_at FROM marketing_search_cache WHERE tenant_id=? AND query_text=? AND provider=?",
                                (self.tenant_id,query,"Tavily Search")).fetchone()

@@ -72,6 +72,7 @@ def main() -> None:
         os.environ["MARKETING_GEMINI_ENABLED"] = "true"
         os.environ["MARKETING_RESEARCH_ENABLED"] = "true"
         os.environ["MARKETING_EXTERNAL_RESEARCH_ENABLED"] = "true"
+        marketing_safety.update_cost_settings(paid_enabled=True)
         hits = []
         client = httpx.Client(transport=httpx.MockTransport(lambda request: (hits.append(request), httpx.Response(200,json={"results":[]}))[1]))
         provider = TavilyResearchProvider(client=client, key="test")

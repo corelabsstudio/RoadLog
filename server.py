@@ -296,6 +296,13 @@ class MarketingProviderTestBody(BaseModel):
     query: str = ""
 
 
+class MarketingCostSettingsBody(BaseModel):
+    paid_enabled: bool | None = None
+    daily_budget_krw: int | None = None
+    daily_requests: int | None = None
+    per_agent_requests: int | None = None
+
+
 class MarketingDecisionBody(BaseModel):
     note: str = ""
 
@@ -1010,6 +1017,17 @@ def admin_marketing_safety(authorization: str | None = Header(default=None)):
     _require_admin(authorization)
     from modules.marketing_safety import board
     return board()
+
+
+@app.post("/api/admin/marketing/cost-settings")
+def admin_marketing_cost_settings(body: MarketingCostSettingsBody, authorization: str | None = Header(default=None)):
+    _require_admin(authorization)
+    from modules.marketing_safety import update_cost_settings, cost_status
+    try:
+        update_cost_settings(**body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return cost_status()
 
 
 @app.get("/api/admin/marketing/providers")

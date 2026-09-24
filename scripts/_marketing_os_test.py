@@ -30,6 +30,7 @@ for _flag in ("MARKETING_EXTERNAL_API_ENABLED", "MARKETING_GEMINI_ENABLED", "MAR
     os.environ[_flag] = "true"
 marketing_safety.DB = Path(tempfile.mkdtemp(prefix="marketing_mock_audit_")) / "audit.db"
 marketing_safety.RELEASE_HOLD = False  # fake provider/MockTransport only
+marketing_safety.update_cost_settings(paid_enabled=True)  # isolated mock DB only
 marketing_safety.LIMITS["sns"] = 10  # legacy Graph mock exercises a prohibited production path
 
 def check(value, label):
@@ -104,8 +105,16 @@ def main():
         transport = httpx.MockTransport(lambda request: httpx.Response(200,json={"web":{"results":[{"title":"검증 자료","url":"https://example.com/one","description":"공개 설명"}]}}))
         research = BraveResearchProvider(httpx.Client(transport=transport),key="test")
         research.enabled = research.connected = True
-        found = research.search("사주 질문")
-        check(len(found) == 1 and found[0]["sourceType"] == "EXTERNAL_SOURCE" and found[0]["url"] == "https://example.com/one", "실제 HTTP 검색 어댑터 응답·출처 구조")
+        old_audit = marketing_safety.DB
+        try:
+            marketing_safety.DB = temp / "unknown_cost_audit.db"
+            marketing_safety.update_cost_settings(paid_enabled=True)
+            try: research.search("사주 질문")
+            except PermissionError: pass
+            else: raise AssertionError("요금 미확인 검색 공급자 호출 허용")
+        finally:
+            marketing_safety.DB = old_audit
+        check(True, "요금 미확인 Brave 공급자 HTTP 호출 차단")
         profile = MarketingRepository(marketing_os.DB,"roadlog").site_profile()
         check(profile is not None and len(profile["products"]) == 44 and profile["products"][0]["conversion_rate"] is None, "실측 사이트 프로필 저장 · 상품 전환율 미측정")
         measured = build_profile([product], {"source":"test","period_days":7,"today":{},"month":{"uv":42,"signups":0},"by_product":[]}, "hash")
@@ -113,7 +122,7 @@ def main():
         check(len(FakeGemini.seen_writer_context[-1]) == 3, "디렉터·조사·검색 결과를 작가에게 전달")
         check(not MarketingRepository(marketing_os.DB,"roadlog").recent_learning(), "실제 게시 전 사이트 전체 집계는 캠페인 Learning으로 저장하지 않음")
         check(len({o["run_id"] for o in team["agent_outputs"]}) == 8 and all(o["run_id"] > 0 for o in team["agent_outputs"]), "8명 각각 독립 요청")
-        check(marketing_os.usage()["requests"] == 8 and marketing_os.usage()["estimated_cost_krw"] == 80, "8명 요청·내부 예약 80원")
+        check(marketing_os.usage()["requests"] == 8 and marketing_os.usage()["estimated_cost_krw"] == 160, "8명 요청·내부 예약 160원")
         check(len(FakeGemini.seen_metrics) == 3 and all(m["today"]["uv"] == 12 for m in FakeGemini.seen_metrics), "디렉터·시장 조사원·성과 분석가에게 실제 집계 구조 전달")
         check(len(marketing_os.approvals()) == 1, "작성자·AI 검수 통과 후 승인 등록")
         check(not marketing_os.bundles(), "시작 시 가짜 묶음 없음")
@@ -136,7 +145,7 @@ def main():
         check(marketing_os.status(web)["automatic_real_calls"], "수동 검수 통과 후 명시적 자동 점검 켜기")
         due = marketing_os.run_due(web, due_time)
         check(not due and not marketing_os.run_due(web, due_time), "오늘 수동 실행 후 자동 중복 호출 없음")
-        check(marketing_os.usage()["requests"] == 9 and marketing_os.usage()["estimated_cost_krw"] == 90, "요청 9건·내부 예산 예약")
+        check(marketing_os.usage()["requests"] == 9 and marketing_os.usage()["estimated_cost_krw"] == 180, "요청 9건·내부 예산 예약")
         with MarketingRepository(marketing_os.DB, "roadlog").connect() as conn:
             real = conn.execute("SELECT COUNT(*) n,MAX(input_tokens) tin FROM marketing_runs WHERE mode='REAL' AND tenant_id='roadlog'").fetchone()
             demo = conn.execute("SELECT COUNT(*) n FROM marketing_runs WHERE mode='DEMO' AND tenant_id='roadlog'").fetchone()

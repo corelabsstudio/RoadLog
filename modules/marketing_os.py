@@ -22,6 +22,8 @@ from modules import marketing_safety
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
+from modules.marketing_core.job_queue import MarketingJobQueue
+from modules.marketing_core.service import REQUEST_BUDGET_RESERVATION_KRW
 
 DB = Path(DATA_DIR) / "marketing_os.db"
 TENANT_ID = "roadlog"
@@ -151,10 +153,16 @@ def publish_instagram(approval_id: int, image_url: str, *, publisher: InstagramP
 def set_auto_real(enabled: bool) -> dict[str, Any]:
     if enabled and not marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED"):
         raise PermissionError("자동 팀 운영은 서버에서 비활성화되어 있습니다.")
+    if enabled and operations().dashboard()["status"]["status"] == "EMERGENCY_STOP":
+        raise PermissionError("긴급정지 상태입니다. 자동 운영을 켜기 전에 관리자가 정지 사유를 확인해야 합니다.")
     repo = MarketingRepository(DB, TENANT_ID, legacy_tenant_id=TENANT_ID)
     repo.set_auto_real(enabled)
+    if enabled:
+        # The single Auto ON control arms the daily cycle; it does not run a
+        # paid campaign immediately. The separate Start button remains manual.
+        operations().control("start")
     return {"ok": True, "automatic_real_calls": enabled,
-            "message": "매일 자동 점검 켜짐 · 실제 호출은 수동 검수 통과 후 · 외부 게시 없음" if enabled else "자동 점검 꺼짐"}
+            "message": "매일 09:00 자동 캠페인 실행 켜짐 · 외부 게시는 건별 승인" if enabled else "매일 자동 캠페인 꺼짐"}
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
 def refresh_campaign_learning(repo: MarketingRepository) -> None:
@@ -167,6 +175,7 @@ def refresh_campaign_learning(repo: MarketingRepository) -> None:
 def team_dashboard() -> dict[str,Any]:
     result = operations().dashboard()
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    result["jobs"] = MarketingJobQueue(repo).recent()
     try:
         refresh_campaign_learning(repo)
     except Exception:
@@ -179,6 +188,7 @@ def team_dashboard() -> dict[str,Any]:
         result["diagnosis"] = diagnose(profile, recent)
     result["learning"] = repo.recent_learning()
     result["automatic_real_calls"] = repo.auto_real_enabled() and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini")
+    result["automatic_team_configured"] = marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED")
     result["safety"] = marketing_safety.board()
     result["approval_policy"] = "MANUAL_EVERY_PUBLICATION"
     result["next_run"] = "매일 09:00 KST" if result["automatic_real_calls"] and result["status"]["status"] == "RUNNING" else None
@@ -227,8 +237,9 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
     run_id = None
     try:
         if not _team_running(): raise PermissionError("팀이 일시정지 또는 긴급정지 상태입니다.")
+        cost_settings = marketing_safety.cost_settings()
         run_id = repo.reserve_real_run(product["product_id"], datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"),
-                                       20, 5, 3000, 10.0, agent_id=task.agent_id)
+                                       cost_settings["daily_requests"], cost_settings["per_agent_requests"], cost_settings["daily_budget_krw"], REQUEST_BUDGET_RESERVATION_KRW, agent_id=task.agent_id)
         provider = RoadLogGeminiProvider()
         metrics = performance_snapshot() if task.agent_id in {"marketing_director", "market_researcher", "performance_analyst"} else None
         if metrics is not None:
@@ -455,16 +466,39 @@ def run_job(job_key:str) -> dict[str,Any]:
         return {"ok":True,"message":_real_daily_draft(Path(__file__).resolve().parents[1] / "web", day)}
     return operations().run_job(job_key)
 
+def _run_queued_team(web_root: Path, day: str, job_id: int) -> None:
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    queue = MarketingJobQueue(repo)
+    before_audit = marketing_safety.audit_count()
+    try:
+        _run_team(web_root, day, "campaign_daily")
+        with repo.connect() as db:
+            run = db.execute("SELECT status,result FROM marketing_scheduled_runs WHERE tenant_id=? AND run_date=? AND job_key='campaign_daily'", (TENANT_ID,day)).fetchone()
+            campaign = db.execute("SELECT 1 FROM marketing_campaigns WHERE tenant_id=? AND trigger_type='DAILY' AND substr(created_at,1,10)=? LIMIT 1", (TENANT_ID,day)).fetchone()
+        success = bool(run and run['status'] == 'COMPLETED')
+        safe_to_retry = not campaign and marketing_safety.audit_count() == before_audit
+        queue.finish(job_id, success=success, result=run['result'] if run else '작업 결과를 확인하지 못했습니다.', safe_to_retry=safe_to_retry)
+    except Exception:
+        # An uncertain external attempt must not be repeated automatically.
+        queue.finish(job_id, success=False, result='자동 캠페인 실패 · 관리자 확인 필요', safe_to_retry=False)
+
+
 def run_due(web_root: Path, when: datetime | None = None) -> list[dict[str, str]]:
-    """Claim each KST daily job once; AI needs manual proof and explicit auto opt-in."""
+    """Server-side daily orchestration; browser presence is irrelevant."""
     ops = operations()
     results = []
     local = (when or datetime.now(ZoneInfo("Asia/Seoul"))).astimezone(ZoneInfo("Asia/Seoul"))
-    if local.strftime("%H:%M") >= "09:00" and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini") and MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID).auto_real_enabled():
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    queue = MarketingJobQueue(repo)
+    queue.recover_stale(local)
+    if local.strftime("%H:%M") >= "09:00" and marketing_safety.on("MARKETING_AUTO_TEAM_ENABLED") and marketing_safety.enabled("gemini") and marketing_safety.cost_settings()["paid_enabled"] and repo.auto_real_enabled():
         day = local.date().isoformat()
-        if ops.claim_daily_campaign(day):
-            Thread(target=_run_team,args=(web_root,day,"campaign_daily"),daemon=True,name="roadlog-marketing-daily").start()
-            results.append({"date":day,"job":"campaign_daily","status":"RUNNING","result":"자동 캠페인 점검 시작 · 외부 게시 없음"})
+        if not queue.exists("campaign_daily", day) and ops.claim_daily_campaign(day):
+            queue.enqueue("campaign_daily", day, local)
+        claimed = queue.claim_ready(local)
+        if claimed:
+            Thread(target=_run_queued_team,args=(web_root,claimed['run_date'],claimed['id']),daemon=True,name="roadlog-marketing-daily").start()
+            results.append({"date":claimed['run_date'],"job":"campaign_daily","status":"RUNNING","result":"자동 캠페인 실행 시작 · 외부 게시 없음"})
     for day, job_key in ops.claim_due(when):
         try:
             if job_key == "kickoff":

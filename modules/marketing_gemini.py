@@ -15,7 +15,7 @@ class RoadLogGeminiProvider:
 
     def __init__(self, client: httpx.Client | None = None, sleep=time.sleep):
         self.model = os.getenv("SAJU_MODEL", "gemini-3.8-flash")
-        self.connected = bool(os.getenv("GEMINI_API_KEY", "").strip()) and marketing_safety.enabled("gemini")
+        self.connected = bool(os.getenv("GEMINI_API_KEY", "").strip()) and marketing_safety.enabled("gemini") and bool(marketing_safety.cost_settings()["paid_enabled"])
         self.client = client
         self.sleep = sleep
         self.usage: dict[str, int] = {}
@@ -40,8 +40,9 @@ class RoadLogGeminiProvider:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         last_error = "AI 응답 오류"
         for attempt in range(3):
+            usage_recorded = False
             try:
-                audit_id = marketing_safety.before_call("gemini", "generate_content", campaign_id=int(product.get("campaign_id") or 0), agent_id="content_writer")
+                audit_id = marketing_safety.before_call("gemini", "generate_content", campaign_id=int(product.get("campaign_id") or 0), agent_id="content_writer", model=self.model, request_body=body)
                 if self.client is None:
                     response = httpx.post(url, params={"key": key}, json=body, timeout=20)
                 else:
@@ -52,6 +53,9 @@ class RoadLogGeminiProvider:
                 else:
                     response.raise_for_status()
                     payload = response.json()
+                    measured = marketing_safety.record_usage(audit_id, self.model, payload.get("usageMetadata"))
+                    usage_recorded = True
+                    self.usage = {"input_tokens": measured["input_tokens"], "output_tokens": measured["output_tokens"]}
                     text = "".join(part.get("text", "") for part in payload["candidates"][0]["content"]["parts"])
                     draft = json.loads(text)
                     if not isinstance(draft, dict) or any(name not in draft for name in fields):
@@ -60,14 +64,15 @@ class RoadLogGeminiProvider:
                         raise ValueError("요청 상품·채널과 다른 AI 응답")
                     if any(not isinstance(draft[name], str) for name, kind in fields.items() if kind == "STRING") or any(not isinstance(draft[name], list) or any(not isinstance(v, str) for v in draft[name]) for name, kind in fields.items() if kind == "ARRAY"):
                         raise ValueError("필드 형식이 잘못된 AI 응답")
-                    usage = payload.get("usageMetadata") or {}
-                    self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0), "output_tokens": int(usage.get("candidatesTokenCount") or 0)}
-                    marketing_safety.after_call(audit_id, "SUCCESS", **self.usage)
                     draft["estimated_cost"] = None
                     return draft
             except (httpx.TimeoutException, httpx.TransportError):
+                marketing_safety.after_call(audit_id, "TIMEOUT")
                 last_error = "AI 응답 시간 초과 또는 연결 오류"
             except (ValueError, KeyError, IndexError, TypeError):
+                if not usage_recorded:
+                    marketing_safety.after_call(audit_id, "USAGE_INVALID")
+                    marketing_safety.trip_kill("AI 응답을 해석할 수 없어 사용량 미확인")
                 last_error = "AI 응답 구조 오류"
                 break
             except httpx.HTTPStatusError:
@@ -117,8 +122,9 @@ class RoadLogGeminiProvider:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         last_error = "AI 응답 오류"
         for attempt in range(3):
+            usage_recorded = False
             try:
-                audit_id = marketing_safety.before_call("gemini", "generate_role", campaign_id=int(product.get("campaign_id") or 0), agent_id=task.agent_id)
+                audit_id = marketing_safety.before_call("gemini", "generate_role", campaign_id=int(product.get("campaign_id") or 0), agent_id=task.agent_id, model=self.model, request_body=body)
                 response = (self.client.post if self.client else httpx.post)(url, params={"key": key}, json=body, timeout=20)
                 marketing_safety.after_call(audit_id, "HTTP_" + str(response.status_code))
                 if response.status_code in (429, 500, 502, 503, 504):
@@ -126,6 +132,9 @@ class RoadLogGeminiProvider:
                 else:
                     response.raise_for_status()
                     raw = response.json()
+                    measured = marketing_safety.record_usage(audit_id, self.model, raw.get("usageMetadata"))
+                    usage_recorded = True
+                    self.usage = {"input_tokens": measured["input_tokens"], "output_tokens": measured["output_tokens"]}
                     result = json.loads("".join(p.get("text", "") for p in raw["candidates"][0]["content"]["parts"]))
                     if not isinstance(result, dict) or not isinstance(result.get("summary"), str) or len(result["summary"]) > 300:
                         raise ValueError("역할 응답 형식 오류")
@@ -136,14 +145,14 @@ class RoadLogGeminiProvider:
                         raise ValueError("역할 응답 형식 오류")
                     if task.agent_id == "marketing_director" and result.get("decision") not in {"NO_ACTION","RESEARCH","CREATE","OPTIMIZE","PUBLISH_READY"}:
                         raise ValueError("마케팅 결정 형식 오류")
-                    usage = raw.get("usageMetadata") or {}
-                    self.usage = {"input_tokens": int(usage.get("promptTokenCount") or 0),
-                                  "output_tokens": int(usage.get("candidatesTokenCount") or 0)}
-                    marketing_safety.after_call(audit_id, "SUCCESS", **self.usage)
                     return result
             except (httpx.TimeoutException, httpx.TransportError):
+                marketing_safety.after_call(audit_id, "TIMEOUT")
                 last_error = "AI 응답 시간 초과 또는 연결 오류"
             except (ValueError, KeyError, IndexError, TypeError):
+                if not usage_recorded:
+                    marketing_safety.after_call(audit_id, "USAGE_INVALID")
+                    marketing_safety.trip_kill("AI 응답을 해석할 수 없어 사용량 미확인")
                 last_error = "AI 응답 구조 오류"
                 break
             except httpx.HTTPStatusError:
