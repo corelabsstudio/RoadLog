@@ -275,3 +275,9 @@ python scripts/_roadlog_suite_test.py --live
 - 실제 진단 실행은 Tavily만 지원한다. `MARKETING_DIAGNOSTICS_LIVE_ENABLED=true`, 기존 글로벌/Research 안전 스위치, Tavily 키, 명시적 `live=true`, 검증된 상품 선택이 모두 필요하다. 기본은 OFF이고 하루 1회 DB 선점으로 중복을 차단한다. 전체 팀·스케줄러·Gemini·게시를 호출하지 않는다.
 - 기존 `TavilyResearchProvider.search`와 외부 호출 감사 로그를 그대로 쓴다. 감사 operation `diagnostic:tavily_search`, 관리자 식별자는 비복원 해시로 남긴다. 결과는 기존 Research 저장소에 `EXTERNAL_SOURCE`/`PROVIDER_DIAGNOSTIC`로 저장 후 재조회한다. 오류 시 재시도하지 않으며 오류 종류만 반환한다.
 - 검증: `scripts/_marketing_diagnostics_test.py`의 오프라인 MockTransport 경로 통과. 실제 Tavily 호출 여부와 운영 배포 상태는 별도 확인 기록을 따른다.
+# 2026-09-24 · Tavily 운영 단일 진단 및 표시 보완
+
+- `054e1fd`는 이전 캠페인의 scorecard·선택 전략·게시 상태를 다음 Director 입력에 더하는 변경으로 재확인했다. 자동 외부 API/게시 스위치 변경은 없다. `33ea0d8`과 함께 Railway에 배포해 ACTIVE를 확인했다.
+- 배포 직후 `/api/health`, `/admin/`, `/blog/`는 HTTP 200, 미인증 진단 GET·POST는 HTTP 401, 기존 관리자 화면과 6개 도구 상태는 표시됨을 확인했다. 외부 호출 감사 기록은 0건이었다.
+- 관리자 화면의 Tavily 단일 진단에서 실제 상품 `오늘 운세 한 조각`, 검색어 `오늘 운세 무료 사주 서비스`로 정확히 1회 실행해 결과 5건과 저장/재조회 통과를 확인했다. Gemini·이미지·영상·SNS·블로그 게시는 실행하지 않았다. 전체 팀과 TEST 캠페인도 실행하지 않았다.
+- 진단 GET에서 저장된 마지막 검색어·출처 제목/URL/요약·호출 수를 다시 읽어 주도록 보완했다. 관리자 화면도 새로고침 후 결과가 남도록 표시한다. 임시 `MARKETING_DIAGNOSTICS_LIVE_ENABLED`는 검증 후 다시 false로 닫는다.

@@ -38,11 +38,20 @@ def provider_status(repo: MarketingRepository, web_root: Path) -> list[dict]:
     rows = []
     for key, label in PROVIDERS:
         last = repo.provider_diagnostic(key)
+        stored = repo.research_sources(-last["id"]) if key == "tavily" and last and last["status"] == "LIVE_TEST_PASSED" else []
+        last_result = ({"query": last["query_text"], "resultCount": len(stored),
+                        "requestCount": last["request_count"],
+                        "results": [{"title": item["title"], "url": item["url"], "snippet": item["summary"],
+                                     "source": item["provider"], "observedAt": item["observed_at"],
+                                     "sourceType": item["source_type"], "origin": item["origin"]}
+                                    for item in stored if item["source_type"] == "EXTERNAL_SOURCE" and item["origin"] == "PROVIDER_DIAGNOSTIC"]}
+                       if stored else None)
         rows.append({"provider": key, "label": label, "configured": configured[key], "enabled": enabled[key],
                      "liveTestAllowed": key == "tavily" and live_enabled and configured[key] and enabled[key],
                      "lastTestAt": last["tested_at"] if last else None,
                      "lastTestStatus": last["status"] if last else None,
                      "lastErrorKind": last["error_kind"] if last else None,
+                     "lastResult": last_result,
                      "diagnosticsLiveEnabled": live_enabled if key == "tavily" else False})
     return rows
 

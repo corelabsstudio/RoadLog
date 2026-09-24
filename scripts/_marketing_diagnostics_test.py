@@ -71,7 +71,12 @@ with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as temporary:
             assert marketing_safety.diagnostic_audit_count(row["id"]) == 1
             assert client.post(path + "/tavily/test", json={"live": True, "product_id": "today"}).status_code == 423
             assert len(calls) == 1
-            assert client.get(path).json()["items"][1]["lastTestStatus"] == "LIVE_TEST_PASSED"
+            saved_status = client.get(path).json()["items"][1]
+            assert saved_status["lastTestStatus"] == "LIVE_TEST_PASSED"
+            assert saved_status["lastResult"]["query"] == "오늘 운세"
+            assert saved_status["lastResult"]["results"][0]["url"] == "https://example.org/fortune"
+            assert saved_status["lastResult"]["results"][0]["source"] == "Tavily Search"
+            assert len(calls) == 1
     with sqlite3.connect(marketing_safety.DB) as conn:
         assert conn.execute("SELECT COUNT(*) FROM marketing_external_call_audit WHERE provider!='research'").fetchone()[0] == 0
     transport_client.close()

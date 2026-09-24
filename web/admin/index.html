@@ -1803,6 +1803,22 @@ function paintMarketingDiagnostics(data) {
   const tavily = rows.find((p) => p.provider === 'tavily');
   $('marketingDiagnosticRun').disabled = !tavily?.liveTestAllowed || tavily.lastTestAt?.slice(0, 10) === new Date().toLocaleDateString('sv-SE', {timeZone:'Asia/Seoul'});
   $('marketingDiagnosticRun').title = tavily?.liveTestAllowed ? '관리자 확인 후 하루 1회만 실행됩니다' : '키·검색 허용·진단 허용 설정이 필요합니다';
+  if (tavily?.lastResult) renderMarketingDiagnosticResult(tavily.lastResult);
+  else if (tavily?.lastTestStatus === 'LIVE_TEST_FAILED') $('marketingDiagnosticResult').textContent = '실제 검사 실패 · ' + (tavily.lastErrorKind || '오류 종류 확인 필요');
+}
+function renderMarketingDiagnosticResult(data) {
+  const result = $('marketingDiagnosticResult');
+  result.textContent = '실제 검사 통과 · Tavily ' + num(data.requestCount) + '회 · Gemini·이미지·영상·게시 0회 · 결과 ' + num(data.resultCount) + '건 · 검색어: ' + (data.query || '확인되지 않음');
+  const list = document.createElement('div');
+  (data.results || []).slice(0, 5).forEach((item) => {
+    const row = document.createElement('p');
+    const link = document.createElement('a');
+    if (/^https?:\/\//i.test(item.url)) { link.href = item.url; link.target = '_blank'; link.rel = 'noopener noreferrer'; }
+    link.textContent = item.title + ' · ' + item.url;
+    row.append(link, document.createTextNode(' · 출처: ' + (item.source || '확인되지 않음') + ' · ' + (item.snippet || '')));
+    list.append(row);
+  });
+  result.append(list);
 }
 $('marketingDiagnosticRun').addEventListener('click', async () => {
   const button = $('marketingDiagnosticRun');
@@ -1813,18 +1829,7 @@ $('marketingDiagnosticRun').addEventListener('click', async () => {
   try {
     const data = await marketingFetch('/providers/tavily/test', {method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({live:true, product_id:$('marketingDiagnosticProduct').value, query:$('marketingDiagnosticQuery').value})});
-    const result = $('marketingDiagnosticResult');
-    result.textContent = '실제 검사 통과 · Tavily ' + data.requestCount + '회 · Gemini·이미지·영상·게시 0회 · 결과 ' + data.resultCount + '건';
-    const list = document.createElement('div');
-    (data.results || []).slice(0, 5).forEach((item) => {
-      const row = document.createElement('p');
-      const link = document.createElement('a');
-      if (/^https?:\/\//i.test(item.url)) { link.href = item.url; link.target = '_blank'; link.rel = 'noopener noreferrer'; }
-      link.textContent = item.title + ' · ' + item.url;
-      row.append(link, document.createTextNode(' — ' + item.snippet));
-      list.append(row);
-    });
-    result.append(list);
+    renderMarketingDiagnosticResult(data);
     marketingFetch('/providers').then(paintMarketingDiagnostics).catch(() => {});
   } catch (ex) { $('marketingDiagnosticResult').textContent = ex.message; }
 });
