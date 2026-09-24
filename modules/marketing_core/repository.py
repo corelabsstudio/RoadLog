@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import sqlite3
+from urllib.parse import urlencode
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,9 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_site_profiles(tenant_id TEXT PRIMARY KEY,catalog_hash TEXT NOT NULL,profile_json TEXT NOT NULL,observed_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_research_sources(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,title TEXT NOT NULL,url TEXT NOT NULL,summary TEXT NOT NULL,observed_at TEXT NOT NULL,source_type TEXT NOT NULL,query_text TEXT NOT NULL DEFAULT '',provider TEXT NOT NULL DEFAULT '');
         CREATE TABLE IF NOT EXISTS marketing_assets(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,content_id INTEGER NOT NULL,kind TEXT NOT NULL,mime TEXT NOT NULL,filename TEXT NOT NULL,bytes INTEGER NOT NULL,sha256 TEXT NOT NULL,origin TEXT NOT NULL,status TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_publications(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,content_id INTEGER NOT NULL,channel TEXT NOT NULL,status TEXT NOT NULL,tracking_url TEXT NOT NULL,payload_json TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(tenant_id,content_id));
+        CREATE TABLE IF NOT EXISTS marketing_revisions(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,content_id INTEGER NOT NULL,previous_content_id INTEGER,revision_no INTEGER NOT NULL,feedback TEXT NOT NULL,outcome TEXT NOT NULL,created_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_scorecards(tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,period_days INTEGER NOT NULL,visits INTEGER,cta_clicks INTEGER,signups INTEGER,purchases INTEGER,revenue_krw INTEGER,observed_at TEXT NOT NULL,PRIMARY KEY(tenant_id,campaign_id));
         CREATE INDEX IF NOT EXISTS ix_marketing_assets_content ON marketing_assets(tenant_id,content_id);
         CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_product ON marketing_campaigns(tenant_id,product_id,created_at);
         """)
@@ -41,6 +45,10 @@ class MarketingRepository:
                 conn.execute(f"CREATE INDEX IF NOT EXISTS ix_{table}_tenant ON {table}(tenant_id)")
             if "bundle_id" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_content)")}:
                 conn.execute("ALTER TABLE marketing_content ADD COLUMN bundle_id INTEGER")
+            if "workflow_state" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_content)")}:
+                conn.execute("ALTER TABLE marketing_content ADD COLUMN workflow_state TEXT NOT NULL DEFAULT 'DRAFT'")
+            if "stage" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_campaigns)")}:
+                conn.execute("ALTER TABLE marketing_campaigns ADD COLUMN stage TEXT NOT NULL DEFAULT 'IDLE'")
             bundle_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_bundles)")}
             if "source_text" not in bundle_columns:
                 conn.execute("ALTER TABLE marketing_bundles ADD COLUMN source_text TEXT NOT NULL DEFAULT ''")
@@ -101,6 +109,49 @@ class MarketingRepository:
             conn.execute("INSERT INTO marketing_campaign_events(tenant_id,campaign_id,agent_id,run_id,status,summary,created_at) VALUES(?,?,?,?,?,?,?)",
                          (self.tenant_id,campaign_id,agent_id,run_id,status,summary[:300],stamp))
 
+    def campaign_stage(self, campaign_id: int, stage: str) -> None:
+        allowed = {"ANALYZING", "RESEARCHING", "PLANNING", "CREATING", "REVIEWING", "READY_TO_PUBLISH", "WAITING_APPROVAL", "MEASURING", "LEARNING", "BLOCKED", "FAILED"}
+        if stage not in allowed: raise ValueError("지원하지 않는 실행 단계")
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_campaigns SET stage=? WHERE tenant_id=? AND id=?", (stage,self.tenant_id,campaign_id))
+
+    def record_revision(self, campaign_id: int, content_id: int, previous_content_id: int | None, revision_no: int, feedback: str, outcome: str, stamp: str) -> None:
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_revisions(tenant_id,campaign_id,content_id,previous_content_id,revision_no,feedback,outcome,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                         (self.tenant_id,campaign_id,content_id,previous_content_id,revision_no,feedback[:500],outcome,stamp))
+
+    def prepare_publication(self, campaign_id: int, content_id: int, stamp: str, base_url: str = "https://roadlog.co.kr/") -> dict[str, Any]:
+        """Only a final, fact-checked text with all channel assets can enter approval."""
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT * FROM marketing_content WHERE tenant_id=? AND id=? AND mode='REAL'", (self.tenant_id,content_id)).fetchone()
+            existing = conn.execute("SELECT id,status,tracking_url FROM marketing_publications WHERE tenant_id=? AND content_id=?", (self.tenant_id,content_id)).fetchone()
+            if existing and row and row["workflow_state"] == "READY_TO_PUBLISH": return dict(existing)
+            if not row or row["workflow_state"] != "FINAL" or row["review_reasons_json"] != "[]":
+                raise ValueError("최종 사실·품질 검수 통과본이 아닙니다.")
+            facts = json.loads(row["fact_snapshot_json"])
+            if (facts.get("facts_status") != "VERIFIED" or not facts.get("source_file") or
+                not all(str(row[key]).strip() for key in ("product_id","platform","title","body","cta"))):
+                raise ValueError("상품 정본 또는 게시 필수 데이터가 없습니다.")
+            channel = row["platform"]
+            if channel not in {"블로그", "인스타그램"}:
+                raise ValueError("게시 payload가 정의되지 않은 채널입니다.")
+            if channel == "인스타그램":
+                asset = conn.execute("SELECT id FROM marketing_assets WHERE tenant_id=? AND content_id=? AND kind='image' AND mime='image/jpeg' AND status='VERIFIED' LIMIT 1", (self.tenant_id,content_id)).fetchone()
+                if not asset:
+                    conn.execute("UPDATE marketing_content SET workflow_state='BLOCKED_ASSET_REQUIRED' WHERE tenant_id=? AND id=?", (self.tenant_id,content_id))
+                    return {"status":"BLOCKED_ASSET_REQUIRED", "reason":"검증된 JPEG 이미지가 필요합니다."}
+            cur = conn.execute("INSERT INTO marketing_publications(tenant_id,campaign_id,content_id,channel,status,tracking_url,payload_json,created_at) VALUES(?,?,?,?,?,?,?,?)",
+                               (self.tenant_id,campaign_id,content_id,channel,"PREPARING","","{}",stamp))
+            publication_id = int(cur.lastrowid)
+            query = urlencode({"utm_source":"roadlog_blog" if channel == "블로그" else "instagram", "utm_medium":"owned" if channel == "블로그" else "social", "utm_campaign":f"rl-{campaign_id}", "rl_campaign_id":campaign_id, "rl_publication_id":publication_id})
+            url = base_url.rstrip("/") + "/?" + query
+            payload = {"channel":channel,"title":row["title"],"hook":row["hook"],"body":row["body"],"cta":row["cta"],"tracking_url":url}
+            conn.execute("UPDATE marketing_publications SET status='READY_TO_PUBLISH',tracking_url=?,payload_json=? WHERE id=?", (url,json.dumps(payload,ensure_ascii=False),publication_id))
+            conn.execute("UPDATE marketing_content SET workflow_state='READY_TO_PUBLISH' WHERE tenant_id=? AND id=?", (self.tenant_id,content_id))
+            conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,content_id,"PENDING",stamp))
+            return {"id":publication_id,"status":"READY_TO_PUBLISH","tracking_url":url,"payload":payload}
+
     def finish_campaign(self, campaign_id: int, status: str, reason: str, stamp: str) -> None:
         if status not in {"AWAITING_APPROVAL", "NEEDS_REVISION", "FAILED", "NO_ACTION"}:
             raise ValueError("지원하지 않는 캠페인 상태")
@@ -111,9 +162,24 @@ class MarketingRepository:
     def recent_campaigns(self, limit: int = 15) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM marketing_campaigns WHERE tenant_id=? ORDER BY id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
-            return [{**dict(row),"sources":self.research_sources(row["id"]),"events":[dict(event) for event in conn.execute(
+            return [{**dict(row),"publications":[dict(item) for item in conn.execute("SELECT id,content_id,channel,status,tracking_url FROM marketing_publications WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,row["id"]))],
+                     "scorecard":dict(score) if (score := conn.execute("SELECT * FROM marketing_scorecards WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,row["id"])).fetchone()) else None,
+                     "revisions":[dict(rev) for rev in conn.execute("SELECT content_id,previous_content_id,revision_no,feedback,outcome,created_at FROM marketing_revisions WHERE tenant_id=? AND campaign_id=? ORDER BY id",(self.tenant_id,row["id"]))],
+                     "sources":self.research_sources(row["id"]),"events":[dict(event) for event in conn.execute(
                 "SELECT agent_id,run_id,status,summary,created_at FROM marketing_campaign_events WHERE tenant_id=? AND campaign_id=? ORDER BY id",
                 (self.tenant_id,row["id"]))]} for row in rows]
+
+    def save_scorecard(self, campaign_id: int, metrics: dict[str, Any], stamp: str) -> dict[str, Any]:
+        """UTM traffic is measured; account/purchase attribution is not yet joined."""
+        key = f"rl-{campaign_id}"
+        rows = metrics.get("by_campaign", [])
+        matching = [row for row in rows if str(row.get("name") or "").split(" · ")[-1] == key]
+        visits = sum(int(row.get("uv") or 0) for row in matching) if matching else (0 if len(rows) < 30 else None)
+        days = int(metrics.get("period_days") or 7)
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_scorecards(tenant_id,campaign_id,period_days,visits,observed_at) VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,campaign_id) DO UPDATE SET period_days=excluded.period_days,visits=excluded.visits,observed_at=excluded.observed_at",
+                         (self.tenant_id,campaign_id,days,visits,stamp))
+        return {"campaign_id":campaign_id,"period_days":days,"visits":visits,"cta_clicks":None,"signups":None,"purchases":None,"revenue_krw":None,"signup_conversion_rate":None,"purchase_conversion_rate":None}
 
     def recent_campaign_product_ids(self, since: str) -> set[str]:
         with self.connect() as conn:
@@ -155,10 +221,8 @@ class MarketingRepository:
             reasons = json.loads(row["review_reasons_json"])
             if not passed: reasons.append("AI 품질 검수 미통과 또는 실행 실패")
             approved = not reasons
-            conn.execute("UPDATE marketing_content SET status=?,review_result=?,review_reasons_json=? WHERE id=? AND tenant_id=?",
-                         ("PENDING_APPROVAL" if approved else "REVISION_REQUESTED", "상품 정본 및 AI 검수 통과" if approved else "검수 실패", json.dumps(reasons, ensure_ascii=False), content_id, self.tenant_id))
-            if approved:
-                conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id, content_id, "PENDING", stamp))
+            conn.execute("UPDATE marketing_content SET status=?,workflow_state=?,review_result=?,review_reasons_json=? WHERE id=? AND tenant_id=?",
+                         ("PENDING_APPROVAL" if approved else "REVISION_REQUESTED", "FINAL" if approved else "NEEDS_REVISION", "상품 정본 및 AI 검수 통과" if approved else "검수 실패", json.dumps(reasons, ensure_ascii=False), content_id, self.tenant_id))
             return approved
 
     def finish_real_run(self, run_id: int, status: str, summary: str, input_tokens: int = 0, output_tokens: int = 0) -> None:
@@ -199,6 +263,7 @@ class MarketingRepository:
         with self.connect() as conn:
             cur = conn.execute("INSERT INTO marketing_content(tenant_id,product_id,product_name,platform,title,hook,body,cta,image_prompt,status,review_result,review_reasons_json,fact_snapshot_json,estimated_cost_krw,mode,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (self.tenant_id,product["product_id"],product["name"],draft["platform"],draft["title"],draft["hook"],draft["body"],draft["cta"],draft["image_prompt"],"AWAITING_AI_REVIEW" if defer_approval else "PENDING_APPROVAL" if passed else "REVISION_REQUESTED","AI 품질 검수 대기" if defer_approval else "상품 정본 및 표현 검수 통과" if passed else "검수 실패",json.dumps(reasons,ensure_ascii=False),json.dumps({**product,"source_file":meta["source_file"],"source_hash":meta["source_hash"]},ensure_ascii=False),reservation_krw,mode,now))
             cid, aid = int(cur.lastrowid), None
+            conn.execute("UPDATE marketing_content SET workflow_state=? WHERE tenant_id=? AND id=?", ("REVIEWING" if defer_approval else "FINAL" if passed else "NEEDS_REVISION",self.tenant_id,cid))
             if passed and not defer_approval: aid = int(conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,cid,"PENDING",now)).lastrowid)
         return cid, aid
 

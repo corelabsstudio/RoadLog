@@ -205,6 +205,9 @@ def main():
         else: raise AssertionError("rejected team did not finish")
         blocked_team = marketing_os.team_dashboard()
         check(not marketing_os.approvals() and blocked_team["content"][0]["status"] == "REVISION_REQUESTED", "AI 검수 실패 시 승인 대기 미등록")
+        with MarketingRepository(marketing_os.DB,"roadlog").connect() as conn:
+            state = conn.execute("SELECT workflow_state FROM marketing_content WHERE tenant_id='roadlog' ORDER BY id DESC LIMIT 1").fetchone()[0]
+        check(state == "REQUIRES_HUMAN" and len(blocked_team["campaigns"][0]["revisions"]) == 3, "2회 수정 실패 시 관리자 확인 · 수정 이력 3건")
         check(sum(o["agent_id"] == "content_writer" for o in blocked_team["agent_outputs"]) == 3
               and sum(o["agent_id"] == "quality_reviewer" for o in blocked_team["agent_outputs"]) == 3,
               "검수 실패 시 수정 최대 2회 · 재검수 최대 2회")

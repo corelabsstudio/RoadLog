@@ -221,3 +221,12 @@ python scripts/_roadlog_suite_test.py --live
 - 네 마케팅 테이블에 `tenant_id`를 추가하고 기존 행은 `roadlog`로 자동 이관한다. 테스트에서 두 테넌트의 승인 목록과 결정 권한이 섞이지 않는 것을 확인한다.
 - 2026-09-23 운영 배포: `a35291b`를 `main`에 푸시했고 Railway 배포 `d07f32a8-55a6-4e27-b176-3722cf7b6bc9`가 SUCCESS다. 라이브 `/api/health` 200, `/admin/`의 `AI 마케팅 팀` 탭, 상품 44개, 비로그인 마케팅 API 401을 확인했다.
 - 2026-09-23 전체 운영판 보강: `marketing_core/operations.py`에 8개 AI 직원, 팀 시작·일시정지·긴급정지, 작업 시간표, 수동 작업, 활동 로그, 콘텐츠 기록, 일일 보고서를 tenant별로 추가했다. 기존 DRY RUN과 외부 게시 차단은 유지한다.
+
+## AI 마케팅 게시 준비 게이트 · 2026-09-24 Codex
+
+- 온해님은 Gemini 이미지 API 과금 승인을 보류했다. `marketing_os._run_team`의 자동 이미지 생성 호출을 제거했고 도구 상태를 `과금 승인 보류`로 표시한다. 이미지 Provider 코드는 남기되 실제 유료 이미지 호출·활성화는 금지한다.
+- 팀 자동 작성본은 `REVIEWING → FINAL → READY_TO_PUBLISH` 순서로 진행한다. 최종 검수 통과만으로 승인 항목을 만들지 않는다. `marketing_core/repository.py`의 `prepare_publication`이 상품 정본, 문안, CTA, 채널 payload, 필수 자산을 확인하고 게시 준비 기록·고유 추적 URL을 만든 뒤 승인 항목을 넣는다. 블로그 텍스트는 이미지 불필요, 인스타그램은 검증된 JPEG 없으면 `BLOCKED_ASSET_REQUIRED`다. 승인·준비는 실제 게시가 아니다.
+- 자동 수정 최대 2회/검수 3회에 대해 원본·수정본 ID, 피드백, 결과를 `marketing_revisions`에 남기고 전부 실패하면 `REQUIRES_HUMAN`으로 표시한다. 캠페인 단계도 DB `stage`로 보존한다.
+- UTM/캠페인/게시물 ID를 가진 링크를 생성한다. 기존 `stats.overview`의 UTM 방문 집계만 scorecard에 실측 저장한다. 상위 30개 제한으로 집계에서 밀리면 방문도 미확인으로 표시한다. 캠페인별 CTA 클릭·가입·구매·매출은 현재 귀속 경로가 없어 NULL이다. 사이트 전체 수치를 캠페인 성과로 쓰지 않는다. 이전 캠페인 scorecard를 다음 Director의 metrics에 전달한다.
+- 키가 없어도 팀 시작 시 내부 상품·사이트 진단을 갱신한다. AI 작성은 키/자동화 조건 없으면 대기한다. 외부 검색·Search Console·이미지·영상·Meta 게시를 구현/연결했다는 뜻이 아니다. 현재 블로그도 게시 준비/승인까지만 가능하고 내부 블로그 발행기는 없다. 과거 수동 초안/인스타 승인 경로는 새 게시 준비 게이트와 별개인 레거시 경로이므로 완전한 통합을 후속 작업으로 남긴다.
+- 테스트: `scripts/_marketing_os_test.py`, `scripts/_marketing_closed_loop_test.py`는 모의 공급자/로컬 SQLite만 사용한다. 실계정·실유료 호출은 하지 않는다.
