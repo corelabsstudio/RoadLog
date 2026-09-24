@@ -98,7 +98,7 @@ def main():
         measured = build_profile([product], {"source":"test","period_days":7,"today":{},"month":{"uv":42,"signups":0},"by_product":[]}, "hash")
         check(diagnose(measured,set())["objective"] == "PRODUCT_PAGE_IMPROVEMENT" and diagnose(measured,set())["selected_channel"] == "상품 상세페이지", "가입 0건일 때 전환 동선 진단·전략 선택")
         check(len(FakeGemini.seen_writer_context[-1]) == 3, "디렉터·조사·검색 결과를 작가에게 전달")
-        check(MarketingRepository(marketing_os.DB,"roadlog").recent_learning()[0]["evidence_type"] == "MEASURED", "실행 전 측정값과 추론 분리")
+        check(not MarketingRepository(marketing_os.DB,"roadlog").recent_learning(), "실제 게시 전 사이트 전체 집계는 캠페인 Learning으로 저장하지 않음")
         check(len({o["run_id"] for o in team["agent_outputs"]}) == 8 and all(o["run_id"] > 0 for o in team["agent_outputs"]), "8명 각각 독립 요청")
         check(marketing_os.usage()["requests"] == 8 and marketing_os.usage()["estimated_cost_krw"] == 80, "8명 요청·내부 예약 80원")
         check(len(FakeGemini.seen_metrics) == 3 and all(m["today"]["uv"] == 12 for m in FakeGemini.seen_metrics), "디렉터·시장 조사원·성과 분석가에게 실제 집계 구조 전달")

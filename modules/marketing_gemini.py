@@ -88,14 +88,15 @@ class RoadLogGeminiProvider:
         }, "required": ["summary", "recommendations", "source_facts", "unknowns", "review_passed"]}
         if task.agent_id == "marketing_director":
             schema["properties"]["decision"] = {"type":"STRING","enum":["NO_ACTION","RESEARCH","CREATE","OPTIMIZE","PUBLISH_READY"]}
-            schema["required"].append("decision")
+            schema["properties"]["reasonForRetry"] = {"type":"STRING"}
+            schema["required"].extend(["decision","reasonForRetry"])
         instructions = ("ROADLOG의 지정된 마케팅 역할 한 가지만 수행하세요. 제공되지 않은 가격·할인·기능·"
                         "시장 수치·검색량·성과 수치를 만들지 마세요. 외부 게시를 제안할 수는 있으나 실행했다고 말하지 마세요. "
                         "summary는 300자 이하, recommendations는 최대 3개로 제한하세요. "
                         "source_facts에는 상품 ID, confirmed_results의 원문, 제공된 metrics.source만 글자까지 동일하게 복사하세요. "
                         "metrics가 있으면 그 수치만 인용하고 새 숫자는 만들지 마세요. 미연결 데이터는 unknowns에 쓰세요. "
                         "품질 검수자 외에는 review_passed를 false로 두세요. 품질 검수자는 초안의 사실 불일치가 있으면 false로 두세요. "
-                        "context는 앞 단계 AI의 추론이며 검증된 외부 자료가 아닙니다. 마케팅 디렉터는 decision으로 행동 여부를 선택하세요.")
+                        "context는 앞 단계 AI의 추론이며 검증된 외부 자료가 아닙니다. 마케팅 디렉터는 이전 캠페인 실측 성과와 Learning을 읽고 decision으로 행동 여부를 선택하세요. 동일 상품 전략을 다시 쓴다면 reasonForRetry에 새 근거를 적고, 그렇지 않으면 빈 문자열로 두세요.")
         payload = {"role": task.agent_id, "objective": task.objective, "missing_data": task.missing_data,
                    "facts": facts, "metrics": metrics,
                    "draft": {k: draft.get(k) for k in ("title", "hook", "body", "cta", "factual_claims") } if draft else None,

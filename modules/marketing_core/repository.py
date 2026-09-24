@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import sqlite3
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from pathlib import Path
 from typing import Any
@@ -32,6 +33,11 @@ class MarketingRepository:
         CREATE TABLE IF NOT EXISTS marketing_publications(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,content_id INTEGER NOT NULL,channel TEXT NOT NULL,status TEXT NOT NULL,tracking_url TEXT NOT NULL,payload_json TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(tenant_id,content_id));
         CREATE TABLE IF NOT EXISTS marketing_revisions(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,content_id INTEGER NOT NULL,previous_content_id INTEGER,revision_no INTEGER NOT NULL,feedback TEXT NOT NULL,outcome TEXT NOT NULL,created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS marketing_scorecards(tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,period_days INTEGER NOT NULL,visits INTEGER,cta_clicks INTEGER,signups INTEGER,purchases INTEGER,revenue_krw INTEGER,observed_at TEXT NOT NULL,PRIMARY KEY(tenant_id,campaign_id));
+        CREATE TABLE IF NOT EXISTS marketing_blog_posts(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,publication_id INTEGER NOT NULL UNIQUE,slug TEXT NOT NULL UNIQUE,title TEXT NOT NULL,hook TEXT NOT NULL,body TEXT NOT NULL,cta TEXT NOT NULL,tracking_url TEXT NOT NULL,published_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS marketing_attribution_visits(id INTEGER PRIMARY KEY AUTOINCREMENT,tenant_id TEXT NOT NULL,visitor_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,publication_id INTEGER NOT NULL,source TEXT NOT NULL,medium TEXT NOT NULL,landing_page TEXT NOT NULL,first_seen_at TEXT NOT NULL,last_seen_at TEXT NOT NULL,view_count INTEGER NOT NULL DEFAULT 1,UNIQUE(tenant_id,visitor_id,campaign_id,publication_id));
+        CREATE TABLE IF NOT EXISTS marketing_attribution_signups(tenant_id TEXT NOT NULL,account_key TEXT NOT NULL,visitor_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,publication_id INTEGER NOT NULL,signed_up_at TEXT NOT NULL,PRIMARY KEY(tenant_id,account_key));
+        CREATE TABLE IF NOT EXISTS marketing_attribution_purchases(tenant_id TEXT NOT NULL,payment_key TEXT NOT NULL,account_key TEXT NOT NULL,campaign_id INTEGER NOT NULL,publication_id INTEGER NOT NULL,product_id TEXT NOT NULL,kind TEXT NOT NULL,revenue_krw INTEGER NOT NULL,paid_at TEXT NOT NULL,PRIMARY KEY(tenant_id,payment_key));
+        CREATE TABLE IF NOT EXISTS marketing_campaign_learning(tenant_id TEXT NOT NULL,campaign_id INTEGER NOT NULL,score_fingerprint TEXT NOT NULL,product_id TEXT NOT NULL,strategy_type TEXT NOT NULL,channel TEXT NOT NULL,evidence_type TEXT NOT NULL,measured_json TEXT NOT NULL,analysis_json TEXT NOT NULL,interpretation TEXT NOT NULL,recommendation TEXT NOT NULL,reason_for_retry TEXT NOT NULL,confidence TEXT NOT NULL,created_at TEXT NOT NULL,PRIMARY KEY(tenant_id,campaign_id));
         CREATE INDEX IF NOT EXISTS ix_marketing_assets_content ON marketing_assets(tenant_id,content_id);
         CREATE INDEX IF NOT EXISTS ix_marketing_campaigns_product ON marketing_campaigns(tenant_id,product_id,created_at);
         """)
@@ -49,6 +55,16 @@ class MarketingRepository:
                 conn.execute("ALTER TABLE marketing_content ADD COLUMN workflow_state TEXT NOT NULL DEFAULT 'DRAFT'")
             if "stage" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_campaigns)")}:
                 conn.execute("ALTER TABLE marketing_campaigns ADD COLUMN stage TEXT NOT NULL DEFAULT 'IDLE'")
+            publication_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_publications)")}
+            for name in ("external_content_id", "published_url", "published_at", "publish_error"):
+                if name not in publication_columns:
+                    conn.execute(f"ALTER TABLE marketing_publications ADD COLUMN {name} TEXT")
+            score_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_scorecards)")}
+            for name, data_type in (("unique_visitors","INTEGER"),("signup_conversion_rate","REAL"),("purchase_conversion_rate","REAL"),("revenue_per_visitor","REAL")):
+                if name not in score_columns:
+                    conn.execute(f"ALTER TABLE marketing_scorecards ADD COLUMN {name} {data_type}")
+            if "refunded_at" not in {r["name"] for r in conn.execute("PRAGMA table_info(marketing_attribution_purchases)")}:
+                conn.execute("ALTER TABLE marketing_attribution_purchases ADD COLUMN refunded_at TEXT")
             bundle_columns = {r["name"] for r in conn.execute("PRAGMA table_info(marketing_bundles)")}
             if "source_text" not in bundle_columns:
                 conn.execute("ALTER TABLE marketing_bundles ADD COLUMN source_text TEXT NOT NULL DEFAULT ''")
@@ -150,7 +166,84 @@ class MarketingRepository:
             conn.execute("UPDATE marketing_publications SET status='READY_TO_PUBLISH',tracking_url=?,payload_json=? WHERE id=?", (url,json.dumps(payload,ensure_ascii=False),publication_id))
             conn.execute("UPDATE marketing_content SET workflow_state='READY_TO_PUBLISH' WHERE tenant_id=? AND id=?", (self.tenant_id,content_id))
             conn.execute("INSERT INTO marketing_approvals(tenant_id,content_id,status,created_at) VALUES(?,?,?,?)", (self.tenant_id,content_id,"PENDING",stamp))
-            return {"id":publication_id,"status":"READY_TO_PUBLISH","tracking_url":url,"payload":payload}
+        return {"id":publication_id,"status":"READY_TO_PUBLISH","tracking_url":url,"payload":payload}
+
+    def publish_blog(self, approval_id: int, stamp: str, origin: str) -> dict[str, Any]:
+        """An approved publication and its public blog record commit together."""
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute("SELECT p.*,c.title,c.hook,c.body,c.cta,c.workflow_state,a.status approval_status "
+                               "FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id "
+                               "JOIN marketing_publications p ON p.content_id=c.id AND p.tenant_id=c.tenant_id "
+                               "WHERE a.tenant_id=? AND a.id=? AND p.channel='블로그'",(self.tenant_id,approval_id)).fetchone()
+            if not row or row["approval_status"] != "APPROVED" or row["workflow_state"] != "READY_TO_PUBLISH" or row["status"] != "READY_TO_PUBLISH":
+                raise ValueError("게시 준비와 관리자 승인이 모두 필요합니다.")
+            slug = f"ai-{row['id']}"
+            url = origin.rstrip("/") + f"/blog/{slug}.html"
+            conn.execute("INSERT INTO marketing_blog_posts(tenant_id,publication_id,slug,title,hook,body,cta,tracking_url,published_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                         (self.tenant_id,row["id"],slug,row["title"],row["hook"],row["body"],row["cta"],row["tracking_url"],stamp))
+            post = conn.execute("SELECT id,slug,published_at FROM marketing_blog_posts WHERE tenant_id=? AND publication_id=?",(self.tenant_id,row["id"])).fetchone()
+            if not post: raise RuntimeError("블로그 게시물 저장을 확인하지 못했습니다.")
+            conn.execute("UPDATE marketing_publications SET status='PUBLISHED',external_content_id=?,published_url=?,published_at=?,publish_error=NULL WHERE tenant_id=? AND id=?",
+                         (str(post["id"]),url,stamp,self.tenant_id,row["id"]))
+            conn.execute("UPDATE marketing_content SET workflow_state='PUBLISHED' WHERE tenant_id=? AND id=?",(self.tenant_id,row["content_id"]))
+            conn.execute("UPDATE marketing_campaigns SET status='PUBLISHED',stage='MEASURING' WHERE tenant_id=? AND id=?",(self.tenant_id,row["campaign_id"]))
+            return {"publication_id":row["id"],"external_content_id":post["id"],"published_url":url,"published_at":stamp,"campaign_id":row["campaign_id"],"status":"PUBLISHED"}
+
+    def approval_publication(self, approval_id: int) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT p.id,p.status,p.channel,a.status approval_status FROM marketing_approvals a JOIN marketing_publications p ON p.content_id=a.content_id AND p.tenant_id=a.tenant_id WHERE a.tenant_id=? AND a.id=?",(self.tenant_id,approval_id)).fetchone()
+        return dict(row) if row else None
+
+    def fail_blog_publish(self, approval_id: int, reason: str) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_publications SET status='PUBLISH_FAILED',publish_error=? WHERE tenant_id=? AND content_id=(SELECT content_id FROM marketing_approvals WHERE tenant_id=? AND id=?) AND status='READY_TO_PUBLISH'",
+                         (reason[:200],self.tenant_id,self.tenant_id,approval_id))
+
+    def blog_post(self, slug: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT b.*,p.campaign_id,p.status publication_status FROM marketing_blog_posts b JOIN marketing_publications p ON p.id=b.publication_id AND p.tenant_id=b.tenant_id WHERE b.tenant_id=? AND b.slug=? AND p.status='PUBLISHED'",(self.tenant_id,slug)).fetchone()
+        return dict(row) if row else None
+
+    def blog_posts(self, limit: int = 20) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT b.slug,b.title,b.hook,b.published_at FROM marketing_blog_posts b JOIN marketing_publications p ON p.id=b.publication_id AND p.tenant_id=b.tenant_id WHERE b.tenant_id=? AND p.status='PUBLISHED' ORDER BY b.id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
+        return [dict(row) for row in rows]
+
+    def published_tracking(self, campaign_id: int, publication_id: int) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("SELECT id,campaign_id,status,tracking_url FROM marketing_publications WHERE tenant_id=? AND id=? AND campaign_id=? AND status='PUBLISHED'",(self.tenant_id,publication_id,campaign_id)).fetchone()
+        return dict(row) if row else None
+
+    def record_attributed_visit(self, visitor_id: str, campaign_id: int, publication_id: int, source: str, medium: str, landing_page: str, stamp: str) -> bool:
+        if not self.published_tracking(campaign_id,publication_id): return False
+        with self.connect() as conn:
+            conn.execute("INSERT INTO marketing_attribution_visits(tenant_id,visitor_id,campaign_id,publication_id,source,medium,landing_page,first_seen_at,last_seen_at) VALUES(?,?,?,?,?,?,?,?,?) "
+                         "ON CONFLICT(tenant_id,visitor_id,campaign_id,publication_id) DO UPDATE SET last_seen_at=excluded.last_seen_at,view_count=view_count+1",
+                         (self.tenant_id,visitor_id,campaign_id,publication_id,source[:40],medium[:40],landing_page[:200],stamp,stamp))
+        return True
+
+    def record_attributed_signup(self, account_key: str, visitor_id: str, stamp: str, window_days: int = 30) -> bool:
+        cut = (datetime.fromisoformat(stamp)-timedelta(days=window_days)).isoformat()
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            visit = conn.execute("SELECT campaign_id,publication_id FROM marketing_attribution_visits WHERE tenant_id=? AND visitor_id=? AND last_seen_at>=? AND last_seen_at<=? ORDER BY last_seen_at DESC,id DESC LIMIT 1",(self.tenant_id,visitor_id,cut,stamp)).fetchone()
+            if not visit: return False
+            conn.execute("INSERT OR IGNORE INTO marketing_attribution_signups(tenant_id,account_key,visitor_id,campaign_id,publication_id,signed_up_at) VALUES(?,?,?,?,?,?)",(self.tenant_id,account_key,visitor_id,visit["campaign_id"],visit["publication_id"],stamp))
+            return True
+
+    def record_attributed_purchase(self, payment_key: str, account_key: str, product_id: str, kind: str, amount: int, stamp: str, window_days: int = 30) -> bool:
+        if kind not in {"charge","premium"} or amount <= 0: return False
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            signup = conn.execute("SELECT s.campaign_id,s.publication_id,v.last_seen_at FROM marketing_attribution_signups s JOIN marketing_attribution_visits v ON v.tenant_id=s.tenant_id AND v.visitor_id=s.visitor_id AND v.campaign_id=s.campaign_id AND v.publication_id=s.publication_id WHERE s.tenant_id=? AND s.account_key=?",(self.tenant_id,account_key)).fetchone()
+            if not signup or not timedelta(0) <= datetime.fromisoformat(stamp)-datetime.fromisoformat(signup["last_seen_at"]) <= timedelta(days=window_days): return False
+            conn.execute("INSERT OR IGNORE INTO marketing_attribution_purchases(tenant_id,payment_key,account_key,campaign_id,publication_id,product_id,kind,revenue_krw,paid_at) VALUES(?,?,?,?,?,?,?,?,?)",(self.tenant_id,payment_key,account_key,signup["campaign_id"],signup["publication_id"],product_id,kind,amount,stamp))
+        return True
+
+    def refund_attributed_purchase(self, payment_key: str, stamp: str) -> None:
+        with self.connect() as conn:
+            conn.execute("UPDATE marketing_attribution_purchases SET refunded_at=? WHERE tenant_id=? AND payment_key=? AND refunded_at IS NULL",(stamp,self.tenant_id,payment_key))
 
     def finish_campaign(self, campaign_id: int, status: str, reason: str, stamp: str) -> None:
         if status not in {"AWAITING_APPROVAL", "NEEDS_REVISION", "FAILED", "NO_ACTION"}:
@@ -162,7 +255,7 @@ class MarketingRepository:
     def recent_campaigns(self, limit: int = 15) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM marketing_campaigns WHERE tenant_id=? ORDER BY id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
-            return [{**dict(row),"publications":[dict(item) for item in conn.execute("SELECT id,content_id,channel,status,tracking_url FROM marketing_publications WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,row["id"]))],
+            return [{**dict(row),"publications":[dict(item) for item in conn.execute("SELECT id,content_id,channel,status,tracking_url,published_url,published_at,external_content_id FROM marketing_publications WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,row["id"]))],
                      "scorecard":dict(score) if (score := conn.execute("SELECT * FROM marketing_scorecards WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,row["id"])).fetchone()) else None,
                      "revisions":[dict(rev) for rev in conn.execute("SELECT content_id,previous_content_id,revision_no,feedback,outcome,created_at FROM marketing_revisions WHERE tenant_id=? AND campaign_id=? ORDER BY id",(self.tenant_id,row["id"]))],
                      "sources":self.research_sources(row["id"]),"events":[dict(event) for event in conn.execute(
@@ -170,16 +263,20 @@ class MarketingRepository:
                 (self.tenant_id,row["id"]))]} for row in rows]
 
     def save_scorecard(self, campaign_id: int, metrics: dict[str, Any], stamp: str) -> dict[str, Any]:
-        """UTM traffic is measured; account/purchase attribution is not yet joined."""
-        key = f"rl-{campaign_id}"
-        rows = metrics.get("by_campaign", [])
-        matching = [row for row in rows if str(row.get("name") or "").split(" · ")[-1] == key]
-        visits = sum(int(row.get("uv") or 0) for row in matching) if matching else (0 if len(rows) < 30 else None)
-        days = int(metrics.get("period_days") or 7)
+        """All-time first-party funnel, never site-wide inferred conversion."""
         with self.connect() as conn:
-            conn.execute("INSERT INTO marketing_scorecards(tenant_id,campaign_id,period_days,visits,observed_at) VALUES(?,?,?,?,?) ON CONFLICT(tenant_id,campaign_id) DO UPDATE SET period_days=excluded.period_days,visits=excluded.visits,observed_at=excluded.observed_at",
-                         (self.tenant_id,campaign_id,days,visits,stamp))
-        return {"campaign_id":campaign_id,"period_days":days,"visits":visits,"cta_clicks":None,"signups":None,"purchases":None,"revenue_krw":None,"signup_conversion_rate":None,"purchase_conversion_rate":None}
+            visits_row = conn.execute("SELECT COALESCE(SUM(view_count),0) visits,COUNT(DISTINCT visitor_id) unique_visitors FROM marketing_attribution_visits WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,campaign_id)).fetchone()
+            signups = conn.execute("SELECT COUNT(*) n FROM marketing_attribution_signups WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,campaign_id)).fetchone()["n"]
+            purchase_row = conn.execute("SELECT COUNT(*) n,COALESCE(SUM(revenue_krw),0) revenue FROM marketing_attribution_purchases WHERE tenant_id=? AND campaign_id=? AND refunded_at IS NULL",(self.tenant_id,campaign_id)).fetchone()
+            visits,unique = int(visits_row["visits"]),int(visits_row["unique_visitors"])
+            purchases,revenue = int(purchase_row["n"]),int(purchase_row["revenue"])
+            signup_rate = signups/unique if unique else None
+            purchase_rate = purchases/unique if unique else None
+            revenue_per = revenue/unique if unique else None
+            conn.execute("INSERT INTO marketing_scorecards(tenant_id,campaign_id,period_days,visits,unique_visitors,signups,purchases,revenue_krw,signup_conversion_rate,purchase_conversion_rate,revenue_per_visitor,observed_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?) "
+                         "ON CONFLICT(tenant_id,campaign_id) DO UPDATE SET period_days=excluded.period_days,visits=excluded.visits,unique_visitors=excluded.unique_visitors,signups=excluded.signups,purchases=excluded.purchases,revenue_krw=excluded.revenue_krw,signup_conversion_rate=excluded.signup_conversion_rate,purchase_conversion_rate=excluded.purchase_conversion_rate,revenue_per_visitor=excluded.revenue_per_visitor,observed_at=excluded.observed_at",
+                         (self.tenant_id,campaign_id,0,visits,unique,signups,purchases,revenue,signup_rate,purchase_rate,revenue_per,stamp))
+        return {"campaign_id":campaign_id,"period_days":0,"visits":visits,"unique_visitors":unique,"cta_clicks":None,"signups":signups,"purchases":purchases,"revenue_krw":revenue,"signup_conversion_rate":signup_rate,"purchase_conversion_rate":purchase_rate,"revenue_per_visitor":revenue_per}
 
     def recent_campaign_product_ids(self, since: str) -> set[str]:
         with self.connect() as conn:
@@ -188,8 +285,38 @@ class MarketingRepository:
 
     def recent_learning(self, limit: int = 5) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT product_id,evidence_type,observation,recommendation,created_at FROM marketing_learning WHERE tenant_id=? ORDER BY id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
-        return [dict(row) for row in rows]
+            rows = conn.execute("SELECT campaign_id,product_id,strategy_type,channel,evidence_type,measured_json,analysis_json,interpretation,recommendation,reason_for_retry,confidence,created_at FROM marketing_campaign_learning WHERE tenant_id=? ORDER BY created_at DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
+        return [{**dict(row),"measured":json.loads(row["measured_json"]),"analysis":json.loads(row["analysis_json"])} for row in rows]
+
+    def learn_from_scorecard(self, campaign_id: int, stamp: str) -> dict[str, Any] | None:
+        import hashlib
+        with self.connect() as conn:
+            row = conn.execute("SELECT c.product_id,s.visits,s.unique_visitors,s.signups,s.purchases,s.revenue_krw FROM marketing_campaigns c JOIN marketing_scorecards s ON s.tenant_id=c.tenant_id AND s.campaign_id=c.id WHERE c.tenant_id=? AND c.id=? AND EXISTS(SELECT 1 FROM marketing_publications p WHERE p.tenant_id=c.tenant_id AND p.campaign_id=c.id AND p.status='PUBLISHED')",(self.tenant_id,campaign_id)).fetchone()
+            if not row: return None
+            measured = {key:int(row[key] or 0) for key in ("visits","unique_visitors","signups","purchases","revenue_krw")}
+            evidence = json.dumps(measured,sort_keys=True)
+            fingerprint = hashlib.sha256(evidence.encode()).hexdigest()
+            existing = conn.execute("SELECT score_fingerprint FROM marketing_campaign_learning WHERE tenant_id=? AND campaign_id=?",(self.tenant_id,campaign_id)).fetchone()
+            if existing and existing["score_fingerprint"] == fingerprint:
+                return None
+            if measured["unique_visitors"] < 20:
+                interpretation = "표본이 20명 미만이라 성과의 원인을 판단할 수 없습니다."
+                recommendation = "동일 전략 반복 또는 중단을 결정하지 말고 추가 유입을 관찰합니다."
+                retry = "표본 부족. 다시 시도하려면 목표 고객·제목·채널을 바꾸는 근거를 제시합니다."
+            elif measured["signups"] == 0:
+                interpretation = "확인된 방문은 있으나 귀속 가입은 없습니다. 원인은 확인되지 않았습니다."
+                recommendation = "가입 흐름과 CTA를 점검하고 다른 메시지를 시험합니다."
+                retry = "기존 메시지 반복 금지. CTA 또는 대상 가설을 변경한 이유가 필요합니다."
+            else:
+                interpretation = "방문과 귀속 가입이 관측됐습니다. 인과 효과는 검증되지 않았습니다."
+                recommendation = "유입 대비 가입·구매 비율을 비교하며 다른 문안으로 검증합니다."
+                retry = "기존 전략과 다른 문안·타깃 가설을 제시해야 합니다."
+            published = conn.execute("SELECT channel FROM marketing_publications WHERE tenant_id=? AND campaign_id=? AND status='PUBLISHED' ORDER BY id DESC LIMIT 1",(self.tenant_id,campaign_id)).fetchone()
+            channel = published["channel"] if published else "UNKNOWN"
+            analysis = {"whatWorked":"가입 발생" if measured["signups"] else "확인되지 않음","whatDidNotWork":"가입 미발생" if measured["unique_visitors"] >= 20 and not measured["signups"] else "확인되지 않음","possibleExplanation":interpretation,"nextRecommendation":recommendation}
+            conn.execute("INSERT INTO marketing_campaign_learning(tenant_id,campaign_id,score_fingerprint,product_id,strategy_type,channel,evidence_type,measured_json,analysis_json,interpretation,recommendation,reason_for_retry,confidence,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,campaign_id) DO UPDATE SET score_fingerprint=excluded.score_fingerprint,measured_json=excluded.measured_json,analysis_json=excluded.analysis_json,interpretation=excluded.interpretation,recommendation=excluded.recommendation,reason_for_retry=excluded.reason_for_retry,confidence=excluded.confidence,created_at=excluded.created_at",(self.tenant_id,campaign_id,fingerprint,row["product_id"],"BLOG_CONTENT",channel,"MEASURED_PLUS_RULE_INFERENCE",evidence,json.dumps(analysis,ensure_ascii=False),interpretation,recommendation,retry,"LOW" if measured["unique_visitors"] < 20 else "MEDIUM",stamp))
+            conn.execute("INSERT INTO marketing_campaign_events(tenant_id,campaign_id,agent_id,run_id,status,summary,created_at) VALUES(?,?,?,?,?,?,?)",(self.tenant_id,campaign_id,"performance_analyst",None,"DONE","실측 성과를 집계하고 규칙 기반 해석을 Learning에 저장했습니다.",stamp))
+            return {"campaign_id":campaign_id,"measured":measured,"interpretation":interpretation,"recommendation":recommendation,"reason_for_retry":retry}
 
     def record_learning(self, campaign_id: int, product_id: str, observation: str, stamp: str) -> None:
         with self.connect() as conn:
@@ -269,7 +396,7 @@ class MarketingRepository:
 
     def approvals(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
-            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.hook,c.body,c.cta,c.review_result FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id WHERE a.tenant_id=? AND c.mode='REAL' ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
+            rows = conn.execute("SELECT a.*,c.product_name,c.platform,c.title,c.hook,c.body,c.cta,c.review_result,p.status publication_status,p.published_url FROM marketing_approvals a JOIN marketing_content c ON c.id=a.content_id AND c.tenant_id=a.tenant_id LEFT JOIN marketing_publications p ON p.content_id=c.id AND p.tenant_id=c.tenant_id WHERE a.tenant_id=? AND c.mode='REAL' ORDER BY a.id DESC LIMIT 100", (self.tenant_id,)).fetchall()
         return [dict(r) for r in rows]
 
     def bundles(self) -> list[dict[str, Any]]:

@@ -224,6 +224,13 @@ python scripts/_roadlog_suite_test.py --live
 
 ## AI 마케팅 게시 준비 게이트 · 2026-09-24 Codex
 
+## AI 마케팅 폐쇄 루프 · 2026-09-24 Codex
+
+- `marketing_blog.py`/`marketing_core.repository`로 승인된 블로그를 영속 게시물에 저장하고 `/blog/ai-{id}.html` 및 블로그 목록에서 제공한다. 관리자 승인 요청 때만 실제 공개한다. 중복 차단, 저장 재조회 후 `PUBLISHED`, 실패 시 `PUBLISH_FAILED`; 운영 시험 게시물은 만들지 않았다.
+- `marketing_attribution.py`와 기존 가입(일반·소셜), PortOne 검증 후 충전·프리미엄, 환불 경로를 연결했다. 서명 쿠키·30일 마지막 유효 캠페인 모델이며 매출은 환불 제외. 기존 회원·결제 원장을 바꾸지 않는다. 세부 한계는 `docs/marketing/BLOG_ATTRIBUTION_POLICY.md`.
+- 캠페인 누적 방문/순 브라우저/가입/구매/매출 및 비율을 실측 행에서 계산한다. `performance_analyst`는 현재 규칙 기반 해석만 Learning에 기록하며 AI로 분석했다고 주장하지 않는다. 다음 Director 요청에 이전 scorecard/Learning을 실제로 전달하고 동일 상품 재시도 근거를 요구한다. 이미지·영상·외부 검색·SNS API와 유료 호출은 이번 작업에서 사용하지 않았다.
+- 로컬 `scripts/_marketing_publication_e2e_test.py`: 임시 DB+가짜 결제, 승인→실제 HTTP 게시 화면→방문 쿠키→가입→가짜 충전→성과→Learning→다음 Director 모의 공급자 컨텍스트까지 통과. `scripts/_marketing_closed_loop_test.py`도 새 실측 정의에 맞춰 통과. `scripts/_roadlog_suite_test.py`는 13/37; 24 실패는 구 운행일지/스타일/결제 업그레이드 API와 제거된 정적 파일 기대(현 ROADLOG SaaS 스펙과 무관한 legacy)이며 이번 변경의 회귀 증거가 아니다. `/app.js` 200은 SPA 폴백이라 진짜 JS 성공으로 읽으면 안 된다. 테스트 파일은 삭제하지 않았다.
+
 - 온해님은 Gemini 이미지 API 과금 승인을 보류했다. `marketing_os._run_team`의 자동 이미지 생성 호출을 제거했고 도구 상태를 `과금 승인 보류`로 표시한다. 이미지 Provider 코드는 남기되 실제 유료 이미지 호출·활성화는 금지한다.
 - 팀 자동 작성본은 `REVIEWING → FINAL → READY_TO_PUBLISH` 순서로 진행한다. 최종 검수 통과만으로 승인 항목을 만들지 않는다. `marketing_core/repository.py`의 `prepare_publication`이 상품 정본, 문안, CTA, 채널 payload, 필수 자산을 확인하고 게시 준비 기록·고유 추적 URL을 만든 뒤 승인 항목을 넣는다. 블로그 텍스트는 이미지 불필요, 인스타그램은 검증된 JPEG 없으면 `BLOCKED_ASSET_REQUIRED`다. 승인·준비는 실제 게시가 아니다.
 - 자동 수정 최대 2회/검수 3회에 대해 원본·수정본 ID, 피드백, 결과를 `marketing_revisions`에 남기고 전부 실패하면 `REQUIRES_HUMAN`으로 표시한다. 캠페인 단계도 DB `stage`로 보존한다.

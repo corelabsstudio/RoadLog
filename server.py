@@ -86,9 +86,15 @@ from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
 from modules import curse_shrine as curse_ops
 from modules import marketing_os as marketing_ops
+from modules import marketing_attribution as marketing_attr
+from modules.marketing_blog import BlogPublisher
+from modules.marketing_core.repository import MarketingRepository
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
+
+def _marketing_repo() -> MarketingRepository:
+    return MarketingRepository(marketing_ops.DB,marketing_ops.TENANT_ID,legacy_tenant_id=marketing_ops.TENANT_ID)
 
 # 프로덕션: 약한 비밀키/데모 결제 등이 있으면 기동 자체를 막음
 assert_secure_for_production()
@@ -379,6 +385,10 @@ def register(body: AuthBody, request: Request):
     ok, msg = db.register_user(body.email, body.password, body.name)
     if not ok:
         raise HTTPException(400, msg)
+    try:
+        marketing_attr.attributed_signup(_marketing_repo(),body.email,request.cookies.get(marketing_attr.COOKIE,""))
+    except Exception:
+        log.exception("마케팅 가입 귀속 기록 실패")
     # 가입 선물. 손에 쥐는 게 있어야 계정을 만든다.
     try:
         gift = lamps_ops.welcome(body.email, (body.ref or "").strip(), (body.via or "").strip()[:80])
@@ -630,7 +640,7 @@ def _use_state(st: str) -> bool:
     return bool(born) and (time.time() - born) <= 600
 
 
-def _social_login(email: str, name: str, provider: str, provider_key: str = "") -> str:
+def _social_login(email: str, name: str, provider: str, provider_key: str = "", request: Request | None = None) -> str:
     """이메일로 기존 회원을 찾고, 없으면 만든다. 우리 토큰을 돌려준다."""
     email = (email or "").strip().lower()
     if not email or "@" not in email:
@@ -653,6 +663,11 @@ def _social_login(email: str, name: str, provider: str, provider_key: str = "") 
             lamps_ops.welcome(email)      # 소셜로 처음 들어온 분께도 같이
         except Exception as e:                  # noqa: BLE001
             log.error("소셜 가입 선물 실패 (%s): %s", email, e)
+        if request is not None:
+            try:
+                marketing_attr.attributed_signup(_marketing_repo(),email,request.cookies.get(marketing_attr.COOKIE,""))
+            except Exception:
+                log.exception("마케팅 소셜 가입 귀속 기록 실패")
         user = db.get_user(email)
     if not user:
         raise HTTPException(500, "계정을 만들지 못했습니다.")
@@ -690,7 +705,7 @@ def google_start():
 
 
 @app.get("/api/auth/google/callback")
-def google_callback(code: str = "", state: str = "", error: str = ""):
+def google_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     if error:
         return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
     if not _use_state(state):
@@ -719,7 +734,7 @@ def google_callback(code: str = "", state: str = "", error: str = ""):
     # 🛑 구글이 확인 안 된 주소라고 알려 주면 받지 않는다 (2026-09-14 전수 검사 · 남의 계정에 잇지 않게)
     if d.get("verified_email") is False:
         raise HTTPException(400, "구글 계정의 이메일 확인이 끝나지 않았어요. 구글에서 이메일을 확인한 뒤 다시 시도해 주세요.")
-    return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글", "google"))
+    return _social_redirect(_social_login(d.get("email", ""), d.get("name", ""), "구글", "google", request))
 
 
 @app.get("/api/auth/kakao/start")
@@ -737,7 +752,7 @@ def kakao_start():
 
 
 @app.get("/api/auth/kakao/callback")
-def kakao_callback(code: str = "", state: str = "", error: str = ""):
+def kakao_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     if error:
         return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
     if not _use_state(state):
@@ -774,7 +789,7 @@ def kakao_callback(code: str = "", state: str = "", error: str = ""):
         # 이메일 동의를 안 했거나 카카오 계정에 이메일이 없는 경우.
         # 우리 쪽에서만 쓰는 주소를 만들어 계정을 잇는다.
         email = f"kakao{d.get('id')}@kakao.local"
-    return _social_redirect(_social_login(email, name, "카카오", "kakao"))
+    return _social_redirect(_social_login(email, name, "카카오", "kakao", request))
 
 
 @app.get("/api/me")
@@ -907,6 +922,12 @@ async def _count_visit(request: Request, call_next):
                     utm=q.get("utm_source", "") or "",
                     campaign=q.get("utm_campaign", "") or "",
                 )
+                if q.get("rl_campaign_id") and q.get("rl_publication_id"):
+                    visitor_id = marketing_attr.valid_visitor(request.cookies.get(marketing_attr.COOKIE,"")) or marketing_attr.new_visitor()
+                    if marketing_attr.tracked_visit(_marketing_repo(),visitor_id,dict(q),p):
+                        resp.set_cookie(marketing_attr.COOKIE,marketing_attr.visitor_cookie(visitor_id),
+                                        max_age=marketing_attr.WINDOW_DAYS*86400,httponly=True,
+                                        secure=is_production(),samesite="lax",path="/")
     except Exception:
         pass          # 통계 때문에 화면이 막히면 안 된다
     return resp
@@ -1069,6 +1090,9 @@ def admin_marketing_decide(approval_id: int, decision: str, body: MarketingDecis
         return marketing_ops.decide(approval_id, decision, body.note)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    except Exception as exc:
+        log.exception("마케팅 블로그 게시 실패")
+        raise HTTPException(500, "블로그 게시물을 확인하지 못했습니다. 게시 실패 상태를 확인해 주세요.") from exc
 
 
 @app.delete("/api/admin/stats/visits")
@@ -1415,6 +1439,10 @@ def admin_refund(body: RefundBody, authorization: str | None = Header(default=No
         got = lamps_ops.refund(email, pid, why=why)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    try:
+        _marketing_repo().refund_attributed_purchase(marketing_attr.payment_key(pid),marketing_attr.stamp())
+    except Exception:
+        log.exception("마케팅 귀속 환불 반영 실패")
 
     # ③ 손님에게 알린다 — 말없이 닫으면 「글이 사라졌다」가 된다
     try:
@@ -2111,9 +2139,14 @@ def lamps_charge(body: ChargeBody, authorization: str | None = Header(default=No
     if not lamps:
         raise HTTPException(400, "충전 패키지와 결제 금액이 맞지 않습니다. 고객센터로 문의해 주세요.")
     try:
-        return lamps_ops.charge(user["email"], lamps, payment_id=body.paymentId.strip(), price=amount)
+        result = lamps_ops.charge(user["email"], lamps, payment_id=body.paymentId.strip(), price=amount)
     except ValueError as e:
         raise HTTPException(400, str(e))
+    try:
+        marketing_attr.attributed_purchase(_marketing_repo(),user["email"],body.paymentId.strip(),"lamps","charge",amount)
+    except Exception:
+        log.exception("마케팅 충전 귀속 기록 실패")
+    return result
 
 
 # ── 상품별 손님 후기 ──────────────────────────────────────
@@ -2421,12 +2454,17 @@ def premium_buy(body: PremiumBody, authorization: str | None = Header(default=No
     paid = _verify_payment(body.paymentId.strip())
     amount = int((paid.get("amount") or {}).get("total") or 0)
     try:
-        return lamps_ops.buy_premium(
+        result = lamps_ops.buy_premium(
             user["email"], body.product.strip(), body.pair.strip(),
             payment_id=body.paymentId.strip(), paid=amount,
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+    try:
+        marketing_attr.attributed_purchase(_marketing_repo(),user["email"],body.paymentId.strip(),body.product.strip(),"premium",amount)
+    except Exception:
+        log.exception("마케팅 상품 결제 귀속 기록 실패")
+    return result
 
 
 # ── 관상 ────────────────────────────────────────────────
@@ -3859,6 +3897,20 @@ def card_page(cid: str):
     go = f"{SITE_ORIGIN}/?ref={ref}" if ref else f"{SITE_ORIGIN}/"
     html = CARD_HTML % {"title": title, "line": line, "img": img, "url": url, "go": go}
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/blog/ai-{publication_id}.html")
+def marketing_blog_page(publication_id: int):
+    page = BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render(f"ai-{publication_id}")
+    if page is None:
+        raise HTTPException(404, "Not Found")
+    return HTMLResponse(page, headers={"Cache-Control":"no-store"})
+
+
+@app.get("/blog/")
+@app.get("/blog/index.html")
+def marketing_blog_index():
+    return HTMLResponse(BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render_index(), headers={"Cache-Control":"no-store"})
 
 
 @app.get("/{path:path}")

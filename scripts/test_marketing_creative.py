@@ -33,7 +33,7 @@ class CreativeTests(unittest.TestCase):
         from unittest.mock import patch
         with patch.dict("os.environ", {"GEMINI_API_KEY": "", "BRAVE_SEARCH_API_KEY": "", "MARKETING_IMAGE_GENERATION_ENABLED": "false", "MARKETING_EXTERNAL_RESEARCH_ENABLED": "false"}):
             tools = tool_registry()
-        self.assertEqual(tools["imageGeneration"]["status"], "CONFIG_REQUIRED")
+        self.assertEqual(tools["imageGeneration"]["status"], "PAUSED_APPROVAL")
         self.assertEqual(tools["videoGeneration"]["status"], "CONFIG_REQUIRED")
         self.assertEqual(tools["research"]["status"], "CONFIG_REQUIRED")
 

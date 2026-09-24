@@ -15,6 +15,7 @@ from modules.marketing_assets import MarketingAssetStore
 from modules.marketing_creative import GeminiImageProvider
 from modules.marketing_tools import tool_registry
 from modules.marketing_gemini import RoadLogGeminiProvider
+from modules.marketing_blog import BlogPublisher
 from modules.marketing_instagram import InstagramPublisher, configuration as instagram_configuration, configured as instagram_configured, publishing_enabled as instagram_publishing_enabled, image_url_ok
 from modules.marketing_core.agents import TASKS
 
@@ -69,7 +70,16 @@ def import_creative_asset(approval_id: int, kind: str, mime: str, data_base64: s
     return MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR)).import_base64(approval_id,kind,mime,data_base64)
 def creative_asset_file(asset_id: int) -> tuple[Path, str]:
     return MarketingAssetStore(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID), Path(DATA_DIR)).private_file(asset_id)
-def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]: return _service().decide(approval_id, decision, note)
+def decide(approval_id: int, decision: str, note: str) -> dict[str, Any]:
+    repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
+    publication = repo.approval_publication(approval_id)
+    if publication and decision == "approve" and publication["channel"] == "블로그":
+        if publication["status"] != "READY_TO_PUBLISH" or publication["approval_status"] != "PENDING":
+            raise ValueError("게시 준비된 승인 대기 블로그만 게시할 수 있습니다.")
+        result = _service().decide(approval_id,decision,note)
+        published = BlogPublisher(repo,Path(__file__).resolve().parents[1] / "web","https://roadlog.co.kr").publish(approval_id)
+        return {**result,**published,"message":"관리자 승인 후 블로그 게시물을 저장했습니다."}
+    return _service().decide(approval_id, decision, note)
 
 def instagram_status() -> dict[str, Any]:
     configured = instagram_configured()
@@ -107,15 +117,18 @@ def set_auto_real(enabled: bool) -> dict[str, Any]:
             "message": "매일 자동 점검 켜짐 · 실제 호출은 수동 검수 통과 후 · 외부 게시 없음" if enabled else "자동 점검 꺼짐"}
 def review_draft(product: dict[str, Any], draft: dict[str, Any]) -> list[str]: return core_review(product, draft, POLICY)
 def operations() -> TeamOperations: return TeamOperations(MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID),AGENTS,SCHEDULE)
+def refresh_campaign_learning(repo: MarketingRepository) -> None:
+    stamp = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
+    for campaign in repo.recent_campaigns():
+        if any(p["status"] == "PUBLISHED" for p in campaign["publications"]):
+            repo.save_scorecard(campaign["id"],{},stamp)
+            repo.learn_from_scorecard(campaign["id"],stamp)
+
 def team_dashboard() -> dict[str,Any]:
     result = operations().dashboard()
     repo = MarketingRepository(DB,TENANT_ID,legacy_tenant_id=TENANT_ID)
     try:
-        measured = performance_snapshot()
-        stamp = datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds")
-        for campaign in repo.recent_campaigns():
-            if campaign["publications"]:
-                repo.save_scorecard(campaign["id"],measured,stamp)
+        refresh_campaign_learning(repo)
     except Exception:
         pass  # 집계 장애를 0건으로 표시하지 않는다.
     result["campaigns"] = repo.recent_campaigns()
@@ -178,10 +191,16 @@ def _run_role(task: Any, product: dict[str,Any], meta: dict[str,Any], draft: dic
         provider = RoadLogGeminiProvider()
         metrics = performance_snapshot() if task.agent_id in {"marketing_director", "market_researcher", "performance_analyst"} else None
         if metrics is not None:
+            refresh_campaign_learning(repo)
             previous = repo.recent_campaigns(5)
             metrics = {**metrics,"previous_learning":repo.recent_learning(),
                        "previous_campaigns":[{"id":c["id"],"product_id":c["product_id"],"status":c["status"],"stage":c["stage"],"scorecard":c["scorecard"]} for c in previous if c["id"] != campaign_id]}
         result = provider.generate_role(task,{**product,"synced_at":meta["synced_at"],"source_file":meta["source_file"]},draft=draft,metrics=metrics,context=context)
+        if task.agent_id == "marketing_director" and metrics:
+            prior = [c for c in metrics["previous_campaigns"] if c["product_id"] == product["product_id"] and c["scorecard"]]
+            if prior and result.get("decision") != "NO_ACTION" and not str(result.get("reasonForRetry") or "").strip():
+                result["unknowns"].append("동일 상품 재시도 근거가 없어 전략 실행을 차단했습니다.")
+                result["decision"] = "NO_ACTION"
         from modules.marketing_core.policy import review_draft, review_metric_note
         note = "\n".join([result["summary"], *result["recommendations"]])
         safe_draft = {"body": note,"factual_claims": [], "source_facts": product["product_id"]}
@@ -250,11 +269,6 @@ def _run_team(web_root: Path, day: str, job_key: str = "team_8") -> None:
             repo.finish_campaign(campaign_id,"NO_ACTION","상품 상세페이지 개선이 우선이지만 안전한 적용·검수 경로가 없어 블로그를 임의 생성하지 않음",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
             ops.finish_due(day,job_key,"상세페이지 개선 우선 · 자동 수정 경로 미연결 · 유료 AI 요청 0건")
             return
-        try:
-            today = snapshot.get("today") or {}
-            repo.record_learning(campaign_id,product["product_id"],f"실행 전 사이트 집계: 방문 {int(today.get('uv') or 0)}, 가입 {int(today.get('signups') or 0)}, 결제 {int(today.get('charges') or 0)}. 캠페인 귀속 성과는 아님.",datetime.now(ZoneInfo("Asia/Seoul")).isoformat(timespec="seconds"))
-        except Exception:
-            pass  # 내부 집계 장애는 팀 작업과 분리한다. 성과를 지어내지 않는다.
         ops.record_kickoff(f"{product['name']} · 상품 정본 확인",True)
         tasks = {task.agent_id:task for task in TASKS}
         repo.campaign_stage(campaign_id,"PLANNING")

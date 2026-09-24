@@ -32,8 +32,8 @@ def main() -> None:
         assert len(repo.approvals()) == 1
         repo.record_revision(campaign,content,None,0,"초안","PASS",stamp)
         assert repo.recent_campaigns()[0]["revisions"][0]["outcome"] == "PASS"
-        score = repo.save_scorecard(campaign,{"period_days":7,"by_campaign":[{"name":f"roadlog_blog · rl-{campaign}","uv":3}]},stamp)
-        assert score["visits"] == 3 and score["signups"] is None and score["revenue_krw"] is None
+        score = repo.save_scorecard(campaign,{},stamp)
+        assert score["visits"] == 0 and score["signups"] == 0 and score["revenue_krw"] == 0
         image_draft = {**draft,"platform":"인스타그램"}
         image_content, _ = repo.save_trial(product,meta,image_draft,[],stamp,defer_approval=True)
         assert repo.finalize_agent_review(image_content,True,stamp)
