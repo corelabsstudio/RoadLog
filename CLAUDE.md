@@ -1,5 +1,12 @@
 # RoadLog — Claude Code 안내
 
+## 마케팅 Gemini 수동 연결 준비 (2026-09-24 Codex)
+
+- Railway 운영 `web` 서비스 변수 화면에서 `GEMINI_API_KEY` 등록을 확인했다. 키 값은 열거나 출력하지 않았다. `TAVILY_API_KEY`와 새 마케팅 안전 스위치는 현재 등록되지 않았다.
+- `modules/marketing_safety.py`의 릴리스 잠금은 `MARKETING_RELEASE_HOLD`가 정확히 `false`일 때만 풀리도록 변경했다. 기본값은 잠금 유지이며 글로벌·공급자 스위치도 별도로 필요하다. 자동 팀·이미지·영상·SNS는 이번 단계에서 열지 않는다.
+- 격리 Python 환경 `.venv-marketing-check`를 만들어 안전·전략·OS 회귀 테스트를 실행했다. 설치된 로컬 Python 3.12 경로가 없어 기존 `.venv`가 깨졌고, 격리 환경에는 `httpx`, `python-dotenv`, `fastapi`, `pillow`, `tzdata`가 필요했다. 격리 환경은 배포하지 않는다.
+- 실제 API 호출과 운영 변수 적용·배포 검증은 아래 후속 기록의 결과를 확인할 것. Tavily 키 발급이나 SNS 게시를 이 작업의 묵시적 승인으로 간주하지 않는다.
+
 ## 마케팅 외부 호출 안전 배포 (2026-09-24 Codex)
 
 - `modules/marketing_safety.py`의 글로벌/공급자 기본 OFF를 마케팅 HTTP 진입점에 적용했다. 이미지·영상·SNS 외부 호출 상한 0건, Gemini 캠페인별 10건, 검색 5건. 자동 팀은 `MARKETING_AUTO_TEAM_ENABLED=false` 기본값으로 과거 DB 설정과 관계없이 차단한다.

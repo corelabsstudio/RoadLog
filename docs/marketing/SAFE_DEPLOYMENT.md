@@ -7,9 +7,9 @@
 `MARKETING_VIDEO_ENABLED=false`, `MARKETING_SNS_ENABLED=false`,
 `MARKETING_AUTO_TEAM_ENABLED=false`, `MARKETING_AUTO_PUBLISH_ENABLED=false`.
 환경변수가 없어도 모두 꺼진다. 과거 DB의 자동 설정이 켜져 있어도 팀 자동 실행은 막힌다.
-이번 배포는 `marketing_safety.RELEASE_HOLD=True`도 고정한다. Railway 관리 API가
-403이어서 현재 변수 값을 읽지 못했으므로, 혹시 운영 변수가 켜져 있어도 이 릴리스는
-마케팅 외부 HTTP 호출을 허용하지 않는다. 해제에는 별도 코드 검토·배포가 필요하다.
+`MARKETING_RELEASE_HOLD`의 기본값은 `true`다. `false`를 명시하고 공통·공급자
+스위치를 모두 켜기 전에는 마케팅 외부 HTTP 호출을 허용하지 않는다.
+수동 Gemini 단독 시험 중에는 자동 팀·자동 게시·이미지·영상·SNS 스위치를 끈다.
 기존 `MARKETING_EXTERNAL_RESEARCH_ENABLED`와 `MARKETING_IMAGE_GENERATION_ENABLED`는
 새 공통/공급자 스위치를 우회할 수 없다.
 
@@ -32,10 +32,8 @@ Tavily/Brave 최대 5건, 이미지·영상·SNS 0건. `marketing_external_call_
 
 ## 다음 검증의 승인 경계
 
-1. Tavily 1건 단독 검사: 이번 배포에서는 실행 금지. 이후 관련 스위치와 키를
-   확인하고 수동 1건 경로를 마련해 별도 승인받는다.
-2. Gemini 1건 단독 검사: 이번 배포에서는 실행 금지. 이후 관련 스위치와 키,
-   상품 정본을 확인하고 수동 1건을 별도 승인받는다.
+1. Tavily 1건 단독 검사: 키가 준비된 뒤 관련 스위치와 키를 확인하고 수동 1건을 실행한다.
+2. Gemini 1건 단독 검사: 관련 스위치와 키, 상품 정본을 확인하고 수동 1건을 실행한다.
 3. 두 단독 검사가 통과한 뒤에만 실제 팀 캠페인을 별도 검증한다.
 4. SNS 게시·광고·결제·계정 조작은 이 절차와 무관하며 자동으로 켜지지 않는다.
 

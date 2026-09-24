@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -27,6 +28,13 @@ def main() -> None:
         db = Path(tempfile.mkdtemp()) / "safety.db"
         marketing_safety.DB = marketing_os.DB = db
         assert not marketing_safety.board()["external_api_enabled"]
+        assert marketing_safety.RELEASE_HOLD, "default release hold must remain enabled"
+        release_env = os.environ.copy()
+        release_env.update({"MARKETING_RELEASE_HOLD": "false", "MARKETING_EXTERNAL_API_ENABLED": "true",
+                            "MARKETING_GEMINI_ENABLED": "true", "MARKETING_RESEARCH_ENABLED": "false"})
+        subprocess.run([sys.executable, "-c", "from modules import marketing_safety as s; "
+                        "assert not s.RELEASE_HOLD and s.enabled('gemini') and not s.enabled('research')"],
+                       env=release_env, check=True, timeout=10)
         assert not any(item["enabled"] for item in marketing_safety.board()["providers"].values())
         assert not RoadLogGeminiProvider().connected
         assert not TavilyResearchProvider(key="present").connected

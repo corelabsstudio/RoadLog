@@ -14,9 +14,9 @@ FLAGS = {"gemini": "MARKETING_GEMINI_ENABLED", "research": "MARKETING_RESEARCH_E
          "image": "MARKETING_IMAGE_ENABLED", "video": "MARKETING_VIDEO_ENABLED",
          "sns": "MARKETING_SNS_ENABLED"}
 LIMITS = {"gemini": 10, "research": 5, "image": 0, "video": 0, "sns": 0}
-# This deployment cannot reach paid providers even if Railway variables are ON.
-# Remove only in a separately reviewed release after individual provider tests.
-RELEASE_HOLD = True
+# Fail closed until the operator explicitly releases this gate in production.
+# The global and per-provider switches below are still required after release.
+RELEASE_HOLD = os.getenv("MARKETING_RELEASE_HOLD", "true").strip().lower() != "false"
 
 
 def on(name: str) -> bool:
