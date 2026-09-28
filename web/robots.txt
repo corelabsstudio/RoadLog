@@ -1,5 +1,8 @@
 # 로드로그 — https://roadlog.co.kr
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /reset.html
 
 Sitemap: https://roadlog.co.kr/sitemap.xml
