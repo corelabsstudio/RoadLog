@@ -45,6 +45,27 @@
 .home-seo-intro nav { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; }
 .home-seo-intro nav a { color: var(--ink); border-bottom: 1px solid var(--line); padding-bottom: 6px; text-underline-offset: 3px; }
   </style>
+<style>
+/* 홈에서 블로그로 들어가는 읽을거리 */
+.home-blog { max-width: 1040px; margin: 54px auto 72px; padding: 0 20px; }
+.home-blog-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 20px; }
+.home-blog-label { color: var(--accent); font-size: .8rem; font-weight: 800; letter-spacing: .05em; margin: 0 0 8px; }
+.home-blog h2 { color: var(--ink); font-size: clamp(1.35rem, 3vw, 1.9rem); letter-spacing: -.04em; line-height: 1.35; margin: 0; word-break: keep-all; }
+.home-blog-head p:last-child { color: var(--muted); margin: 9px 0 0; line-height: 1.65; word-break: keep-all; }
+.home-blog-more { color: var(--accent); font-weight: 700; white-space: nowrap; text-decoration: none; }
+.home-blog-links { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.home-blog-links a { display: flex; flex-direction: column; min-height: 170px; padding: 22px; border: 1px solid var(--line); background: var(--card); color: var(--ink); text-decoration: none; border-radius: 8px; }
+.home-blog-links a:hover, .home-blog-links a:focus-visible { border-color: var(--accent); }
+.home-blog-links span { color: var(--accent); font-size: .78rem; font-weight: 700; }
+.home-blog-links strong { margin-top: 13px; font-size: 1.08rem; line-height: 1.45; word-break: keep-all; }
+.home-blog-links em { margin-top: auto; padding-top: 20px; color: var(--muted); font-size: .82rem; font-style: normal; }
+@media (max-width: 700px) {
+  .home-blog { margin: 38px auto 54px; }
+  .home-blog-head { align-items: start; flex-direction: column; gap: 14px; }
+  .home-blog-links { grid-template-columns: 1fr; }
+  .home-blog-links a { min-height: 0; padding: 18px; }
+}
+</style>
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -242,6 +263,22 @@
       </nav>
     </div>
     <div class="grid" id="productGrid"></div>
+  </section>
+
+  <section class="home-blog" aria-labelledby="homeBlogTitle">
+    <div class="home-blog-head">
+      <div>
+        <p class="home-blog-label">로드로그 이야기</p>
+        <h2 id="homeBlogTitle">헤어진 뒤, 자꾸 떠오르는 질문들</h2>
+        <p>연락을 기다릴지, 다시 만나도 될지. 마음이 복잡할 때 읽어 보세요.</p>
+      </div>
+      <a class="home-blog-more" href="/blog/">글 모두 보기 →</a>
+    </div>
+    <div class="home-blog-links">
+      <a href="/blog/reunion-after-repeat-fight.html"><span>다시 만난 뒤</span><strong>재회 후 같은 이유로 또 싸운다면</strong><em>읽어 보기 →</em></a>
+      <a href="/blog/blocked-after-breakup.html"><span>차단당했을 때</span><strong>풀릴 때까지 하지 말아야 할 것</strong><em>읽어 보기 →</em></a>
+      <a href="/blog/first-time-saju.html"><span>처음 보는 분께</span><strong>사주를 볼 때 무엇부터 읽을까요?</strong><em>읽어 보기 →</em></a>
+    </div>
   </section>
 
   </main>

@@ -32,7 +32,7 @@ from fastapi import (
     Response,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -3689,6 +3689,12 @@ def card_page(cid: str):
     go = f"{SITE_ORIGIN}/?ref={ref}" if ref else f"{SITE_ORIGIN}/"
     html = CARD_HTML % {"title": title, "line": line, "img": img, "url": url, "go": go}
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/sitemap.xml")
+def marketing_sitemap():
+    xml = BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render_sitemap()
+    return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=300"})
 
 
 @app.get("/blog/ai-{publication_id}.html")

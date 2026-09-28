@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import html
+import json
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from xml.etree import ElementTree as ET
 
 from modules.marketing_core.repository import MarketingRepository
 
@@ -49,6 +51,21 @@ class BlogPublisher:
         template = re.sub(r'<meta property="og:url" content="[^"]*"',lambda _:f'<meta property="og:url" content="{url}"',template,count=1)
         template = re.sub(r'<meta property="og:title" content="[^"]*"',lambda _:f'<meta property="og:title" content="{title} | 로드로그"',template,count=1)
         template = re.sub(r'<meta property="og:description" content="[^"]*"',lambda _:f'<meta property="og:description" content="{html.escape(post["hook"],quote=True)}"',template,count=1)
+        template = template.replace('<meta property="og:type" content="website"', '<meta property="og:type" content="article"', 1)
+        article_url = self.origin + "/blog/" + slug + ".html"
+        graph = {'@context': 'https://schema.org', '@graph': [
+            {'@type': 'WebPage', '@id': article_url + '#webpage', 'url': article_url,
+             'name': post['title'] + ' | 로드로그', 'description': post['hook'],
+             'mainEntity': {'@id': article_url + '#article'}},
+            {'@type': 'BlogPosting', '@id': article_url + '#article', 'url': article_url,
+             'headline': post['title'], 'description': post['hook'],
+             'datePublished': post['published_at'],
+             'mainEntityOfPage': {'@id': article_url + '#webpage'},
+             'publisher': {'@type': 'Organization', 'name': '로드로그'}}]}
+        payload = json.dumps(graph, ensure_ascii=False).replace('<', '\\u003c')
+        template = re.sub(r'<script type="application/ld\+json">.*?</script>',
+                          lambda _: f'<script type="application/ld+json">{payload}</script>',
+                          template, count=1, flags=re.S)
         return template
 
     def render_index(self) -> str:
@@ -56,3 +73,20 @@ class BlogPublisher:
         posts = self.repository.blog_posts()
         cards = "".join(f'<li><a href="/blog/{html.escape(p["slug"],quote=True)}.html"><b>{html.escape(p["title"])}</b><span>{html.escape(p["hook"])}</span></a></li>' for p in posts)
         return template.replace('<ul class="sj-cards">','<ul class="sj-cards">'+cards,1)
+
+    def render_sitemap(self) -> str:
+        """정적 사이트맵에 DB에서 공개된 블로그 글을 덧붙인다."""
+        namespace = 'http://www.sitemaps.org/schemas/sitemap/0.9'
+        ET.register_namespace('', namespace)
+        tree = ET.fromstring((self.web_root / 'sitemap.xml').read_text(encoding='utf-8'))
+        loc_tag = f'{{{namespace}}}loc'
+        urls = {node.text for node in tree.iter(loc_tag)}
+        for post in self.repository.blog_sitemap_posts():
+            if not re.fullmatch(r'ai-[1-9][0-9]*', post['slug']):
+                continue
+            url = self.origin + '/blog/' + post['slug'] + '.html'
+            if url in urls:
+                continue
+            ET.SubElement(ET.SubElement(tree, f'{{{namespace}}}url'), loc_tag).text = url
+            urls.add(url)
+        return ET.tostring(tree, encoding='unicode', xml_declaration=True)

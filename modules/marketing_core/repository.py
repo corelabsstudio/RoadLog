@@ -288,6 +288,12 @@ class MarketingRepository:
             rows = conn.execute("SELECT b.slug,b.title,b.hook,b.published_at FROM marketing_blog_posts b JOIN marketing_publications p ON p.id=b.publication_id AND p.tenant_id=b.tenant_id WHERE b.tenant_id=? AND p.status='PUBLISHED' ORDER BY b.id DESC LIMIT ?",(self.tenant_id,limit)).fetchall()
         return [dict(row) for row in rows]
 
+    def blog_sitemap_posts(self) -> list[dict[str, Any]]:
+        """색인 가능한 공개 글 전체를 반환한다. 목록 화면의 20건 제한과 분리한다."""
+        with self.connect() as conn:
+            rows = conn.execute("SELECT b.slug,b.published_at FROM marketing_blog_posts b JOIN marketing_publications p ON p.id=b.publication_id AND p.tenant_id=b.tenant_id WHERE b.tenant_id=? AND p.status='PUBLISHED' ORDER BY b.id", (self.tenant_id,)).fetchall()
+        return [dict(row) for row in rows]
+
     def published_tracking(self, campaign_id: int, publication_id: int) -> dict[str, Any] | None:
         with self.connect() as conn:
             row = conn.execute("SELECT id,campaign_id,status,tracking_url FROM marketing_publications WHERE tenant_id=? AND id=? AND campaign_id=? AND status='PUBLISHED'",(self.tenant_id,publication_id,campaign_id)).fetchone()
