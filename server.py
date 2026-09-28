@@ -15,7 +15,6 @@ import json
 import os
 import re
 import secrets
-import threading
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -85,8 +84,6 @@ from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
 from modules import curse_shrine as curse_ops
-from modules import marketing_os as marketing_ops
-from modules import marketing_diagnostics as marketing_diag
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_core.repository import MarketingRepository
@@ -95,7 +92,7 @@ ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
 
 def _marketing_repo() -> MarketingRepository:
-    return MarketingRepository(marketing_ops.DB,marketing_ops.TENANT_ID,legacy_tenant_id=marketing_ops.TENANT_ID)
+    return MarketingRepository(Path(DATA_DIR) / "marketing_os.db", "roadlog", legacy_tenant_id="roadlog")
 
 # 프로덕션: 약한 비밀키/데모 결제 등이 있으면 기동 자체를 막음
 assert_secure_for_production()
@@ -115,23 +112,7 @@ _cors_credentials = _cors_origins != ["*"]
 
 @asynccontextmanager
 async def app_lifespan(_app: FastAPI):
-    stop_marketing = threading.Event()
-
-    def marketing_loop() -> None:
-        while not stop_marketing.is_set():
-            try:
-                marketing_ops.run_due(WEB)
-            except Exception as exc:
-                log.error("marketing scheduler check failed: %s", type(exc).__name__)
-            stop_marketing.wait(60)
-
-    worker = threading.Thread(target=marketing_loop, name="roadlog-marketing-demo", daemon=True)
-    worker.start()
-    try:
-        yield
-    finally:
-        stop_marketing.set()
-        worker.join(timeout=2)
+    yield
 
 
 app = FastAPI(title=APP_FULL, version="3.1", lifespan=app_lifespan)
@@ -282,47 +263,6 @@ class AuthBody(BaseModel):
     name: str = ""
     ref: str = ""      # 친구를 따라 들어온 분의 추천 코드
     via: str = ""      # 어느 길로 오셨는지 (utm / 들어온 사이트). 개인 식별값은 담지 않는다
-
-
-class MarketingTrialBody(BaseModel):
-    product_id: str
-    platform: str = "블로그"
-    mode: str = "REAL"
-
-
-class MarketingProviderTestBody(BaseModel):
-    live: bool = False
-    product_id: str = ""
-    query: str = ""
-
-
-class MarketingCostSettingsBody(BaseModel):
-    paid_enabled: bool | None = None
-    daily_budget_krw: int | None = None
-    daily_requests: int | None = None
-    per_agent_requests: int | None = None
-
-
-class MarketingDecisionBody(BaseModel):
-    note: str = ""
-
-
-class MarketingInstagramPublishBody(BaseModel):
-    image_url: str
-    confirmed: bool = False
-
-
-class MarketingAssetImportBody(BaseModel):
-    kind: str
-    mime: str
-    data_base64: str
-
-
-class MarketingBundleBody(BaseModel):
-    product_id: str
-    customer_question: str
-    mode: str = "REAL"
-    source_text: str = ""
 
 
 class ForgotBody(BaseModel):
@@ -945,225 +885,6 @@ async def _count_visit(request: Request, call_next):
     except Exception:
         pass          # 통계 때문에 화면이 막히면 안 된다
     return resp
-
-
-@app.get("/api/admin/marketing/status")
-def admin_marketing_status(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.status(WEB)
-
-
-@app.get("/api/admin/marketing/insights")
-def admin_marketing_insights(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.performance_snapshot()
-
-
-@app.get("/api/admin/marketing/team")
-def admin_marketing_team(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.team_dashboard()
-
-
-@app.post("/api/admin/marketing/control/{action}")
-def admin_marketing_control(action: str, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.control(action)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/automation/{action}")
-def admin_marketing_automation(action: str, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    if action not in ("enable", "disable"):
-        raise HTTPException(400, "지원하지 않는 자동화 명령입니다.")
-    try:
-        return marketing_ops.set_auto_real(action == "enable")
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/jobs/{job_key}")
-def admin_marketing_job(job_key: str, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.run_job(job_key)
-    except (ValueError, PermissionError) as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.get("/api/admin/marketing/products")
-def admin_marketing_products(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.products(WEB)
-
-
-@app.post("/api/admin/marketing/products/sync")
-def admin_marketing_products_sync(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.products(WEB)
-
-
-@app.get("/api/admin/marketing/usage")
-def admin_marketing_usage(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.usage()
-
-
-@app.get("/api/admin/marketing/safety")
-def admin_marketing_safety(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    from modules.marketing_safety import board
-    return board()
-
-
-@app.post("/api/admin/marketing/cost-settings")
-def admin_marketing_cost_settings(body: MarketingCostSettingsBody, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    from modules.marketing_safety import update_cost_settings, cost_status
-    try:
-        update_cost_settings(**body.model_dump())
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    return cost_status()
-
-
-@app.get("/api/admin/marketing/providers")
-def admin_marketing_providers(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return {"items": marketing_diag.provider_status(_marketing_repo(), WEB)}
-
-
-@app.post("/api/admin/marketing/providers/{provider}/test")
-def admin_marketing_provider_test(provider: str, body: MarketingProviderTestBody,
-                                  authorization: str | None = Header(default=None)):
-    administrator = _require_admin(authorization)
-    if provider != "tavily":
-        raise HTTPException(423, "이 공급자의 실제 진단 호출은 비활성화되어 있습니다.")
-    try:
-        return marketing_diag.test_tavily(_marketing_repo(), WEB, administrator["email"],
-                                          body.product_id, body.query, live=body.live)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(502, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/test-campaign")
-def admin_marketing_test_campaign(body: dict, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.test_campaign(WEB, str(body.get("product_id", "")),
-                                           body.get("use_search") is True, body.get("use_gemini") is True)
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/trial")
-def admin_marketing_trial(body: MarketingTrialBody, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.trial(WEB, body.product_id, body.platform, body.mode)
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.get("/api/admin/marketing/approvals")
-def admin_marketing_approvals(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return {"items": marketing_ops.approvals()}
-
-
-@app.get("/api/admin/marketing/approvals/{approval_id}/creative-brief")
-def admin_marketing_creative_brief(approval_id: int, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.creative_brief(approval_id)
-    except ValueError as exc:
-        raise HTTPException(404, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/approvals/{approval_id}/creative-assets")
-def admin_marketing_creative_import(approval_id: int, body: MarketingAssetImportBody, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.import_creative_asset(approval_id, body.kind, body.mime, body.data_base64)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.get("/api/admin/marketing/creative-assets/{asset_id}")
-def admin_marketing_creative_file(asset_id: int, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        path, mime = marketing_ops.creative_asset_file(asset_id)
-    except (ValueError, FileNotFoundError) as exc:
-        raise HTTPException(404, str(exc)) from exc
-    return FileResponse(path, media_type=mime, headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
-
-
-@app.get("/api/admin/marketing/instagram/status")
-def admin_marketing_instagram_status(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return marketing_ops.instagram_status()
-
-
-@app.post("/api/admin/marketing/approvals/{approval_id}/publish-instagram")
-def admin_marketing_publish_instagram(approval_id: int, body: MarketingInstagramPublishBody,
-                                      authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    if body.confirmed is not True:
-        raise HTTPException(400, "게시 직전 확인이 필요합니다.")
-    try:
-        return marketing_ops.publish_instagram(approval_id,body.image_url)
-    except PermissionError as exc:
-        raise HTTPException(423,str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400,str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(502,str(exc)) from exc
-
-
-@app.get("/api/admin/marketing/bundles")
-def admin_marketing_bundles(authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    return {"items": marketing_ops.bundles()}
-
-
-@app.post("/api/admin/marketing/bundles")
-def admin_marketing_create_bundle(body: MarketingBundleBody, authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.create_bundle(WEB, body.product_id, body.customer_question, body.mode, body.source_text)
-    except PermissionError as exc:
-        raise HTTPException(423, str(exc)) from exc
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-
-
-@app.post("/api/admin/marketing/approvals/{approval_id}/{decision}")
-def admin_marketing_decide(approval_id: int, decision: str, body: MarketingDecisionBody,
-                           authorization: str | None = Header(default=None)):
-    _require_admin(authorization)
-    try:
-        return marketing_ops.decide(approval_id, decision, body.note)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    except Exception as exc:
-        log.exception("마케팅 블로그 게시 실패")
-        raise HTTPException(500, "블로그 게시물을 확인하지 못했습니다. 게시 실패 상태를 확인해 주세요.") from exc
 
 
 @app.delete("/api/admin/stats/visits")
