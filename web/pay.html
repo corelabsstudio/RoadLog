@@ -129,10 +129,11 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
       <div class="methods" id="methods">
         <label class="method on"><input type="radio" name="pm" value="CARD" checked />신용·체크카드</label>
+        <label class="method"><input type="radio" name="pm" value="EASY_PAY" />간편결제</label>
         <label class="method"><input type="radio" name="pm" value="TRANSFER" />실시간 계좌이체</label>
         <label class="method"><input type="radio" name="pm" value="VIRTUAL_ACCOUNT" />가상계좌</label>
-        <label class="method"><input type="radio" name="pm" value="EASY_PAY" />간편결제</label>
       </div>
+      <p class="agree">간편결제 수단은 결제창에서 선택하실 수 있습니다. 구매 내역은 로그인한 계정에 저장됩니다.</p>
 
       <p class="cardsoon" id="cardSoon" hidden></p>
 
@@ -364,10 +365,22 @@ $('payBtn').addEventListener('click', async () => {
   const email = ($('email').value || '').trim();
   const payMethod = document.querySelector('input[name=pm]:checked').value;
 
-  btn.disabled = true; btn.textContent = '결제창을 여는 중…';
-  const paymentId = 'roadlog-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-
+  btn.disabled = true; btn.textContent = '로그인 확인 중…';
   try {
+    const token = readTok();
+    if (!token) {
+      show('warn', '결제 내역을 보관하려면 먼저 로그인해 주세요. <a href="' + esc(BACK) + '">상품으로 돌아가기</a>');
+      return;
+    }
+    const me = await fetch('/api/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (!me.ok) {
+      show('warn', me.status === 401
+        ? '로그인이 만료되었습니다. <a href="' + esc(BACK) + '">상품으로 돌아가 다시 로그인해 주세요.</a>'
+        : '로그인 상태를 확인하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+      return;
+    }
+    btn.textContent = '결제창을 여는 중…';
+    const paymentId = 'roadlog-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
     const res = await PortOne.requestPayment({
       storeId: STORE_ID,
       channelKey: CHANNEL_KEY,
