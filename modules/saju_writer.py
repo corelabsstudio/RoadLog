@@ -903,6 +903,10 @@ def write_report(name: str, saju: dict[str, Any], sections: list[str],
                        "hook": d.get("hook", ""),
                        # 🛑 카드로 그릴 칸들 (2026-09-14). 비어 있으면 화면이 text 를 문단으로 그린다
                        "lead": d.get("lead", ""), "scene_line": d.get("scene_line", ""),
+                       # 🛑 **미리보기 줄을 같이 담는다** (2026-09-29 Kiro 라이브 확인). `write_section` 은
+                       #    `hooking_preview` 를 돌려주는데 여기서 빠져서, WRITE_VER 4(2026-09-18) 뒤로 저장된
+                       #    글에 미리보기 줄이 하나도 없었다. 복채 전 카드에는 잠긴 칸 제목만 보였다
+                       "hooking_preview": d.get("hooking_preview", ""),
                        "folds": d.get("folds") or [], "rx": d.get("rx") or {},
                        "todos": d.get("todos") or [], "marks": d.get("marks") or [],
                        # 항목 끝에 붙는 무냥이 혼잣말 (2026-09-09 온해님 지시)

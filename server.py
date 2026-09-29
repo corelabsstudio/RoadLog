@@ -2358,10 +2358,18 @@ def _saju_veil_blocks(blocks: list) -> list:
     """사주 미리보기도 각 항목의 3~4줄 후킹만 보낸다. 🛑 본문은 서버에서 자른다."""
     out = []
     for b in blocks or []:
-        out.append({"title": b.get("title", ""), "hook": b.get("hook", ""),
-                    "hooking_preview": b.get("hooking_preview", ""),
-                    "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []],
-                    "rx": {}, "todos": [], "marks": []})
+        row = {"title": b.get("title", ""), "hook": b.get("hook", ""),
+               "hooking_preview": b.get("hooking_preview", ""),
+               "folds": [{"title": f.get("title", ""), "tag": f.get("tag", ""), "body": ""} for f in b.get("folds") or []],
+               "rx": {}, "todos": [], "marks": []}
+        # 🛑 **미리보기 줄이 없는 옛 저장본은 첫 문장·한 장면을 보낸다** (2026-09-29 Kiro).
+        #    `saju_writer.write_report` 가 2026-09-18 부터 미리보기 줄을 저장에서 빠뜨려서, 그 뒤 글은
+        #    잠긴 칸 제목만 보였다. 첫 문장·한 장면·칸 제목은 2026-09-14 에 정한 미리보기 모양이다.
+        #    글을 다시 쓰지 않으려고 WRITE_VER 는 올리지 않았다 — 올리면 산 리포트까지 새로 쓴다.
+        if not row["hooking_preview"]:
+            row["lead"] = b.get("lead", "")
+            row["scene_line"] = b.get("scene_line", "")
+        out.append(row)
     return out
 
 
