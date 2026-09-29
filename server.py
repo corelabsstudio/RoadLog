@@ -3354,6 +3354,72 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
                          and len(body.sections or []) > PREVIEW_SECTIONS)}
 
 
+# ── 비회원 맛보기 (2026-09-29 Kiro · 가입 전환 개선 8번) ─────────────────────────
+# 비회원은 가입 전에 무냥이 글을 한 줄도 못 봤다. 위 `saju_write` 는 로그인해야 부를 수 있다.
+# 여기서는 로그인 없이 **첫 항목 하나**만 무냥이가 쓰고, 회원 미리보기와 같은 모양만 보낸다
+# (후킹 3~4줄 · 칸 제목. `_saju_veil_blocks`). 🛑 본문(`text`)은 보내지 않는다.
+# 🛑 원가: 항목 하나라 리포트 한 편(약 23원 기록)보다 훨씬 적다. 같은 사주·같은 상품·같은 항목은
+#    저장본을 준다 — 나중에 그 사람이 가입해 미리보기를 열어도 이 항목은 다시 안 쓴다.
+# 🛑 막는 것: 새로 쓸 때만 IP 한 시간 4번 · 서버 전체 하루 `TASTE_DAILY_CAP` 번. 걸리면 429 이고
+#    화면은 「무냥이가 써 드려요. 로그인하시면 보여요.」로 남는다.
+TASTE_DAILY_CAP = int(os.getenv("TASTE_DAILY_CAP", "300") or 300)
+
+
+class TasteBody(BaseModel):
+    product: str
+    pair: str
+    section: str
+    saju: dict = {}
+    name: str = ""
+    chars: int = 0
+
+
+@app.post("/api/saju/taste")
+def saju_taste(body: TasteBody, request: Request):
+    """비회원 맛보기 — 첫 항목 하나의 후킹과 칸 제목만 준다."""
+    product = (body.product or "").strip()
+    pair = (body.pair or "").strip()
+    section = (body.section or "").strip()[:80]
+    if not product or not pair or not section:
+        raise HTTPException(400, "상품과 사주 값이 필요합니다.")
+    if not (product in lamps_ops.FREE_PRODUCTS or product in lamps_ops.PRICES
+            or product in lamps_ops.PREMIUM_WON):
+        raise HTTPException(400, "모르는 상품입니다.")
+    if not saju_writer.ready():
+        raise HTTPException(503, "글쓰기 준비가 아직 안 됐어요.")
+    try:
+        have = saju_writer.load(product, pair) or {"blocks": []}
+    except ValueError:
+        raise HTTPException(400, "사주 값이 올바르지 않습니다.")
+    stale = int(have.get("ver") or 0) < saju_writer.WRITE_VER
+    done = {} if stale else {b["title"]: b for b in have.get("blocks", []) if b.get("text")}
+    if section not in done:
+        _rate_limit_or_429("taste:" + _client_ip(request), limit=4, window_sec=3600, what="무냥이 맛보기")
+        _preview_quota("taste-all", kind="taste", cap=TASTE_DAILY_CAP,
+                       msg="오늘 맛보기가 다 나갔어요. 로그인하시면 보여요.")
+        try:
+            chars = min(max(int(body.chars or 420), 300), 1600)   # 앞단 값을 그대로 믿지 않는다
+            res = saju_writer.write_report(
+                (body.name or "손님").strip()[:12], body.saju or {}, [section],
+                product=product, chars=chars, pair=pair)
+        except Exception as e:                      # noqa: BLE001
+            print("[saju/taste] 실패:", repr(e)[:300])
+            raise HTTPException(502, "글을 받아 오지 못했어요.")
+        fresh = [b for b in res.get("blocks", []) if b.get("text")]
+        if stale:
+            # 🛑 옛 판(ver)의 글 위에 얹으면 `merge` 가 판 번호만 올려 옛 글이 새 글처럼 남는다.
+            #    옛 글은 어차피 다시 써야 하므로 새 항목만 남긴다
+            saju_writer.save(product, pair, {"blocks": fresh, "ver": saju_writer.WRITE_VER})
+        else:
+            saju_writer.merge(product, pair, fresh)
+        for b in fresh:
+            done[b["title"]] = b
+    b = done.get(section) or {}
+    return {"ok": True, "blocks": _saju_veil_blocks([{
+        "title": section, "hook": b.get("hook", ""),
+        "hooking_preview": b.get("hooking_preview", ""), "folds": b.get("folds") or []}])}
+
+
 class SummaryBody(BaseModel):
     product: str
     pair: str
