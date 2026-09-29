@@ -299,7 +299,7 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
 .login .keep{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:.95rem;
   color:var(--muted);cursor:pointer}
 .login .keep input{width:auto;margin:0;accent-color:var(--accent)}
-.login button[type=submit]{width:100%;margin-top:18px;font:inherit;font-weight:700;
+.login button[type=submit],.login button.retry{width:100%;margin-top:18px;font:inherit;font-weight:700;
   font-size:1.05rem;color:#fff;background:var(--accent);border:0;border-radius:10px;
   padding:14px;cursor:pointer}
 .err{color:#e9a0a0;font-size:.95rem;margin-top:12px}
@@ -325,6 +325,12 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
     <button type="submit">들어가기</button>
     <p class="err" id="loginErr" hidden></p>
   </form>
+</div>
+
+<div id="loadBox" class="login" hidden>
+  <h1>운영 현황을 불러오지 못했어요</h1>
+  <p class="sub">로그인은 유지되고 있습니다. 잠시 후 다시 시도해 주세요.</p>
+  <button type="button" class="retry" id="retryLoad">다시 시도</button>
 </div>
 
 <div id="board" hidden>
@@ -692,7 +698,18 @@ const asEmail = (v) => {
   const t = (v || '').trim();
   return t.includes('@') ? t : (t ? t + '@roadlog.local' : '');
 };
-const token = () => { try { return localStorage.getItem(KEY); } catch { return null; } };
+const token = () => {
+  try { const saved = localStorage.getItem(KEY); if (saved) return saved; } catch {}
+  try { return sessionStorage.getItem(KEY); } catch { return null; }
+};
+const saveToken = (value) => {
+  try { localStorage.removeItem(KEY); } catch {}
+  try { sessionStorage.removeItem(KEY); } catch {}
+  if (value) {
+    try { localStorage.setItem(KEY, value); }
+    catch { sessionStorage.setItem(KEY, value); }
+  }
+};
 let DATA = null, gSales = 'day', gVisit = 'day';
 let FREE = new Set();   // 복채를 내지 않고 다 보시는 분들(VIP)
 
@@ -1600,8 +1617,13 @@ $('tMem').addEventListener('click', async (e) => {
 
 function show(which) {
   $('loginBox').hidden = which !== 'login';
+  $('loadBox').hidden = which !== 'error';
   $('board').hidden = which !== 'board';
 }
+
+function showLoadError() { show('error'); }
+
+$('retryLoad').addEventListener('click', () => load().catch(showLoadError));
 
 $('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -1613,18 +1635,18 @@ $('loginForm').addEventListener('submit', async (e) => {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(d.detail || '로그인하지 못했습니다.');
-    localStorage.setItem(KEY, d.token);
+    saveToken(d.token);
     try {
       if ($('keep').checked) localStorage.setItem(IDKEY, $('em').value.trim());
       else localStorage.removeItem(IDKEY);
     } catch {}
-    await load();
+    await load().catch(showLoadError);
   } catch (ex) { err.textContent = ex.message; err.hidden = false; }
 });
 
 $('out').addEventListener('click', () => {
   try {
-    localStorage.removeItem(KEY);
+    saveToken(null);
     const s = localStorage.getItem(IDKEY);
     if (s) $('em').value = s;
   } catch {}
@@ -1689,7 +1711,7 @@ async function paintLive() {
 setInterval(paintLive, 5000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) paintLive(); });
 
-if (token()) { load().catch(() => show('login')); paintLive(); }
+if (token()) { load().catch(showLoadError); paintLive(); }
 else show('login');
 </script>
 </body>
