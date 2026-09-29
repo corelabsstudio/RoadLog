@@ -3430,9 +3430,11 @@ def saju_taste(body: TasteBody, request: Request):
         full = {k: b.get(k) for k in keep if b.get(k) is not None}
         full["title"] = section
         return {"ok": True, "full": True, "blocks": [full]}
+    # 🛑 `lead`·`scene_line` 도 넘긴다 — 미리보기 줄이 없는 옛 저장본이면 `_saju_veil_blocks` 가 이 둘을 보여 준다
     return {"ok": True, "full": False, "blocks": _saju_veil_blocks([{
         "title": section, "hook": b.get("hook", ""),
-        "hooking_preview": b.get("hooking_preview", ""), "folds": b.get("folds") or []}])}
+        "hooking_preview": b.get("hooking_preview", ""), "folds": b.get("folds") or [],
+        "lead": b.get("lead", ""), "scene_line": b.get("scene_line", "")}])}
 
 
 class SummaryBody(BaseModel):
