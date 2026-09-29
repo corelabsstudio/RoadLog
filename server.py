@@ -3415,7 +3415,14 @@ def saju_taste(body: TasteBody, request: Request):
         for b in fresh:
             done[b["title"]] = b
     b = done.get(section) or {}
-    return {"ok": True, "blocks": _saju_veil_blocks([{
+    if product in lamps_ops.FREE_PRODUCTS:
+        # 🛑 **무료 상품은 첫 항목을 통째로 준다** (2026-09-29 라이브 확인). 무료 상품 글에는 미리보기 줄
+        #    (`hooking_preview`)이 없어서, 가린 카드로 주면 잠긴 칸 제목만 보였다. 회원에게는 원래 다 보이는 글이다.
+        keep = ("text", "hook", "lead", "scene_line", "folds", "rx", "todos", "marks", "mutter")
+        full = {k: b.get(k) for k in keep if b.get(k) is not None}
+        full["title"] = section
+        return {"ok": True, "full": True, "blocks": [full]}
+    return {"ok": True, "full": False, "blocks": _saju_veil_blocks([{
         "title": section, "hook": b.get("hook", ""),
         "hooking_preview": b.get("hooking_preview", ""), "folds": b.get("folds") or []}])}
 
