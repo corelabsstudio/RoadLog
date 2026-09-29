@@ -158,6 +158,8 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 <script>
 // 포트원 V2 · 화면에 넣는 공개값 (비밀키가 아니다)
 const STORE_ID = 'store-6756f4e7-b345-42cc-9750-d02085c6db8f';
+// 결제 화면까지 왔다 (2026-09-29 Kiro · 가입 전환 개선 7번). 단계 이름만 보낸다. 실패해도 결제는 그대로 간다
+try { fetch('/api/funnel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ step: 'pay_view' }), keepalive: true }).catch(() => {}); } catch (e) { /* 통계 때문에 막히면 안 된다 */ }
 // NHN KCP 실채널 (2026-09-08 계약 승인 · 사이트코드 IPB5Z · 포트원 채널 「RoadLog NHN KCP」)
 // 🛑 이 값은 브라우저에 노출되는 공개값이다. 비밀은 KCP 개인키(.pem)와 그 비밀번호이고,
 //    그 둘은 포트원 콘솔에만 있다. 이 저장소에 넣지 말 것.

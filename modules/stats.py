@@ -679,7 +679,59 @@ def overview(days: int = 30) -> dict[str, Any]:
         # 🛑 **공유 통계** — 카드를 저장했거나 공유 단추를 누른 횟수 (2026-09-11).
         #    카드가 퍼져야 손님이 오는 구조라, 이 숫자가 곧 바이럴의 온도다.
         "byTap": _tap_sum(vis, start),
+        # 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 단계별 사람 수
+        "funnel": _funnel_sum(vis, start),
     }
+
+
+# ── 가입까지 어디서 멈추나 (2026-09-29 Kiro · 가입 전환 개선 7번) ──────────────
+# 방문 → 상품 화면 → 계산 결과 → 리포트 화면 → 로그인 창 → 가입까지 단계마다 **사람 수**를 센다.
+# 그전에는 방문·가입·결제만 세서, 방문이 느는데 가입이 안 느는 까닭을 어느 단계에서 찾아야 할지 몰랐다.
+# 🛑 같은 브라우저는 하루에 단계마다 한 번만 센다(방문자와 같은 지문). 새로고침으로 숫자가 불지 않는다.
+# 🛑 누구인지는 안 남긴다. 지문은 그날 소금으로 만든 해시라 되돌릴 수 없고, 날짜째 90일 뒤 지운다.
+# 🛑 상품·계산·리포트 단계는 **비회원만** 보낸다(앞단). 결제 화면은 로그인해야 오므로 회원이다.
+FUNNEL_STEPS = [
+    ("product", "상품 화면을 열었다"),
+    ("calc", "생년월일을 넣고 결과를 봤다"),
+    ("report", "리포트 화면을 열었다"),
+    ("auth_open", "로그인 창이 떴다"),
+    ("signup_email", "가입했다 · 이메일"),
+    ("signup_social", "가입했다 · 카카오·구글"),
+    ("pay_view", "결제 화면에 왔다"),
+]
+_FUNNEL_KEYS = {k for k, _ in FUNNEL_STEPS}
+
+
+def funnel(step: str, ip: str, ua: str) -> None:
+    """단계 하나를 지났다. 모르는 단계 이름은 버린다."""
+    step = str(step or "").strip()[:24]
+    if step not in _FUNNEL_KEYS:
+        return
+    day = _today()
+    fp = _fingerprint(ip or "", ua or "", day)
+    with _LOCK:
+        data = _read(VISITS_JSON, {})
+        d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
+        seen = d.setdefault("fun", {}).setdefault(step, [])
+        if fp in seen:
+            return
+        seen.append(fp)
+        _write(VISITS_JSON, data)
+
+
+def _funnel_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:
+    """최근 N일 단계별 사람 수. 맨 앞은 밖에서 들어온 방문자다."""
+    tot = {k: 0 for k, _ in FUNNEL_STEPS}
+    uv = 0
+    for day, v in vis.items():
+        if day < start:
+            continue
+        uv += len(v.get("uv") or [])
+        for k, lst in (v.get("fun") or {}).items():
+            if k in tot:
+                tot[k] += len(lst or [])
+    return [{"key": "visit", "name": "사이트에 들어왔다", "n": uv}] + [
+        {"key": k, "name": name, "n": tot[k]} for k, name in FUNNEL_STEPS]
 
 
 def _tap_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:

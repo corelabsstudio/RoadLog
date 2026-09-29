@@ -497,6 +497,8 @@ a.btn{display:inline-flex;align-items:center;text-decoration:none}
           <div class="scroll"><table><thead><tr><th>어디서</th><th>가입</th><th>산 사람</th><th>매출</th><th>결제 전환율</th></tr></thead><tbody id="tVia"></tbody></table></div>
         </div>
       </div>
+      <!-- 🛑 가입까지 어디서 멈추나 (2026-09-29 Kiro · 가입 전환 개선 7번). 상품·계산·리포트·로그인 창은 비회원만 센다 -->
+      <div class="card"><h2>비회원이 가입까지 가는 길</h2><p class="sub">최근 90일 · 단계마다 같은 브라우저를 하루 한 번 셉니다 · 2026-09-29 부터 쌓입니다</p><ol class="rank" id="rFunnel"></ol></div>
     </section>
 
     <!-- ── 결제 ─────────────────────────────────────────
@@ -989,6 +991,7 @@ function paint() {
   paintCampaigns();
   paintVia();
   paintTaps();
+  paintFunnel();
 
   paintMembers();
 }
@@ -1311,6 +1314,25 @@ $('tCoupon')?.addEventListener('click', async (e) => {
     loadCoupons();
   } catch {}
 });
+
+// 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 서버 `stats.funnel` 이
+//    단계마다 같은 브라우저를 하루 한 번 센다. 2026-09-29 배포 전 날짜에는 방문만 있고 나머지는 0이다
+function paintFunnel() {
+  const rows = DATA.funnel || [];
+  const top = rows.length ? rows[0].n : 0;
+  $('rFunnel').innerHTML = rows.length && top
+    ? rows.map((r, i) => {
+      const pc = Math.round(r.n / top * 100);
+      const prev = i ? rows[i - 1].n : 0;
+      const step = i && prev && r.key !== 'signup_social' && r.key !== 'pay_view'
+        ? ' · 앞 단계의 ' + Math.round(r.n / prev * 100) + '%' : '';
+      return '<li><span class="no">' + (i + 1) + '</span>'
+        + '<span class="nm"><b>' + esc(r.name) + '</b>' + (step ? '<em>' + esc(step) + '</em>' : '') + '</span>'
+        + '<span class="ct">' + num(r.n) + '명</span>'
+        + '<span class="track"><i class="fill" style="width:' + pc + '%"></i></span></li>';
+    }).join('')
+    : '<li class="zero">아직 쌓인 기록이 없습니다.</li>';
+}
 
 function paintTaps() {
   const rows = DATA.byTap || [];

@@ -339,6 +339,7 @@ def register(body: AuthBody, request: Request):
     ok, msg = db.register_user(body.email, body.password, body.name)
     if not ok:
         raise HTTPException(400, msg)
+    _funnel_from(request, "signup_email")        # 가입 전환 개선 7번 (2026-09-29)
     try:
         marketing_attr.attributed_signup(_marketing_repo(),body.email,request.cookies.get(marketing_attr.COOKIE,""))
     except Exception:
@@ -605,6 +606,7 @@ def _social_login(email: str, name: str, provider: str, provider_key: str = "", 
         ok, msg = db.register_user(email, secrets.token_urlsafe(24), name or email.split("@")[0])
         if not ok:
             raise HTTPException(400, msg)
+        _funnel_from(request, "signup_social")   # 가입 전환 개선 7번 (2026-09-29)
         # 🛑 «비밀번호가 없는 계정»이라고 적어 둔다. 위에서 넣은 임의 문자열은
         #    본인도 모르는 값이라, 비밀번호 찾기에서 재설정 링크를 보내면 안 된다.
         #    이미 있는 계정에는 표시하지 않는다 — 메일로 가입한 뒤 소셜로도
@@ -1058,6 +1060,37 @@ def tap_event(body: TapBody):
         stats_ops.tap(body.what or "", body.product or "")
     except Exception:                                    # noqa: BLE001
         pass                                             # 통계 때문에 화면이 막히면 안 된다
+    return {"ok": True}
+
+
+# ── 가입까지 어디서 멈추나 (2026-09-29 Kiro · 가입 전환 개선 7번) ──────────────
+# 앞단이 단계 이름만 보낸다(상품 화면 · 계산 결과 · 리포트 화면 · 로그인 창 · 결제 화면).
+# 가입은 서버에서 끝나므로 `register` · `_social_login` 이 여기 `_funnel_from` 을 부른다.
+# 🛑 로그인 없이 받는다. 방문자 세기와 같은 규칙으로 거른다 — `?nocount=1` 을 연 브라우저(운영자)와
+#    크롤러는 안 센다. 같은 브라우저는 하루에 단계마다 한 번만 센다(`stats.funnel`).
+class FunnelBody(BaseModel):
+    step: str
+
+
+def _funnel_from(request: Request | None, step: str) -> None:
+    """단계 하나를 센다. 실패해도 부른 쪽은 그대로 간다."""
+    if request is None:
+        return
+    try:
+        if request.cookies.get("rl_nocount") == "1":
+            return
+        ua = request.headers.get("user-agent", "") or ""
+        low = ua.lower()
+        if "mozilla" not in low or any(b in low for b in _BOT):
+            return
+        stats_ops.funnel(step, _client_ip(request), ua)
+    except Exception:                                    # noqa: BLE001
+        pass                                             # 통계 때문에 가입·화면이 막히면 안 된다
+
+
+@app.post("/api/funnel")
+def funnel_event(body: FunnelBody, request: Request):
+    _funnel_from(request, body.step or "")
     return {"ok": True}
 
 
