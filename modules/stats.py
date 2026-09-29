@@ -395,6 +395,7 @@ def _visits() -> dict[str, dict[str, Any]]:
             "camp": dict(d.get("camp", {})),
             "tap": dict(d.get("tap", {})),
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
+            "fun": dict(d.get("fun", {})),    # 가입 경로 단계별 방문자 지문
         }
     return out
 
@@ -726,7 +727,7 @@ def _funnel_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:
     for day, v in vis.items():
         if day < start:
             continue
-        uv += len(v.get("uv") or [])
+        uv += v.get("uv", 0)
         for k, lst in (v.get("fun") or {}).items():
             if k in tot:
                 tot[k] += len(lst or [])
