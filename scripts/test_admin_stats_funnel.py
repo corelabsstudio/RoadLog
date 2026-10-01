@@ -14,6 +14,19 @@ from modules import stats
 
 
 class AdminStatsFunnelTest(unittest.TestCase):
+    def test_funnel_excludes_visits_before_tracking_started(self):
+        visits = {
+            '2026-09-28': {'uv': 100, 'fun': {}},
+            '2026-09-29': {'uv': 8, 'fun': {'product': ['a', 'b']}},
+            '2026-09-30': {'uv': 5, 'fun': {'product': ['c']}},
+        }
+        counts = {row['key']: row['n'] for row in stats._funnel_sum(visits, '2026-09-01')}
+        self.assertEqual(counts['visit'], 13)
+        self.assertEqual(counts['product'], 3)
+        recent = {row['key']: row['n'] for row in stats._funnel_sum(visits, '2026-09-30')}
+        self.assertEqual(recent['visit'], 5)
+        self.assertEqual(recent['product'], 1)
+
     def test_overview_counts_normalized_visits_and_funnel_steps(self):
         day = stats._today()
         raw = {

@@ -682,6 +682,7 @@ def overview(days: int = 30) -> dict[str, Any]:
         "byTap": _tap_sum(vis, start),
         # 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 단계별 사람 수
         "funnel": _funnel_sum(vis, start),
+        "funnelSince": max(start, "2026-09-29"),
     }
 
 
@@ -722,6 +723,7 @@ def funnel(step: str, ip: str, ua: str) -> None:
 
 def _funnel_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:
     """최근 N일 단계별 사람 수. 맨 앞은 밖에서 들어온 방문자다."""
+    start = max(start, "2026-09-29")
     tot = {k: 0 for k, _ in FUNNEL_STEPS}
     uv = 0
     for day, v in vis.items():
