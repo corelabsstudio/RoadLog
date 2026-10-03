@@ -721,6 +721,7 @@ def overview(days: int = 30) -> dict[str, Any]:
         # 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 단계별 사람 수
         "funnel": _funnel_sum(vis, start),
         "funnelSince": max(start, "2026-09-29"),
+        "conversion": _conversion_sum(vis, start),
     }
 
 
@@ -739,7 +740,52 @@ FUNNEL_STEPS = [
     ("signup_social", "가입했다 · 카카오·구글"),
     ("pay_view", "결제 화면에 왔다"),
 ]
-_FUNNEL_KEYS = {k for k, _ in FUNNEL_STEPS}
+CONVERSION_STEPS = [
+    ("landing_guest", "비회원 메인 진입"),
+    ("start_today", "메인 · 오늘 운세 무료 시작"),
+    ("start_mind", "메인 · 그 사람 마음 선택"),
+    ("start_again", "메인 · 다시 만날까 선택"),
+    ("start_dday", "메인 · 연락해도 될까 선택"),
+    ("input_start", "비회원 · 사주 입력 시작"),
+    ("input_complete", "비회원 · 입력 확인 화면 도달"),
+    ("signup_cta", "가입·로그인 안내 열기"),
+    ("email_submit", "이메일 가입 제출"),
+    ("email_error", "이메일 가입·직후 로그인 오류"),
+    ("social_kakao", "카카오 시작"),
+    ("social_google", "구글 시작"),
+    ("social_error", "소셜 인증 오류·취소"),
+    ("dream_entry", "비회원 · 꿈 해몽 진입"),
+    ("dream_complete", "꿈 스캔 완료 · 회원 포함"),
+    ("gwan_entry", "비회원 · 관상 진입"),
+    ("gwan_complete", "관상 리포트 완료 · 회원 포함"),
+    ("pet_entry", "비회원 · 반려동물 관상 진입"),
+    ("pet_complete", "반려동물 관상 완료 · 회원 포함"),
+    ("curse_entry", "비회원 · 저주 신단 진입"),
+    ("curse_complete", "저주 무료 결과 · 회원 포함"),
+]
+_FUNNEL_KEYS = {k for k, _ in FUNNEL_STEPS + CONVERSION_STEPS}
+
+
+def _conversion_sum(vis: dict[str, Any], start: str) -> dict[str, Any]:
+    """각 사건의 일별 브라우저 수와 같은 날 메인 비회원의 교집합. 순차 퍼널 아님."""
+    start = max(start, "2026-10-04")
+    totals = {k: 0 for k, _ in CONVERSION_STEPS}
+    cohort = {"landing": 0, "input": 0, "auth": 0, "signup": 0}
+    for day, v in vis.items():
+        if day < start:
+            continue
+        fun = v.get("fun") or {}
+        for k in totals:
+            totals[k] += len(set(fun.get(k) or []))
+        landing = set(fun.get("landing_guest") or [])
+        cohort["landing"] += len(landing)
+        cohort["input"] += len(landing & set(fun.get("input_start") or []))
+        cohort["auth"] += len(landing & set(fun.get("signup_cta") or []))
+        signup = set(fun.get("signup_email") or []) | set(fun.get("signup_social") or [])
+        cohort["signup"] += len(landing & signup)
+    return {"since": start, "events": [
+        {"key": k, "name": name, "n": totals[k]} for k, name in CONVERSION_STEPS
+    ], "homeCohort": cohort}
 
 
 def funnel(step: str, ip: str, ua: str) -> None:

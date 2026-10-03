@@ -33,9 +33,9 @@
   <meta name="twitter:description" content="재회 공략집, 그 사람 속마음 해독, 읽씹 안 당할 날짜까지. 로드로그는 사주 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-B15yzTqy.js"></script>
+  <script type="module" crossorigin src="/assets/main-C33bi04U.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/browser-MwKTcFtb.js">
-  <link rel="stylesheet" crossorigin href="/assets/main-DTpXFveo.css">
+  <link rel="stylesheet" crossorigin href="/assets/main-Db_MWAjg.css">
 </head>
 <body>
 <svg class="ico-sprite" aria-hidden="true" focusable="false" width="0" height="0">
@@ -127,6 +127,32 @@
 
 
   <main class="view view-home" id="viewHome">
+  <section class="home-start" aria-labelledby="homeStartTitle">
+    <div class="home-start-copy">
+      <p class="home-start-eyebrow">처음 오셨다면, 가볍게 한 편부터</p>
+      <h1 id="homeStartTitle">마음은 복잡해도<br />시작은 쉬워야 하니까.</h1>
+      <p>오늘 내 운부터 무료로 보고,<br />지금 마음에 걸리는 질문을 골라 보세요.</p>
+      <a class="btn home-start-cta" href="#p/today" data-card="today" data-start="today">오늘 운세 무료로 보기 →</a>
+      <span class="home-start-note">가입 없이 시작 · 카드 등록 없이 무료</span>
+    </div>
+    <img class="home-start-art" src="/assets/face_cut-e0WmSUQI.webp" alt="사주를 읽어 주는 무냥이" width="180" height="180" fetchpriority="high" />
+  </section>
+  <section class="home-concerns" aria-labelledby="homeConcernTitle">
+    <h2 id="homeConcernTitle">지금 어떤 마음이세요?</h2>
+    <div class="home-concern-links">
+      <a href="#p/mind" data-card="mind" data-start="mind"><strong>그 사람 마음</strong><span>아직 내가 남아 있을까? →</span></a>
+      <a href="#p/again" data-card="again" data-start="again"><strong>다시 만날까</strong><span>다시 이어질 수 있을까? →</span></a>
+      <a href="#p/dday" data-card="dday" data-start="dday"><strong>연락해도 될까</strong><span>언제 말을 건네면 좋을까? →</span></a>
+    </div>
+  </section>
+  <section class="home-benefit" id="homeBenefit" aria-labelledby="homeBenefitTitle">
+    <h2 id="homeBenefitTitle">가입하면, 궁금한 사주 한 편을 무료로</h2>
+    <p>‘그 사람 속마음 해독’, ‘재회 공략집’ 등 일반 사주 한 편을 무료 이용권으로 끝까지 읽을 수 있어요. 가입 선물 등불 300개도 드려요.</p>
+    <p class="home-benefit-note">프리미엄·결제 전용 상품 제외 · 카드 등록 불필요</p>
+    <button type="button" class="linkish" id="homeSignup">무료 이용권 받고 시작하기 →</button>
+  </section>
+  <details class="home-more" id="homeMore">
+  <summary>다른 사주와 꿈·관상도 둘러보기</summary>
   <section class="banners" aria-label="상품 배너">
     <div class="banner-wrap">
       <button type="button" class="banner-nav prev" id="bannerPrev" aria-label="이전 배너"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -225,7 +251,7 @@
   </nav>
   <section class="products" id="products">
     <div class="home-seo-intro">
-      <h1>재회 공략집부터 그 사람 속마음 해독까지</h1>
+      <h2>재회 공략집부터 그 사람 속마음 해독까지</h2>
       <p>연락할 때가 궁금하다면 <a href="/saju/dday.html">읽씹 안 당할 날짜</a>도 살펴보세요. 태어난 글자를 바탕으로 왜 그런 답이 나왔는지 함께 적어 드려요.</p>
       <nav aria-label="대표 사주 리포트">
         <a href="/saju/again.html">재회 공략집</a>
@@ -235,6 +261,7 @@
     </div>
     <div class="grid" id="productGrid"></div>
   </section>
+  </details>
 
   <section class="home-blog" aria-labelledby="homeBlogTitle">
     <div class="home-blog-head">
@@ -793,6 +820,8 @@
       <span class="picked-free" id="pickedFree">먼저 무료로 봐요</span>
     </div>
     <p class="open-note" id="openNote" hidden></p>
+    <button type="button" class="btn input-start" id="inputStart">생년월일 넣고 시작하기 →</button>
+    <p class="input-benefit" id="inputBenefit">결과를 먼저 보고, 원하시면 가입해 일반 사주 한 편을 무료 이용권으로 열어 보세요.</p>
 
     <div class="odds" id="odds2" hidden>
       <p class="odds-title" id="odds2Title">인연의 두께</p>
@@ -837,18 +866,10 @@
         <p class="talk-b" id="wizSay">뭐부터 물어볼까요.</p>
       </div>
       <div class="wiz-bar" id="wizBar" aria-hidden="true"><i id="wizFill"></i></div>
-      <p class="wiz-count"><span id="wizNow">1</span> / <span id="wizAll">5</span></p>
+      <p class="wiz-count"><span id="wizNow">1</span> / <span id="wizAll">3</span></p>
 
       <!-- 나 ─────────────────────────────────────── -->
-      <section class="step" data-step="meSex" data-who="me">
-        <h3 class="step-q">성별을 알려 주세요</h3>
-        <p class="step-sub">십 년 단위 흐름(대운)이 어느 쪽으로 도는지가 성별에 따라 갈려요.</p>
-        <input type="hidden" name="meSex" value="female" />
-        <div class="pick" data-for="meSex">
-          <button type="button" data-val="female" class="on">여자</button>
-          <button type="button" data-val="male">남자</button>
-        </div>
-      </section>
+
 
       <section class="step" data-step="meDate" data-who="me">
         <h3 class="step-q">생년월일을 알려 주세요</h3>
@@ -872,6 +893,19 @@
           <button type="button" data-val="solar" class="on">양력</button>
           <button type="button" data-val="lunar">음력</button>
         </div>
+      
+        <fieldset class="birth-sex"><legend>성별 · 대운 방향 계산에 사용</legend>
+<input type="hidden" name="meSex" value="female" />
+        <div class="pick" data-for="meSex">
+          <button type="button" data-val="female" class="on">여자</button>
+          <button type="button" data-val="male">남자</button>
+        </div>
+        </fieldset>
+        <details class="birth-name"><summary>이름이나 별명 넣기 (선택)</summary>
+        <label class="big-field">내 이름
+          <input type="text" name="meName" maxlength="12" placeholder="이름 또는 별명 (선택)" autocomplete="off" />
+        </label>
+        </details>
       </section>
 
       <section class="step" data-step="meTime" data-who="me">
@@ -896,6 +930,7 @@
           <button type="button" data-val="pm" class="on">오후</button>
         </div>
         <label class="check"><input type="checkbox" name="meUnknown" /> 시간을 몰라요</label>
+        <details class="birth-place"><summary>태어난 곳 넣기 (선택)</summary>
         <label class="big-field">태어난 곳
           <!-- 🛑 도를 먼저 고르고 시군을 고른다 (2026-09-09 온해님 지시).
                전에는 큰 도시 스물두 곳만 한 줄에 깔고 나머지는 「한국 평균」으로 뭉갰다. -->
@@ -906,15 +941,10 @@
           <input type="hidden" name="meCityPicked" value="" />
         </label>
         <p class="step-note">해가 남중하는 시각이 지역마다 달라요. 태어난 곳을 넣으면 시주가 더 정확해져요. 모르시면 도만 골라도 돼요.</p>
+        </details>
       </section>
 
-      <section class="step" data-step="meName" data-who="me">
-        <h3 class="step-q">이름을 알려 주세요</h3>
-        <p class="step-sub">결과에 부르는 말로만 써요. 계산에는 들어가지 않아요.</p>
-        <label class="big-field">내 이름
-          <input type="text" name="meName" maxlength="12" required placeholder="내 이름" autocomplete="off" />
-        </label>
-      </section>
+
 
       <section class="step" data-step="meBon" data-who="me" id="bonRow" hidden>
         <h3 class="step-q">본관을 알려 주세요</h3>
@@ -926,11 +956,7 @@
       </section>
 
       <!-- 그 사람 ─────────────────────────────────── -->
-      <section class="step step-bridge" data-step="bridge" data-who="you">
-        <img class="step-face" src="/assets/face-D1JUG1d8.webp" alt="" aria-hidden="true" />
-        <h3 class="step-q">이제 그 사람 차례예요</h3>
-        <p class="step-sub" id="bridgeLine">생년월일만 알면 돼요. 태어난 시간과 지역은 몰라도 괜찮아요.</p>
-      </section>
+
 
       <section class="step" data-step="youDate" data-who="you">
         <h3 class="step-q">그 사람 생년월일을 알려 주세요</h3>
@@ -954,6 +980,19 @@
           <button type="button" data-val="solar" class="on">양력</button>
           <button type="button" data-val="lunar">음력</button>
         </div>
+      
+        <fieldset class="birth-sex"><legend>성별 · 대운 방향 계산에 사용</legend>
+<input type="hidden" name="youSex" value="male" />
+        <div class="pick" data-for="youSex">
+          <button type="button" data-val="female">여자</button>
+          <button type="button" data-val="male" class="on">남자</button>
+        </div>
+        </fieldset>
+        <details class="birth-name"><summary>이름이나 별명 넣기 (선택)</summary>
+        <label class="big-field">그 사람 이름
+          <input type="text" name="youName" maxlength="12" placeholder="별명도 괜찮아요 (선택)" autocomplete="off" />
+        </label>
+        </details>
       </section>
 
       <section class="step" data-step="youTime" data-who="you">
@@ -978,6 +1017,7 @@
           <button type="button" data-val="pm">오후</button>
         </div>
         <label class="check"><input type="checkbox" name="youUnknown" /> 시간을 몰라요</label>
+        <details class="birth-place"><summary>태어난 곳 넣기 (선택)</summary>
         <label class="big-field">태어난 곳
           <!-- 🛑 도를 먼저 고르고 시군을 고른다 (2026-09-09 온해님 지시).
                전에는 큰 도시 스물두 곳만 한 줄에 깔고 나머지는 「한국 평균」으로 뭉갰다. -->
@@ -987,25 +1027,12 @@
                안 고르셨으면 다음에 오셔도 서울로 연다. -->
           <input type="hidden" name="youCityPicked" value="" />
         </label>
+        </details>
       </section>
 
-      <section class="step" data-step="youSex" data-who="you">
-        <h3 class="step-q">그 사람 성별은요?</h3>
-        <p class="step-sub">그 사람의 십 년 흐름이 어느 쪽으로 도는지에만 써요.</p>
-        <input type="hidden" name="youSex" value="male" />
-        <div class="pick" data-for="youSex">
-          <button type="button" data-val="female">여자</button>
-          <button type="button" data-val="male" class="on">남자</button>
-        </div>
-      </section>
 
-      <section class="step" data-step="youName" data-who="you">
-        <h3 class="step-q">그 사람을 뭐라고 부를까요?</h3>
-        <p class="step-sub">결과에 쓰는 말이에요. 본명이 아니어도 돼요.</p>
-        <label class="big-field">그 사람 이름
-          <input type="text" name="youName" maxlength="12" required placeholder="그 사람 이름" autocomplete="off" />
-        </label>
-      </section>
+
+
 
       <!-- 확인 ────────────────────────────────────── -->
       <section class="step" data-step="confirm">
@@ -1227,7 +1254,7 @@
 <dialog id="authDlg" class="dlg" data-keep>
   <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
   <h3 id="authTitle">로그인</h3>
-  <p class="dlg-lede" id="authLede">리포트를 열려면 계정이 필요해요. 가입하시면 <b>무료 이용권 한 장</b>과 <b>등불 300개</b>를 드려요. 생년월일은 계정에 저장되지 않아요.</p>
+  <p class="dlg-lede" id="authLede">가입하면 <b>일반 사주 한 편을 끝까지 읽는 무료 이용권</b>과 <b>등불 300개</b>를 드려요. 속마음·재회 공략집 등에 사용할 수 있어요. 프리미엄·결제 전용 상품은 제외되며, 카드 등록은 필요 없어요. 생년월일은 계정에 저장되지 않아요.</p>
   <!-- 🛑 **가입·로그인 바꾸기를 맨 위에 둔다** (2026-09-29 Kiro · 가입 전환 개선 2번). 창 맨 아래에 있어서
        아이폰 13 화면에서는 창을 내려야 보였다. -->
   <p class="dlg-switch dlg-switch-top"><span id="authAsk">처음이신가요?</span> <button type="button" id="authToggle">가입하기</button></p>

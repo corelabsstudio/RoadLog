@@ -662,7 +662,16 @@ def google_start():
 
 @app.get("/api/auth/google/callback")
 def google_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    try:
+        return _google_callback(request, code, state, error)
+    except (HTTPException, httpx.HTTPError, ValueError):
+        _funnel_from(request, "social_error")
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error=retry", status_code=302)
+
+
+def _google_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     if error:
+        _funnel_from(request, "social_error")
         return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
     if not _use_state(state):
         raise HTTPException(400, "로그인 요청이 만료되었습니다. 다시 시도해 주세요.")
@@ -709,7 +718,16 @@ def kakao_start():
 
 @app.get("/api/auth/kakao/callback")
 def kakao_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    try:
+        return _kakao_callback(request, code, state, error)
+    except (HTTPException, httpx.HTTPError, ValueError):
+        _funnel_from(request, "social_error")
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error=retry", status_code=302)
+
+
+def _kakao_callback(request: Request, code: str = "", state: str = "", error: str = ""):
     if error:
+        _funnel_from(request, "social_error")
         return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
     if not _use_state(state):
         raise HTTPException(400, "로그인 요청이 만료되었습니다. 다시 시도해 주세요.")

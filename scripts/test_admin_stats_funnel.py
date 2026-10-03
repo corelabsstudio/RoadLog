@@ -1,6 +1,9 @@
 """Regression for the admin stats response after signup funnel tracking."""
 import sys
 import types
+import tempfile
+import json
+from pathlib import Path
 import unittest
 from unittest.mock import patch
 
@@ -14,6 +17,39 @@ from modules import stats
 
 
 class AdminStatsFunnelTest(unittest.TestCase):
+    def test_conversion_home_cohort_uses_intersection_and_signup_union(self):
+        vis = {
+            '2026-10-03': {'fun': {'landing_guest': ['old']}},
+            '2026-10-04': {'fun': {
+                'landing_guest': ['a', 'b'], 'input_start': ['a', 'outside'],
+                'signup_cta': ['b', 'outside'], 'signup_email': ['b'],
+                'signup_social': ['b', 'outside'], 'dream_complete': ['member'],
+            }},
+            '2026-10-05': {'fun': {'landing_guest': ['a'], 'signup_social': ['a']}},
+        }
+        result = stats._conversion_sum(vis, '2026-09-01')
+        self.assertEqual(result['since'], '2026-10-04')
+        self.assertEqual(result['homeCohort'], {'landing': 3, 'input': 1, 'auth': 1, 'signup': 2})
+        counts = {r['key']: r['n'] for r in result['events']}
+        self.assertEqual(counts['input_start'], 2)
+        self.assertEqual(counts['dream_complete'], 1)
+
+    def test_conversion_deduplicates_and_stores_no_raw_client_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'visits.json'
+            with patch.object(stats, 'VISITS_JSON', file), patch.object(stats, '_today', return_value='2026-10-04'):
+                stats.funnel('landing_guest', '192.0.2.51', 'Mozilla Test Client')
+                stats.funnel('landing_guest', '192.0.2.51', 'Mozilla Test Client')
+                stats.funnel('email_error', '192.0.2.51', 'Mozilla Test Client')
+                stats.funnel('private_email@example.org', '192.0.2.51', 'Mozilla Test Client')
+                raw = file.read_text(encoding='utf-8')
+            fun = json.loads(raw)['2026-10-04']['fun']
+            self.assertEqual(len(fun['landing_guest']), 1)
+            self.assertEqual(set(fun), {'landing_guest', 'email_error'})
+            self.assertNotIn('192.0.2.51', raw)
+            self.assertNotIn('Mozilla Test Client', raw)
+            self.assertNotIn('@example.org', raw)
+
     def test_funnel_excludes_visits_before_tracking_started(self):
         visits = {
             '2026-09-28': {'uv': 100, 'fun': {}},

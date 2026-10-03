@@ -595,6 +595,7 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
       </div>
       <!-- 🛑 가입까지 어디서 멈추나 (2026-09-29 Kiro · 가입 전환 개선 7번). 상품·계산·리포트·로그인 창은 비회원만 센다 -->
       <div class="card"><h2>비회원이 가입까지 가는 길</h2><p class="sub" id="funnelPeriod">2026-09-29부터 집계 · 단계별 하루 한 번 방문한 브라우저 수이며, 동일인의 순차 전환율이 아닙니다</p><ol class="rank" id="rFunnel"></ol></div>
+      <div class="card"><h2>메인 개선 후 가입 흐름</h2><p class="sub" id="conversionPeriod"></p><p id="homeCohort"></p><ol class="rank" id="rConversion"></ol></div>
     </section>
 
     <!-- ── 결제 ─────────────────────────────────────────
@@ -1408,21 +1409,31 @@ $('tCoupon')?.addEventListener('click', async (e) => {
 // 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 서버 `stats.funnel` 이
 //    단계마다 같은 브라우저를 하루 한 번 센다. 2026-09-29 배포 전 날짜에는 방문만 있고 나머지는 0이다
 function paintFunnel() {
+  paintConversion();
   $('funnelPeriod').textContent = (DATA.funnelSince || '2026-09-29') + '부터 집계 · 단계별 하루 한 번 방문한 브라우저 수이며, 동일인의 순차 전환율이 아닙니다';
   const rows = DATA.funnel || [];
   const top = rows.length ? rows[0].n : 0;
   $('rFunnel').innerHTML = rows.length && top
     ? rows.map((r, i) => {
       const pc = Math.round(r.n / top * 100);
-      const prev = i ? rows[i - 1].n : 0;
-      const step = i && prev && r.key !== 'signup_social' && r.key !== 'pay_view'
-        ? ' · 이전 항목 대비 ' + Math.round(r.n / prev * 100) + '%' : '';
       return '<li><span class="no">' + (i + 1) + '</span>'
-        + '<span class="nm"><b>' + esc(r.name) + '</b>' + (step ? '<em>' + esc(step) + '</em>' : '') + '</span>'
+        + '<span class="nm"><b>' + esc(r.name) + '</b></span>'
         + '<span class="ct">' + num(r.n) + '명</span>'
         + '<span class="track"><i class="fill" style="width:' + pc + '%"></i></span></li>';
     }).join('')
     : '<li class="zero">아직 쌓인 기록이 없습니다.</li>';
+}
+
+function paintConversion() {
+  const c = DATA.conversion || {};
+  $('conversionPeriod').textContent = (c.since || '2026-10-04') + '부터 · 사건별 하루 한 번 집계. 입력은 비회원, 기능 완료는 회원 포함. 같은 사람의 순차 전환율이 아닙니다.';
+  const h = c.homeCohort || {};
+  $('homeCohort').textContent = '같은 날 메인을 연 비회원 ' + num(h.landing || 0) + '명 중: 입력 시작 ' + num(h.input || 0) + '명 · 가입 안내 ' + num(h.auth || 0) + '명 · 가입 완료 ' + num(h.signup || 0) + '명'
+    + (h.landing ? ' (' + ((h.signup || 0) / h.landing * 100).toFixed(1) + '%)' : '')
+    + '. 날짜별 합계이며 소셜 앱 전환·IP 변경은 연결되지 않을 수 있습니다.';
+  const rows = c.events || [];
+  const top = Math.max(1, ...rows.map(r => r.n));
+  $('rConversion').innerHTML = rows.map((r, i) => '<li><span class="no">' + (i + 1) + '</span><span class="nm"><b>' + esc(r.name) + '</b></span><span class="ct">' + num(r.n) + '명</span><span class="track"><i class="fill" style="width:' + Math.round(r.n / top * 100) + '%"></i></span></li>').join('');
 }
 
 function tapName(name) {
