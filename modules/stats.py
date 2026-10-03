@@ -180,7 +180,7 @@ def client_of(ua: str) -> str:
 
 
 def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
-        utm: str = "", campaign: str = "") -> None:
+        utm: str = "", campaign: str = "", member: bool = False) -> None:
     """페이지 한 번 열림. 화면(HTML)만 세고 자산·API 는 안 센다.
 
     🛑 **`utm_source` 가 있으면 그게 우선이다** (2026-09-11). 링크에 대놓고 적어
@@ -207,6 +207,7 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
         d["pv"] = int(d.get("pv", 0)) + 1
         if not inside and fp not in d["uv"]:
             d["uv"].append(fp)
+            d.setdefault("visitor_kind", {})[fp] = "member" if member else "guest"
             # 유입경로·기기는 그날 처음 온 사람만 센다 — 안 그러면 새로고침이 다 잡힌다
             d["src"][src] = int(d["src"].get(src, 0)) + 1
             # 🛑 캠페인은 **게시글 하나하나**다. 같은 스레드라도 어느 글이 물어 왔는지
@@ -225,6 +226,33 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
         _write(VISITS_JSON, data)
 
 
+_MEMBER_VISITS: set[str] = set()
+_MEMBER_VISITS_DAY = ""
+
+
+def member_visit(ip: str, ua: str) -> None:
+    """유효한 로그인 요청으로 기존 일간 방문을 회원으로 바꾼다. 방문을 새로 만들지 않는다."""
+    global _MEMBER_VISITS_DAY
+    day = _today()
+    fp = _fingerprint(ip or "", ua or "", day)
+    with _LOCK:
+        if _MEMBER_VISITS_DAY != day:
+            _MEMBER_VISITS_DAY = day
+            _MEMBER_VISITS.clear()
+        if fp in _MEMBER_VISITS:
+            return
+        data = _read(VISITS_JSON, {})
+        d = data.get(day, {})
+        if fp not in d.get("uv", []):
+            return
+        if d.get("visitor_kind", {}).get(fp) == "member":
+            _MEMBER_VISITS.add(fp)
+            return
+        d.setdefault("visitor_kind", {})[fp] = "member"
+        _write(VISITS_JSON, data)
+        _MEMBER_VISITS.add(fp)
+
+
 # ── 지금 사이트에 있는 사람 (2026-09-12 온해님) ──────────────────
 #
 # 🛑 **파일에 안 쓴다. 메모리에만 둔다.** 「지금」이라 다시 뜨면 비는 게 맞고,
@@ -232,8 +260,7 @@ def hit(ip: str, ua: str, path: str, ref: str = "", host: str = "",
 # 🛑 **`hit()` 으로는 못 센다.** 그건 HTML 이 열릴 때만 도는데, 우리 화면은 SPA 라
 #    손님이 사주를 보는 내내 HTML 요청이 한 번도 안 간다. 그래서 **API 요청까지**
 #    세는 자리를 따로 뒀다.
-# 🛑 회원인지는 **Authorization 헤더가 붙었는지**로만 본다. 토큰을 제대로 맞춰
-#    보지 않는다 — 세는 값이라 그 정도면 되고, 요청마다 DB 를 열면 느려진다.
+# 회원 여부는 미들웨어가 유효한 서버 세션으로 판정해 전달한다.
 _LIVE: dict[str, tuple[float, bool]] = {}
 _LIVE_LOCK = threading.Lock()
 # 🛑 **2분**이다 (2026-09-13). 앞단이 45초마다 `/api/ping` 을 보내므로 보고 있는
@@ -366,6 +393,7 @@ def forget_visits(day: str | None = None) -> int:
             gone = len(data)
             data = {}
         _write(VISITS_JSON, data)
+        _MEMBER_VISITS.clear()
     return gone
 
 
@@ -397,6 +425,14 @@ def _visits() -> dict[str, dict[str, Any]]:
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
             "fun": dict(d.get("fun", {})),    # 가입 경로 단계별 방문자 지문
         }
+        # 예전 기록은 회원 여부가 없다. 비회원으로 추정하지 않는다.
+        uv = out[day]["uv"]
+        kinds = d.get("visitor_kind", {})
+        fingerprints = set(d.get("uv", []))
+        member_uv = min(uv, sum(kinds.get(fp) == "member" for fp in fingerprints))
+        guest_uv = min(uv - member_uv, sum(kinds.get(fp) == "guest" for fp in fingerprints))
+        out[day].update(member_uv=member_uv, guest_uv=guest_uv,
+                        unknown_uv=uv - member_uv - guest_uv)
     return out
 
 
@@ -549,7 +585,7 @@ def overview(days: int = 30) -> dict[str, Any]:
     start = (now - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     by_day: dict[str, dict[str, int]] = defaultdict(
         lambda: {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
-                 "opens": 0, "asks": 0})
+                 "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0})
     for r in ch:
         by_day[r["day"]]["sales"] += r["price"]
         by_day[r["day"]]["charges"] += 1
@@ -567,6 +603,8 @@ def overview(days: int = 30) -> dict[str, Any]:
     for d, v in vis.items():
         by_day[d]["uv"] = v["uv"]
         by_day[d]["pv"] = v["pv"]
+        for key in ("member_uv", "guest_uv", "unknown_uv"):
+            by_day[d][key] = v[key]
 
     # 🛑 날짜마다 **어디서·무엇으로** 들어왔는지를 같이 보낸다 (2026-09-09 온해님 요청).
     #    자료는 원래 날짜별로 쌓여 있었는데 합계만 보내느라 화면에서 하루를 못 골랐다.
@@ -587,7 +625,7 @@ def overview(days: int = 30) -> dict[str, Any]:
 
     def _sum(keep) -> dict[str, int]:
         out = {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
-               "opens": 0, "asks": 0}
+               "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0}
         for d, v in by_day.items():
             if not keep(d):
                 continue

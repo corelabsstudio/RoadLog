@@ -850,9 +850,14 @@ async def _count_visit(request: Request, call_next):
                 #    「지금 접속중 회원이 4명으로 뜨는데?」). 헤더만 보고 세면
                 #    **만료된 토큰이 남은 브라우저**까지 회원이 된다.
                 #    서버가 401 을 돌려줬으면 그 토큰은 죽은 것이다.
-                _tok = bool(request.headers.get("authorization"))
+                auth_header = request.headers.get("authorization", "")
+                visit_user = (_sessions.get(auth_header[7:].strip())
+                              if auth_header.startswith("Bearer ") else None)
+                _tok = bool(visit_user) and resp.status_code < 400
                 stats_ops.live_touch(_client_ip(request), ua0,
-                                     _tok and resp.status_code != 401)
+                                     _tok)
+                if _tok:
+                    stats_ops.member_visit(_client_ip(request), ua0)
         except Exception:
             pass
         if (
