@@ -243,7 +243,7 @@ def fill_missing(loader) -> None:
         _write(d)
 
 
-def hall(month: str | None = None, limit: int = 30, sort: str = "likes") -> dict[str, Any]:
+def hall(month: str | None = None, limit: int = 30, sort: str = "likes", fallback: bool = False) -> dict[str, Any]:
     """목록. `sort=likes`(실시간 랭킹순) · `latest`(최신순).
     🛑 **순위(rank)는 정렬과 상관없이 좋아요 순위다** — 최신순으로 봐도 1~3위 왕관이 같은 아이에게 붙는다.
     진행 중인 달은 지금 1위에게 「이달의 관상왕」을 붙여 보여 준다."""
@@ -253,6 +253,14 @@ def hall(month: str | None = None, limit: int = 30, sort: str = "likes") -> dict
         if _settle(d):
             _write(d)
         rows = _ranked([r for r in d["rows"] if r.get("month") == m and not r.get("hidden")])
+        # 홈/갤러리에서는 새 달이 비어 있어도 공개된 이전 사진을 볼 수 있게 한다.
+        # 명시한 월과 기본 월별 순위 조회는 그대로 유지한다.
+        if fallback and not month and not rows:
+            months = [r.get("month", "") for r in d["rows"]
+                      if not r.get("hidden") and r.get("month", "") < m]
+            if months:
+                m = max(months)
+                rows = _ranked([r for r in d["rows"] if r.get("month") == m and not r.get("hidden")])
         fixed = d["winners"].get(m)
     out = []
     for n, r in enumerate(rows):

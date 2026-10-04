@@ -2749,7 +2749,7 @@ def pets_like(pid: str, request: Request, response: Response,
 
 @app.get("/api/pets/hall-of-fame")
 def pets_hall(month: str | None = Query(default=None), limit: int = Query(default=30),
-              sort: str = Query(default="likes")):
+              sort: str = Query(default="likes"), fallback: bool = Query(default=False)):
     """목록. `sort=likes`(실시간 랭킹순) · `latest`(최신순). 1위는 「이달의 관상왕」(is_monthly_winner). 로그인 없이 볼 수 있다."""
     if month and not (len(month) == 7 and month[4] == "-" and month.replace("-", "").isdigit()):
         raise HTTPException(400, "달은 2026-09 처럼 적어 주세요.")
@@ -2757,7 +2757,7 @@ def pets_hall(month: str | None = Query(default=None), limit: int = Query(defaul
         raise HTTPException(400, "정렬은 likes 또는 latest 예요.")
     # 갤러리 상세 조각이 없던 옛 줄을 관상 저장본으로 한 번 채운다 (2026-09-14 이전에 올린 것)
     pet_hall_ops.fill_missing(lambda shot: saju_writer.load("pet_read", shot))
-    return pet_hall_ops.hall(month, limit, sort)
+    return pet_hall_ops.hall(month, limit, sort, fallback=fallback)
 
 
 @app.get("/api/pets/{pid}/comments")
