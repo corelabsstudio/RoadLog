@@ -94,6 +94,8 @@ class Tests(unittest.TestCase):
         self.assertIn('stands and walks upright on TWO hind feet', captured[0])
         self.assertIn('NOT to ordinary four-legged cat anatomy', captured[0])
         self.assertIn('WARDROBE IS MANDATORY', captured[0])
+        self.assertIn('SIGNATURE MOON (required in EVERY card)', captured[0])
+        self.assertIn('pastel rainbow saekdong patchwork', captured[0])
         channels = [dict(channel=ch, cards=[] if ch.startswith('threads:') else
                         [dict(title='title', body='body', scene='A cat crouching on the floor.') for _ in range(2)])
                     for ch in CHANNELS]
@@ -110,10 +112,15 @@ class Tests(unittest.TestCase):
         for prompt in captured[1:]:
             self.assertIn('stands and walks upright on TWO hind feet', prompt)
             self.assertIn('front paws are arms and hands', prompt)
-            self.assertIn('full hanbok', prompt)
+            self.assertIn('full mint hanbok', prompt)
             self.assertIn('both arms inside their sleeves', prompt)
             self.assertIn('both legs inside their trousers', prompt)
             self.assertIn('no exposed torso or slipping clothes', prompt)
+            self.assertIn('golden crescent floating just above the head', prompt)
+            self.assertIn('A background moon does not satisfy', prompt)
+            self.assertIn('lower 65 percent', prompt)
+            self.assertIn('pastel rainbow saekdong hood', prompt)
+            self.assertIn('brown eyes and pink nose', prompt)
             self.assertIn('adapt all poses to the mandatory bipedal mascot', prompt)
             self.assertNotIn('retain natural proportions', prompt)
         self.assertEqual(self.s.state()['jobs'][0]['status'], 'READY')
