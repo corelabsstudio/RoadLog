@@ -55,6 +55,21 @@ class Tests(unittest.TestCase):
         self.s.save(p)
         self.assertEqual(self.s.state()['jobs'][0]['status'],'CANCELLED')
 
+    def test_schedule_without_prompt_uses_roadlog_defaults(self):
+        p = Profile(enabled=True, times=['12:00']).model_dump()
+        self.s.save(p)
+        self.s.tick_schedule(datetime(2026,10,5,12,0,tzinfo=KST))
+        self.assertEqual(self.s.state()['jobs'][0]['status'], 'QUEUED')
+        captured = []
+        def gemini(model, parts, config):
+            captured.append(parts[0]['text'])
+            raise RuntimeError('stop before paid generation')
+        self.s.gemini = gemini
+        with self.assertRaises(RuntimeError): self.s.plan(self.s.profile())
+        self.assertIn('무냥이', captured[0])
+        self.assertIn('오늘 운세', captured[0])
+        self.assertIn('최근 홍보와 다른 내용', captured[0])
+
     def test_reference_private_and_auth(self):
         buff=io.BytesIO(); Image.new('RGB',(25,25)).save(buff,'PNG')
         ident=self.s.add_reference(base64.b64encode(buff.getvalue()).decode())

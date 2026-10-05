@@ -28,12 +28,13 @@ from pydantic import BaseModel, Field
 CHANNELS = ('instagram:roadlog_saju', 'instagram:mumung_fact', 'threads:roadlog_saju')
 ACTIVE = ('QUEUED', 'GENERATING', 'PUBLISH_QUEUED', 'PUBLISHING')
 KST = ZoneInfo('Asia/Seoul')
-DEFAULT = dict(prompt='따뜻하지만 첫 문장은 강하게. 무냥이는 귀여운 실사 고양이 분위기. 과장 없이 공감을 얻고 로드로그로 연결해주세요.',
+AUTO_STYLE = '로드로그 홈페이지에 어울리는 보랏빛 밤과 따뜻한 등불, 파스텔 한복 두건을 쓴 귀여운 실사 무냥이. 첫 문장은 짧고 강하게, 본문은 친근한 한국어로 공감을 얻으세요. 확인된 상품 목록에서 채널별로 어울리는 상품과 주제를 스스로 선택하고 최근 홍보와 다른 내용으로 구성하세요.'
+DEFAULT = dict(prompt='',
                references=[], enabled=False, times=['09:00', '12:00', '18:00', '21:00'], monthly_budget=60000)
 
 
 class Profile(BaseModel):
-    prompt: str = Field(max_length=6000)
+    prompt: str = Field(default='', max_length=6000)
     references: list[str] = Field(default_factory=list, max_length=3)
     enabled: bool = False
     times: list[str] = Field(default_factory=lambda: DEFAULT['times'].copy(), max_length=24)
@@ -89,8 +90,6 @@ class Promotion:
             raise ValueError('예시 이미지가 없거나 중복되었습니다.')
         if len(p['times']) != len(set(p['times'])) or any(not re.fullmatch(r'(?:[01]\d|2[0-3]):00', t) for t in p['times']):
             raise ValueError('예약 시각은 중복 없이 1시간 단위로 선택해주세요.')
-        if not p['prompt'].strip() and not p['references']:
-            raise ValueError('느낌을 설명하는 프롬프트나 예시 이미지를 넣어주세요.')
         if p['enabled'] and (not p['times'] or not all(self.configured().values())):
             raise ValueError('예약을 켜려면 API 연결과 발행 시각 설정이 필요합니다.')
         if p['enabled']:
@@ -245,7 +244,7 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
 {"channel":"instagram:roadlog_saju","topic":"주제","product_id":"상품id","caption":"2200자 이하 본문","cards":[{"title":"","body":"","scene":""},{"title":"","body":"","scene":""}]},
 {"channel":"instagram:mumung_fact", ...}, {"channel":"threads:roadlog_saju","topic":"다른 주제","product_id":"상품id","caption":"500자 이하 글","cards":[]}]}
 각 caption 끝에 상품id에 맞는 https://roadlog.co.kr/#p/상품id 연결을 넣으세요. 이전 주제/본문과 중복 금지.
-사용자 느낌: ''' + p['prompt'] + '\n확인된 상품 목록: ' + json.dumps(self.products(), ensure_ascii=False) + '\n최근 제작 내용: ' + '\n'.join(previous)
+사용자 느낌: ''' + (p['prompt'].strip() or AUTO_STYLE) + '\n확인된 상품 목록: ' + json.dumps(self.products(), ensure_ascii=False) + '\n최근 제작 내용: ' + '\n'.join(previous)
         parts = self.gemini('gemini-3.1-flash-lite', [{'text': prompt}, *self.references(p)],
                             {'responseMimeType': 'application/json', 'maxOutputTokens': 8192})
         plan = json.loads(''.join(part.get('text', '') for part in parts))
@@ -314,7 +313,7 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
         for item in plan['channels']:
             item['images'] = []
             for i, card in enumerate(item['cards']):
-                prompt = 'Create an original premium 4:5 Korean social campaign scene. No text, letters, logos or watermarks. Leave top 35 percent calm for a headline. Style inspired ONLY by reference color/lighting, never copy composition or characters of others. Roadlog mascot is a cute orange-white cat in a pastel Korean traditional hood; retain natural proportions. User style: ' + p['prompt'] + '\nScene: ' + card['scene']
+                prompt = 'Create an original premium 4:5 Korean social campaign scene. No text, letters, logos or watermarks. Leave top 35 percent calm for a headline. Style inspired ONLY by reference color/lighting, never copy composition or characters of others. Roadlog mascot is a cute orange-white cat in a pastel Korean traditional hood; retain natural proportions. User style: ' + (p['prompt'].strip() or AUTO_STYLE) + '\nScene: ' + card['scene']
                 result = self.gemini('gemini-3.1-flash-image', [{'text': prompt}, *self.references(p)],
                                      {'responseModalities': ['IMAGE'], 'imageConfig': {'aspectRatio': '4:5', 'imageSize': '1K'}, 'maxOutputTokens': 8192})
                 inline = next((part['inlineData'] for part in result if 'inlineData' in part), None)
