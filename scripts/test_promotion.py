@@ -83,6 +83,37 @@ class Tests(unittest.TestCase):
         self.assertEqual(client.get('/api/promotion/images/'+ident+'/gemini.key').status_code,404)
         self.assertNotIn('test',json.dumps(self.s.state()['configured']))
 
+    def test_bipedal_mascot_reaches_planner_and_every_image_with_custom_style(self):
+        p = Profile(prompt='Photorealistic cat sitting beside a mirror.').model_dump()
+        captured = []
+        def stop_planner(model, parts, config):
+            captured.append(parts[0]['text'])
+            raise RuntimeError('captured')
+        self.s.gemini = stop_planner
+        with self.assertRaises(RuntimeError): self.s.plan(p)
+        self.assertIn('stands and walks upright on TWO hind feet', captured[0])
+        self.assertIn('NOT to ordinary four-legged cat anatomy', captured[0])
+        channels = [dict(channel=ch, cards=[] if ch.startswith('threads:') else
+                        [dict(title='title', body='body', scene='A cat crouching on the floor.') for _ in range(2)])
+                    for ch in CHANNELS]
+        self.s.plan = lambda profile: {'channels': channels}
+        raw = io.BytesIO(); Image.new('RGB', (25, 25)).save(raw, 'PNG')
+        def image_model(model, parts, config):
+            captured.append(parts[0]['text'])
+            return [{'inlineData': {'data': base64.b64encode(raw.getvalue()).decode()}}]
+        self.s.gemini = image_model
+        self.s.render = lambda image, card: image
+        ident = self.s.enqueue('mascot-test')
+        self.s.generate(dict(id=ident, profile=json.dumps(p), auto=False))
+        self.assertEqual(len(captured), 5)
+        for prompt in captured[1:]:
+            self.assertIn('stands and walks upright on TWO hind feet', prompt)
+            self.assertIn('front paws are arms and hands', prompt)
+            self.assertIn('full hanbok', prompt)
+            self.assertIn('adapt all poses to the mandatory bipedal mascot', prompt)
+            self.assertNotIn('retain natural proportions', prompt)
+        self.assertEqual(self.s.state()['jobs'][0]['status'], 'READY')
+
     def test_plan_rejects_duplicate_channel(self):
         self.s.gemini=lambda *a:[{'text':json.dumps({'channels':[{'channel':CHANNELS[0]}]*3})}]
         with self.assertRaises(ValueError): self.s.plan(self.s.profile())
