@@ -87,9 +87,11 @@ from modules import curse_shrine as curse_ops
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_core.repository import MarketingRepository
+from modules.promotion import Promotion, router as promotion_router
 
 ROOT = Path(__file__).resolve().parent
 WEB = ROOT / "web"
+promotion = Promotion(Path(DATA_DIR), WEB)
 
 def _marketing_repo() -> MarketingRepository:
     return MarketingRepository(Path(DATA_DIR) / "marketing_os.db", "roadlog", legacy_tenant_id="roadlog")
@@ -112,7 +114,9 @@ _cors_credentials = _cors_origins != ["*"]
 
 @asynccontextmanager
 async def app_lifespan(_app: FastAPI):
+    promotion.start()
     yield
+    promotion.stop.set()
 
 
 app = FastAPI(title=APP_FULL, version="3.1", lifespan=app_lifespan)
@@ -252,6 +256,9 @@ def _require_admin(authorization: str | None) -> dict:
     if not user.get("is_admin"):
         raise HTTPException(403, "관리자만 접근할 수 있습니다.")
     return user
+
+
+app.include_router(promotion_router(promotion, _require_admin))
 
 
 # ── Models ────────────────────────────────────────────

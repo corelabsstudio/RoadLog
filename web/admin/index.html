@@ -427,6 +427,7 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
     <button data-tab="pay"><span class="ui-icon i-3" aria-hidden="true"></span>결제</button>
     <button data-tab="visit"><span class="ui-icon i-4" aria-hidden="true"></span>유입</button>
     <button data-tab="feedback"><span class="ui-icon i-5" aria-hidden="true"></span>피드백</button>
+    <button data-tab="promotion">홍보 · 발행</button>
     <!-- 손님 화면으로 건너간다 (2026-09-11 온해님 「전환되는 버튼」).
          🛑 운영 앱 범위는 `/admin/` 뿐이라, 앱으로 열었을 때 이 링크는
             **브라우저(또는 손님 앱)로 빠진다.** 그게 맞는 동작이다. -->
@@ -711,6 +712,7 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
       </div>
     </section>
 
+    <section data-page="promotion" hidden><iframe title="홍보 제작 및 발행" id="promotionFrame" style="width:100%;height:1900px;border:0" loading="lazy" data-src="/admin/promotion.html"></iframe></section>
     <section data-page="member" hidden>
       <!-- 🛑 **새로 오신 분을 따로 위에 둔다** (2026-09-11 온해님). 아래 표에 일흔 명이
            한 줄로 쌓여 있어서, 오늘 누가 왔는지 보려면 끝까지 내려야 했다.
@@ -1612,7 +1614,7 @@ window.addEventListener('resize', () => {
 });
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
-                   pay: '결제', visit: '유입', feedback: '피드백' };
+                   pay: '결제', visit: '유입', feedback: '피드백', promotion: '홍보 · 발행' };
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   if (prDirty && b.dataset.tab !== 'ai' && !confirm('저장하지 않은 변경이 있습니다. 변경을 버리고 이동할까요?')) return;
@@ -1621,6 +1623,7 @@ $('tabs').addEventListener('click', (e) => {
   $('tabs').querySelectorAll('button[data-tab]').forEach((x) => x.classList.toggle('on', x === b));
   document.querySelectorAll('[data-page]').forEach((p) => { p.hidden = p.dataset.page !== b.dataset.tab; });
   $('pageName').textContent = TAB_NAME[b.dataset.tab] || '';
+  if (b.dataset.tab === 'promotion' && !$('promotionFrame').src) $('promotionFrame').src = $('promotionFrame').dataset.src;
   $('tabs').querySelectorAll('button[data-tab]').forEach((x) => { if (x === b) x.setAttribute('aria-current', 'page'); else x.removeAttribute('aria-current'); });
   const url = new URL(location.href); url.searchParams.set('tab', b.dataset.tab); history.replaceState(null, '', url);
   if (DATA) { if (b.dataset.tab === 'sum') drawSales(); if (b.dataset.tab === 'visit') drawVisit(); }
