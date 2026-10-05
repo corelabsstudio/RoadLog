@@ -1615,6 +1615,7 @@ window.addEventListener('resize', () => {
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
                    pay: '결제', visit: '유입', feedback: '피드백', promotion: '홍보 · 발행' };
+window.addEventListener('message', e => { const frame = $('promotionFrame'); if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.type === 'promotion-height' && Number.isFinite(e.data.height)) frame.style.height = Math.max(600, Math.min(15000, e.data.height + 30)) + 'px'; });
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
   if (prDirty && b.dataset.tab !== 'ai' && !confirm('저장하지 않은 변경이 있습니다. 변경을 버리고 이동할까요?')) return;

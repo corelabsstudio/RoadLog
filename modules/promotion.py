@@ -279,23 +279,28 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
         shade = Image.new('RGBA', im.size)
         d = ImageDraw.Draw(shade)
         for y in range(550):
-            d.line((0, y, 1080, y), fill=(15, 11, 27, max(0, 220 - y // 3)))
+            d.line((0, y, 1080, y), fill=(15, 11, 27, int(220 * (1 - y / 550) ** 1.2)))
         im = Image.alpha_composite(im.convert('RGBA'), shade)
         d = ImageDraw.Draw(im)
         def text(value, size, y, color):
             font = ImageFont.truetype(str(fontpath), size)
             line = ''
-            for ch in value:
-                if d.textlength(line + ch, font=font) > 932 or ch == '\n':
-                    d.text((74, y), line, font=font, fill=color)
-                    y += int(size * 1.35)
-                    line = '' if ch == '\n' else ch
-                else:
-                    line += ch
-            d.text((74, y), line, font=font, fill=color)
+            for paragraph in value.split('\n'):
+                line = ''
+                for word in paragraph.split():
+                    candidate = (line + ' ' + word).strip()
+                    if line and d.textlength(candidate, font=font) > 932:
+                        d.text((74, y), line, font=font, fill=color)
+                        y += int(size * 1.35)
+                        line = word
+                    else:
+                        line = candidate
+                d.text((74, y), line, font=font, fill=color)
+                y += int(size * 1.35)
             return y + int(size * 1.55)
-        y = text(card['title'], 68, 85, 'white')
-        text(card['body'], 36, y + 10, '#f0e9ff')
+        y = text(card['title'], 68, 55, 'white') - 65
+        body = card['body'].replace('□', '\n□').strip()
+        text(body, 36, y + 10, '#f0e9ff')
         d.text((74, 1265), '로드로그 · 마음이 지나간 길을 읽어요', font=ImageFont.truetype(str(fontpath), 27), fill='white', stroke_width=1, stroke_fill='#251b38')
         out = io.BytesIO()
         im.convert('RGB').save(out, format='JPEG', quality=94)
@@ -316,7 +321,11 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
                 if not inline:
                     raise ValueError('Gemini가 이미지를 반환하지 않았습니다.')
                 name = item['channel'].split(':')[1] + '-' + str(i + 1) + '.jpg'
-                (dest / name).write_bytes(self.render(base64.b64decode(inline['data'], validate=True), card))
+                raw = base64.b64decode(inline['data'], validate=True)
+                originals = self.root / 'originals' / job['id']
+                originals.mkdir(parents=True, exist_ok=True)
+                (originals / (name + '.bin')).write_bytes(raw)
+                (dest / name).write_bytes(self.render(raw, card))
                 item['images'].append('/api/promotion/images/' + job['id'] + '/' + name)
         with self.db() as c:
             c.execute('UPDATE jobs SET result=?,status=? WHERE id=?',
@@ -382,6 +391,10 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
         with self.db() as c:
             statuses = [r[0] for r in c.execute('SELECT status FROM receipts WHERE job=?', (job['id'],))]
             c.execute('UPDATE jobs SET status=? WHERE id=?', ('PUBLISHED' if statuses == ['PUBLISHED'] * 3 else 'PARTIAL', job['id']))
+        if statuses != ['PUBLISHED'] * 3:
+            p = self.profile()
+            p['enabled'] = False
+            self.save(p)
 
     @staticmethod
     def safe_error(error):
