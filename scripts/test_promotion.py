@@ -87,6 +87,21 @@ class Tests(unittest.TestCase):
         self.s.gemini=lambda *a:[{'text':json.dumps({'channels':[{'channel':CHANNELS[0]}]*3})}]
         with self.assertRaises(ValueError): self.s.plan(self.s.profile())
 
+    def test_plan_accepts_common_questions_but_rejects_fictional_anecdotes(self):
+        channels = [dict(channel=ch, topic=str(i), product_id='today',
+                         caption='대화가 자꾸 엇갈리나요? https://roadlog.co.kr/#p/today',
+                         cards=[] if ch.startswith('threads:') else [dict(title='마음이 궁금한가요?', body='표현 방식이 다른지 살펴보세요.', scene='A cat under warm lantern light.') for _ in range(2)])
+                    for i, ch in enumerate(CHANNELS)]
+        self.s.gemini = lambda *a: [{'text': json.dumps({'channels': channels})}]
+        self.assertEqual(len(self.s.plan(self.s.profile())['channels']), 3)
+        for text in ['(가상 상황: 3년 차 커플 B님)', 'A님은 상대의 침묵이 답답하다고 합니다.', '가상의 인물 이야기']:
+            with self.subTest(text=text):
+                channels[2]['caption'] = text + ' https://roadlog.co.kr/#p/today'
+                with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan(self.s.profile())
+        channels[2]['caption'] = '연락할 타이밍이 고민인가요? https://roadlog.co.kr/#p/today'
+        channels[0]['cards'][0]['body'] = '(가상 사례)'
+        with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan(self.s.profile())
+
     def test_publish_uncertainty_and_no_repetition(self):
         self.s.identities=lambda:[dict(channel=ch,id='123',username=ch.split(':')[1]) for ch in CHANNELS]
         self.s.ready_container=lambda *a:None
