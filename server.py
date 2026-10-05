@@ -3316,7 +3316,11 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
     if not saju_writer.ready():
         raise HTTPException(503, "글쓰기 준비가 아직 안 됐어요.")
 
-    want = [s for s in (body.sections or []) if isinstance(s, str) and s.strip()][:20]
+    want = [s for s in (body.sections or []) if isinstance(s, str) and s.strip()]
+    # 가장 긴 대점은 51항목이다. 앞 20개로 자르면 뒷부분을 요청할 길이 없다.
+    # 생성기는 내부 물결별 동시 호출 상한을 유지하며, 과도한 요청은 명시적으로 거절한다.
+    if len(want) > 64:
+        raise HTTPException(400, "한 번에 요청할 수 있는 항목 수를 넘었습니다.")
     if not want:
         raise HTTPException(400, "쓸 항목이 없습니다.")
 
