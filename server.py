@@ -1120,6 +1120,13 @@ def _funnel_from(request: Request | None, step: str) -> None:
 
 @app.post("/api/funnel")
 def funnel_event(body: FunnelBody, request: Request):
+    # Signup completion is emitted by the successful registration handlers only.
+    if body.step in ('signup_email', 'signup_social'):
+        return {"ok": True}
+    if body.step.startswith('path_'):
+        auth = request.headers.get('authorization', '')
+        if auth.startswith('Bearer ') and _sessions.get(auth[7:].strip()):
+            return {"ok": True}
     _funnel_from(request, body.step or "")
     return {"ok": True}
 

@@ -424,6 +424,7 @@ def _visits() -> dict[str, dict[str, Any]]:
             "tap": dict(d.get("tap", {})),
             "ua": dict(d.get("ua", {})),      # 무엇으로 들어왔나 (계열 이름만)
             "fun": dict(d.get("fun", {})),    # 가입 경로 단계별 방문자 지문
+            "signup_path": dict(d.get("signup_path", {})),
         }
         # 예전 기록은 회원 여부가 없다. 비회원으로 추정하지 않는다.
         uv = out[day]["uv"]
@@ -721,6 +722,7 @@ def overview(days: int = 30) -> dict[str, Any]:
         # 🛑 **가입까지 어디서 멈추나** (2026-09-29 Kiro · 가입 전환 개선 7번). 단계별 사람 수
         "funnel": _funnel_sum(vis, start),
         "funnelSince": max(start, "2026-09-29"),
+        "signupPath": _signup_path_sum(vis, start),
         "conversion": _conversion_sum(vis, start),
     }
 
@@ -763,7 +765,21 @@ CONVERSION_STEPS = [
     ("curse_entry", "비회원 · 저주 신단 진입"),
     ("curse_complete", "저주 무료 결과 · 회원 포함"),
 ]
-_FUNNEL_KEYS = {k for k, _ in FUNNEL_STEPS + CONVERSION_STEPS}
+_PATH_STEPS = {'path_visit': 1, 'path_product': 2, 'path_auth': 3, 'signup_email': 4, 'signup_social': 4}
+_FUNNEL_KEYS = {k for k, _ in FUNNEL_STEPS + CONVERSION_STEPS} | set(_PATH_STEPS)
+
+
+def _signup_path_sum(vis, start):
+    """Daily browser cohorts that actually followed the ordered guest signup path."""
+    start = max(start, '2026-10-05')
+    daily = []
+    for day, v in sorted(vis.items()):
+        if day < start:
+            continue
+        stages = list((v.get('signup_path') or {}).values())
+        daily.append(dict(day=day, **{key: sum(isinstance(n, int) and n >= i for n in stages)
+                                     for i, key in enumerate(('visit', 'product', 'auth', 'signup'), 1)}))
+    return {'since': start, 'daily': daily}
 
 
 def _conversion_sum(vis: dict[str, Any], start: str) -> dict[str, Any]:
@@ -798,6 +814,16 @@ def funnel(step: str, ip: str, ua: str) -> None:
     with _LOCK:
         data = _read(VISITS_JSON, {})
         d = data.setdefault(day, {"pv": 0, "uv": [], "src": {}})
+        stage = _PATH_STEPS.get(step)
+        if stage:
+            path = d.setdefault('signup_path', {})
+            before = path.get(fp, 0)
+            if before == stage - 1:
+                path[fp] = stage
+            # Path events stay separate from historical unordered step counts.
+            if step.startswith('path_'):
+                _write(VISITS_JSON, data)
+                return
         seen = d.setdefault("fun", {}).setdefault(step, [])
         if fp in seen:
             return

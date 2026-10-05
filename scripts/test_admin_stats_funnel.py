@@ -17,6 +17,35 @@ from modules import stats
 
 
 class AdminStatsFunnelTest(unittest.TestCase):
+    def test_signup_path_requires_order_deduplicates_and_preserves_privacy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'visits.json'
+            with patch.object(stats, 'VISITS_JSON', file), patch.object(stats, '_today', return_value='2026-10-05'):
+                ip, ua = '192.0.2.77', 'Mozilla Signup Test'
+                # A signup before visiting cannot fabricate a complete journey.
+                stats.funnel('signup_email', ip, ua)
+                stats.funnel('path_visit', ip, ua)
+                stats.funnel('path_auth', ip, ua)
+                stats.funnel('path_product', ip, ua)
+                stats.funnel('path_auth', ip, ua)
+                stats.funnel('signup_social', ip, ua)
+                stats.funnel('signup_social', ip, ua)
+                stats.funnel('path_visit', '192.0.2.78', ua)
+                raw = file.read_text(encoding='utf-8')
+                result = stats._signup_path_sum(stats._visits(), '2026-09-01')
+            self.assertEqual(result['daily'], [dict(day='2026-10-05', visit=2, product=1, auth=1, signup=1)])
+            self.assertEqual(result['since'], '2026-10-05')
+            self.assertNotIn(ip, raw)
+            self.assertNotIn(ua, raw)
+
+    def test_signup_path_does_not_infer_historical_or_cross_day_completion(self):
+        visits = {'2026-10-04': {'signup_path': {'old': 4}},
+                  '2026-10-05': {'signup_path': {'a': 2}},
+                  '2026-10-06': {'signup_path': {'a': 1}, 'fun': {'signup_email': ['a']}}}
+        self.assertEqual(stats._signup_path_sum(visits, '2026-09-01')['daily'],
+                         [dict(day='2026-10-05', visit=1, product=1, auth=0, signup=0),
+                          dict(day='2026-10-06', visit=1, product=0, auth=0, signup=0)])
+
     def test_conversion_home_cohort_uses_intersection_and_signup_union(self):
         vis = {
             '2026-10-03': {'fun': {'landing_guest': ['old']}},

@@ -393,6 +393,8 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
 @media(prefers-reduced-motion:no-preference){button,a{transition:background .15s,box-shadow .15s}.card{animation:panelIn .3s ease both}@keyframes panelIn{from{opacity:.65;transform:translateY(5px)}to{opacity:1;transform:none}}}
 
 .chart{overflow:visible}.plot-scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#c7bee8 transparent}.chart-scroll-note{font-size:11px;color:var(--muted);margin:8px 0 0}
+
+.signup-path-card{margin-bottom:22px}.signup-path-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:18px 0}.signup-path-step{padding:22px 18px;background:#fafaff;border-right:1px solid var(--line);min-width:0}.signup-path-step:last-child{border:0;background:#eeecfc}.signup-path-step span{display:block;font-size:13px;color:var(--muted)}.signup-path-step strong{display:block;margin:8px 0;font-size:30px;color:#443975}.signup-path-step small{font-size:12px;line-height:1.7;color:var(--muted);display:block}.signup-path-card details{font-size:12px;color:var(--muted);margin-top:12px}.signup-path-card summary{cursor:pointer}.signup-path-card .hd .sub{margin:0}@media(max-width:700px){.signup-path-steps{grid-template-columns:1fr 1fr}.signup-path-step{padding:16px 14px;border-bottom:1px solid var(--line)}.signup-path-step:nth-child(2){border-right:0}.signup-path-step:nth-child(3){border-bottom:0}.signup-path-step strong{font-size:26px}}
 </style>
 </head>
 <body>
@@ -505,6 +507,13 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
     </section>
 
     <section data-page="visit" hidden>
+      <div class="card signup-path-card">
+        <div class="hd"><h2>가입까지 어디서 멈출까요?</h2><span id="signupPathPeriod" class="sub"></span></div>
+        <div id="signupPathSteps" class="signup-path-steps"></div>
+        <p id="signupPathSummary" class="note"></p>
+        <p class="note">2026-10-05부터 새로 집계합니다. 같은 날 같은 브라우저가 위 순서대로 진행한 경우만 연결합니다. 가입 완료는 실제 새 계정 생성 기준입니다. 상품 링크로 바로 들어온 방문도 상품 열기에 포함됩니다.</p>
+        <details><summary>집계 기준 보기</summary><p class="note">첫 단계는 로그아웃 상태로 웹 화면이 열린 브라우저입니다. 사람 여부를 완전히 판별할 수는 없습니다. IP·브라우저 정보가 바뀌거나 날짜를 넘기면 연결되지 않을 수 있고, 여러 날짜의 합계에는 재방문이 포함됩니다. 과거 기록은 이 순서로 소급 계산하지 않습니다. 아래 방문자 그래프의 날짜를 누르면 해당 기간의 경로를 봅니다.</p></details>
+      </div>
       <div class="deck">
         <div class="card">
           <div class="hd">
@@ -937,11 +946,25 @@ function sumBy(days, field) {
   return [...bag.entries()].map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n);
 }
 
+function paintSignupPath(days) {
+  const path = DATA.signupPath || {}, rows = (path.daily || []).filter(r => !days || days.includes(r.day));
+  const keys = ['visit','product','auth','signup'], names = ['실제 방문','상품 클릭 · 열기','가입 화면 열기','가입 완료'];
+  const counts = keys.map(k => rows.reduce((n,r) => n + (Number(r[k]) || 0), 0));
+  const percent = (n,d) => d ? (n/d*100).toFixed(1)+'%' : '—';
+  $('signupPathPeriod').textContent = days ? '선택한 기간' : '집계 시작 이후 · 최근 90일';
+  $('signupPathSteps').innerHTML = counts.map((n,i) => '<div class="signup-path-step"><span>'+names[i]+'</span><strong>'+num(n)+'명</strong><small>'+(i ? '이전 단계 대비 '+percent(n,counts[i-1])+' · '+num(counts[i-1]-n)+'명 미진행' : '로그아웃 상태의 브라우저 방문')+'</small></div>').join('');
+  if (!counts[0]) $('signupPathSummary').textContent = '아직 이 기간에 새로 기록된 가입 경로가 없습니다. 방문이 들어오면 자동으로 표시됩니다.';
+  else {
+    const drops = counts.slice(0,3).map((n,i) => ({n:n-counts[i+1],i})).sort((a,b)=>b.n-a.n);
+    $('signupPathSummary').textContent = '방문 → 가입 완료 '+percent(counts[3],counts[0])+(drops[0].n ? ' · 가장 많이 멈춘 구간: '+names[drops[0].i]+' → '+names[drops[0].i+1]+' ('+num(drops[0].n)+'명)' : ' · 모든 방문이 가입까지 이어졌습니다.');
+  }
+}
 function drawVisit() {
   const rows = group(DATA.daily, gVisit, 'uv');
   if (pickedKey && !rows.some((r) => r.k === pickedKey)) pickedKey = '';   // 단위를 바꾸면 푼다
   chart($('cVisit'), rows, gVisit, (v) => num(v) + '명', pickedKey);
   const one = rows.find((r) => r.k === pickedKey);
+  paintSignupPath(one ? one.days : null);
   const visits = (DATA.daily || []).filter((x) => !one || one.days.includes(x.day));
   const count = (key) => visits.reduce((n, x) => n + (Number(x[key]) || 0), 0);
   stats($('visitKinds'), [
