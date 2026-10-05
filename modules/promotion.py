@@ -33,10 +33,12 @@ Munyang is Roadlog's anthropomorphic, bipedal orange-and-white cat mascot brough
 Keep the mascot's cute rounded face, large expressive eyes, compact upright torso, short legs and visible tail.
 Munyang stands and walks upright on TWO hind feet, with a humanlike upright silhouette. The TWO front paws are arms and hands used to hold a lantern, read a scroll or gesture.
 Dress the whole upright body in a pastel Korean hanbok robe with sleeves and a matching traditional hood, not merely a hood on an ordinary cat.
+WARDROBE IS MANDATORY: fully and properly wear a fitted pastel hanbok jeogori jacket and baji trousers, with the collar closed, goreum ties securely fastened, both arms inside their sleeves and both legs inside their trousers. Keep the outfit consistent across all cards.
+Never show a hood-only outfit, missing trousers, bare furry chest or belly, open or undone clothing, clothes slipping off, one shoulder exposed, a half-dressed body or a cape/scarf replacing the hanbok. Only the face, paws and tail may have visible fur outside the complete outfit.
 If seated, sit upright like a small person, with hind feet below the body and front paws free as hands; never use a domestic cat's sitting or crouching pose.
 Photorealism applies to surface textures and lighting, NOT to ordinary four-legged cat anatomy. No quadruped, no crawling, no ordinary pet cat, no human face or human skin.
 Scene actions, user style and example images must preserve this character identity. Show the upright silhouette and two feet clearly whenever framing permits.'''
-AUTO_STYLE = '로드로그 홈페이지에 어울리는 보랏빛 밤과 따뜻한 등불. 무냥이는 두 발로 서고 걸으며 앞발을 손처럼 쓰는 의인화 캐릭터의 실사화입니다. 둥근 얼굴과 짧은 팔다리, 파스텔 한복과 두건을 유지하고 털·옷감·조명만 실사 질감으로 표현하세요. 첫 문장은 짧고 강하게, 본문은 친근한 한국어로 공감을 얻으세요. 확인된 상품 목록에서 채널별로 어울리는 상품과 주제를 스스로 선택하고 최근 홍보와 다른 내용으로 구성하세요.'
+AUTO_STYLE = '로드로그 홈페이지에 어울리는 보랏빛 밤과 따뜻한 등불. 무냥이는 두 발로 서고 걸으며 앞발을 손처럼 쓰는 의인화 캐릭터의 실사화입니다. 둥근 얼굴과 짧은 팔다리, 파스텔 한복과 두건을 유지하고 털·옷감·조명만 실사 질감으로 표현하세요. 저고리와 바지를 온전히 입고 깃과 고름을 단정히 여며 두건만 쓰거나 옷이 벗겨지고 몸통이 드러난 모습을 만들지 마세요. 첫 문장은 짧고 강하게, 본문은 친근한 한국어로 공감을 얻으세요. 확인된 상품 목록에서 채널별로 어울리는 상품과 주제를 스스로 선택하고 최근 홍보와 다른 내용으로 구성하세요.'
 DEFAULT = dict(prompt='',
                references=[], enabled=False, times=['09:00', '12:00', '18:00', '21:00'], monthly_budget=60000)
 
@@ -328,7 +330,7 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
         for item in plan['channels']:
             item['images'] = []
             for i, card in enumerate(item['cards']):
-                prompt = 'Create an original premium 4:5 Korean social campaign scene. No text, letters, logos or watermarks. Leave top 35 percent calm for a headline. Style inspired ONLY by reference color/lighting, never copy composition or characters of others.\n' + MUNYANG_CHARACTER + '\nUser style (mood only): ' + (p['prompt'].strip() or AUTO_STYLE) + '\nScene (adapt all poses to the mandatory bipedal mascot): ' + card['scene'] + '\nFinal character check: upright bipedal Munyang in a full hanbok, front paws used as hands. Never render an ordinary four-legged pet cat.'
+                prompt = 'Create an original premium 4:5 Korean social campaign scene. No text, letters, logos or watermarks. Leave top 35 percent calm for a headline. Style inspired ONLY by reference color/lighting, never copy composition or characters of others.\n' + MUNYANG_CHARACTER + '\nUser style (mood only): ' + (p['prompt'].strip() or AUTO_STYLE) + '\nScene (adapt all poses to the mandatory bipedal mascot): ' + card['scene'] + '\nFinal character check: upright bipedal Munyang in a full hanbok, front paws used as hands, jacket closed and tied, trousers properly worn, no exposed torso or slipping clothes. Never render an ordinary four-legged pet cat.'
                 result = self.gemini('gemini-3.1-flash-image', [{'text': prompt}, *self.references(p)],
                                      {'responseModalities': ['IMAGE'], 'imageConfig': {'aspectRatio': '4:5', 'imageSize': '1K'}, 'maxOutputTokens': 8192})
                 inline = next((part['inlineData'] for part in result if 'inlineData' in part), None)
