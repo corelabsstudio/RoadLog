@@ -54,3 +54,6 @@ tools/tistory_publish/publish_log.jsonl
 data/lamps.json
 data/saju_reports/
 data/saju_preview_count.json
+
+# Administrator promotion credentials and generated drafts
+data/promotion/

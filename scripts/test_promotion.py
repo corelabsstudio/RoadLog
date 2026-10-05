@@ -103,4 +103,18 @@ class Tests(unittest.TestCase):
         self.s.queue_publish(ident)
         with self.assertRaises(ValueError): self.s.queue_publish(ident)
 
+    def test_publication_requires_matching_copy_and_two_children(self):
+        self.s.identities=lambda:[dict(channel=ch,id='123',username=ch.split(':')[1]) for ch in CHANNELS]
+        self.s.ready_container=lambda *a:None
+        def graph(ch,method,path,data=None):
+            if method=='POST':return {'id':'111'}
+            return {'id':'111','username':'roadlog_saju','text':'copy','caption':'copy','permalink':'https://www.instagram.com/p/test/','media_type':'CAROUSEL_ALBUM','children':{'data':[{'id':'1'},{'id':'2'}]}}
+        self.s.graph=graph
+        ident=self.s.enqueue('success-test')
+        result={'channels':[{'channel':ch,'caption':'copy','images':[] if ch.startswith('threads') else ['/a.jpg','/b.jpg']} for ch in CHANNELS]}
+        with self.s.db() as c:c.execute('UPDATE jobs SET result=? WHERE id=?',(json.dumps(result),ident))
+        self.s.publish({'id':ident,'result':json.dumps(result)})
+        self.assertEqual(self.s.state()['jobs'][0]['status'],'PUBLISHED')
+        self.assertEqual(len(self.s.state()['jobs'][0]['receipts']),3)
+
 if __name__=='__main__':unittest.main()
