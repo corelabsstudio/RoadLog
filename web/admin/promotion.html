@@ -31,13 +31,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 <p class="note">참고 이미지는 비공개로 보관하고 생성 API에서 분위기를 분석합니다. 타인의 원문이나 후기를 복제하지 않습니다.</p><div class="actions"><button id="preview">먼저 미리보기 만들기</button></div></details>
 <details class="card"><summary>API · 비용 설정</summary><p id="connections"></p><button id="verify">연결 확인</button>
 <label for="budget">월 생성 예약 한도 (원)</label><input id="budget" type="number" min="1000" max="300000" step="1000" value="60000"><p id="spent" class="note"></p><p id="projection" class="note"></p>
-<p class="note">생성 시도당 1,000원을 한도에서 예약하며, 실제 청구액과는 다릅니다. 한도에 도달하면 새 제작을 멈춥니다. 제작·미리보기에는 생성 API 비용이 발생합니다.</p>
+<p class="note">제작 작업당 1,000원을 한도에서 예약하며, 실제 청구액과는 다릅니다. 본문이나 카드가 중복되면 최대 두 번 다시 작성하고 새 소재로 전환합니다. 한도에 도달하면 새 제작을 멈춥니다.</p>
 <details><summary>Gemini API 키 변경</summary><p class="note">이미 등록된 키로 실행됩니다. 변경할 때만 입력해주세요.</p><input id="geminiKey" type="password" autocomplete="new-password" aria-label="Gemini API 키"><button id="setKey">키 저장</button></details></details>
 <details class="card"><summary id="historySummary">제작 · 게시 내역</summary><section id="jobs"></section></details>
 </main><script>
 const $=id=>document.getElementById(id), auth=()=>localStorage.getItem('roadlog.token.v1')||sessionStorage.getItem('roadlog.token.v1');
 let refs=[],loaded=false,busy=false,poll=null,objects=[];
-const statusNames={QUEUED:'제작 대기',GENERATING:'제작 중',READY:'미리보기 완료',PUBLISH_QUEUED:'발행 대기',PUBLISHING:'발행 중',PUBLISHED:'세 채널 게시 확인',PARTIAL:'일부 게시 · 결과 확인 필요',FAILED:'처리 실패',INTERRUPTED:'재시작으로 중단',UNCERTAIN:'게시 여부 확인 필요',PREPARING:'게시 준비',PUBLISHED_UNVERIFIED:'게시됨 · 검증 필요'};
+const statusNames={QUEUED:'제작 대기',GENERATING:'제작 중',READY:'미리보기 완료',PUBLISH_QUEUED:'발행 대기',PUBLISHING:'발행 중',PUBLISHED:'세 채널 게시 확인',PARTIAL:'일부 게시 · 결과 확인 필요',FAILED:'처리 실패',REPLACED:'새 소재로 다시 제작',INTERRUPTED:'재시작으로 중단',UNCERTAIN:'게시 여부 확인 필요',PREPARING:'게시 준비',PUBLISHED_UNVERIFIED:'게시됨 · 검증 필요'};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(path='',method='GET',body){const r=await fetch('/api/admin/promotion'+path,{method,headers:{Authorization:'Bearer '+auth(),'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw Error(typeof d.detail==='string'?d.detail:'입력 값이나 관리자 로그인 상태를 확인해주세요.');return d;}
 function hours(values){const n=Number($('count').value),used=new Set();$('hours').innerHTML='';for(let i=0;i<n;i++){const label=document.createElement('label');label.textContent=(i+1)+'번째';const sel=document.createElement('select');sel.setAttribute('aria-label',(i+1)+'번째 발행 시각');for(let h=0;h<24;h++){const opt=new Option(String(h).padStart(2,'0')+'시',String(h).padStart(2,'0')+':00');sel.add(opt);}let value=values?.[i];if(!value||used.has(value))value=[...sel.options].map(o=>o.value).find(v=>!used.has(v));used.add(value);sel.value=value;label.append(sel);$('hours').append(label);}$('volume').textContent='하루 '+n+'회 × 3계정 = 게시글 '+(n*3)+'건';projection();}

@@ -1,5 +1,6 @@
 """Behavior tests; no paid generation or external publication."""
 import base64
+import copy
 import io
 import json
 from pathlib import Path
@@ -17,6 +18,98 @@ from fastapi.testclient import TestClient
 
 
 class Tests(unittest.TestCase):
+    def campaign(self, suffix='original'):
+        return {'channels': [dict(channel=ch, topic=f'{i}-{suffix}', product_id='today',
+                    caption=f'{i} {suffix} 마음을 살펴보세요. https://roadlog.co.kr/#p/today',
+                    cards=[] if ch.startswith('threads:') else [dict(title=f'{suffix} 질문 {i}-{n}',
+                        body=f'{suffix} 표현 방식을 살펴보세요.', scene=f'{suffix} scene {i}-{n}') for n in range(2)])
+                    for i, ch in enumerate(CHANNELS)]}
+
+    def history(self, plan):
+        ident=self.s.enqueue('previous-campaign')
+        with self.s.db() as c:c.execute("UPDATE jobs SET result=?,status='PUBLISHED' WHERE id=?",(json.dumps(plan),ident))
+
+    def test_duplicate_replans_before_images_without_disabling_schedule(self):
+        old=self.campaign();self.history(old)
+        p=Profile(enabled=True).model_dump();self.s.save(p)
+        replies=[old,self.campaign('fresh')];calls=[]
+        def gemini(model,parts,config):
+            calls.append(parts[0]['text']);return [{'text':json.dumps(replies.pop(0))}]
+        self.s.gemini=gemini
+        plan=self.s.plan(p)
+        self.assertEqual(plan['channels'][0]['topic'],'0-fresh')
+        self.assertEqual(len(calls),2)
+        self.assertIn('중복',calls[1])
+        self.assertTrue(self.s.profile()['enabled'])
+
+    def test_repeated_duplicates_switch_to_original_catalog_plan(self):
+        old=self.campaign();self.history(old);calls=[]
+        def gemini(*args):calls.append(args);return [{'text':json.dumps(old)}]
+        self.s.gemini=gemini
+        result=self.s.plan(self.s.profile())
+        self.assertEqual(len(calls),3)
+        self.assertEqual(len({x['topic'] for x in result['channels']}),3)
+        for item in result['channels']:
+            before=next(x for x in old['channels'] if x['channel']==item['channel'])
+            self.assertNotEqual(item['caption'],before['caption'])
+            self.assertEqual(item['product_id'],'today')
+            self.assertIn('https://roadlog.co.kr/#p/today',item['caption'])
+            self.assertLessEqual(len(item['caption']),500)
+            for card in item['cards']:
+                self.assertLessEqual(len(card['title']),28);self.assertLessEqual(len(card['body']),75)
+                self.assertNotIn(card['scene'],[x['scene'] for x in before['cards']])
+
+    def test_new_caption_with_reused_scene_also_replans(self):
+        old=self.campaign();self.history(old)
+        reused=copy.deepcopy(old)
+        for x in reused['channels']:x['caption']='새로운 문장 '+x['caption']
+        replies=[reused,self.campaign('changed')]
+        self.s.gemini=lambda *args:[{'text':json.dumps(replies.pop(0))}]
+        self.assertEqual(self.s.plan(self.s.profile())['channels'][0]['topic'],'0-changed')
+
+    def test_network_failure_is_not_retried_as_content_duplication(self):
+        calls=[]
+        def fail(*args):calls.append(args);raise RuntimeError('timeout')
+        self.s.gemini=fail
+        with self.assertRaises(RuntimeError):self.s.plan(self.s.profile())
+        self.assertEqual(len(calls),1)
+
+    def test_duplicate_fallback_worker_stays_enabled_and_generates_four_new_images(self):
+        old=self.campaign();self.history(old)
+        p=Profile(enabled=True).model_dump();self.s.save(p)
+        image_calls=[]
+        raw=io.BytesIO();Image.new('RGB',(25,25)).save(raw,'PNG')
+        def gemini(model,parts,config):
+            if model.endswith('image'):
+                image_calls.append(parts[0]['text']);return [{'inlineData':{'data':base64.b64encode(raw.getvalue()).decode()}}]
+            return [{'text':json.dumps(old)}]
+        self.s.gemini=gemini;self.s.render=lambda raw,card:raw
+        ident=self.s.enqueue('schedule-recovery',True);self.s.step()
+        job=next(j for j in self.s.state()['jobs'] if j['id']==ident)
+        self.assertEqual(job['status'],'PUBLISH_QUEUED')
+        self.assertEqual(len(image_calls),4);self.assertEqual(len(set(image_calls)),4)
+        self.assertTrue(self.s.profile()['enabled'])
+        self.assertEqual(job['receipts'],[])
+
+    def test_historical_duplicate_recovery_is_idempotent_and_never_retries_a_post(self):
+        ident=self.s.enqueue('schedule-old-failed',True)
+        with self.s.db() as c:c.execute("UPDATE jobs SET status='FAILED',error=? WHERE id=?",('이전에 제작한 본문과 중복되어 발행하지 않았습니다.',ident))
+        replacement=self.s.regenerate_duplicate(ident)
+        self.assertEqual(replacement,self.s.regenerate_duplicate(ident))
+        old=next(j for j in self.s.state()['jobs'] if j['id']==ident)
+        self.assertEqual(old['status'],'REPLACED')
+        with self.s.db() as c:
+            c.execute("UPDATE jobs SET status='FAILED',error=? WHERE id=?",('이전에 제작한 본문과 중복되어 발행하지 않았습니다.',replacement))
+        self.s.receipt(replacement,CHANNELS[0],'UNCERTAIN')
+        with self.assertRaisesRegex(ValueError,'게시 시도 없는'):self.s.regenerate_duplicate(replacement)
+
+    def test_catalog_rotation_continues_after_many_rounds(self):
+        previous=[]
+        for _ in range(20):
+            result=self.s.fresh_catalog_plan(previous[-8:])
+            self.assertEqual(self.s.duplicate_channels(result,previous[-8:]),[])
+            previous.append(result)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.web = Path(self.temp.name) / 'web'
