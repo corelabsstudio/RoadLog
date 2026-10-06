@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-29T06:55:50.429Z",
+  "generated_at": "2026-10-06T15:10:39.999Z",
   "products": [
     {
       "product_id": "today",
@@ -1132,18 +1132,6 @@
         "다 모으면 횡재수는"
       ],
       "source_file": "gwansang.js"
-    },
-    {
-      "product_id": "curse",
-      "name": "무냥이 저주 신단",
-      "kind": "special",
-      "description": "UNKNOWN",
-      "price_won": 1500,
-      "free": false,
-      "premium": false,
-      "lamp_price": "SERVER_CHECK",
-      "confirmed_results": [],
-      "source_file": "special-products.js"
     }
   ]
 }

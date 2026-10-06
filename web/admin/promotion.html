@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>홍보 제작 · 발행 | 로드로그</title>
-<meta property="og:title" content="로드로그 운영 홍보 제작"><meta property="og:description" content="관리자 홍보 제작 및 발행"><meta property="og:image" content="https://roadlog.co.kr/og/og-v3.jpg"><meta property="og:url" content="https://roadlog.co.kr/admin/promotion.html"><meta name="twitter:card" content="summary_large_image">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
 <style>
 :root{color-scheme:light;--paper:#f7f8fd;--card:#fff;--ink:#252541;--muted:#626780;--line:#e2e5f1;--accent:#5847c6;font-family:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;color:var(--ink);background:var(--paper)}
@@ -16,7 +15,23 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .channels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}.channel{border-top:2px solid #9c8ce4;padding:16px 0;min-width:0}.channel strong{font-size:14px;color:#443975}.images{display:flex;gap:8px}.images img{width:calc(50% - 4px);border-radius:8px}.copy{white-space:pre-wrap;font-size:14px;line-height:1.8;overflow-wrap:anywhere;color:var(--ink)}
 .refs{display:flex;flex-wrap:wrap;gap:12px;margin:14px 0}.refs img{height:120px;max-width:180px;object-fit:contain;border:1px solid var(--line);border-radius:8px;background:#f9f9fe}.status{white-space:pre-wrap;color:#5141b1}a{color:var(--accent);text-underline-offset:3px}.hours{display:flex;flex-wrap:wrap;gap:10px}.hours label{font-size:12px;color:var(--muted);margin:4px 0}.hours select{display:block;margin-top:5px}details{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}details summary{cursor:pointer;font-weight:600;font-size:14px;color:#443975}#jobs>h2{margin-top:28px}details.card{padding:0;overflow:hidden}details.card>summary{padding:20px 24px}details.card[open]{padding:0 24px 24px}details.card[open]>summary{margin:0 -24px 12px;border-bottom:1px solid var(--line)}.enable{margin-top:20px;display:flex;align-items:center;gap:9px}.enable input{width:18px;height:18px}.status:empty{display:none}
 @media(max-width:700px){.channels{grid-template-columns:1fr}.card{padding:18px;border-radius:14px;margin:16px 0}main{padding:0 0 20px}.row>*{min-width:140px}h1{font-size:22px}.actions>button{flex:1 1 140px}.hours select{min-width:72px}.copy{font-size:14px}}
-</style></head><body><main>
+</style>  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="로드로그" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:url" content="https://roadlog.co.kr/public/admin/promotion.html" />
+  <meta property="og:title" content="홍보 제작 · 발행 | 로드로그" />
+  <meta property="og:description" content="마음이 지나간 길을 읽어요. 왜 그런 답이 나왔는지까지 적어 드려요." />
+  <meta property="og:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="로드로그 — 마음이 지나간 길을 읽어요" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="홍보 제작 · 발행 | 로드로그" />
+  <meta name="twitter:description" content="마음이 지나간 길을 읽어요. 왜 그런 답이 나왔는지까지 적어 드려요." />
+  <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
+  <link rel="canonical" href="https://roadlog.co.kr/public/admin/promotion.html" />
+</head><body><main>
 <p>횟수와 시간만 정하면 로드로그에 맞는 홍보물을 알아서 만들어 올립니다.</p>
 <p class="note">인스타그램 roadlog_saju · mumung_fact / 스레드 roadlog_saju에 서로 다른 주제로 발행합니다.</p>
 <p id="notice" class="status" role="status" aria-live="polite"></p>

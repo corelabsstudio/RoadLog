@@ -83,7 +83,6 @@ from modules import product_reviews as prev_ops
 from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
 from modules import stats as stats_ops
-from modules import curse_shrine as curse_ops
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
 from modules.marketing_core.repository import MarketingRepository
@@ -1531,96 +1530,10 @@ class OpenBody(BaseModel):
     pair: str
 
 
-class CurseBody(BaseModel):
-    ritual: str = ""
-    pair: str = ""
-    targetType: str = ""
-    targetName: str = ""
-    birthDate: str = ""
-    reason: str = ""
-    photo: str = ""
-    card: str = ""
-    free: dict = {}
-
-
-def _curse_inputs(body: CurseBody) -> dict[str, str]:
-    ritual = (body.ritual or "").strip().lower()
-    pair = (body.pair or "").strip().lower()
-    target_type = " ".join((body.targetType or "").split())[:30]
-    target_name = " ".join((body.targetName or "").split())[:30]
-    birth_date = (body.birthDate or "").strip()[:10]
-    reason = " ".join((body.reason or "").split())[:240]
-    photo = (body.photo or "").strip()
-    card = " ".join((body.card or "").split())[:40]
-    if ritual and not re.fullmatch(r"[0-9a-f]{24,64}", ritual):
-        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
-    if pair and not lamps_ops._PAIR_RE.match(pair):
-        raise HTTPException(400, "의식 표가 올바르지 않아요.")
-    if target_type not in {"전애인", "썸", "친구", "직장동료", "기타"}:
-        raise HTTPException(400, "저주 대상을 다시 골라 주세요.")
-    if birth_date and not re.fullmatch(r"(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])", birth_date):
-        raise HTTPException(400, "대상의 생년월일을 다시 확인해 주세요.")
-    photo_data = ""
-    if photo:
-        match = re.fullmatch(r"data:image/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)", photo)
-        if not match or len(match.group(2)) > 700_000:
-            raise HTTPException(400, "대상 사진 형식이나 크기를 다시 확인해 주세요.")
-        photo_data = match.group(2)
-    if len(reason) < 2 or not card:
-        raise HTTPException(400, "열받은 이유와 카드를 채워 주세요.")
-    return {"ritual": ritual, "pair": pair, "targetType": target_type,
-            "targetName": target_name, "birthDate": birth_date, "reason": reason,
-            "photo": photo_data, "photoProvided": bool(photo_data), "card": card}
-
-
-@app.post("/api/curse/free")
-def curse_free(body: CurseBody, request: Request):
-    """로그인 전에 한 장 보여 주는 무료 결과."""
-    _rate_limit_or_429("curse-free:" + _client_ip(request), limit=8, window_sec=3600,
-                       what="저주 신단 무료 결과")
-    data = _curse_inputs(body)
-    try:
-        result = curse_ops.free_result(data["targetType"], data["targetName"], data["birthDate"],
-                                       data["reason"], data["card"], data["photo"])
-    except Exception as exc:
-        log.exception("curse free generation failed")
-        raise HTTPException(503, "무냥이가 촛불을 다시 켜고 있어요. 잠시 뒤 다시 뽑아 주세요.") from exc
-    return {"ok": True, "result": result}
-
-
-@app.post("/api/curse/detail")
-def curse_detail(body: CurseBody, authorization: str | None = Header(default=None)):
-    """결제 또는 등불 차감으로 소유권이 생긴 의식의 상세 결과."""
-    user = _token_user(authorization)
-    data = _curse_inputs(body)
-    if not data["ritual"] or not data["pair"]:
-        raise HTTPException(400, "의식 번호가 비어 있어요.")
-    saved = curse_ops.get(user["email"], data["ritual"])
-    if saved and int(saved.get("detailVersion", 0)) >= curse_ops.DETAIL_VERSION:
-        return {"ok": True, "saved": True, **saved}
-    if not (_is_free(user) or lamps_ops.owns(user["email"], curse_ops.PRODUCT_ID, data["pair"])):
-        raise HTTPException(402, "상세 결과를 먼저 열어 주세요.")
-    try:
-        detail = curse_ops.detail_result(data["targetType"], data["targetName"], data["birthDate"],
-                                         data["reason"], data["card"], data["photo"], body.free)
-        row = curse_ops.save(user["email"], data["ritual"], data["pair"],
-                             {k: data[k] for k in ("targetType", "targetName", "birthDate", "reason", "photoProvided", "card")},
-                             body.free or {}, detail)
-    except Exception as exc:
-        log.exception("curse detail generation failed")
-        raise HTTPException(503, "상세 결과를 적다가 촛불이 꺼졌어요. 잠시 뒤 다시 열어 주세요.") from exc
-    return {"ok": True, "saved": False, **row}
-
-
-@app.get("/api/curse/{ritual}")
-def curse_saved(ritual: str, authorization: str | None = Header(default=None)):
-    user = _token_user(authorization)
-    if not re.fullmatch(r"[0-9a-f]{24,64}", (ritual or "").lower()):
-        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
-    row = curse_ops.get(user["email"], ritual.lower())
-    if not row:
-        raise HTTPException(404, "저장된 의식을 찾지 못했어요.")
-    return {"ok": True, **row}
+# 🛑 무냥이 저주 신단은 2026-10-07 온해님 지시로 내렸다. 옛 주소로 오는 분은 홈으로 보낸다.
+@app.get("/curse.html", include_in_schema=False)
+def curse_gone():
+    return RedirectResponse("/", status_code=301)
 
 
 class PremiumBody(BaseModel):
