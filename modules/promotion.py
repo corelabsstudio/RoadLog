@@ -360,10 +360,10 @@ Instagram roadlog_saju: 연애·재회 관련 훅과 체크리스트, 카드 2�
 Instagram mumung_fact: 다른 주제(꿈,성향,수호신 등)의 카드 2장.
 Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 단일 글. 반복되는 홍보 문구보다 공감되는 상황과 질문.
 카드마다 title 28자 이하, body 75자 이하, scene 영어로 구체적인 그림 설명(글자는 없도록). 첫 장 훅, 둘째 장 이해/행동 유도.
-카드 제목은 가능하면 18자 이내의 짧은 질문으로, 설명은 45자 안팎의 짧은 1~2문장으로 작성하세요. 제목에서 강조할 핵심 단어 하나를 highlight에 넣으세요(제목에 실제로 있는 단어). 체크리스트는 세 항목 정도로 간결하게 씁니다. 큰 명조 제목·보라색 핵심 단어·중앙 정렬·넉넉한 여백의 감성적인 편집 디자인입니다.
+카드 제목은 가능하면 18자 이내의 짧은 질문으로, 설명은 45자 안팎의 짧은 1~2문장으로 작성하세요. 제목에서 강조할 핵심 단어 하나를 highlight에 넣으세요(제목에 실제로 있는 단어). 제목에는 강조용 꺾쇠, 별표, HTML 태그를 쓰지 마세요. 체크리스트는 세 항목 정도로 간결하게 씁니다. 큰 명조 제목·보라색 핵심 단어·중앙 정렬·넉넉한 여백의 감성적인 편집 디자인입니다.
 각 주제와 상품 연결이 자연스러워야 합니다. 카드 배경은 글자 없는 풍부한 장면이며 글자는 별도 조판합니다.
 반드시 JSON 객체만 반환: {"style_summary":"예시 분석 한국어", "channels":[
-{"channel":"instagram:roadlog_saju","topic":"주제","product_id":"상품id","caption":"2200자 이하 본문","cards":[{"title":"","body":"","scene":""},{"title":"","body":"","scene":""}]},
+{"channel":"instagram:roadlog_saju","topic":"주제","product_id":"상품id","caption":"2200자 이하 본문","cards":[{"title":"","highlight":"핵심 단어","body":"","scene":""},{"title":"","highlight":"핵심 단어","body":"","scene":""}]},
 {"channel":"instagram:mumung_fact", ...}, {"channel":"threads:roadlog_saju","topic":"다른 주제","product_id":"상품id","caption":"500자 이하 글","cards":[]}]}
 각 caption 끝에 상품id에 맞는 https://roadlog.co.kr/#p/상품id 연결을 넣으세요. 이전 주제/본문과 중복 금지.
 같은 상품을 다시 소개해도 되지만 훅·본문·체크리스트 문구와 그림의 장소·소품·행동·구도를 새로 만드세요. 막히면 최근에 덜 소개한 상품과 새로운 일상 질문을 스스로 선택하세요.
@@ -442,6 +442,10 @@ Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 대화체 
         centered('로드로그 · 무냥이', small, 48, '#cfc6e5')
         title = card['title']
         highlight = card.get('highlight', '')
+        marked = re.search(r'[<〈《]([^<>〈〉《》]+)[>〉》]', title)
+        if marked:
+            highlight = marked.group(1)
+            title = re.sub(r'[<>〈〉《》]', '', title)
         if not isinstance(highlight, str) or not highlight or highlight not in title:
             highlight = next((word for word in ['전생', '수호신', '인연', '연락', '꿈', '마음', '매력', '인생', '선택'] if word in title), '')
         for size in range(100, 59, -2):
