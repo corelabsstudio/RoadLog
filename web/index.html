@@ -34,9 +34,9 @@
   <meta name="twitter:description" content="재회 공략집, 그 사람 속마음 해독, 읽씹 안 당할 날짜까지. 로드로그는 사주 어느 글자 때문에 그런 답이 나왔는지 함께 적어 드려요." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/main-CLQBPiCu.js"></script>
+  <script type="module" crossorigin src="/assets/main-Ch4YvxqR.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/browser-UWy2pO1M.js">
-  <link rel="stylesheet" crossorigin href="/assets/main-C1UXWxde.css">
+  <link rel="stylesheet" crossorigin href="/assets/main-k-3jmZxi.css">
 </head>
 <body>
   <noscript>로드로그를 이용하려면 자바스크립트를 켠 뒤 가입하거나 로그인해 주세요.</noscript>
@@ -244,186 +244,6 @@
   <!-- 꿈 해몽 화면 (2026-09-13 온해님 기획). 속은 dream.js 가 채운다.
        🛑 사주 폼(pairForm) 밖이다. 생년월일 굴림판만 `form="pairForm"` 으로 빌려 쓴다 —
           굴림판 코드가 pairForm.elements 로 값을 찾기 때문이다. -->
-  <!-- ══ 반려동물 관상 「내가 왕이 될 냥인가?」 (2026-09-14 온해님 기획) ══
-       속은 `pet.js` 가 그린다. 서버 `RoadLog/modules/pet.py` · `/api/pet/read`.
-       🛑 사진은 저장하지 않는다. 🛑 문구는 `pet_copy.json`(제미나이) — 여기 적힌 글은 못 읽었을 때의 대비다 -->
-  <div class="view view-pet" id="viewPet" hidden>
-    <div class="dream-wrap pet-wrap">
-      <button type="button" class="back" id="petBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>관상으로 돌아가기</button>
-
-      <header class="dream-head pet-head">
-        <div class="dream-head-txt">
-          <p class="dream-kicker" id="petKicker">반려동물 관상</p>
-          <h2 id="petQ">내가 왕이 될 냥인가?</h2>
-          <p class="dream-sub" id="petLede"></p>
-        </div>
-        <img class="pet-art" id="petArt" alt="손 흔드는 무냥이와 돋보기 든 관멍이" />
-      </header>
-
-      <section class="dream-box pet-box" id="petBox">
-        <div class="dream-row"><h3 id="petPickHead">사진 올리기</h3></div>
-        <p class="pet-hint" id="petPickHint">얼굴이 잘 보이는 밝은 사진이 좋아요.</p>
-        <input type="file" id="petFile" accept="image/*" hidden />
-        <img class="pet-shot" id="petShot" alt="올린 반려동물 사진" hidden />
-        <button type="button" class="btn btn-line pet-pick" id="petPick">사진 올리기</button>
-        <p class="form-error" id="petErr" hidden></p>
-        <button type="button" class="btn cta-hero" id="petGo" hidden>🐾 관상 보기 ➔</button>
-        <!-- 🛑 「오늘 공짜 점괘가 N번 남았어요」 줄은 뺐다 (2026-09-14 온해님 「공짜 점괘 횟수는 없애줘」). 하루 한도는 서버에 그대로 있다 -->
-        <p class="dream-note pet-privacy" id="petPrivacy">사진은 저장하지 않아요.</p>
-      </section>
-
-      <section class="loading dream-loading pet-loading" id="petLoading" hidden aria-live="polite">
-        <img class="pet-load-art" src="/assets/pet_duo_b-CE3zaRTc.webp" alt="" aria-hidden="true" />
-        <p class="load-step" id="petLoadStep"></p>
-        <p class="load-say" id="petLoadSay"></p>
-        <div class="load-bar"><i id="petLoadBar"></i></div>
-      </section>
-
-      <section class="pet-result" id="petResult" hidden>
-        <div class="pet-hero">
-          <div class="pet-grade-row">
-            <b class="dream-grade" id="petGrade">S</b><span class="dream-grade-unit">급</span>
-            <div class="dream-grade-txt">
-              <span class="dream-label" id="petCardTitle"></span>
-              <strong id="petTitle"></strong>
-            </div>
-          </div>
-          <p class="pet-summary" id="petSummary"></p>
-          <p class="pet-keywords" id="petKeywords"></p>
-        </div>
-
-        <div class="rep pet-card">
-          <p class="rep-rx-t pet-card-t" id="petStatsHead">관상 스탯</p>
-          <div class="pet-stats" id="petStats"></div>
-        </div>
-        <div class="rep pet-card">
-          <p class="pet-card-t" id="petFactHead">냥성·멍성 팩폭 분석</p>
-          <p class="wrote" id="petFact"></p>
-        </div>
-        <div class="rep pet-card">
-          <p class="pet-card-t" id="petButlerHead">집사와의 궁합 및 기운</p>
-          <p class="wrote" id="petButler"></p>
-        </div>
-        <div class="dream-punch pet-advice">
-          <img src="/assets/face-D1JUG1d8.webp" alt="무냥이" class="talk-face" />
-          <div><span class="pet-advice-h" id="petAdviceHead">무냥이의 족집게 조언</span><p id="petAdvice"></p></div>
-        </div>
-
-        <!-- 명예의 전당에 올리기 (2026-09-14 온해님). 🛑 동의해야 올라간다 — 올리면 사진이 누구나 보는 목록에 남는다 -->
-        <section class="rep pet-card pet-join" id="petJoin">
-          <p class="pet-card-t" id="petJoinHead">명예의 전당에 올리기</p>
-          <p class="pet-hint" id="petJoinLede"></p>
-          <input type="text" class="pet-name" id="petName" maxlength="12" autocomplete="off" placeholder="아이 이름" />
-          <label class="pet-agree"><input type="checkbox" id="petAgree" /><span id="petAgreeText">사진·이름·관상 결과가 명예의 전당에 공개되는 것에 동의해요.</span></label>
-          <p class="form-error" id="petJoinErr" hidden></p>
-          <button type="button" class="btn cta-hero" id="petJoinBtn">👑 명예의 전당에 올리기 ➔</button>
-          <p class="share-note" id="petJoinNote" hidden></p>
-        </section>
-
-        <div class="share dream-share">
-          <h3 class="pet-share-h" id="petShareHead">공유 카드</h3>
-          <canvas id="petCanvas" width="1080" height="1350" aria-label="반려동물 관상 공유 카드 미리보기"></canvas>
-          <p class="card-tip" id="petCardTip">사진 자리가 마음에 안 들면 <b>카드를 끌어서</b> 옮기고, 두 손가락(또는 휠)으로 키워요.<button type="button" class="card-reset" id="petCardReset">가운데로</button></p>
-          <div class="share-btns">
-            <button type="button" class="btn btn-line" id="petSave">이미지로 저장</button>
-            <button type="button" class="btn" id="petShare">공유하기</button>
-          </div>
-          <p class="share-note" id="petShareNote" hidden></p>
-          <!-- 🛑 **관리자만** (2026-09-14 온해님). 스레드 답글에 붙일 카드 — QR·사이트 주소를 뺀다(스팸으로 잡히지 않게).
-               pet.js:paintAdminCard 가 관리자일 때만 보인다. 서버가 막을 일은 없다(손님 결과를 그리는 것뿐) -->
-          <div class="pet-admin-card" id="petAdminBox" hidden>
-            <button type="button" class="btn btn-line" id="petThreadCard">📸 스레드 답글용 카드 저장 (Admin)</button>
-            <p class="share-note" id="petThreadNote" hidden></p>
-          </div>
-        </div>
-        <button type="button" class="dream-again" id="petAgain">다른 아이도 보기</button>
-      </section>
-
-      <!-- 🛑 명예의 전당 — 좋아요 순. 1위는 「이달의 관상왕」. 서버 `/api/pets/hall-of-fame` · `pet.js:loadHall` -->
-      <section class="dream-box pet-hall" id="petHall">
-        <div class="dream-row"><h3 id="petHallHead">명예의 전당</h3><span class="dream-n" id="petHallMonth"></span></div>
-        <a class="pet-hall-more" href="#hall" id="petHallMore">전당 전체 보기 ➔</a>
-        <p class="pet-hint" id="petHallLede"></p>
-        <div class="pet-last" id="petLast" hidden></div>
-        <ol class="pet-hall-list" id="petHallList"></ol>
-        <p class="share-note" id="petHallNote" hidden></p>
-      </section>
-    </div>
-  </div>
-
-  <!-- 👑 명예의 전당 갤러리 `#hall` (2026-09-14 온해님 「인스타그램 감성 독립 페이지 · 피드/댓글」).
-       속은 hall.js 가 그린다. 서버 `/api/pets/hall-of-fame?sort=` · `/api/pets/:id/comments`.
-       🛑 알약 금지 — 정렬은 밑줄 탭, 순위 딱지는 작은 네모 -->
-  <div class="view view-hall" id="viewHall" hidden>
-    <div class="gal-wrap">
-      <button type="button" class="back" id="galBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>홈으로</button>
-      <header class="gal-head">
-        <h2 id="galTitle">👑 이달의 댕냥이 관상 명예의 전당</h2>
-        <p class="gal-lede"><span id="galMonth"></span> <span id="galLede"></span></p>
-      </header>
-      <div class="gal-sort" id="galSort" role="tablist" aria-label="정렬">
-        <button type="button" role="tab" data-sort="likes" id="galSortLikes" class="on" aria-selected="true">실시간 랭킹순</button>
-        <button type="button" role="tab" data-sort="latest" id="galSortLatest" aria-selected="false">최신순</button>
-      </div>
-      <p class="share-note gal-note" id="galNote" hidden></p>
-      <ul class="gal-grid" id="galGrid"></ul>
-      <div class="gal-empty" id="galEmpty" hidden>
-        <!-- 🛑 한 장짜리 두 마리 그림(pet_duo_b)은 갓이 무냥이 얼굴에 걸려 보였다 (2026-09-14 온해님) — 따로 떨어진 두 장을 사이를 벌려 세운다 -->
-        <div class="gal-duo" aria-hidden="true"><img src="/assets/dream_cat-DbvrUvX8.webp" alt="" /><img src="/assets/gwan_cat-DYXugaXg.webp" alt="" /></div>
-        <p id="galEmptyTxt">아직 올라온 아이가 없어요.</p>
-      </div>
-      <button type="button" class="btn cta-hero gal-join" id="galJoin">우리 아이 관상 보기 ➔</button>
-    </div>
-
-    <dialog class="gal-modal" id="galModal" aria-labelledby="gmName">
-      <div class="gm-box">
-        <button type="button" class="gm-close" id="gmClose" aria-label="닫기">✕</button>
-        <div class="gm-scroll">
-          <section class="gm-left">
-            <div class="gm-photo"><img id="gmImg" alt="" /></div>
-            <div class="gm-result">
-              <p class="gm-grade"><b id="gmGrade"></b> <span id="gmCardTitle"></span></p>
-              <p class="gm-title" id="gmTitle"></p>
-              <div id="gmStatsBox">
-                <p class="pet-card-t" id="gmResultHead">관상 스탯</p>
-                <div class="pet-stats" id="gmStats"></div>
-              </div>
-            </div>
-          </section>
-          <section class="gm-right">
-            <header class="gm-user">
-              <img src="/assets/face-D1JUG1d8.webp" alt="" aria-hidden="true" />
-              <div><b id="gmName"></b><span id="gmOwner"></span></div>
-              <span class="gm-crown" id="gmCrown"></span>
-            </header>
-            <div class="gm-fact">
-              <p class="pet-card-t" id="gmFactHead">관상 한 줄평</p>
-              <p class="gm-fact-t" id="gmFact"></p>
-              <p class="gm-summary" id="gmSummary"></p>
-              <p class="pet-keywords gm-keywords" id="gmKeywords"></p>
-            </div>
-            <div class="gm-actions">
-              <button type="button" class="ph-like gm-like" id="gmLike" aria-label="좋아요"></button>
-            </div>
-            <p class="pet-card-t gm-c-head" id="gmCommentsHead">댓글</p>
-            <ul class="gm-list" id="gmList"></ul>
-            <p class="form-error" id="gmErr" hidden></p>
-            <form class="gm-form" id="gmForm">
-              <div class="gm-form-row">
-                <input type="text" id="gmNick" maxlength="12" autocomplete="nickname" placeholder="닉네임" />
-                <input type="password" id="gmPw" maxlength="16" autocomplete="off" placeholder="비밀번호(선택)" />
-              </div>
-              <div class="gm-form-row">
-                <input type="text" id="gmText" maxlength="200" autocomplete="off" placeholder="댓글 달기" />
-                <button type="submit" class="gm-post" id="gmPost">게시</button>
-              </div>
-            </form>
-          </section>
-        </div>
-      </div>
-    </dialog>
-  </div>
-
   <div class="view view-dream" id="viewDream" hidden>
     <div class="dream-wrap">
       <button type="button" class="back" id="dreamBack"><svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12 4.5 6.5 10l5.5 5.5"/></svg>사주로 돌아가기</button>
@@ -554,10 +374,6 @@
          무냥이한테 가기 · 일단 가운데 정렬 · 나중에 손금 보는 거 추가」).
          🛑 폭은 홈 카드 한 장(반 칸)과 같다. 손금 카드가 생기면 이 `.quick` 안에 한 장 더 넣고
             `is-single` 만 떼면 홈처럼 5:5 로 선다. 문구는 이전 넓은 카드(809461d) 것을 그대로 썼다 -->
-    <!-- 🛑 **오른쪽에 반려동물 관상 카드** (2026-09-14 온해님 「무냥이한테 가기 오른쪽에 관멍이 카드를 똑같이 · 문구는 제미나이」).
-         짜임은 사주 홈 관멍이 카드(`.duo-card.is-gwan`)를 그대로 쓴다. 넓은 화면 5:5, 1023px 이하는 위아래.
-         누르면 반려동물 관상 화면(`#pet` · `pet.js`)으로 간다. 딱지는 온해님이 주신 「내가 왕이 될 냥인가?」.
-         문구: 제미나이가 세 벌 뽑은 것 중 하나 (2026-09-14) -->
     <div class="quick is-single">
       <button type="button" class="duo-card is-dream" id="gwanToSaju">
         <span class="duo-txt">
@@ -1204,7 +1020,7 @@
   <button type="button" class="dlg-x" data-close aria-label="닫기">닫기</button>
   <h3 id="authTitle">로그인</h3>
   <p class="member-entry-note">로드로그는 회원 전용으로 이용할 수 있어요.<br />가입하거나 로그인하면 모든 상품을 둘러볼 수 있어요.</p>
-  <p class="dlg-lede" id="authLede">가입하면 <b>일반 사주 한 편을 끝까지 읽는 무료 이용권</b>과 <b>등불 300개</b>를 드려요. 속마음·재회 공략집 등에 사용할 수 있어요. 프리미엄·결제 전용 상품은 제외되며, 카드 등록은 필요 없어요. 생년월일은 계정에 저장되지 않아요.</p>
+  <p class="dlg-lede" id="authLede">카카오나 구글로 가입하면 <b>무료 이용권 1장</b>과 <b>등불 300개</b>를 드려요. 프리미엄·결제 전용 상품은 제외돼요.</p>
   <!-- 🛑 **가입·로그인 바꾸기를 맨 위에 둔다** (2026-09-29 Kiro · 가입 전환 개선 2번). 창 맨 아래에 있어서
        아이폰 13 화면에서는 창을 내려야 보였다. -->
   <p class="dlg-switch dlg-switch-top"><span id="authAsk">처음이신가요?</span> <button type="button" id="authToggle">가입하기</button></p>
