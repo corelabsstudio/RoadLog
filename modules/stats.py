@@ -755,6 +755,7 @@ CONVERSION_STEPS = [
     ("email_error", "이메일 가입·직후 로그인 오류"),
     ("social_kakao", "카카오 시작"),
     ("social_google", "구글 시작"),
+    ("social_naver", "네이버 시작"),
     ("social_error", "소셜 인증 오류·취소"),
     ("dream_entry", "비회원 · 꿈 해몽 진입"),
     ("dream_complete", "꿈 스캔 완료 · 회원 포함"),

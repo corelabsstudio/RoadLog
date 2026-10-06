@@ -578,6 +578,8 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET", "").strip()
 KAKAO_REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY", "").strip()
 KAKAO_CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "").strip()
+NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "").strip()          # 2026-10-07 네이버 로그인 · 둘 다 있어야 켜진다
+NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "").strip()
 SITE_ORIGIN = (os.environ.get("SITE_ORIGIN", "https://roadlog.co.kr") or "").rstrip("/")
 
 # state 는 CSRF 방지용. 짧게 살고 한 번 쓰면 버린다.
@@ -648,6 +650,7 @@ def social_ready():
     return {
         "google": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
         "kakao": bool(KAKAO_REST_API_KEY),
+        "naver": bool(NAVER_CLIENT_ID and NAVER_CLIENT_SECRET),
     }
 
 
@@ -770,6 +773,75 @@ def _kakao_callback(request: Request, code: str = "", state: str = "", error: st
         # 우리 쪽에서만 쓰는 주소를 만들어 계정을 잇는다.
         email = f"kakao{d.get('id')}@kakao.local"
     return _social_redirect(_social_login(email, name, "카카오", "kakao", request))
+
+
+@app.get("/api/auth/naver/start")
+def naver_start():
+    if not (NAVER_CLIENT_ID and NAVER_CLIENT_SECRET):
+        raise HTTPException(503, "네이버 로그인이 아직 설정되지 않았습니다.")
+    st = _new_state()
+    url = (
+        "https://nid.naver.com/oauth2.0/authorize"
+        "?response_type=code"
+        f"&client_id={quote(NAVER_CLIENT_ID)}"
+        f"&redirect_uri={quote(SITE_ORIGIN + '/api/auth/naver/callback', safe='')}"
+        f"&state={quote(st)}"
+    )
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/auth/naver/callback")
+def naver_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    try:
+        return _naver_callback(request, code, state, error)
+    except (HTTPException, httpx.HTTPError, ValueError):
+        _funnel_from(request, "social_error")
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error=retry", status_code=302)
+
+
+def _naver_callback(request: Request, code: str = "", state: str = "", error: str = ""):
+    if error:
+        _funnel_from(request, "social_error")
+        return RedirectResponse(f"{SITE_ORIGIN}/#social_error={quote(error)}", status_code=302)
+    if not _use_state(state):
+        raise HTTPException(400, "로그인 요청이 만료되었습니다. 다시 시도해 주세요.")
+    with httpx.Client(timeout=12.0) as client:
+        tok = client.post(
+            "https://nid.naver.com/oauth2.0/token",
+            data={
+                "grant_type": "authorization_code",
+                "client_id": NAVER_CLIENT_ID,
+                "client_secret": NAVER_CLIENT_SECRET,
+                "code": code,
+                "state": state,
+            },
+        )
+        if tok.status_code != 200:
+            raise HTTPException(400, "네이버 인증에 실패했습니다.")
+        access = tok.json().get("access_token", "")
+        if not access:
+            raise HTTPException(400, "네이버 인증에 실패했습니다.")
+        info = client.get(
+            "https://openapi.naver.com/v1/nid/me",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        if info.status_code != 200:
+            raise HTTPException(400, "네이버에서 정보를 받지 못했습니다.")
+        body = info.json()
+    if body.get("resultcode") != "00":
+        raise HTTPException(400, "네이버에서 정보를 받지 못했습니다.")
+    d = body.get("response") or {}
+    uid = str(d.get("id") or "").strip()
+    if not uid:
+        raise HTTPException(400, "네이버 계정 번호를 받지 못했습니다.")
+    email = (d.get("email") or "").strip().lower()
+    name = d.get("name") or d.get("nickname") or ""
+    # 🛑 **@naver.com 주소만 기존 계정에 잇는다.** 네이버는 주소가 확인됐는지 따로 알려 주지 않는다(카카오·구글과 다르다).
+    #    남의 외부 주소(gmail 등)를 네이버 프로필에 적어 두고 그 사람 계정으로 들어오는 걸 막는다.
+    #    그 밖의 주소나 동의 안 한 경우는 우리 쪽에서만 쓰는 주소로 새 계정을 만든다 (카카오와 같은 방식).
+    if not email.endswith("@naver.com"):
+        email = f"naver{uid}@naver.local"
+    return _social_redirect(_social_login(email, name, "네이버", "naver", request))
 
 
 @app.get("/api/me")
