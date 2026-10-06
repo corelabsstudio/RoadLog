@@ -580,6 +580,9 @@ KAKAO_REST_API_KEY = os.environ.get("KAKAO_REST_API_KEY", "").strip()
 KAKAO_CLIENT_SECRET = os.environ.get("KAKAO_CLIENT_SECRET", "").strip()
 NAVER_CLIENT_ID = os.environ.get("NAVER_CLIENT_ID", "").strip()          # 2026-10-07 네이버 로그인 · 둘 다 있어야 켜진다
 NAVER_CLIENT_SECRET = os.environ.get("NAVER_CLIENT_SECRET", "").strip()
+# 🛑 키가 있어도 `NAVER_LOGIN_ENABLED=1` 을 따로 넣어야 켜진다 (2026-10-07). 운영에 들어 있던 키가 「마음PC마켓」 앱의 것이라
+#    로드로그 콜백 주소가 없어 네이버가 「서비스 설정 오류」를 띄웠다. 로드로그용 앱으로 바꾼 뒤에 켠다.
+NAVER_LOGIN_ON = os.environ.get("NAVER_LOGIN_ENABLED", "").strip().lower() in ("1", "true", "yes")
 SITE_ORIGIN = (os.environ.get("SITE_ORIGIN", "https://roadlog.co.kr") or "").rstrip("/")
 
 # state 는 CSRF 방지용. 짧게 살고 한 번 쓰면 버린다.
@@ -650,7 +653,7 @@ def social_ready():
     return {
         "google": bool(GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET),
         "kakao": bool(KAKAO_REST_API_KEY),
-        "naver": bool(NAVER_CLIENT_ID and NAVER_CLIENT_SECRET),
+        "naver": bool(NAVER_LOGIN_ON and NAVER_CLIENT_ID and NAVER_CLIENT_SECRET),
     }
 
 
@@ -777,7 +780,7 @@ def _kakao_callback(request: Request, code: str = "", state: str = "", error: st
 
 @app.get("/api/auth/naver/start")
 def naver_start():
-    if not (NAVER_CLIENT_ID and NAVER_CLIENT_SECRET):
+    if not (NAVER_LOGIN_ON and NAVER_CLIENT_ID and NAVER_CLIENT_SECRET):
         raise HTTPException(503, "네이버 로그인이 아직 설정되지 않았습니다.")
     st = _new_state()
     url = (

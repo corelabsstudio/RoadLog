@@ -10,7 +10,8 @@
 5. 등록하면 **Client ID / Client Secret** 이 나온다.
 
 ## 2. Railway 환경변수 (온해님)
-`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 두 개를 넣고 재배포. 둘 다 있어야 `/api/auth/social/ready` 의 `naver` 가 `true` 가 되고 버튼이 나타난다.
+`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 에 더해 **`NAVER_LOGIN_ENABLED=1`** 을 넣고 재배포. 셋 다 있어야 `/api/auth/social/ready` 의 `naver` 가 `true` 가 되고 버튼이 나타난다.
+🛑 2026-10-07 에 운영에 이미 들어 있던 키는 **「마음PC마켓」 앱의 키**였고, 그 앱에 로드로그 콜백 주소가 없어 네이버가 「서비스 설정 오류」를 띄웠다. 그래서 `NAVER_LOGIN_ENABLED` 가 없으면 버튼을 숨기게 했다. **로드로그 전용 앱을 새로 만들어 키를 바꾼 뒤** `NAVER_LOGIN_ENABLED=1` 을 넣는다(동의 화면에 앱 이름이 보이므로 「마음PC마켓」 이름이 로드로그 손님에게 보이면 안 된다).
 🛑 키는 채팅·파일에 붙여 넣지 말 것.
 
 ## 3. 검수
