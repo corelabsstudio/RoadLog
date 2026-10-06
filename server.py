@@ -3661,6 +3661,65 @@ class _HashedAssets(StaticFiles):
         return resp
 
 
+MEMBER_COOKIE = "roadlog_member"
+
+
+class MemberAccessBody(BaseModel):
+    keep: bool = False
+
+
+@app.post("/api/member/access")
+def member_access(body: MemberAccessBody, request: Request, authorization: str | None = Header(default=None)):
+    """검증된 기존 로그인 세션으로 회원 전용 페이지 접근을 연결한다."""
+    _token_user(authorization)
+    token = authorization.removeprefix("Bearer ").strip()
+    response = Response(content='{"ok":true}', media_type="application/json", headers={"Cache-Control": "no-store"})
+    response.set_cookie(MEMBER_COOKIE, token, httponly=True, secure=request.url.scheme == "https" or is_production(),
+                        samesite="lax", path="/", max_age=7 * 86400 if body.keep else None)
+    return response
+
+
+@app.delete("/api/member/access")
+def member_access_clear():
+    response = Response(content='{"ok":true}', media_type="application/json", headers={"Cache-Control": "no-store"})
+    response.delete_cookie(MEMBER_COOKIE, path="/", httponly=True, samesite="lax")
+    return response
+
+
+def _member_page(path: str) -> bool:
+    if path == "/" or path.startswith(("/admin", "/assets/", "/icons/", "/legal/")):
+        return False
+    if path in {"/reset.html", "/404.html"} or re.fullmatch(r"/(?:google|naver)[a-z0-9]+\.html", path):
+        return False
+    return path.endswith(".html") or path.startswith(("/saju", "/gwan", "/blog", "/curse", "/hall-of-fame", "/pets/hall-of-fame")) or (path.startswith("/card/") and not path.endswith(".jpg"))
+
+
+@app.middleware("http")
+async def member_only_middleware(request: Request, call_next):
+    path = request.url.path
+    protected_api = path.startswith(("/api/saju/taste", "/api/pets/", "/api/products/", "/api/curse/"))
+    if _member_page(path) or protected_api:
+        authorization = request.headers.get("authorization")
+        token = request.cookies.get(MEMBER_COOKIE)
+        if not authorization and token:
+            authorization = "Bearer " + token
+        try:
+            _token_user(authorization)
+        except HTTPException:
+            if protected_api:
+                return Response(content='{"detail":"가입하거나 로그인한 뒤 이용해 주세요."}', status_code=401,
+                                media_type="application/json", headers={"Cache-Control": "no-store"})
+            from urllib.parse import quote
+            destination = path + ("?" + request.url.query if request.url.query else "")
+            return RedirectResponse("/?member_next=" + quote(destination, safe=""), status_code=303,
+                                    headers={"Cache-Control": "no-store"})
+    response = await call_next(request)
+    if _member_page(path) or path in {"/", "/index.html"}:
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["Vary"] = "Cookie, Authorization"
+    return response
+
+
 if WEB.exists():
     app.mount("/assets", _HashedAssets(directory=WEB / "assets"), name="assets")
 
