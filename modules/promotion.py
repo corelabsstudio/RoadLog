@@ -25,11 +25,12 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from modules import social_voice, threads_chain
 
 CHANNELS = ('instagram:roadlog_saju', 'instagram:mumung_fact', 'threads:roadlog_saju')
 ACTIVE = ('QUEUED', 'GENERATING', 'PUBLISH_QUEUED', 'PUBLISHING')
 KST = ZoneInfo('Asia/Seoul')
-THREADS_WRITING_VERSION = '2026-10-07-evidence-formats'
+THREADS_WRITING_VERSION = '2026-10-07-voice-fox-chain'
 THREADS_CONTENT_TYPES = ('conversation', 'checklist', 'product')
 MUNYANG_CHARACTER = '''MUNYANG CHARACTER IDENTITY (mandatory for every scene, including custom styles and references):
 Munyang is Roadlog's anthropomorphic, bipedal orange-and-white cat mascot brought to life with photorealistic fur, fabric and lighting.
@@ -102,6 +103,7 @@ class Promotion:
                 container TEXT, media TEXT, url TEXT, error TEXT, PRIMARY KEY(job, channel));''')
         from modules.developer_threads import DeveloperThreads
         self.developer = DeveloperThreads(self)
+        threads_chain.initialize(self)
 
     @contextmanager
     def db(self):
@@ -175,9 +177,11 @@ class Promotion:
                 d.pop('profile')
                 d['result'] = json.loads(d['result']) if d['result'] else None
                 d['receipts'] = [dict(r) for r in c.execute('SELECT * FROM receipts WHERE job=?', (row['id'],))]
+                d['thread_receipts'] = [dict(r) for r in c.execute('SELECT * FROM thread_parts WHERE job=? ORDER BY position', (row['id'],))]
                 jobs.append(d)
         return dict(profile=self.profile(), configured=self.configured(), jobs=jobs,
                     personal_threads=self.developer.state(),
+                    social_voice=social_voice.summary(),
                     threads_writing=dict(version=THREADS_WRITING_VERSION, content_types=list(THREADS_CONTENT_TYPES),
                                          formats_observed_at=self.thread_formats()['observed_at'],
                                          format_count=len(self.thread_formats()['formats'])),
@@ -294,7 +298,7 @@ class Promotion:
                 for old in old_plan.get('channels', []):
                     if old.get('channel') != item['channel']:
                         continue
-                    repeated_copy = self.copy_key(item['caption']) == self.copy_key(old.get('caption', ''))
+                    repeated_copy = self.copy_key('\n'.join(item.get('thread_parts') or [item['caption']])) == self.copy_key('\n'.join(old.get('thread_parts') or [old.get('caption', '')]))
                     old_cards = old.get('cards', [])
                     repeated_card = any(self.copy_key(card['title'] + card['body']) == self.copy_key(other.get('title', '') + other.get('body', ''))
                                         or self.copy_key(card['scene']) == self.copy_key(other.get('scene', ''))
@@ -328,22 +332,28 @@ class Promotion:
     def thread_catalog_copy(product, hook, body, content_type, format_id='two-values'):
         # An editorial prompt, never a fabricated horoscope or customer story.
         practical = {
-            'money': ('돈 고민은 수입과 지출을 나눠 적어보세요. 당장 바꿀 수 있는 항목 하나부터 고르면 질문이 구체적이 됩니다.', '지금 더 신경 쓰이는 쪽은 수입인가요, 지출인가요?'),
-            'today': ('오늘 해야 할 일과 미뤄도 되는 일을 나눠 적어보세요. 먼저 끝낼 일 하나만 골라보는 것도 방법입니다.', '오늘 가장 먼저 끝내고 싶은 일은 무엇인가요?'),
+            'money': ('돈 고민이면 수입이랑 지출부터 나눠봐. 당장 바꿀 수 있는 게 뭔지 하나만 골라보고!', '지금 더 신경 쓰이는 건 수입이야? 지출이야?'),
+            'today': ('오늘 해야 할 일이랑 미뤄도 되는 일을 나눠봐. 다 하려고 말고 먼저 끝낼 일 하나만!', '오늘 해야 할 일 중에 뭐부터 끝내고 싶어?'),
         }
         if product['id'] in ('dday', 'again', 'block', 'loop', 'match', 'eros'):
-            useful, question = ('상대가 실제로 한 말과 내가 추측한 마음을 나눠 적어보세요. 대화를 시작한다면 확인하고 싶은 질문 하나부터 골라보는 건 어떨까요?', '연락을 시작하는 것과 대화를 이어가는 것 중 어느 쪽이 더 어렵나요?')
+            useful, question = ('상대가 실제로 한 말이랑 내가 추측한 마음을 나눠봐. 다시 얘기한다면 뭘 확인하고 싶은지도 하나만 골라보고!', '처음 연락하는 게 어려워? 그다음 대화가 더 어려워?')
         else:
-            useful, question = practical.get(product['id'], ('지금 고민에서 확인한 사실과 아직 모르는 것을 나눠 적어보세요. 바라는 답보다 먼저 확인하고 싶은 질문 하나를 골라보는 것도 방법입니다.', '지금 가장 먼저 확인하고 싶은 것은 무엇인가요?'))
+            useful, question = practical.get(product['id'], ('지금 아는 거랑 아직 모르는 걸 나눠봐. 답부터 정해놓지 말고 뭐가 궁금한지 하나만 골라보는거야~!', '지금 제일 궁금한 건 뭐야?'))
         if content_type == 'conversation':
             if format_id == 'question-options':
-                return hook + '\n\n' + useful + '\n\n지금 필요한 쪽은 무엇인가요?\nA. 확인할 질문 정하기\nB. 오늘 할 행동 정하기\n\n그쪽을 고른 이유도 궁금합니다.'
-            return hook + '\n\n빨리 답을 정하고 싶은 마음과 조금 더 확인하고 싶은 마음이 함께 들 수 있어요.\n\n' + useful + '\n\n' + question
+                return hook + '\n\n' + useful + '\n\n치니들은 어느 쪽이 먼저야?\nA. 뭘 물어볼지 정하기\nB. 오늘 뭘 할지 정하기'
+            return hook + '\n\n답은 빨리 알고 싶은데\n확실하지도 않은 걸 혼자 결론내리긴 또 그렇잖아;;\n\n' + useful + '\n\n' + question
         if content_type == 'checklist':
-            return hook + '\n\n' + useful + '\n\n1. ' + body + '\n2. 오늘 할 수 있는 행동 하나를 적어보세요.\n\n사주 풀이는 참고로 읽고, 실제 판단에 필요한 정보도 함께 확인하세요.'
+            return hook + '\n\n' + useful + '\n\n1. ' + body + '\n2. 오늘 할 수 있는 건 하나만 적어봐.\n\n모르는 건 모르는 채로 두고 실제로 확인할 수 있는 것부터 보는거지~!'
+        return Promotion.thread_catalog_parts(product, hook, body)[0]
+
+    @staticmethod
+    def thread_catalog_parts(product, hook, body):
         results = [str(value) for value in product.get('results', []) if value]
-        detail = ('제공 항목: ‘' + results[0][:65] + '’') if results else '상품 페이지에서 제공하는 풀이 항목을 확인해보세요.'
-        return hook + '\n\n1. ' + useful + '\n2. 로드로그 ‘' + product['name'] + '’\n' + detail + '\n\n사주 해석은 참고용이며 결과를 보장하지 않습니다.\nhttps://roadlog.co.kr/#p/' + product['id']
+        detail = '‘' + results[0][:65] + '’ 항목도 있어.' if results else '어떤 풀이가 있는지 상품 설명부터 봐봐.'
+        return [hook + '\n\n' + body + '\n\n근데 궁금한 걸 적다 보면\n이미 아는 거랑 혼자 짐작한 게 섞여있을 때 있지 않아?',
+                '당장 답부터 내려고 하면 더 헷갈리잖아;;\n\n실제로 확인한 건 뭔지\n아직 모르는 건 뭔지 따로 놓고 봐봐.\n\n그다음에 지금 확인하고 싶은 질문을 하나만 고르는거야.',
+                '그 질문이랑 맞는 풀이인지부터 보면 돼~!\n\n로드로그 ‘' + product['name'] + '’에는\n' + detail + '\n\n풀이가 상대 마음이나 결과를 확정해주는 건 아니야.\n어떤 내용을 보는지 궁금하면 여기서 확인해봐!\nhttps://roadlog.co.kr/#p/' + product['id']]
 
     def fresh_catalog_plan(self, previous):
         """Rotate verified products and editorial angles if the LLM keeps copying."""
@@ -351,18 +361,18 @@ class Promotion:
         if not products:
             raise ValueError('홍보할 상품 목록이 없습니다.')
         angles = [
-            ('생각이 많아지는 밤', '생각이 많아지는 밤인가요?', '마음에 남은 질문을 하나만 골라보세요.'),
-            ('나를 돌아보는 아침', '오늘은 나부터 살펴볼까요?', '지금 신경 쓰이는 일과 원하는 방향을 적어보세요.'),
-            ('선택 앞에서 잠깐 멈춤', '무엇부터 정해야 할까요?', '바라는 것과 망설이는 이유를 나눠 생각해보세요.'),
-            ('바쁜 하루의 작은 쉼', '잠깐 마음을 쉬어갈까요?', '바쁜 하루 속 놓치고 있던 내 질문을 살펴보세요.'),
-            ('익숙한 고민의 다른 관점', '같은 고민이 다시 떠오르나요?', '익숙한 생각을 다른 관점에서 읽어보세요.'),
-            ('말로 꺼내기 어려운 마음', '말로 꺼내기 어려운 마음인가요?', '궁금한 점을 짧게 적으면 질문이 조금 선명해져요.'),
-            ('주말에 남겨둔 질문', '이번 주말엔 무엇이 궁금한가요?', '미뤄둔 질문 하나를 골라 천천히 살펴보세요.'),
-            ('내 속도로 살펴보기', '서두르지 않고 살펴볼까요?', '당장 답을 정하기보다 내가 궁금한 것부터 골라보세요.'),
-            ('다른 시선으로 읽기', '다른 시선으로 보고 싶은가요?', '내 고민과 어울리는 풀이 항목을 먼저 확인해보세요.'),
-            ('작은 질문에서 시작하기', '작은 질문 하나로 시작할까요?', '여러 고민 중 지금 가장 궁금한 하나를 골라보세요.'),
-            ('오늘 마음 정리하기', '오늘 마음에 남은 건 무엇인가요?', '기대하는 것과 걱정하는 것을 나눠 적어보세요.'),
-            ('오래 미뤄둔 호기심', '오래 미뤄둔 궁금증이 있나요?', '상품의 풀이 항목을 보고 내 질문과 맞는지 살펴보세요.')]
+            ('생각이 많아지는 밤', '불 끄면 생각 더 많아지지 않아?', '누워서 계속 떠오르는 질문 하나만 골라봐.'),
+            ('나를 돌아보는 아침', '일어나자마자 뭐부터 생각나?', '지금 신경 쓰이는 일이랑 원하는 걸 따로 적어봐.'),
+            ('선택 앞에서 잠깐 멈춤', '뭐부터 정해야할지 모르겠어?', '하고 싶은 거랑 망설이는 이유부터 나눠보자~!'),
+            ('바쁜 하루의 작은 쉼', '바쁜데 그 생각은 또 나지?', '잠깐 멈추고 뭐가 걸리는지 하나만 생각해봐.'),
+            ('익숙한 고민의 다른 관점', '또 같은 고민 하고 있어?', '이번엔 알고 있는 거랑 짐작한 걸 따로 봐봐.'),
+            ('말로 꺼내기 어려운 마음', '묻고 싶은데 말이 안 나와?', '궁금한 걸 한 줄로 적어봐. 뭐부터 물을지 보이게!'),
+            ('주말에 남겨둔 질문', '주말까지 그 생각이 따라와?', '계속 미뤄둔 질문이면 하나만 꺼내보자.'),
+            ('내 속도로 살펴보기', '지금 당장 답을 내야해?', '급하게 결론내기 전에 뭐가 궁금한지부터 골라봐.'),
+            ('다른 시선으로 읽기', '이 고민 다른 쪽으로 보면 어떨까?', '지금 묻고 싶은 걸 먼저 적어봐.'),
+            ('작은 질문에서 시작하기', '생각이 너무 많아서 못 고르겠어?', '그중에 제일 궁금한 거 하나만 고르는거야~!'),
+            ('오늘 마음 정리하기', '오늘도 그 말이 마음에 남아?', '기대하는 거랑 걱정하는 거랑 따로 적어봐.'),
+            ('오래 미뤄둔 호기심', '맨날 궁금하다가 넘어가는 거 있어?', '지금 궁금한 걸 짧게 정해보는거지!')]
         places = ['a quiet hanok garden with blooming magnolia', 'a wooden bridge beside a softly lit pond',
                   'a traditional study with an open lattice window', 'a rain sheltered hanok porch',
                   'a bamboo courtyard with warm brass lamps', 'a rooftop terrace at violet dusk',
@@ -382,20 +392,22 @@ class Promotion:
                 index = (turn + position * 4) % len(angles)
                 topic, hook, body = angles[index]
                 name, link = product['name'], 'https://roadlog.co.kr/#p/' + product['id']
-                caption = hook + ' ' + body + ' 로드로그의 ' + name + '에서 제공하는 사주 풀이 항목을 확인해보세요. ' + link
+                caption = hook + '\n\n' + body + '\n\n로드로그 ‘' + name + '’에 어떤 풀이가 있는지 봐봐~!\n' + link
                 cards = [] if channel.startswith('threads:') else [
                     dict(title=hook, body=body, scene='Upright fully dressed Munyang holding a small closed scroll in ' + places[index] + ', wide view, thoughtful friendly expression.'),
-                    dict(title='내 질문에 맞는 풀이 찾기', body='궁금한 점을 고르고 상품의 풀이 항목을 살펴보세요.',
+                    dict(title='뭐가 제일 궁금해?', body='궁금한 걸 먼저 고르고 어떤 풀이가 있는지 봐봐~!',
                          scene='Upright fully dressed Munyang examining an unlettered open scroll at a low wooden desk in ' + places[(index + 5) % len(places)] + ', three quarter view, warm lantern light.')]
                 candidate = dict(channel=channel, topic=channel + ' · ' + topic, product_id=product['id'], caption=caption, cards=cards)
                 if channel.startswith('threads:'):
                     candidate['content_type'] = self.next_thread_type(previous)
                     candidate['format_reference'] = self.select_thread_format(candidate['content_type'], previous)
                     candidate['caption'] = self.thread_catalog_copy(product, hook, body, candidate['content_type'], candidate['format_reference']['id'])
+                    if candidate['content_type'] == 'product':
+                        candidate['thread_parts'] = self.thread_catalog_parts(product, hook, body)
                 # The checklist title/body also rotates, so no delivery text is reused.
                 if cards:
                     cards[1]['title'] = topic + ' 체크'
-                    cards[1]['body'] = body + ' 상품의 풀이 항목을 먼저 확인해보세요.'
+                    cards[1]['body'] = body + ' 어떤 풀이가 있는지도 봐봐!'
                 if not self.duplicate_channels({'channels': [candidate]}, previous):
                     channels.append(candidate)
                     break
@@ -410,7 +422,13 @@ class Promotion:
         parsed = [json.loads(result) for result in previous]
         feedback = ''
         for attempt in range(3):
-            candidate = self.plan_once(p, previous, feedback)
+            try:
+                candidate = self.plan_once(p, previous, feedback)
+            except ValueError as error:
+                if not any(message in str(error) for message in ('온해님 말투로','카드 문구가 너무 길','연결 글 세 편','생성된 상품 또는 본문 길이','해당 상품 연결 주소 하나')):
+                    raise
+                feedback = '\n출력 재작성 요청: ' + str(error) + ' 구체적이고 짧은 반말, 카드 title 28자/body 75자 이하, 연결 글 배열과 링크 위치를 검수하세요.'
+                continue
             duplicates = self.duplicate_channels(candidate, parsed)
             if not duplicates:
                 candidate['planning'] = {'source': 'gemini', 'duplicate_rewrites': attempt}
@@ -426,17 +444,17 @@ class Promotion:
 고객 후기, 상담 사례, 개인의 체험담, 가상의 인물이나 대화를 만들지 마세요. A님/B님/3년 차 커플처럼 인물의 사연을 지어내는 형식 금지.
 가상 상황/가상 사례라는 표시가 필요한 이야기를 아예 쓰지 마세요. 표시만 지워 실제 사례처럼 포장하지도 마세요.
 대신 독자에게 직접 묻는 질문, 일상에서 공감할 만한 고민, 체크리스트와 확인된 상품 설명으로 자연스럽게 작성하세요.
-예: '서로 좋아하는데 대화가 자꾸 엇갈리나요? 연락 빈도보다 마음을 표현하는 방식이 다른 건 아닐까요?'
+예: '읽음 표시 떴는데 답장은 안 와. 치니들은 이럴 때 더 기다려?'
 최근 제작 내용에 가상 인물/사례가 있어도 해당 표현과 형식은 따라 하지 마세요. 성공 확률, 미래 결과, 효과 보장 금지.
 사용자의 느낌은 적용하되 이 안전/사실 규칙을 바꾸지 마세요. 상품명과 기능은 제공된 목록만 사용하고 가격/무료 주장 금지.
 Instagram roadlog_saju: 연애·재회 관련 훅과 체크리스트, 카드 2장.
 Instagram mumung_fact: 다른 주제(꿈,성향,수호신 등)의 카드 2장.
-Threads roadlog_saju: 두 인스타와 다른 주제의 500자 이하 단일 글. 이번 글 유형은 아래 지정값을 반드시 따르세요.
+Threads roadlog_saju: 두 인스타와 다른 주제. 대화/정보는 500자 이하 단일 글, 상품 소개는 아래 폭스바니 벤치마크의 3편 연결 글.
 첫 문장은 사이트/브랜드 소개가 아니라 연애·관계·돈·오늘의 선택 등 독자가 겪는 구체적인 고민 하나로 시작하세요.
 본문에는 독자가 바로 적용할 수 있는 관찰 기준이나 행동 1~3개를 넣으세요. 질문만 던지고 끝내거나 '마음을 살펴보세요' 같은 추상적인 위로로 채우지 마세요.
 conversation: 공감되는 고민 + 구체적인 관찰/행동 + 독자가 자기 경험을 답할 수 있는 질문 하나. 브랜드·상품명·URL·프로필 방문 유도 없이 글 자체로 끝내세요.
 checklist: 고민 하나에 대해 짧은 확인 기준 2~3개를 설명하세요. 브랜드·상품명·URL·프로필 방문 유도 없이 본문만 읽어도 도움이 되게 쓰세요.
-product: 고민 + 유용한 내용 다음에 그 고민과 맞는 상품 하나만 소개하세요. 제공된 results의 실제 풀이 항목을 설명하고 끝에 해당 상품 URL 하나만 넣으세요.
+product: thread_parts 배열에 세 편을 쓰고 caption에는 첫 편을 동일하게 넣으세요. 각 편 500자 이하. 첫 편은 구체적 순간과 의문, 두 번째는 관점 전환과 확인할 행동, 세 번째는 앞의 의문을 마무리하고 실제 풀이 항목 하나와 해당 상품 URL 하나. 첫 두 편에는 브랜드·상품·링크 없음. URL은 세 번째 끝에 한 번만.
 일반적인 자기점검 조언은 사주로 검증된 사실처럼 표현하지 마세요. 생년·띠별 오늘의 운세나 미래 예측을 임의로 만들지 마세요.
 좋아요/팔로우/댓글 보상 유도, 과장된 낚시, 공포 자극, 필연적인 운명 단정, 구매 재촉 금지. 자연스러운 짧은 문단과 줄바꿈을 사용하세요.
 최근 글에서 같은 질문이나 결론을 반복하지 마세요. 아래 포맷 근거는 공개 반응을 실제 확인한 기록입니다. 포맷의 구조만 이번 Threads 글에 적용하세요.
@@ -447,18 +465,31 @@ product: 고민 + 유용한 내용 다음에 그 고민과 맞는 상품 하나�
 각 주제와 상품 연결이 자연스러워야 합니다. 카드 배경은 글자 없는 풍부한 장면이며 글자는 별도 조판합니다.
 반드시 JSON 객체만 반환: {"style_summary":"예시 분석 한국어", "channels":[
 {"channel":"instagram:roadlog_saju","topic":"주제","product_id":"상품id","caption":"2200자 이하 본문","cards":[{"title":"","highlight":"핵심 단어","body":"","scene":""},{"title":"","highlight":"핵심 단어","body":"","scene":""}]},
-{"channel":"instagram:mumung_fact", ...}, {"channel":"threads:roadlog_saju","topic":"다른 주제","product_id":"상품id","caption":"500자 이하 글","cards":[]}]}
+{"channel":"instagram:mumung_fact", ...}, {"channel":"threads:roadlog_saju","topic":"다른 주제","product_id":"상품id","caption":"첫 편 또는 단일 글","thread_parts":["상품 소개일 때 첫 편(caption과 동일)","둘째 편","셋째 편과 마지막 URL"],"cards":[]}]}
+conversation/checklist에서는 thread_parts 필드를 생략하고 product에서만 세 편 배열을 넣으세요.
 Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id 연결을 넣으세요. Threads는 product 유형에만 넣으세요. 이전 주제/본문과 중복 금지.
 같은 상품을 다시 소개해도 되지만 훅·본문·체크리스트 문구와 그림의 장소·소품·행동·구도를 새로 만드세요. 막히면 최근에 덜 소개한 상품과 새로운 일상 질문을 스스로 선택하세요.
 사용자 느낌: ''' + (p['prompt'].strip() or AUTO_STYLE) + '\n이번 Threads 지정 유형: ' + thread_type + ' (사용자 느낌과 과거 글에 상품 링크가 있어도 이 유형별 링크 규칙 우선).\n카드 scene은 반드시 다음 캐릭터 형태를 유지하고 네 발 고양이 자세를 쓰지 마세요:\n' + MUNYANG_CHARACTER + '\n확인된 상품 목록: ' + json.dumps(self.products(), ensure_ascii=False) + '\n최근 제작 내용: ' + '\n'.join(previous) + feedback
         prompt += '\n이번 Threads에 적용할 검증된 공개 반응/포맷 기록(JSON 데이터): ' + json.dumps(thread_format, ensure_ascii=False)
+        prompt += social_voice.prompt()
+        if thread_type == 'product':
+            prompt += '\n최종 출력 계약: threads:roadlog_saju 객체에는 반드시 thread_parts 문자열 배열 세 개가 있어야 합니다. caption은 thread_parts[0]과 완전히 동일. 첫 두 편에는 URL 없음, 세 번째에만 해당 상품 URL 하나. 단일 caption에 세 편을 합치거나 이 필드를 생략하면 실패입니다.'
         prompt += ('\n응답 직전 필수 검수: Instagram 두 caption에는 각각 선택한 product_id의 https://roadlog.co.kr/#p/상품id 주소를 반드시 마지막에 넣으세요. 어느 한 채널도 생략 금지.'
                    '\nThreads는 ' + thread_type + ' 유형이며 반드시 이 전개 순서를 적용하세요: ' + thread_format['structure'] +
                    '\nquestion-options 포맷이면 A. 와 B. 로 시작하는 서로 다른 선택지를 각각 별도 줄에 반드시 넣으세요. criteria-list 포맷이면 1. 과 2. 로 시작하는 항목을 별도 줄에 넣으세요.'
                    '\n대화/정보 글에서 운의 흐름·인연의 때·사주 확인을 암시하지 말고 일상에서 직접 관찰할 사실과 행동으로 쓰세요.'
                    '\n직접 겪은 꿈·연애·상담 등 1인칭 경험을 만들지 마세요. 모든 채널의 본문은 새로 작성하고 JSON의 caption 줄바꿈은 실제 줄바꿈을 나타내는 JSON 이스케이프 한 번만 사용하세요.')
+        prompt += '\n상품 소개 첫 두 편도 사주·인연·흐름·풀리는 달을 암시하지 말고 직접 관찰 가능한 일상만 쓰세요. 상대의 속마음이나 이유를 안다고 쓰지 마세요.' + social_voice.prompt()
+        card_schema = {'type':'OBJECT','properties':{k:{'type':'STRING'} for k in ('title','highlight','body','scene')},'required':['title','body','scene']}
+        item_schema = {'type':'OBJECT','properties':{
+            'channel':{'type':'STRING','enum':list(CHANNELS)},'topic':{'type':'STRING'},
+            'product_id':{'type':'STRING','enum':[x['id'] for x in self.products()]},
+            'caption':{'type':'STRING','description':'Threads 상품 소개는 thread_parts[0]과 동일한 첫 편'},
+            'thread_parts':{'type':'ARRAY','items':{'type':'STRING'},'description':'Threads product는 정확히 세 편, 다른 채널은 빈 배열'},
+            'cards':{'type':'ARRAY','items':card_schema}},'required':['channel','topic','product_id','caption','cards','thread_parts']}
+        schema = {'type':'OBJECT','properties':{'style_summary':{'type':'STRING'},'channels':{'type':'ARRAY','items':item_schema,'minItems':3,'maxItems':3}},'required':['style_summary','channels']}
         parts = self.gemini('gemini-3.1-flash-lite', [{'text': prompt}, *self.references(p)],
-                            {'responseMimeType': 'application/json', 'maxOutputTokens': 8192})
+                            {'responseMimeType': 'application/json', 'responseSchema':schema, 'maxOutputTokens': 8192})
         plan = json.loads(''.join(part.get('text', '') for part in parts))
         channels = plan.get('channels', [])
         allowed = {p['id'] for p in self.products()}
@@ -468,6 +499,14 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
             thread = item['channel'].startswith('threads:')
             if item.get('product_id') not in allowed or not 1 <= len(item.get('caption', '')) <= (500 if thread else 2200):
                 raise ValueError('생성된 상품 또는 본문 길이가 올바르지 않습니다.')
+            parts = item.get('thread_parts')
+            if thread and thread_type == 'product':
+                if not isinstance(parts,list) or len(parts) != 3 or parts[0] != item['caption'] or any(not isinstance(part,str) or not 1 <= len(part) <= 500 for part in parts):
+                    raise ValueError('Threads 상품 소개는 편당 500자 이하의 연결 글 세 편이어야 합니다.')
+            elif parts:
+                raise ValueError('대화·정보 글과 Instagram에는 연속 글을 넣지 마세요.')
+            full_caption = '\n'.join(parts or [item['caption']])
+            social_voice.validate(full_caption)
             link = 'https://roadlog.co.kr/#p/' + item['product_id']
             if thread:
                 item['content_type'] = thread_type
@@ -477,14 +516,15 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
                     item['caption'] = re.sub(r'https?://\S+', '', item['caption']).strip()
                     if not item['caption'] or '로드로그' in item['caption'] or any(product['name'] in item['caption'] for product in self.products()):
                         raise ValueError('Threads 대화·정보 글에는 브랜드·상품 홍보 대신 독립적인 내용을 작성해야 합니다.')
-                elif re.findall(r'https?://\S+', item['caption']) != [link]:
+                elif re.findall(r'https?://\S+', full_caption) != [link] or any(re.search(r'https?://|로드로그|프로필\s*링크', part) or any(product['name'] in part for product in self.products()) for part in parts[:2]) or not parts[-1].rstrip().endswith(link):
                     raise ValueError('Threads 상품 소개에는 해당 상품 연결 주소 하나만 넣어야 합니다.')
-            if (not thread or thread_type == 'product') and link not in item['caption']:
+            if (not thread or thread_type == 'product') and link not in full_caption:
                 raise ValueError('상품 연결 주소가 올바르지 않습니다.')
             cards = item.get('cards', [])
             if len(cards) != (0 if thread else 2):
                 raise ValueError('Instagram은 두 장, Threads는 글로 제작해야 합니다.')
-            copy = '\n'.join([item['caption'], *[card.get('title', '') + '\n' + card.get('body', '') for card in cards]])
+            copy = '\n'.join([full_caption, *[card.get('title', '') + '\n' + card.get('body', '') for card in cards]])
+            social_voice.validate(copy)
             if re.search(r'가상\s*(?:상황|사례|대화|인물)|가상의\s*(?:상황|사례|대화|인물)|\b[A-Z]\s*님', copy):
                 raise ValueError('가상 인물이나 사례 대신 공감 질문으로 작성해야 합니다.')
             for card in cards:
@@ -494,8 +534,8 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
                 markers = ('A.', 'B.') if thread_format['id'] == 'question-options' else ('1.', '2.') if thread_format['id'] == 'criteria-list' else ()
                 if markers and not all(re.search(r'(?m)^\s*' + re.escape(marker), item['caption']) for marker in markers):
                     product = next(p for p in self.products() if p['id'] == item['product_id'])
-                    item['caption'] = self.thread_catalog_copy(product, '지금 고민에서 무엇부터 확인하고 싶으세요?',
-                                                               '확인한 사실과 추측을 구분해보세요.', thread_type, thread_format['id'])
+                    item['caption'] = self.thread_catalog_copy(product, '지금 고민에서 뭐부터 확인하고 싶어?',
+                                                               '확인한 거랑 추측한 걸 나눠봐.', thread_type, thread_format['id'])
                     item['format_repair'] = 'catalog_structure'
                 if len(item['caption']) > 500:
                     raise ValueError('Threads 본문은 500자 이하여야 합니다.')
@@ -636,6 +676,9 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
                     continue
             self.receipt(job['id'], ch, 'PREPARING')
             try:
+                if item.get('thread_parts') and ch == 'threads:roadlog_saju':
+                    threads_chain.publish(self, job['id'], item, uid)
+                    continue
                 thread = ch.startswith('threads:')
                 if thread:
                     data = {'media_type': 'TEXT', 'text': item['caption']}

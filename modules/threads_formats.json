@@ -13,11 +13,11 @@
     },
     {
       "id": "criteria-list",
-      "content_types": ["checklist", "product"],
+      "content_types": ["checklist"],
       "source_url": "https://www.threads.com/@final.__.lee/post/Da2JgRzDyPq",
       "published_at": "2026-07-16",
       "observed_reactions": {"likes": "1.4천", "replies": "1.6천", "reposts": "26", "shares": "277"},
-      "structure": "한 줄로 궁금한 점 제시 → 번호를 붙인 짧고 구체적인 항목 → 핵심 질문 또는 다음 행동. checklist는 실제 자기점검 기준 2~3개, product는 확인된 풀이 항목을 설명한 뒤 링크 하나로 마무리한다.",
+      "structure": "한 줄로 궁금한 점 제시 → 번호를 붙인 짧고 구체적인 항목 → 핵심 질문 또는 다음 행동. 실제 자기점검 기준 2~3개를 설명하고 링크 없이 마무리한다.",
       "exclude": "원문은 개인 소개와 사진이 있는 글이다. 사진·개인 신상·체험담을 흉내내지 않고 번호 목록의 가독성만 적용한다. 반응은 화면에 반올림된 표시값 그대로 기록."
     },
     {
@@ -28,6 +28,26 @@
       "observed_reactions": {"likes": "507", "replies": "321", "reposts": "9", "shares": "296"},
       "structure": "서로 충돌하는 두 가지 마음을 한 문장에 제시 → 양쪽을 이해할 구체적인 판단 기준 → 무엇을 우선하는지 묻는 열린 질문. 모든 문단을 1~2문장으로 짧게 쓴다.",
       "exclude": "오래된 인기 검색 사례이며 최근 유행의 증거가 아니다. 원문의 사연·직접 경험·말투를 복제하거나 가상의 상담 사례로 바꾸지 않는다."
+    },
+    {
+      "id": "fox-scene-turn",
+      "content_types": ["product"],
+      "source_url": "https://www.threads.com/@foxbunny_saju/post/DeLDOuWjhN0",
+      "continuations": ["https://www.threads.com/@foxbunny_saju/post/DeLDP-djsNF", "https://www.threads.com/@foxbunny_saju/post/DeLDRXkDjVC"],
+      "published_at": "2026-10-07",
+      "observed_reactions": {"views":"376", "likes":"숫자 미표시", "replies":"2"},
+      "structure": "세 편의 연결 글. 1편: 독자가 겪을 수 있는 구체적 장면을 조건·질문으로 열고 그 장면에서 생기는 의문을 남김. 2편: 눈앞의 행동과 내가 붙인 해석을 구분하며 관점을 바꿈. 3편: 앞의 의문을 실제로 마무리하고 확인된 상품 풀이 항목 하나에 연결, 마지막에 해당 URL 하나. 모든 편은 온해님 반말, 편당 500자 이하. 총 세 편 중 첫 두 편엔 광고·링크 없음.",
+      "exclude": "원문 상담 사연·가족·임신·대화·반전·사주 결과를 가져오지 않음. 로드로그의 실제 고객 상담으로 지어내지 않음. 원문의 376회 조회는 성공·매출 증거가 아님. 억지 반전·빈 클리프행어 대신 같은 고민을 끝까지 해결하는 전개만 참고."
+    },
+    {
+      "id": "fox-direct-turn",
+      "content_types": ["product"],
+      "source_url": "https://www.threads.com/@foxbunny_saju/post/DeIk5fYlKj-",
+      "continuations": ["https://www.threads.com/@foxbunny_saju/post/DeIk6ndlIiR", "https://www.threads.com/@foxbunny_saju/post/DeIk75LlPHw"],
+      "published_at": "2026-10-06",
+      "observed_reactions": {"views":"1.1천", "likes":"5", "replies":"2"},
+      "structure": "세 편의 연결 글. 1편: 읽음 표시·답장 작성 등 구체적 순간에서 독자에게 직접 말을 검. 2편: 헷갈리는 마음과 확인할 실제 행동을 구분하며 질문을 좁힘. 3편: 스스로 선택할 기준을 먼저 주고, 그 질문과 맞는 확인된 상품 풀이 항목 하나를 설명한 뒤 URL 하나. 온해님 반말과 짧은 줄바꿈, 편당 500자 이하. 첫 두 편에 브랜드·링크 넣지 않음.",
+      "exclude": "띠별 오늘 운세·상대 마음·90% 확률·출처 없는 순위·상담 약속·생년월일 댓글 수집·공포 자극을 가져오지 않음. 조회는 반올림 화면 표시값이고 성공 원인이나 구매 전환은 미검증."
     }
   ]
 }

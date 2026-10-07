@@ -13,3 +13,5 @@
 - 운영 검증 도구: `scripts/configure_personal_threads.py`. --provision은 기존 전용 토큰 등록, --preview는 미리보기, --publish-first는 확인한 첫 글 발행, --enable은 게시 검증 후 요청된 하루 4회 예약 활성화. 비밀값 출력 금지.
 
 검증: `scripts/test_developer_threads.py`(개인 계정/중복/불확실성/소재 소진/인증), `scripts/test_promotion.py`(기존 기능), `roadlog-saju/tools/ship.py --check`.
+
+2026-10-07 말투 보완: 현재 원글 40개·본인 답글 609개에서 직접 쓴 문체를 정리해 7개 소재를 다시 작성했다. 기존 소재 ID와 사용 장부는 유지한다. `modules/social_voice.json`/`social_voice.py`의 공통 기준을 적용하며 억지 질문 없이 짧은 반말로 쓴다. 상세: `MUMUNG_VOICE.md`.

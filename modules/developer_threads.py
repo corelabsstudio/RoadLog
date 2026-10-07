@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from .social_voice import validate as validate_voice, summary as voice_summary
 
 CHANNEL = 'threads:mumung_fact'
 KST = ZoneInfo('Asia/Seoul')
@@ -102,7 +103,8 @@ class DeveloperThreads:
             paragraphs = [source['result'], source['hook'] + '\n' + source['problem'], source['solution'], source['lesson'], source['question']]
         else:
             paragraphs = [source['hook'], source['problem'], source['solution'], source['result'], source['lesson'], source['question']]
-        caption = '\n\n'.join(paragraphs)
+        caption = '\n\n'.join(p for p in paragraphs if p.strip())
+        validate_voice(caption)
         if not 1 <= len(caption) <= 500 or re.search(r'https?://|프로필\s*링크|구매|할인|API[_ -]?KEY|access_token|Bearer\s', caption, re.I):
             raise ValueError('개인 개발 기록은 500자 이하이며 홍보 링크·비밀값을 포함할 수 없습니다.')
         return caption
@@ -152,7 +154,7 @@ class DeveloperThreads:
             source = next((s for s in library['sources'] if s['id'] == post['source_id']), {})
             post['evidence'] = source.get('evidence', '이전 소재 기록')
         return {'account': 'mumung_fact', 'profile': self.profile(), 'configured': bool(self.client.token(CHANNEL)),
-                'remaining_sources': len(self.remaining()), 'posts': posts, 'version': library['version'],
+                'remaining_sources': len(self.remaining()), 'posts': posts, 'version': library['version'], 'voice': voice_summary(),
                 'notice': notice[0] if notice else '실제 확인된 개발 기록만 게시합니다. 소재 소진·오류 시 예약을 멈춥니다.'}
 
     def pause(self, notice=None):

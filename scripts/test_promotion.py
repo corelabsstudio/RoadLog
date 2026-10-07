@@ -20,9 +20,9 @@ from fastapi.testclient import TestClient
 class Tests(unittest.TestCase):
     def campaign(self, suffix='original'):
         return {'channels': [dict(channel=ch, topic=f'{i}-{suffix}', product_id='today',
-                    caption=f'{i} {suffix} 마음을 살펴보세요. https://roadlog.co.kr/#p/today',
+                    caption=f'{i} {suffix} 마음을 한번 봐~ https://roadlog.co.kr/#p/today',
                     cards=[] if ch.startswith('threads:') else [dict(title=f'{suffix} 질문 {i}-{n}',
-                        body=f'{suffix} 표현 방식을 살펴보세요.', scene=f'{suffix} scene {i}-{n}') for n in range(2)])
+                        body=f'{suffix} 표현 방식도 같이 봐.', scene=f'{suffix} scene {i}-{n}') for n in range(2)])
                     for i, ch in enumerate(CHANNELS)]}
 
     def history(self, plan):
@@ -121,9 +121,13 @@ class Tests(unittest.TestCase):
             plan = self.s.fresh_catalog_plan(previous)
             thread = plan['channels'][2]
             self.assertEqual(thread['content_type'], expected)
-            self.assertEqual('https://roadlog.co.kr/#p/today' in thread['caption'], expected == 'product')
+            self.assertEqual('https://roadlog.co.kr/#p/today' in '\n'.join(thread.get('thread_parts') or [thread['caption']]), expected == 'product')
             self.assertLessEqual(len(thread['caption']), 500)
-            self.assertIn('오늘 해야 할 일', thread['caption'])
+            if expected != 'product':
+                self.assertIn('오늘 해야 할 일', thread['caption'])
+            else:
+                self.assertEqual(len(thread['thread_parts']), 3)
+                self.assertNotIn('https://', thread['caption'])
             for instagram in plan['channels'][:2]:
                 self.assertIn('https://roadlog.co.kr/#p/today', instagram['caption'])
                 self.assertEqual(len(instagram['cards']), 2)
@@ -143,10 +147,12 @@ class Tests(unittest.TestCase):
         previous = self.campaign('previous')
         previous['channels'][2]['content_type'] = 'checklist'
         plan = self.campaign('new')
+        plan['channels'][2]['caption'] = '답장 쓰다가 지운 적 있어?'
+        plan['channels'][2]['thread_parts'] = ['답장 쓰다가 지운 적 있어?', '근데 답장 하나로 마음을 알 수는 없잖아.', '오늘 운세에서 확인할 내용을 봐~ https://roadlog.co.kr/#p/today']
         self.s.gemini = lambda *args: [{'text': json.dumps(plan)}]
         result = self.s.plan_once(self.s.profile(), [json.dumps(previous)], '')
         self.assertEqual(result['channels'][2]['content_type'], 'product')
-        plan['channels'][2]['caption'] += ' https://example.com/'
+        plan['channels'][2]['thread_parts'][2] += ' https://example.com/'
         with self.assertRaisesRegex(ValueError, '주소 하나'):
             self.s.plan_once(self.s.profile(), [json.dumps(previous)], '')
 
@@ -163,9 +169,9 @@ class Tests(unittest.TestCase):
         self.assertIn(source['structure'], captured[0])
         self.assertIn('사연·표현·사진·개인 경험은 복제하지', captured[0])
         self.assertEqual(self.s.select_thread_format('conversation', [result])['id'], 'two-values')
-        self.assertEqual(self.s.select_thread_format('product', [result])['id'], 'criteria-list')
+        self.assertEqual(self.s.select_thread_format('product', [result])['id'], 'fox-scene-turn')
         self.assertTrue(all('format_reference' not in c for c in result['channels'][:2]))
-        self.assertEqual(self.s.state()['threads_writing']['format_count'], 3)
+        self.assertEqual(self.s.state()['threads_writing']['format_count'], 5)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -281,8 +287,8 @@ class Tests(unittest.TestCase):
 
     def test_plan_accepts_common_questions_but_rejects_fictional_anecdotes(self):
         channels = [dict(channel=ch, topic=str(i), product_id='today',
-                         caption='대화가 자꾸 엇갈리나요? https://roadlog.co.kr/#p/today',
-                         cards=[] if ch.startswith('threads:') else [dict(title='마음이 궁금한가요?', body='표현 방식이 다른지 살펴보세요.', scene='A cat under warm lantern light.') for _ in range(2)])
+                         caption='대화가 자꾸 엇갈려? https://roadlog.co.kr/#p/today',
+                         cards=[] if ch.startswith('threads:') else [dict(title='무슨 마음일까?', body='표현 방식이 다른 건지 봐~', scene='A cat under warm lantern light.') for _ in range(2)])
                     for i, ch in enumerate(CHANNELS)]
         self.s.gemini = lambda *a: [{'text': json.dumps({'channels': channels})}]
         self.assertEqual(len(self.s.plan(self.s.profile())['channels']), 3)

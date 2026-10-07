@@ -36,6 +36,7 @@ def railway(query, variables):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--plan', action='store_true')
+    parser.add_argument('--product', action='store_true')
     parser.add_argument('--deployments', action='store_true')
     args = parser.parse_args()
     if args.deployments:
@@ -62,7 +63,13 @@ def main():
             service.gemini = capture
             # Public product catalog + public format summaries + source-code defaults only.
             # Do not read or transmit administrator settings, private references or job history.
-            plan = service.plan_once(Profile().model_dump(), [], '')
+            previous = [json.dumps({'channels':[{'channel':'threads:roadlog_saju','content_type':'checklist'}]})] if args.product else []
+            if previous:
+                ident = service.enqueue('public-format-preview')
+                with service.db() as c:
+                    c.execute("UPDATE jobs SET result=?,status='PUBLISHED' WHERE id=?",(previous[0],ident))
+            plan = service.plan(Profile().model_dump())
+            report['planning'] = plan.get('planning')
             OUT.mkdir(parents=True, exist_ok=True)
             (OUT / 'text-preview.json').write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding='utf-8')
             thread = next(c for c in plan['channels'] if c['channel'].startswith('threads:'))
@@ -71,7 +78,8 @@ def main():
     else:
         token = (ROOT / '.launch/promotion-admin-session.env').read_text().strip()
         state = request('https://roadlog.co.kr/api/admin/promotion', token=token)
-        report.update(live=state.get('threads_writing'), schedule_enabled=state['profile']['enabled'])
+        report.update(live=state.get('threads_writing'), voice_version=state.get('social_voice',{}).get('version'), schedule_enabled=state['profile']['enabled'],
+                      personal={'profile':state['personal_threads']['profile'],'version':state['personal_threads']['version'],'remaining_sources':state['personal_threads']['remaining_sources']})
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / 'verification.json').write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print(json.dumps(report, ensure_ascii=True))
