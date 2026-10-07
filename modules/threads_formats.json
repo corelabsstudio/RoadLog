@@ -1,0 +1,33 @@
+{
+  "observed_at": "2026-10-07",
+  "method": "Threads 연애 인기 검색의 공개 원문과 게시글 반응 버튼을 브라우저로 확인. 조회수와 매출은 미확인. 반응과 포맷 사이 인과관계는 미검증.",
+  "formats": [
+    {
+      "id": "question-options",
+      "content_types": ["conversation"],
+      "source_url": "https://www.threads.com/@loveygirl_note/post/DdbDN1dkroN",
+      "published_at": "2026-09-18",
+      "observed_reactions": {"likes": "425", "replies": "314", "reposts": "3", "shares": "21"},
+      "structure": "구체적인 관계 고민을 직접 질문 → 짧은 관찰 기준 → 겹치지 않는 선택지 2~3개 → 선택 이유를 자유롭게 답할 질문. 선택하지 않아도 읽을 가치가 있는 정보를 먼저 준다.",
+      "exclude": "원문의 주제·표현·개인 경험·성별 일반화는 가져오지 않는다. 댓글 보상이나 억지 참여 유도 금지."
+    },
+    {
+      "id": "criteria-list",
+      "content_types": ["checklist", "product"],
+      "source_url": "https://www.threads.com/@final.__.lee/post/Da2JgRzDyPq",
+      "published_at": "2026-07-16",
+      "observed_reactions": {"likes": "1.4천", "replies": "1.6천", "reposts": "26", "shares": "277"},
+      "structure": "한 줄로 궁금한 점 제시 → 번호를 붙인 짧고 구체적인 항목 → 핵심 질문 또는 다음 행동. checklist는 실제 자기점검 기준 2~3개, product는 확인된 풀이 항목을 설명한 뒤 링크 하나로 마무리한다.",
+      "exclude": "원문은 개인 소개와 사진이 있는 글이다. 사진·개인 신상·체험담을 흉내내지 않고 번호 목록의 가독성만 적용한다. 반응은 화면에 반올림된 표시값 그대로 기록."
+    },
+    {
+      "id": "two-values",
+      "content_types": ["conversation"],
+      "source_url": "https://www.threads.com/@jjeen_eazy/post/DPiV4jIAdMf",
+      "published_at": "2025-10-08",
+      "observed_reactions": {"likes": "507", "replies": "321", "reposts": "9", "shares": "296"},
+      "structure": "서로 충돌하는 두 가지 마음을 한 문장에 제시 → 양쪽을 이해할 구체적인 판단 기준 → 무엇을 우선하는지 묻는 열린 질문. 모든 문단을 1~2문장으로 짧게 쓴다.",
+      "exclude": "오래된 인기 검색 사례이며 최근 유행의 증거가 아니다. 원문의 사연·직접 경험·말투를 복제하거나 가상의 상담 사례로 바꾸지 않는다."
+    }
+  ]
+}

@@ -53,7 +53,12 @@ class Tests(unittest.TestCase):
             before=next(x for x in old['channels'] if x['channel']==item['channel'])
             self.assertNotEqual(item['caption'],before['caption'])
             self.assertEqual(item['product_id'],'today')
-            self.assertIn('https://roadlog.co.kr/#p/today',item['caption'])
+            if item['channel'].startswith('threads:'):
+                self.assertEqual(item['content_type'], 'conversation')
+                self.assertNotIn('https://', item['caption'])
+                self.assertNotIn('로드로그', item['caption'])
+            else:
+                self.assertIn('https://roadlog.co.kr/#p/today',item['caption'])
             self.assertLessEqual(len(item['caption']),500)
             for card in item['cards']:
                 self.assertLessEqual(len(card['title']),28);self.assertLessEqual(len(card['body']),75)
@@ -109,6 +114,58 @@ class Tests(unittest.TestCase):
             result=self.s.fresh_catalog_plan(previous[-8:])
             self.assertEqual(self.s.duplicate_channels(result,previous[-8:]),[])
             previous.append(result)
+
+    def test_thread_types_rotate_and_only_product_posts_link(self):
+        previous = []
+        for expected in ('conversation', 'checklist', 'product', 'conversation'):
+            plan = self.s.fresh_catalog_plan(previous)
+            thread = plan['channels'][2]
+            self.assertEqual(thread['content_type'], expected)
+            self.assertEqual('https://roadlog.co.kr/#p/today' in thread['caption'], expected == 'product')
+            self.assertLessEqual(len(thread['caption']), 500)
+            self.assertIn('오늘 해야 할 일', thread['caption'])
+            for instagram in plan['channels'][:2]:
+                self.assertIn('https://roadlog.co.kr/#p/today', instagram['caption'])
+                self.assertEqual(len(instagram['cards']), 2)
+            previous.insert(0, plan)
+
+    def test_planner_conversation_drops_legacy_link_but_rejects_ad_copy(self):
+        plan = self.campaign()
+        self.s.gemini = lambda *args: [{'text': json.dumps(plan)}]
+        result = self.s.plan_once(self.s.profile(), [], '')
+        self.assertEqual(result['channels'][2]['content_type'], 'conversation')
+        self.assertNotIn('https://', result['channels'][2]['caption'])
+        plan['channels'][2]['caption'] = '로드로그에서 오늘 운세를 확인하세요. https://roadlog.co.kr/#p/today'
+        with self.assertRaisesRegex(ValueError, '독립적인 내용'):
+            self.s.plan_once(self.s.profile(), [], '')
+
+    def test_planner_product_requires_exact_single_product_link(self):
+        previous = self.campaign('previous')
+        previous['channels'][2]['content_type'] = 'checklist'
+        plan = self.campaign('new')
+        self.s.gemini = lambda *args: [{'text': json.dumps(plan)}]
+        result = self.s.plan_once(self.s.profile(), [json.dumps(previous)], '')
+        self.assertEqual(result['channels'][2]['content_type'], 'product')
+        plan['channels'][2]['caption'] += ' https://example.com/'
+        with self.assertRaisesRegex(ValueError, '주소 하나'):
+            self.s.plan_once(self.s.profile(), [json.dumps(previous)], '')
+
+    def test_verified_format_reaches_prompt_and_result_and_rotates(self):
+        captured = []
+        def model(model, parts, config):
+            captured.append(parts[0]['text'])
+            return [{'text': json.dumps(self.campaign())}]
+        self.s.gemini = model
+        result = self.s.plan_once(self.s.profile(), [], '')
+        source = result['channels'][2]['format_reference']
+        self.assertEqual(source['id'], 'question-options')
+        self.assertEqual(source['observed_reactions']['replies'], '314')
+        self.assertIn(source['structure'], captured[0])
+        self.assertIn('사연·표현·사진·개인 경험은 복제하지', captured[0])
+        self.assertEqual(self.s.select_thread_format('conversation', [result])['id'], 'two-values')
+        self.assertEqual(self.s.select_thread_format('product', [result])['id'], 'criteria-list')
+        self.assertTrue(all('format_reference' not in c for c in result['channels'][:2]))
+        self.assertEqual(self.s.state()['threads_writing']['format_count'], 3)
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
