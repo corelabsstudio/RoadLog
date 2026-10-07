@@ -684,6 +684,11 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
                     continue
                 thread = ch.startswith('threads:')
                 if thread:
+                    links = re.findall(r'https?://\S+|www\.\S+', item['caption'], re.I)
+                    if links:
+                        clean = re.sub(r'https?://\S+|www\.\S+', '', item['caption'], flags=re.I).strip()
+                        threads_chain.publish(self, job['id'], dict(item, caption=clean, thread_parts=[clean, '\n'.join(dict.fromkeys(links))]), uid)
+                        continue
                     data = {'media_type': 'TEXT', 'text': item['caption']}
                 else:
                     children = []

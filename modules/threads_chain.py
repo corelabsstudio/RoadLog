@@ -14,9 +14,16 @@ def update(client, job, position, status, **fields):
                   (*values.values(),job,position))
 
 def publish(client, job, item, uid):
-    parts = item['thread_parts']
-    if len(parts) != 3 or item['caption'] != parts[0] or any(not isinstance(p,str) or not 1 <= len(p) <= 500 for p in parts):
+    parts = list(item['thread_parts'])
+    if len(parts) not in (2,3) or item['caption'] != parts[0] or any(not isinstance(p,str) or not 1 <= len(p) <= 500 for p in parts):
         raise ValueError('연속 글은 각각 500자 이하인 세 편이어야 합니다.')
+    # Root posts never contain links, including legacy queued plans.
+    links = re.findall(r'https?://\S+|www\.\S+', parts[0], re.I)
+    parts[0] = re.sub(r'https?://\S+|www\.\S+', '', parts[0], flags=re.I).strip()
+    if links:
+        parts[-1] = parts[-1] + '\n\n' + '\n'.join(dict.fromkeys(links))
+    if any(not p or len(p)>500 for p in parts):
+        raise ValueError('본문과 링크 댓글은 각각 1~500자여야 합니다.')
     ch = item['channel']
     previous = None
     root = None

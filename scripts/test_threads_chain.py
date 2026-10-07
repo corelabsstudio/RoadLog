@@ -64,6 +64,16 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.finals,2)
         self.assertEqual(self.s.state()['jobs'][0]['thread_receipts'][1]['status'],'PUBLISHED_UNVERIFIED')
 
+    def test_legacy_root_link_moves_to_comment(self):
+        from modules import threads_chain
+        self.parts = ['본문만 남겨줘 https://example.com/item', '이어지는 내용', '마지막 내용']
+        item = dict(self.item, caption=self.parts[0], thread_parts=list(self.parts))
+        self.parts = ['본문만 남겨줘', '이어지는 내용', '마지막 내용\n\nhttps://example.com/item']
+        threads_chain.publish(self.s, self.id, item, '123')
+        self.assertNotIn('https://', self.creates[0]['text'])
+        self.assertIn('https://example.com/item', self.creates[-1]['text'])
+        self.assertEqual(self.creates[-1]['reply_to_id'], '202')
+
     def test_report_voice_rejected_without_changing_text(self):
         with self.assertRaises(ValueError): social_voice.validate('자동화를 반영했다. 테스트로 확인했다.')
         social_voice.validate('자동화 넣었어~! 근데 여기서 또 막히는거야ㅋㅋ')
