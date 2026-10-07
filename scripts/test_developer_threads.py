@@ -105,6 +105,21 @@ class Tests(unittest.TestCase):
         source['solution'] = 'https://example.com 구매하세요'
         with self.assertRaises(ValueError): self.s.add_source(source)
 
+    def test_interrupted_post_needs_explicit_review_and_uncertain_is_never_cleared(self):
+        src = self.s.library()['sources'][0]
+        with self.s.db() as c:
+            c.execute("INSERT INTO developer_posts(id,source_id,slot,created,format_id,caption,status) VALUES('i1',?,'s1','2026-10-07T18:00:00+09:00','numbered-process','x','INTERRUPTED')", (src['id'],))
+        times = ['09:00']
+        with self.assertRaises(ValueError):
+            self.s.save({'enabled': True, 'times': times})
+        self.s.save({'enabled': True, 'times': times, 'reviewed_interrupted': True})
+        with self.s.db() as c:
+            self.assertEqual(c.execute("SELECT status FROM developer_posts WHERE id='i1'").fetchone()[0], 'REVIEWED')
+            c.execute("INSERT INTO developer_posts(id,source_id,slot,created,format_id,caption,status) VALUES('u1','other','s2','2026-10-07T19:00:00+09:00','numbered-process','x','UNCERTAIN')")
+        with self.assertRaises(ValueError):
+            self.s.save({'enabled': True, 'times': times, 'reviewed_interrupted': True})
+        self.assertNotIn(src['id'], [x['id'] for x in self.s.remaining()])
+
     def test_admin_required_and_bad_time_rejected(self):
         app = FastAPI()
         def admin(token):

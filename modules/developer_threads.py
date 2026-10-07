@@ -74,12 +74,18 @@ class DeveloperThreads:
         return c.execute('SELECT 1 FROM developer_posts WHERE status IN (' + ','.join('?' for _ in BLOCKING) + ')', BLOCKING).fetchone()
 
     def save(self, profile):
+        profile = dict(profile)
+        reviewed = profile.pop('reviewed_interrupted', False)
         times = profile['times']
         if not times or len(times) > 24 or len(times) != len(set(times)) or any(not re.fullmatch(r'(?:[01]\d|2[0-3]):00', t) for t in times):
             raise ValueError('개인 계정 발행 시간은 중복 없이 1시간 단위로 지정해주세요.')
         if profile['enabled']:
             self.identity()
             with self.db() as c:
+                # 🛑 서버 재시작으로 중단된 글만 관리자가 실제 게시 여부를 확인했다고 밝히면 풀 수 있다 (2026-10-07).
+                #    소재는 이미 사용 처리돼 있어 다시 쓰이지 않는다. UNCERTAIN 등 다른 불확실 상태는 풀지 않는다.
+                if reviewed:
+                    c.execute("UPDATE developer_posts SET status='REVIEWED' WHERE status='INTERRUPTED'")
                 if c.execute("SELECT 1 FROM developer_posts WHERE status IN ('UNCERTAIN','PUBLISHED_UNVERIFIED','INTERRUPTED')").fetchone():
                     raise ValueError('이전 개인 글의 게시 여부를 먼저 확인해주세요.')
             if not self.remaining():

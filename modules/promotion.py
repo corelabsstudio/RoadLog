@@ -73,6 +73,7 @@ class Secret(BaseModel):
 
 class PersonalProfile(BaseModel):
     enabled: bool = False
+    reviewed_interrupted: bool = False   # 관리자가 중단된 글의 게시 여부를 직접 확인했다는 표시
     times: list[str] = Field(default_factory=lambda: DEFAULT['times'].copy(), min_length=1, max_length=24)
 
 
