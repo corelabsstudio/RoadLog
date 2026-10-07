@@ -15,7 +15,7 @@ class SectionsTest(unittest.TestCase):
         fn.decorator_list=[]
         writer=NS(ready=lambda:True,WRITE_VER=4,load=Mock(return_value=cached),
                   write_report=Mock(side_effect=lambda name,saju,sections,**kw:{'blocks':[{'title':s,'text':'generated '+s} for s in sections]}),merge=Mock())
-        scope=dict(WriteBody=object,Header=lambda **kw:None,HTTPException=HTTPError,
+        scope=dict(WriteBody=object,Request=object,GUEST_WRITE_IP_CAP=1,GUEST_WRITE_ALL_CAP=150,_client_ip=lambda r:'1.1.1.1',_rate_limit_or_429=Mock(),Header=lambda **kw:None,HTTPException=HTTPError,
                    _token_user=lambda auth:{'email':'fixture'},saju_writer=writer,
                    lamps_ops=NS(FREE_PRODUCTS=set(),owns=lambda *a:paid),
                    _is_free=lambda u:False,_is_owner=lambda u:False,
@@ -23,7 +23,8 @@ class SectionsTest(unittest.TestCase):
                    _preview_quota=Mock(),_preview_used=lambda *a:0,
                    _saju_veil_blocks=lambda blocks:[{'title':b['title'],'text':'','hooking_preview':'preview'} for b in blocks])
         exec(compile(ast.Module(body=[fn],type_ignores=[]),'server.py','exec'),scope)
-        return scope['saju_write'],writer,scope
+        raw=scope['saju_write']
+        return (lambda b,*a,**k:raw(b,NS(),*a,**k)),writer,scope
     def body(self,n,preview=False):
         return NS(product='great',pair='fixture',sections=[f'section{i}' for i in range(n)],saju={},name='fixture',preview=preview,chars=420,force=False)
     def test_large_reports_return_every_section(self):
@@ -54,5 +55,19 @@ class SectionsTest(unittest.TestCase):
         with self.assertRaises(HTTPError) as e:handler(self.body(65))
         self.assertEqual(e.exception.status_code,400)
         writer.write_report.assert_not_called()
+
+    def test_guest_gets_only_free_product_with_caps(self):
+        handler,writer,scope=self.handler(paid=False)
+        def no_login(auth):raise HTTPError(401,'login')
+        scope['_token_user']=no_login
+        with self.assertRaises(HTTPError) as e:handler(self.body(3))   # great 는 유료 — 비회원 불가
+        self.assertEqual(e.exception.status_code,401)
+        scope['lamps_ops']=NS(FREE_PRODUCTS={'today'},owns=lambda *a:False)
+        b=self.body(3);b.product='today'
+        result=handler(b)
+        self.assertEqual(len(result['blocks']),3)
+        self.assertTrue(all(x['text'] for x in result['blocks']))
+        calls=[c.kwargs.get('kind') for c in scope['_preview_quota'].call_args_list]
+        self.assertEqual(calls,['guestw','guestw'])   # IP 한도 + 전체 한도 둘 다 센다
 
 if __name__=='__main__':unittest.main()

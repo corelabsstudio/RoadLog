@@ -3016,6 +3016,10 @@ FREE_DAILY_CAP = 3          # 무료 상품(오늘의 운세)을 하루에 새�
                             #    이 한도는 **사주를 바꿔 가며 뽑는 것**만 막는다
 
 
+GUEST_WRITE_IP_CAP = int(os.getenv("GUEST_WRITE_IP_CAP", "1") or 1)     # 비회원 한 곳(IP)이 하루에 새로 뽑는 무료 글 수
+GUEST_WRITE_ALL_CAP = int(os.getenv("GUEST_WRITE_ALL_CAP", "150") or 150)  # 비회원 전체 하루 한도(원가 약 23원/편)
+
+
 class WriteBody(BaseModel):
     product: str
     pair: str
@@ -3294,10 +3298,19 @@ def saju_ready():
 
 
 @app.post("/api/saju/write")
-def saju_write(body: WriteBody, authorization: str | None = Header(default=None)):
+def saju_write(body: WriteBody, request: Request, authorization: str | None = Header(default=None)):
     """항목별 문장을 받아 온다. 한 번 쓴 항목은 남겨 두고 다시 쓰지 않는다."""
-    user = _token_user(authorization)
     product = (body.product or "").strip()
+    # 🛑 비회원은 **무료 상품(오늘의 운세)만** 글을 받는다 (2026-10-07 온해님 「비회원도 AI 글 하루 한도 걸고」).
+    #    새로 쓸 때만 IP 하루 `GUEST_WRITE_IP_CAP` 번 · 서버 전체 하루 `GUEST_WRITE_ALL_CAP` 번 (아래 `todo` 쪽).
+    guest = False
+    try:
+        user = _token_user(authorization)
+    except HTTPException:
+        if product not in lamps_ops.FREE_PRODUCTS:
+            raise
+        guest = True
+        user = {"email": "guest:" + _client_ip(request)}
     pair = (body.pair or "").strip()
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
@@ -3350,7 +3363,13 @@ def saju_write(body: WriteBody, authorization: str | None = Header(default=None)
         owner_skip = True
 
     if todo:
-        if not paid:
+        if guest:
+            _rate_limit_or_429("guestwrite:" + _client_ip(request), limit=6, window_sec=3600, what="무냥이 글")
+            _preview_quota(user["email"], kind="guestw", cap=GUEST_WRITE_IP_CAP,
+                           msg="오늘 비회원으로 받을 수 있는 무냥이 글을 다 받으셨어요. 로그인하시면 더 볼 수 있어요.")
+            _preview_quota("guest-all", kind="guestw", cap=GUEST_WRITE_ALL_CAP,
+                           msg="오늘 비회원 무냥이 글이 다 나갔어요. 로그인하시면 볼 수 있어요.")
+        elif not paid:
             _preview_quota(user["email"])
         elif free_product and not _is_free(user):
             # 🛑 무료 상품도 뽑을 때마다 원가가 나간다. 사주를 바꿔 가며 긁는 것만 막는다
