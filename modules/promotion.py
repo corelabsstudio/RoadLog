@@ -184,6 +184,7 @@ class Promotion:
                     personal_threads=self.developer.state(),
                     social_voice=social_voice.summary(),
                     threads_writing=dict(version=THREADS_WRITING_VERSION, content_types=list(THREADS_CONTENT_TYPES),
+                                         link_placement='comments_only',
                                          formats_observed_at=self.thread_formats()['observed_at'],
                                          format_count=len(self.thread_formats()['formats'])),
                     reserved_won=reserved, allowance_won=self.allowance,
