@@ -70,6 +70,21 @@ class Secret(BaseModel):
     key: str = Field(min_length=20, max_length=250)
 
 
+class PersonalProfile(BaseModel):
+    enabled: bool = False
+    times: list[str] = Field(default_factory=lambda: DEFAULT['times'].copy(), min_length=1, max_length=24)
+
+
+class DeveloperSource(BaseModel):
+    hook: str = Field(min_length=1, max_length=120)
+    problem: str = Field(min_length=1, max_length=180)
+    solution: str = Field(min_length=1, max_length=180)
+    result: str = Field(min_length=1, max_length=180)
+    lesson: str = Field(min_length=1, max_length=120)
+    question: str = Field(default='', max_length=120)
+    evidence: str = Field(min_length=1, max_length=250)
+
+
 class Promotion:
     allowance = 1000  # Budget reservation, NOT a measured provider invoice.
 
@@ -84,7 +99,9 @@ class Promotion:
               CREATE TABLE IF NOT EXISTS jobs (id TEXT PRIMARY KEY, request_key TEXT UNIQUE,
               month TEXT, created TEXT, status TEXT, auto INTEGER, profile TEXT, result TEXT, error TEXT);
               CREATE TABLE IF NOT EXISTS receipts (job TEXT, channel TEXT, status TEXT,
-              container TEXT, media TEXT, url TEXT, error TEXT, PRIMARY KEY(job, channel));''')
+                container TEXT, media TEXT, url TEXT, error TEXT, PRIMARY KEY(job, channel));''')
+        from modules.developer_threads import DeveloperThreads
+        self.developer = DeveloperThreads(self)
 
     @contextmanager
     def db(self):
@@ -140,6 +157,8 @@ class Promotion:
 
     def token(self, channel):
         platform, username = channel.split(':')
+        if channel == 'threads:mumung_fact':
+            return os.getenv('PROMO_THREADS_MUMUNG_FACT_TOKEN', '')
         return os.getenv('THREADS_ACCESS_TOKEN', '') if platform == 'threads' else os.getenv('PROMO_IG_' + username.upper() + '_TOKEN', '')
 
     def configured(self):
@@ -158,6 +177,7 @@ class Promotion:
                 d['receipts'] = [dict(r) for r in c.execute('SELECT * FROM receipts WHERE job=?', (row['id'],))]
                 jobs.append(d)
         return dict(profile=self.profile(), configured=self.configured(), jobs=jobs,
+                    personal_threads=self.developer.state(),
                     threads_writing=dict(version=THREADS_WRITING_VERSION, content_types=list(THREADS_CONTENT_TYPES),
                                          formats_observed_at=self.thread_formats()['observed_at'],
                                          format_count=len(self.thread_formats()['formats'])),
@@ -666,6 +686,7 @@ Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id
         self.worker = threading.Thread(target=self.loop, name='promotion-worker', daemon=True)
         self.worker.start()
         threading.Thread(target=self.schedule_loop, name='promotion-schedule', daemon=True).start()
+        self.developer.start()
 
     def tick_schedule(self, now):
         p = self.profile()
@@ -734,6 +755,33 @@ def router(service, require_admin):
     def profile(body: Profile, authorization: str | None = Header(default=None)):
         admin(authorization)
         checked(lambda: service.save(body.model_dump()))
+        return {'ok': True}
+
+    @r.put('/api/admin/promotion/personal/profile')
+    def personal_profile(body: PersonalProfile, authorization: str | None = Header(default=None)):
+        admin(authorization)
+        checked(lambda: service.developer.save(body.model_dump()))
+        return {'ok': True}
+
+    @r.post('/api/admin/promotion/personal/verify')
+    def personal_verify(authorization: str | None = Header(default=None)):
+        admin(authorization)
+        return {'account': checked(service.developer.identity)}
+
+    @r.post('/api/admin/promotion/personal/sources')
+    def personal_source(body: DeveloperSource, authorization: str | None = Header(default=None)):
+        admin(authorization)
+        return {'id': checked(lambda: service.developer.add_source(body.model_dump()))}
+
+    @r.post('/api/admin/promotion/personal/jobs')
+    def personal_run(body: Run, authorization: str | None = Header(default=None)):
+        admin(authorization)
+        return {'id': checked(lambda: service.developer.enqueue(body.key, body.publish))}
+
+    @r.post('/api/admin/promotion/personal/jobs/{ident}/publish')
+    def personal_publish(ident: str, authorization: str | None = Header(default=None)):
+        admin(authorization)
+        checked(lambda: service.developer.queue_publish(ident))
         return {'ok': True}
 
     @r.post('/api/admin/promotion/reference')
