@@ -429,7 +429,6 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
     <button data-tab="ai"><span class="ui-icon i-2" aria-hidden="true"></span>콘텐츠 · AI</button>
     <button data-tab="pay"><span class="ui-icon i-3" aria-hidden="true"></span>결제</button>
     <button data-tab="visit"><span class="ui-icon i-4" aria-hidden="true"></span>유입</button>
-    <button data-tab="feedback"><span class="ui-icon i-5" aria-hidden="true"></span>피드백</button>
     <button data-tab="promotion"><span class="ui-icon i-promotion" aria-hidden="true"></span>홍보 · 발행</button>
     <!-- 손님 화면으로 건너간다 (2026-09-11 온해님 「전환되는 버튼」).
          🛑 운영 앱 범위는 `/admin/` 뿐이라, 앱으로 열었을 때 이 링크는
@@ -485,7 +484,6 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
           <div class="operation-links">
             <button type="button" data-open-tab="member"><span class="ui-icon i-1" aria-hidden="true"></span><strong>회원 관리<small>회원 검색 · 이용 내역</small></strong><span aria-hidden="true">↗</span></button>
             <button type="button" data-open-tab="pay"><span class="ui-icon i-3" aria-hidden="true"></span><strong>결제 내역<small>매출 · 결제 상태</small></strong><span aria-hidden="true">↗</span></button>
-            <button type="button" data-open-tab="feedback"><span class="ui-icon i-5" aria-hidden="true"></span><strong>고객 피드백<small>문의 · 읽지 않은 의견</small></strong><span aria-hidden="true">↗</span></button>
           </div>
         </aside></div>
       <div class="deck half">
@@ -702,23 +700,6 @@ table{font-size:13px}th{background:#efeff9;color:#656b83;font-size:11px;font-wei
              Gemini 로 뽑고(장당 100원) 사람이 눈으로 골라야 해요 — 잘못 뽑힌 그림이
              바로 손님에게 걸리면 되돌리기 어렵습니다. 여기서는 <b>빈 자리만</b> 알려 드려요.</p>
         </div>
-      </div>
-    </section>
-
-    <section data-page="feedback" hidden>
-      <div class="card">
-        <div class="hd">
-          <div>
-            <h2>사용자 피드백</h2>
-            <p class="sub" id="feedbackMeta" role="status" aria-live="polite">불러오는 중…</p>
-          </div>
-          <button type="button" class="btn btn-line" id="feedbackRefresh">새로고침</button>
-        </div>
-        <div class="scroll"><table>
-          <thead><tr><th>때</th><th>작성자</th><th>화면</th><th>내용</th><th>상태</th></tr></thead>
-          <tbody id="tFeedback"></tbody>
-        </table></div>
-        <p class="note">로그인한 분은 계정 이메일이 보이고, 로그인하지 않은 분은 익명으로 표시돼요. 접속 IP는 저장하지 않습니다.</p>
       </div>
     </section>
 
@@ -1638,7 +1619,7 @@ window.addEventListener('resize', () => {
 });
 
 const TAB_NAME = { sum: '대시보드', member: '회원', ai: '콘텐츠 · AI',
-                   pay: '결제', visit: '유입', feedback: '피드백', promotion: '홍보 · 발행' };
+                   pay: '결제', visit: '유입', promotion: '홍보 · 발행' };
 window.addEventListener('message', e => { const frame = $('promotionFrame'); if (e.origin === location.origin && e.source === frame.contentWindow && e.data?.type === 'promotion-height' && Number.isFinite(e.data.height)) frame.style.height = Math.max(600, Math.min(15000, e.data.height + 30)) + 'px'; });
 $('tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]'); if (!b) return;
@@ -1656,63 +1637,7 @@ $('tabs').addEventListener('click', (e) => {
   //    서버를 두드리고, 목록이 길어 화면이 늦게 뜬다.
   if (b.dataset.tab === 'ai' && !PROMPTS.length) { loadPrompts(); paintAssets(); }
   if (b.dataset.tab === 'pay') loadCoupons();
-  if (b.dataset.tab === 'feedback') loadFeedback();
   window.scrollTo(0, 0);
-});
-
-function feedbackMessage(text) {
-  return esc(text).replace(/\n/g, '<br>');
-}
-
-function paintFeedback(rows, unread, total) {
-  $('feedbackMeta').textContent = `최근 ${num(total)}건 · 읽지 않음 ${num(unread)}건`;
-  $('tFeedback').innerHTML = rows.length ? rows.map((row) => '<tr>'
-    + '<td>' + esc(row.at) + '</td>'
-    + '<td>' + (row.reporter ? esc(row.reporter) : '익명') + '</td>'
-    + '<td>' + (row.page ? esc(row.page) : '—') + '</td>'
-    + '<td style="min-width:220px;white-space:normal">' + feedbackMessage(row.message) + '</td>'
-    + '<td>' + (row.read
-      ? '<button type="button" class="btn btn-line feedback-delete" data-feedback="' + esc(row.id) + '">삭제</button>'
-      : '<button type="button" class="btn btn-line feedback-read" data-feedback="' + esc(row.id) + '">읽음 처리</button>') + '</td>'
-    + '</tr>').join('') : '<tr><td colspan="5" class="note">아직 들어온 피드백이 없어요.</td></tr>';
-}
-
-async function loadFeedback() {
-  const out = $('feedbackMeta');
-  try {
-    const r = await fetch('/api/admin/feedback?limit=100', {
-      headers: { Authorization: 'Bearer ' + token() },
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || '피드백을 불러오지 못했습니다.');
-    paintFeedback(d.items || [], d.unread || 0, d.total || 0);
-  } catch (ex) {
-    out.textContent = ex.message || '피드백을 불러오지 못했습니다.';
-  }
-}
-
-$('feedbackRefresh').addEventListener('click', loadFeedback);
-$('tFeedback').addEventListener('click', async (e) => {
-  const button = e.target.closest('.feedback-read, .feedback-delete');
-  if (!button) return;
-  const deleting = button.classList.contains('feedback-delete');
-  if (deleting && !confirm('읽은 피드백을 지웁니다. 되돌릴 수 없습니다. 계속할까요?')) return;
-  button.disabled = true;
-  try {
-    const r = await fetch(deleting
-      ? '/api/admin/feedback/' + encodeURIComponent(button.dataset.feedback)
-      : '/api/admin/feedback/read', {
-      method: deleting ? 'DELETE' : 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() },
-      body: deleting ? undefined : JSON.stringify({ ids: [button.dataset.feedback] }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.detail || (deleting ? '지우지 못했습니다.' : '읽음 처리하지 못했습니다.'));
-    await loadFeedback();
-  } catch (ex) {
-    alert(ex.message || (deleting ? '지우지 못했습니다.' : '읽음 처리하지 못했습니다.'));
-    button.disabled = false;
-  }
 });
 
 async function load() {

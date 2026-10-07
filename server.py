@@ -3682,8 +3682,15 @@ def _member_page(path: str) -> bool:
     return path.endswith(".html") or path.startswith(("/saju", "/gwan", "/blog", "/curse", "/hall-of-fame", "/pets/hall-of-fame")) or (path.startswith("/card/") and not path.endswith(".jpg"))
 
 
+# 🛑 회원 전용 잠금은 2026-10-07 온해님 지시로 껐다(「비회원으로도 둘러볼 수 있게. 방문자가 줄었다」).
+#    검색 봇이 블로그·상품 페이지를 303 으로 받아 색인이 막히고 방문자가 줄어든다. 다시 켜려면 환경변수 MEMBER_ONLY=1.
+MEMBER_ONLY = os.getenv("MEMBER_ONLY", "0") == "1"
+
+
 @app.middleware("http")
 async def member_only_middleware(request: Request, call_next):
+    if not MEMBER_ONLY:
+        return await call_next(request)
     path = request.url.path
     protected_api = path.startswith(("/api/saju/taste", "/api/pets/", "/api/products/", "/api/curse/"))
     if _member_page(path) or protected_api:
