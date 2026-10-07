@@ -18,6 +18,33 @@ from fastapi.testclient import TestClient
 
 
 class Tests(unittest.TestCase):
+    def test_unwanted_thread_chain_is_rewritten_before_any_post(self):
+        original = self.campaign('invalid-chain')
+        original['channels'][0]['thread_parts'] = ['인스타에는 들어가면 안 되는 연결 글']
+        replies = [original, self.campaign('fixed-chain')]
+        calls = []
+        def gemini(model, parts, config):
+            calls.append(parts[0]['text'])
+            return [{'text': json.dumps(replies.pop(0))}]
+        self.s.gemini = gemini
+        result = self.s.plan(Profile().model_dump())
+        self.assertEqual(len(calls), 2)
+        self.assertIn('thread_parts는 반드시 빈 배열', calls[1])
+        self.assertEqual(result['channels'][0]['topic'], '0-fixed-chain')
+
+    def test_repeated_content_validation_failures_use_catalog_fallback(self):
+        invalid = self.campaign('invalid-chain')
+        invalid['channels'][0]['thread_parts'] = ['잘못된 연결 글']
+        calls = []
+        def gemini(*args):
+            calls.append(args)
+            return [{'text': json.dumps(invalid)}]
+        self.s.gemini = gemini
+        result = self.s.plan(Profile().model_dump())
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(len(result['channels']), 3)
+        self.assertFalse(result['channels'][0].get('thread_parts'))
+
     def campaign(self, suffix='original'):
         return {'channels': [dict(channel=ch, topic=f'{i}-{suffix}', product_id='today',
                     caption=f'{i} {suffix} 마음을 한번 봐~ https://roadlog.co.kr/#p/today',
@@ -283,7 +310,7 @@ class Tests(unittest.TestCase):
 
     def test_plan_rejects_duplicate_channel(self):
         self.s.gemini=lambda *a:[{'text':json.dumps({'channels':[{'channel':CHANNELS[0]}]*3})}]
-        with self.assertRaises(ValueError): self.s.plan(self.s.profile())
+        with self.assertRaises(ValueError): self.s.plan_once(self.s.profile(), [], "")
 
     def test_plan_accepts_common_questions_but_rejects_fictional_anecdotes(self):
         channels = [dict(channel=ch, topic=str(i), product_id='today',
@@ -295,10 +322,10 @@ class Tests(unittest.TestCase):
         for text in ['(가상 상황: 3년 차 커플 B님)', 'A님은 상대의 침묵이 답답하다고 합니다.', '가상의 인물 이야기']:
             with self.subTest(text=text):
                 channels[2]['caption'] = text + ' https://roadlog.co.kr/#p/today'
-                with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan(self.s.profile())
+                with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan_once(self.s.profile(), [], '')
         channels[2]['caption'] = '연락할 타이밍이 고민인가요? https://roadlog.co.kr/#p/today'
         channels[0]['cards'][0]['body'] = '(가상 사례)'
-        with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan(self.s.profile())
+        with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan_once(self.s.profile(), [], '')
 
     def test_publish_uncertainty_and_no_repetition(self):
         self.s.identities=lambda:[dict(channel=ch,id='123',username=ch.split(':')[1]) for ch in CHANNELS]

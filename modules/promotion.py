@@ -426,9 +426,11 @@ class Promotion:
             try:
                 candidate = self.plan_once(p, previous, feedback)
             except ValueError as error:
-                if not any(message in str(error) for message in ('온해님 말투로','카드 문구가 너무 길','연결 글 세 편','생성된 상품 또는 본문 길이','해당 상품 연결 주소 하나')):
+                # Every content validation error can be rewritten, not just a few
+                # selected messages. Provider/key/billing failures must still stop.
+                if str(error).startswith('Gemini'):
                     raise
-                feedback = '\n출력 재작성 요청: ' + str(error) + ' 구체적이고 짧은 반말, 카드 title 28자/body 75자 이하, 연결 글 배열과 링크 위치를 검수하세요.'
+                feedback = '\n출력 재작성 요청: ' + str(error) + ' 구체적이고 짧은 반말, 카드 title 28자/body 75자 이하, 연결 글 배열과 링크 위치를 검수하세요. Instagram 두 계정과 Threads conversation/checklist의 thread_parts는 반드시 빈 배열 []로 쓰세요. Threads product에만 세 편 배열을 쓰세요.'
                 continue
             duplicates = self.duplicate_channels(candidate, parsed)
             if not duplicates:
@@ -467,7 +469,7 @@ product: thread_parts 배열에 세 편을 쓰고 caption에는 첫 편을 동�
 반드시 JSON 객체만 반환: {"style_summary":"예시 분석 한국어", "channels":[
 {"channel":"instagram:roadlog_saju","topic":"주제","product_id":"상품id","caption":"2200자 이하 본문","cards":[{"title":"","highlight":"핵심 단어","body":"","scene":""},{"title":"","highlight":"핵심 단어","body":"","scene":""}]},
 {"channel":"instagram:mumung_fact", ...}, {"channel":"threads:roadlog_saju","topic":"다른 주제","product_id":"상품id","caption":"첫 편 또는 단일 글","thread_parts":["상품 소개일 때 첫 편(caption과 동일)","둘째 편","셋째 편과 마지막 URL"],"cards":[]}]}
-conversation/checklist에서는 thread_parts 필드를 생략하고 product에서만 세 편 배열을 넣으세요.
+Instagram 두 계정과 Threads conversation/checklist에서는 thread_parts를 빈 배열 []로 넣고, Threads product에서만 세 편 배열을 넣으세요. 빈 배열은 연결 글이 없다는 뜻입니다.
 Instagram caption 끝에는 상품id에 맞는 https://roadlog.co.kr/#p/상품id 연결을 넣으세요. Threads는 product 유형에만 넣으세요. 이전 주제/본문과 중복 금지.
 같은 상품을 다시 소개해도 되지만 훅·본문·체크리스트 문구와 그림의 장소·소품·행동·구도를 새로 만드세요. 막히면 최근에 덜 소개한 상품과 새로운 일상 질문을 스스로 선택하세요.
 사용자 느낌: ''' + (p['prompt'].strip() or AUTO_STYLE) + '\n이번 Threads 지정 유형: ' + thread_type + ' (사용자 느낌과 과거 글에 상품 링크가 있어도 이 유형별 링크 규칙 우선).\n카드 scene은 반드시 다음 캐릭터 형태를 유지하고 네 발 고양이 자세를 쓰지 마세요:\n' + MUNYANG_CHARACTER + '\n확인된 상품 목록: ' + json.dumps(self.products(), ensure_ascii=False) + '\n최근 제작 내용: ' + '\n'.join(previous) + feedback
