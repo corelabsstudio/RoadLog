@@ -3497,14 +3497,23 @@ class SummaryBody(BaseModel):
 
 
 @app.post("/api/saju/summary")
-def saju_summary(body: SummaryBody, authorization: str | None = Header(default=None)):
+def saju_summary(body: SummaryBody, request: Request, authorization: str | None = Header(default=None)):
     """공유 카드에 넣을 두 줄. 이미 써 둔 결과지에서 뽑는다.
 
     새로 글을 쓰지 않으므로 결과지가 없으면 빈 값을 준다.
     한 번 뽑은 요약은 결과지 옆에 남겨 두고 다시 뽑지 않는다."""
-    user = _token_user(authorization)
     product = (body.product or "").strip()
     pair = (body.pair or "").strip()
+    # 🛑 비회원도 **무료 상품** 카드 문구는 받는다 (2026-10-09 · 비회원 전환 개편 3번).
+    #    가입 77명이 공유카드 한 장에서 왔는데 비회원은 카드를 만들 수 없었다. 카드 문구 원가는 편당 약 1원.
+    #    유료 상품은 그대로 로그인·복채 뒤에만. 새로 만들 때는 IP 한 시간 10번.
+    try:
+        user = _token_user(authorization)
+    except HTTPException:
+        if product not in lamps_ops.FREE_PRODUCTS:
+            raise
+        _rate_limit_or_429("guestcard:" + _client_ip(request), limit=10, window_sec=3600, what="공유 카드")
+        user = {"email": "guest:" + _client_ip(request)}
     if not product or not pair:
         raise HTTPException(400, "상품과 사주 값이 필요합니다.")
     # 🛑 복채를 낸 사람만 본다. 미리보기 3항목만 있는 사람에게는 주지 않는다.

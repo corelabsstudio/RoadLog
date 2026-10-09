@@ -70,4 +70,26 @@ class SectionsTest(unittest.TestCase):
         calls=[c.kwargs.get('kind') for c in scope['_preview_quota'].call_args_list]
         self.assertEqual(calls,['guestw','guestw'])   # IP 한도 + 전체 한도 둘 다 센다
 
+class GuestSummaryTest(unittest.TestCase):
+    def handler(self, product_free=True, saved=None):
+        tree=ast.parse((Path(__file__).resolve().parents[1]/'server.py').read_text(encoding='utf-8'))
+        fn=next(n for n in tree.body if isinstance(n,ast.FunctionDef) and n.name=='saju_summary')
+        fn.decorator_list=[]
+        data=saved if saved is not None else {'blocks':[{'title':'a','text':'t'}],'summary':'두 줄 요약','summary_ver':9}
+        writer=NS(ready=lambda:True,SUM_VER=1,CARD_VER=1,load=Mock(return_value=data),save=Mock(),write_card=Mock(return_value={'name':'n','ver':1}),_cut_sentence=lambda t,n:t)
+        def no_login(auth):raise HTTPError(401,'login')
+        scope=dict(SummaryBody=object,Request=object,Header=lambda **kw:None,HTTPException=HTTPError,
+                   _token_user=no_login,saju_writer=writer,_client_ip=lambda r:'1.1.1.1',_rate_limit_or_429=Mock(),
+                   lamps_ops=NS(FREE_PRODUCTS={'today'} if product_free else set(),owns=lambda *a:False),_is_free=lambda u:False)
+        exec(compile(ast.Module(body=[fn],type_ignores=[]),'server.py','exec'),scope)
+        return scope['saju_summary'],scope
+    def test_guest_gets_free_product_summary_but_not_paid(self):
+        handler,scope=self.handler()
+        out=handler(NS(product='today',pair='p',facts=None,kind='',q=''),NS())
+        self.assertEqual(out['summary'],'두 줄 요약')
+        scope['_rate_limit_or_429'].assert_called_once()
+        handler,_=self.handler()
+        with self.assertRaises(HTTPError) as e:handler(NS(product='great',pair='p',facts=None,kind='',q=''),NS())
+        self.assertEqual(e.exception.status_code,401)
+
 if __name__=='__main__':unittest.main()
