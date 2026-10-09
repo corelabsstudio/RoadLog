@@ -79,6 +79,23 @@ class AdminStatsFunnelTest(unittest.TestCase):
             self.assertNotIn('Mozilla Test Client', raw)
             self.assertNotIn('@example.org', raw)
 
+    def test_real_uv_counts_only_js_visits_and_funnel_has_js_row(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            file = Path(tmp) / 'visits.json'
+            with patch.object(stats, 'VISITS_JSON', file), patch.object(stats, '_today', return_value='2026-10-09'):
+                stats.funnel('path_visit', '192.0.2.1', 'ua')
+                stats.funnel('path_visit', '192.0.2.2', 'ua')
+                stats.funnel('path_visit', '192.0.2.2', 'ua')
+                # 봇은 path_visit 을 안 보낸다 — uv 에만 들어간다
+                data = stats._read(file, {}); data['2026-10-09']['uv'] = ['a', 'b', 'c', 'd', 'e']
+                stats._write(file, data)
+                vis = stats._visits()
+                self.assertEqual(vis['2026-10-09']['real_uv'], 2)
+                self.assertEqual(vis['2026-10-09']['uv'], 5)
+                rows = stats._funnel_sum(vis, '2026-09-01')
+            self.assertEqual(rows[0]['key'], 'visit'); self.assertEqual(rows[0]['n'], 5)
+            self.assertEqual(rows[1]['key'], 'visit_js'); self.assertEqual(rows[1]['n'], 2)
+
     def test_funnel_excludes_visits_before_tracking_started(self):
         visits = {
             '2026-09-28': {'uv': 100, 'fun': {}},

@@ -433,7 +433,11 @@ def _visits() -> dict[str, dict[str, Any]]:
         member_uv = min(uv, sum(kinds.get(fp) == "member" for fp in fingerprints))
         guest_uv = min(uv - member_uv, sum(kinds.get(fp) == "guest" for fp in fingerprints))
         out[day].update(member_uv=member_uv, guest_uv=guest_uv,
-                        unknown_uv=uv - member_uv - guest_uv)
+                        unknown_uv=uv - member_uv - guest_uv,
+                        # 🛑 **실제로 화면을 연 비회원** (2026-10-09). `signup_path` 는 페이지 JS 가
+                        #    `path_visit` 을 보내야 생긴다 — 봇·링크 미리보기는 JS 를 안 돌리므로 여기 없다.
+                        #    10/5 실측: uv 97 인데 이 값은 17. 전환율 분모는 이것을 쓴다. 2026-10-05 부터.
+                        real_uv=len(out[day]["signup_path"]))
     return out
 
 
@@ -586,7 +590,7 @@ def overview(days: int = 30) -> dict[str, Any]:
     start = (now - timedelta(days=days - 1)).strftime("%Y-%m-%d")
     by_day: dict[str, dict[str, int]] = defaultdict(
         lambda: {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
-                 "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0})
+                 "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0, "real_uv": 0})
     for r in ch:
         by_day[r["day"]]["sales"] += r["price"]
         by_day[r["day"]]["charges"] += 1
@@ -604,7 +608,7 @@ def overview(days: int = 30) -> dict[str, Any]:
     for d, v in vis.items():
         by_day[d]["uv"] = v["uv"]
         by_day[d]["pv"] = v["pv"]
-        for key in ("member_uv", "guest_uv", "unknown_uv"):
+        for key in ("member_uv", "guest_uv", "unknown_uv", "real_uv"):
             by_day[d][key] = v[key]
 
     # 🛑 날짜마다 **어디서·무엇으로** 들어왔는지를 같이 보낸다 (2026-09-09 온해님 요청).
@@ -626,7 +630,7 @@ def overview(days: int = 30) -> dict[str, Any]:
 
     def _sum(keep) -> dict[str, int]:
         out = {"sales": 0, "charges": 0, "signups": 0, "uv": 0, "pv": 0,
-               "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0}
+               "opens": 0, "asks": 0, "member_uv": 0, "guest_uv": 0, "unknown_uv": 0, "real_uv": 0}
         for d, v in by_day.items():
             if not keep(d):
                 continue
@@ -837,14 +841,19 @@ def _funnel_sum(vis: dict[str, Any], start: str) -> list[dict[str, Any]]:
     start = max(start, "2026-09-29")
     tot = {k: 0 for k, _ in FUNNEL_STEPS}
     uv = 0
+    real = 0
     for day, v in vis.items():
         if day < start:
             continue
         uv += v.get("uv", 0)
+        real += int(v.get("real_uv", 0) or 0)
         for k, lst in (v.get("fun") or {}).items():
             if k in tot:
                 tot[k] += len(lst or [])
-    return [{"key": "visit", "name": "사이트에 들어왔다", "n": uv}] + [
+    return [{"key": "visit", "name": "사이트에 들어왔다", "n": uv},
+            # 🛑 두 번째 줄이 진짜 분모다 (2026-10-09). 첫 줄은 봇·미리보기까지 센 값이라
+            #    그걸로 전환율을 내면 모든 단계가 0% 로 보인다. 2026-10-05 부터 쌓인다
+            {"key": "visit_js", "name": "실제로 화면을 연 비회원 · JS 실행 (10/5~)", "n": real}] + [
         {"key": k, "name": name, "n": tot[k]} for k, name in FUNNEL_STEPS]
 
 
