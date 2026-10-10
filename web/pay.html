@@ -256,7 +256,7 @@ if (PREMIUM) {
   $('lampLabel').textContent = giftFor(PREMIUM.amount) + '개';
   $('lampRow').hidden = false;
   // 저주 상품은 등불과 상관없다. 등불 줄을 감추고 무냥이 장면을 보여 준다 (2026-10-10)
-  if (/^jeoju_[b-g]$/.test(PREMIUM.product)) { $('lampRow').hidden = true; $('payArt').hidden = false; $('paySub').textContent = '복채를 내시면 무냥이가 바로 의식을 시작합니다. 한 번만 내시고, 자동으로 다시 나가지 않습니다.'; }
+  if (/^jeoju_[b-g]$/.test(PREMIUM.product)) { $('lampRow').hidden = true; $('lampRow').style.display = 'none'; $('payArt').hidden = false; $('paySub').textContent = '복채를 내시면 무냥이가 바로 의식을 시작합니다. 한 번만 내시고, 자동으로 다시 나가지 않습니다.'; }
   $('termRow').innerHTML = '<span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span>';
   $('amountLabel').textContent = won(PREMIUM.amount);
 } else {
