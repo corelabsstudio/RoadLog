@@ -82,6 +82,7 @@ from modules import lamps as lamps_ops
 from modules import product_reviews as prev_ops
 from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
+from modules import jeoju as jeoju_ops
 from modules import stats as stats_ops
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
@@ -1605,7 +1606,124 @@ class OpenBody(BaseModel):
     pair: str
 
 
-# 🛑 무냥이 저주 신단은 2026-10-07 온해님 지시로 내렸다. 옛 주소로 오는 분은 홈으로 보낸다.
+# ── 저주술사 무냥이 · 매운맛 7단계 (2026-10-10) ─────────────
+# 온해님 지시로 로드로그는 저주만 거는 사이트가 됐다. 옛 저주 신단(2026-10-07 철거)을
+# 되살린 것이 아니라 새로 짠 것이다. 정본은 modules/jeoju.py.
+# 1단계는 로그인 없이 무료, 2~7단계는 결제로만 연다(lamps.PREMIUM_ONLY).
+class JeojuBody(BaseModel):
+    ritual: str = ""
+    pair: str = ""
+    target: str = ""
+    nick: str = ""
+    year: str = ""
+    sin: str = ""
+    spot: str = ""
+    level: int = 1
+    have: dict = {}
+
+
+def _jeoju_order(body: JeojuBody) -> dict[str, str]:
+    target = " ".join((body.target or "").split())[:20]
+    nick = " ".join((body.nick or "").split())[:20]
+    sin = " ".join((body.sin or "").split())[:300]
+    year = (body.year or "").strip()
+    spot = (body.spot or "").strip()
+    if target not in jeoju_ops.TARGETS:
+        raise HTTPException(400, "누구에게 거는 저주인지 다시 골라 주세요.")
+    if len(sin) < 2:
+        raise HTTPException(400, "그 사람이 무슨 짓을 했는지 두 글자만 더 적어 주세요.")
+    if year and not re.fullmatch(r"(?:19|20)\d{2}", year):
+        raise HTTPException(400, "태어난 해는 네 자리 숫자로 적어 주세요.")
+    return {"target": target, "nick": nick, "sin": sin, "year": year,
+            "spot": spot if spot in jeoju_ops.SPOTS else ""}
+
+
+def _jeoju_have(raw: dict) -> dict:
+    """브라우저가 들고 있던 무료 저주장. 모양이 맞는 것만 받는다."""
+    if not isinstance(raw, dict):
+        return {}
+    doc = {}
+    for key, cap in (("title", 60), ("line", 80), ("scene", 500)):
+        if not (isinstance(raw.get(key), str) and raw[key].strip()):
+            return {}
+        doc[key] = raw[key].strip()[:cap]
+    doc["level"] = 1
+    return doc
+
+
+@app.post("/api/jeoju/taste")
+def jeoju_taste(body: JeojuBody, request: Request):
+    """1단계 간지럼맛. 로그인 없이 악담 한 줄."""
+    _rate_limit_or_429("jeoju-taste:" + _client_ip(request), limit=8, window_sec=3600,
+                       what="무료 저주")
+    order = _jeoju_order(body)
+    try:
+        doc = jeoju_ops.write(order, 1)
+    except Exception as exc:
+        log.exception("jeoju taste failed")
+        raise HTTPException(503, "무냥이가 촛불을 다시 켜고 있어요. 잠시 뒤 다시 걸어 주세요.") from exc
+    return {"ok": True, "doc": doc}
+
+
+def _jeoju_owned_level(user: dict, pair: str, wanted: int) -> int:
+    if _is_free(user):
+        return max(2, min(jeoju_ops.MAX_LEVEL, wanted))
+    for level in range(jeoju_ops.MAX_LEVEL, 1, -1):
+        if lamps_ops.owns(user["email"], jeoju_ops.product_id(level), pair):
+            return level
+    return 1
+
+
+@app.post("/api/jeoju/cast")
+def jeoju_cast(body: JeojuBody, authorization: str | None = Header(default=None)):
+    """결제한 단계의 저주장. 이미 받은 글은 두고 모자란 것만 이어 쓴다."""
+    user = _token_user(authorization)
+    ritual = (body.ritual or "").strip().lower()
+    pair = (body.pair or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{24,64}", ritual) or not lamps_ops._PAIR_RE.match(pair):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
+    level = _jeoju_owned_level(user, pair, int(body.level or 1))
+    if level < 2:
+        raise HTTPException(402, "먼저 맵기를 골라 결제해 주세요.")
+    saved = jeoju_ops.get(user["email"], ritual)
+    if saved and saved.get("pair") != pair:
+        raise HTTPException(400, "의식 표가 올바르지 않아요.")
+    order = dict((saved or {}).get("order") or _jeoju_order(body))
+    # 못 박을 자리는 4단계에 올라와서 처음 고른다. 한 번 고른 자리는 바꾸지 않는다
+    if not order.get("spot") and (body.spot or "").strip() in jeoju_ops.SPOTS:
+        order["spot"] = body.spot.strip()
+    if level >= 4 and not order.get("spot"):
+        raise HTTPException(400, "인형 어디에 못을 박을지 먼저 골라 주세요.")
+    base = (saved or {}).get("doc") or _jeoju_have(body.have)
+    try:
+        doc = jeoju_ops.write(order, level, base)
+        row = jeoju_ops.save(user["email"], ritual, pair, order, doc)
+    except Exception as exc:
+        log.exception("jeoju cast failed")
+        raise HTTPException(503, "저주장을 적다가 촛불이 꺼졌어요. 잠시 뒤 다시 열어 주세요. 결제는 그대로 남아 있어요.") from exc
+    row["doc"] = jeoju_ops.veil(row["doc"])
+    return {"ok": True, **row}
+
+
+@app.get("/api/jeoju/mine")
+def jeoju_mine(authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    return {"ok": True, "items": jeoju_ops.mine(user["email"])}
+
+
+@app.get("/api/jeoju/{ritual}")
+def jeoju_saved(ritual: str, authorization: str | None = Header(default=None)):
+    user = _token_user(authorization)
+    if not re.fullmatch(r"[0-9a-f]{24,64}", (ritual or "").lower()):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
+    row = jeoju_ops.get(user["email"], ritual.lower())
+    if not row:
+        raise HTTPException(404, "저장된 저주장을 찾지 못했어요.")
+    row["doc"] = jeoju_ops.veil(row.get("doc") or {})
+    return {"ok": True, **row}
+
+
+# 옛 저주 신단 주소(2026-10-07 철거)는 새 홈으로 보낸다.
 @app.get("/curse.html", include_in_schema=False)
 def curse_gone():
     return RedirectResponse("/", status_code=301)
@@ -3747,9 +3865,13 @@ if WEB.exists():
     app.mount("/assets", _HashedAssets(directory=WEB / "assets"), name="assets")
 
 
+# 🛑 홈은 저주 화면이다 (2026-10-10 온해님 「기능은 오직 저주 하나만 거는 사이트」).
+#    옛 사주 화면(index.html)은 지우지 않았다 — 이미 복채를 낸 분이 산 풀이를 다시 볼 수
+#    있어야 해서 `/index.html` 로만 열린다. 새 홈에서는 「예전에 산 풀이」 한 줄로만 잇는다.
 @app.get("/")
 def index():
-    return _file_response(WEB / "index.html")
+    home = WEB / "jeoju.html"
+    return _file_response(home if home.exists() else WEB / "index.html")
 
 
 def _safe_web_file(rel_path: str) -> Path | None:

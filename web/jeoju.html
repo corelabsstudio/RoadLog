@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0810" />
+  <title>저주술사 무냥이 · 로드로그</title>
+  <meta name="description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
+  <link rel="icon" href="/assets/face-D1JUG1d8.webp" />
+
+  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="로드로그" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:url" content="https://roadlog.co.kr/jeoju.html" />
+  <meta property="og:title" content="저주술사 무냥이 · 로드로그" />
+  <meta property="og:description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
+  <meta property="og:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="로드로그 — 마음이 지나간 길을 읽어요" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="저주술사 무냥이 · 로드로그" />
+  <meta name="twitter:description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
+  <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
+  <link rel="canonical" href="https://roadlog.co.kr/jeoju.html" />
+  <script type="module" crossorigin src="/assets/jeoju-BIUuYfQb.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/signup-path-EMbcYZVS.js">
+  <link rel="stylesheet" crossorigin href="/assets/jeoju-fJPneOvX.css">
+</head>
+<body>
+  <header class="top">
+    <a href="/" class="brand" id="brandHome">로드로그<small>저주술사 무냥이</small></a>
+    <button type="button" class="top-btn" id="accountBtn">로그인</button>
+  </header>
+
+  <main>
+    <!-- 첫 화면 -->
+    <section class="view" id="viewHome">
+      <div class="hero">
+        <img class="hero-photo" src="/assets/munyang_stand-9T5pfjRj.webp" width="768" height="1029" alt="검보라 로브를 입고 해골 지팡이와 수정구를 든 저주술사 무냥이" />
+        <div class="hero-copy">
+          <p class="eyebrow">저주술사 무냥이</p>
+          <h1>누구를<br />저주할까냥</h1>
+          <p class="lede">열받게 한 그 사람 얘기를 들려주면<br />무냥이가 대신 저주를 걸어요.</p>
+          <button type="button" class="cta" data-go="order">저주 걸러 가기</button>
+          <p class="fine">1단계 간지럼맛은 무료 · 가입 없이 바로</p>
+        </div>
+      </div>
+
+      <section class="block" aria-labelledby="menuTitle">
+        <p class="eyebrow">맵기 7단계</p>
+        <h2 id="menuTitle">단계가 오를수록<br />진짜 의식에 가까워진다</h2>
+        <p class="note">말로 하는 악담에서 시작해 저주문, 부적, 짚인형, 축시, 7일 밤, 49일까지 올라가요.</p>
+        <ol class="menu" id="menuList"></ol>
+      </section>
+
+      <section class="block" aria-labelledby="ruleTitle">
+        <p class="eyebrow">무냥이의 규칙</p>
+        <h2 id="ruleTitle">다치는 저주는<br />안 걸어요</h2>
+        <ul class="rules">
+          <li><b>거는 것</b><span>되는 일이 없고, 말이 꼬이고, 가는 길마다 막히고, 잠자리가 뒤숭숭한 저주</span></li>
+          <li><b>안 거는 것</b><span>죽음 · 병 · 사고 · 범죄. 지옥맛에서도 안 걸어요</span></li>
+          <li><b>화면 안에서만</b><span>부적도 인형도 못도 전부 이 화면 안에 있어요. 그 사람 물건을 구하거나 찾아갈 일은 없어요</span></li>
+          <li><b>이건 놀이예요</b><span>실제 주술이 아니에요. 화를 털고 내 하루로 돌아오는 게 끝이에요</span></li>
+        </ul>
+      </section>
+
+      <section class="block" id="mineBlock" hidden aria-labelledby="mineTitle">
+        <p class="eyebrow">보관함</p>
+        <h2 id="mineTitle">내가 건 저주</h2>
+        <ul class="mine" id="mineList"></ul>
+      </section>
+    </section>
+
+    <!-- 주문서 -->
+    <section class="view" id="viewOrder" hidden>
+      <div class="order">
+        <p class="eyebrow"><span id="stepNow">1</span> / 3 · 저주 주문서</p>
+
+        <div class="step" data-step="1">
+          <h2>누구한테<br />걸 거냥</h2>
+          <div class="targets" id="targets" role="group" aria-label="저주 대상"></div>
+          <label class="field">
+            <span>부를 이름 <small>안 적어도 돼요</small></span>
+            <input id="nick" maxlength="20" autocomplete="off" placeholder="예: 읽씹 대마왕" />
+          </label>
+          <label class="field">
+            <span>태어난 해 <small>몰라도 돼요 · 인형에 적어요</small></span>
+            <input id="year" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="예: 1996" />
+          </label>
+          <p class="fine">이름은 저주문과 인형에 그대로 적혀요.</p>
+        </div>
+
+        <div class="step" data-step="2" hidden>
+          <h2>그 사람이<br />무슨 짓을 했냥</h2>
+          <label class="field">
+            <span>있었던 일</span>
+            <textarea id="sin" maxlength="300" rows="6" placeholder="예: 내 우산을 빌려 가 놓고 비 오는 날 연락을 끊었어요"></textarea>
+            <em class="count" id="sinCount">0 / 300</em>
+          </label>
+          <p class="fine">자세히 적을수록 저주가 그 사람한테 딱 맞게 나와요.</p>
+        </div>
+
+        <div class="step" data-step="3" hidden>
+          <h2>얼마나<br />맵게 걸까냥</h2>
+          <ol class="menu pick" id="pickList"></ol>
+        </div>
+
+        <p class="err" id="orderErr" aria-live="polite"></p>
+        <div class="order-nav">
+          <button type="button" class="ghost" id="orderBack">이전</button>
+          <button type="button" class="cta" id="orderNext">다음</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 의식 -->
+    <section class="view" id="viewRite" hidden aria-live="polite">
+      <div class="rite">
+        <img class="rite-photo" src="/assets/munyang_cast-DufIDOtA.webp" width="768" height="1029" alt="수정구 위로 두 앞발을 들고 주문을 거는 저주술사 무냥이" />
+        <div class="rite-copy">
+          <p class="eyebrow">의식 중</p>
+          <h2 id="riteLine">이름을 부적에 적는 중</h2>
+          <p class="fine">20초쯤 걸려요. 창을 닫지 마세요.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 손님이 직접 하는 의식: 부적 접어 뚫기(3단계부터) · 인형에 못 박기(4단계부터) -->
+    <section class="view" id="viewAct" hidden>
+      <div class="act" id="actCharm" hidden>
+        <p class="eyebrow">부적 봉인</p>
+        <h2>부적을 접어<br />못으로 뚫어라냥</h2>
+        <p class="note">저주문을 적은 부적은 접어서 못으로 뚫어야 묶여요.</p>
+        <div class="charm-stage"><div class="charm-paper" id="charmPaper" data-fold="0"><span>封</span><i class="charm-nail" aria-hidden="true"></i></div></div>
+        <button type="button" class="cta" id="charmBtn">부적 접기</button>
+      </div>
+      <div class="act" id="actDoll" hidden>
+        <p class="eyebrow">인형 의식</p>
+        <h2>어디에<br />못을 박을까냥</h2>
+        <p class="note">자리마다 막히는 것이 달라요. 한 번 박으면 못 바꿔요.</p>
+        <ul class="spots" id="spotList"></ul>
+        <p class="spot-say" id="spotSay" aria-live="polite"></p>
+        <div class="doll-stage" id="dollStage">
+          <img src="/assets/doll-DEr-rVBg.webp" width="768" height="1029" alt="검은 나무판 위에 누운 짚인형. 가슴에 빈 종이가 묶여 있다" />
+          <span class="doll-name" id="dollName"></span>
+        </div>
+        <button type="button" class="cta" id="dollBtn" disabled>자리를 골라 주세요</button>
+      </div>
+    </section>
+
+    <!-- 저주장 -->
+    <section class="view" id="viewDoc" hidden>
+      <article class="doc" id="doc">
+        <header class="doc-head">
+          <p class="doc-mark">詛呪狀</p>
+          <h2 id="docTitle"></h2>
+          <dl class="doc-meta">
+            <div><dt>받는 이</dt><dd id="docTo"></dd></div>
+            <div><dt>죄목</dt><dd id="docSin"></dd></div>
+            <div><dt>맵기</dt><dd><span id="docLevel"></span><span class="meter" id="docMeter" aria-hidden="true"></span></dd></div>
+          </dl>
+          <p class="doc-opening" id="docOpening"></p>
+        </header>
+        <div id="docBody"></div>
+        <footer class="doc-foot">
+          <p>저주술사 무냥이 · roadlog.co.kr</p>
+          <p class="fine">놀이로 보는 결과예요. 실제 주술이 아니에요.</p>
+        </footer>
+      </article>
+
+      <div class="actions">
+        <button type="button" class="ghost" id="saveImg">저주장 이미지 저장</button>
+        <button type="button" class="ghost" id="shareImg">친구한테 보내기</button>
+      </div>
+      <canvas id="shareCanvas" width="1080" height="1350" hidden></canvas>
+      <p class="err" id="docErr" aria-live="polite"></p>
+
+      <section class="block up" id="upBlock" hidden aria-labelledby="upTitle">
+        <p class="eyebrow">아직 덜 맵다</p>
+        <h2 id="upTitle">더 맵게<br />걸 수 있어요</h2>
+        <p class="note">지금 받은 것은 그대로 두고, 다음 의식을 그 위에 얹어요.</p>
+        <ol class="menu pick" id="upList"></ol>
+      </section>
+
+      <div class="actions">
+        <button type="button" class="cta" id="again">다른 사람도 저주하기</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <nav>
+      <a href="/legal/terms.html">이용약관</a>
+      <a href="/legal/refund.html">취소·환불 정책</a>
+      <a href="/legal/privacy.html">개인정보처리방침</a>
+      <a href="/index.html#account" id="legacyLink" hidden>예전에 산 사주 풀이</a>
+    </nav>
+    <details class="biz">
+      <summary>사업자 정보</summary>
+      <p><b>코어랩스</b> (CoreLabs) · 대표 호현수 · 사업자등록번호 705-04-02867 <b>(간이과세자)</b> · 통신판매업 신고 제2026-강원춘천-0553호</p>
+      <p>강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) · TEL 033-818-2021 · corelabs.studio@gmail.com</p>
+    </details>
+    <p class="fine">이 서비스의 저주는 놀이로 보는 글이에요. 실제 주술이 아니고, 누구에게도 해를 끼치지 않아요.</p>
+  </footer>
+
+  <dialog id="authDlg" class="dlg">
+    <form class="dlg-box" id="authForm">
+      <button type="button" class="dlg-x" id="authClose" aria-label="닫기">×</button>
+      <p class="eyebrow">결제 전에</p>
+      <h2 id="authTitle">가입하고<br />저주장을 보관해요</h2>
+      <p class="note">결제한 저주장은 계정에 남아서 언제든 다시 볼 수 있어요.</p>
+      <div class="social" id="socialBox" hidden>
+        <a id="soKakao" class="so kakao" href="/api/auth/kakao/start" hidden>카카오로 계속하기</a>
+        <a id="soNaver" class="so naver" href="/api/auth/naver/start" hidden>네이버로 계속하기</a>
+        <a id="soGoogle" class="so google" href="/api/auth/google/start" hidden>구글로 계속하기</a>
+      </div>
+      <details class="mail" id="mailBox">
+        <summary>이메일로 하기</summary>
+        <label class="field" id="nameField"><span>부를 이름</span><input name="name" maxlength="20" autocomplete="nickname" /></label>
+        <label class="field"><span>이메일</span><input type="email" name="email" autocomplete="email" /></label>
+        <label class="field"><span>비밀번호 <small>8자 이상</small></span><input type="password" name="password" minlength="8" autocomplete="new-password" /></label>
+        <p class="err" id="authErr" aria-live="polite"></p>
+        <button class="cta" id="authSubmit">가입하고 계속하기</button>
+        <button type="button" class="link" id="authSwap">이미 계정이 있어요</button>
+      </details>
+    </form>
+  </dialog>
+
+  <dialog id="meDlg" class="dlg">
+    <div class="dlg-box">
+      <button type="button" class="dlg-x" id="meClose" aria-label="닫기">×</button>
+      <p class="eyebrow">내 계정</p>
+      <h2 id="meName"></h2>
+      <p class="note" id="meMail"></p>
+      <a class="ghost as-link" href="/index.html#account">예전에 산 사주 풀이 보기</a>
+      <button type="button" class="ghost" id="logout">로그아웃</button>
+    </div>
+  </dialog>
+
+
+</body>
+</html>

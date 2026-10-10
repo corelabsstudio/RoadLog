@@ -193,7 +193,9 @@ FREE_PRODUCTS = {"today"}
 #    상품의 원화 값 표라서, 그걸로 프리미엄을 가려낼 수 없다.
 PREMIUM_ONLY = {"great", "full", "bond", "ox", "marry", "divorce", "secret",
                 # 관상 — 왕이 될 상 39,800 · 얼굴 전부 19,800 · 둘이 맞는 얼굴 29,800
-                "face_king", "face_all", "face_pair"}
+                "face_king", "face_all", "face_pair",
+                # 저주 매운맛 2~7단계 (2026-10-10) — 가입 선물 등불로 열리면 아무도 결제하지 않는다
+                "jeoju_b", "jeoju_c", "jeoju_d", "jeoju_e", "jeoju_f", "jeoju_g"}
 
 
 PRICES = {
@@ -262,6 +264,13 @@ BUNDLE = {
 }
 
 PREMIUM_WON = {
+    # 저주 매운맛 2~7단계 (2026-10-10). 1단계는 무료. modules/jeoju.py LEVELS 와 같은 값
+    "jeoju_b": 1000,
+    "jeoju_c": 1900,
+    "jeoju_d": 3900,
+    "jeoju_e": 7900,
+    "jeoju_f": 14800,
+    "jeoju_g": 29800,
     "duo": 3900,
     "god": 2900,
     "past": 2900,

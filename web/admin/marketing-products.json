@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-06T15:10:39.999Z",
+  "generated_at": "2026-10-10T03:14:27.632Z",
   "products": [
     {
       "product_id": "today",
@@ -1132,6 +1132,78 @@
         "다 모으면 횡재수는"
       ],
       "source_file": "gwansang.js"
+    },
+    {
+      "product_id": "jeoju_b",
+      "name": "무냥이 저주 2단계 순한맛",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 1000,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
+    },
+    {
+      "product_id": "jeoju_c",
+      "name": "무냥이 저주 3단계 덜매운맛",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 1900,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
+    },
+    {
+      "product_id": "jeoju_d",
+      "name": "무냥이 저주 4단계 오리지널",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 3900,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
+    },
+    {
+      "product_id": "jeoju_e",
+      "name": "무냥이 저주 5단계 매운맛",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 7900,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
+    },
+    {
+      "product_id": "jeoju_f",
+      "name": "무냥이 저주 6단계 아주매운맛",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 14800,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
+    },
+    {
+      "product_id": "jeoju_g",
+      "name": "무냥이 저주 7단계 지옥맛",
+      "kind": "special",
+      "description": "UNKNOWN",
+      "price_won": 29800,
+      "free": false,
+      "premium": true,
+      "lamp_price": "SERVER_CHECK",
+      "confirmed_results": [],
+      "source_file": "special-products.js"
     }
   ]
 }
