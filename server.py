@@ -4052,24 +4052,30 @@ def card_page(cid: str):
     return HTMLResponse(html, headers={"Cache-Control": "public, max-age=3600"})
 
 
+# 🛑 사주·관상·블로그 안내 페이지는 2026-10-10 온해님 지시로 전부 내렸다(「사주·블로그 안내 페이지도 다 내려줘」).
+#    로드로그는 저주만 거는 사이트다. 파일(web/saju · web/gwan · web/blog)과 DB 글은 지우지 않았고,
+#    서버가 그 주소를 전부 홈으로 보낸다. 되살리려면 이 묶음을 걷으면 된다.
+_CLOSED_PREFIXES = ("saju", "gwan", "blog")
+_SITEMAP_PATHS = ("/", "/legal/terms.html", "/legal/refund.html", "/legal/privacy.html")
+
+
+def _closed_page(path: str) -> bool:
+    head = path.strip("/").split("/", 1)[0]
+    return head in _CLOSED_PREFIXES or any(head == pre + ".html" for pre in _CLOSED_PREFIXES)
+
+
 @app.get("/sitemap.xml")
-def marketing_sitemap():
-    xml = BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render_sitemap()
+def site_sitemap():
+    rows = "".join("<url><loc>%s%s</loc></url>" % (SITE_ORIGIN, path) for path in _SITEMAP_PATHS)
+    xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">%s</urlset>' % rows
     return Response(xml, media_type="application/xml", headers={"Cache-Control": "public, max-age=300"})
 
 
 @app.get("/blog/ai-{publication_id}.html")
-def marketing_blog_page(publication_id: int):
-    page = BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render(f"ai-{publication_id}")
-    if page is None:
-        raise HTTPException(404, "Not Found")
-    return HTMLResponse(page, headers={"Cache-Control":"no-store"})
-
-
 @app.get("/blog/")
 @app.get("/blog/index.html")
-def marketing_blog_index():
-    return HTMLResponse(BlogPublisher(_marketing_repo(), WEB, SITE_ORIGIN).render_index(), headers={"Cache-Control":"no-store"})
+def blog_closed(publication_id: int = 0):
+    return RedirectResponse("/", status_code=301)
 
 
 @app.get("/{path:path}")
@@ -4087,6 +4093,9 @@ def spa_fallback(path: str):
     #    그러려면 문서 주소가 반드시 `/admin/` 이어야 한다. `/admin` 은 그 밖이다.
     if path in {"admin", "admin.html"}:
         return RedirectResponse("/admin/", status_code=308)
+
+    if _closed_page(path):
+        return RedirectResponse("/", status_code=301)
 
     # 🛑 옛 주소 정리보다 **실제 파일이 먼저다.** 2026-09-07 에 사주 블로그를
     #    /blog 아래에 냈는데, 운행일지 시절 규칙이 그걸 통째로 홈으로 보냈다.
