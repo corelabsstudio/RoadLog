@@ -135,8 +135,13 @@ def write(order: dict[str, str], level: int, have: dict[str, Any] | None = None,
     new_days = days[len(old_nights):]
     props = {k: _SCHEMA[k] for k in want}
     if new_days:
-        props["nights"] = {"type": "array", "items": {"type": "string"}, "description": (
-            "축시(새벽 2시) 의식 기록 정확히 %d장. 차례대로 %s 밤의 기록이다. 각 3~4문장. "
+        props["nights"] = {"type": "array", "items": {"type": "object", "properties": {
+            "title": {"type": "string", "description": (
+                "그 밤의 제목. 16자 안쪽. 그날 대상에게 따라붙을 일을 구체적인 한 구절로 "
+                "(예: 엘리베이터가 눈앞에서 닫힌다). 밤마다 서로 다르게. 마침표·따옴표 없이")},
+            "text": {"type": "string", "description": "그 밤의 기록 본문 4~5문장"},
+        }, "required": ["title", "text"]}, "description": (
+            "축시(새벽 2시) 의식 기록 정확히 %d장. 차례대로 %s 밤의 기록이다. "
             "그 밤 무냥이가 촛불을 켜고 인형에 못을 하나 더 박은 일과, 그날 대상에게 따라붙을 일을 쓴다. "
             "밤이 갈수록 집요해지고%s"
             % (len(new_days), ", ".join("%d번째" % d for d in new_days),
@@ -150,7 +155,7 @@ def write(order: dict[str, str], level: int, have: dict[str, Any] | None = None,
         if old_nights:
             prompt += "이미 쓴 밤 기록 %d장의 마지막: %s\n" % (len(old_nights), str(old_nights[-1].get("text", ""))[:300])
         prompt += "다음 항목만 써라: " + ", ".join(props) + "."
-        tokens = 400 + 420 * len(want) + 260 * len(new_days)
+        tokens = 400 + 420 * len(want) + 340 * len(new_days)
         got = saju_writer._call(
             _SYSTEM, prompt, temperature=0.9, max_tokens=tokens,
             schema={"type": "object", "properties": props, "required": list(props)},
@@ -168,26 +173,47 @@ def write(order: dict[str, str], level: int, have: dict[str, Any] | None = None,
                     raise RuntimeError("저주장의 %s 항목이 비어 왔습니다." % key)
                 doc[key] = text
         if new_days:
-            rows = [str(x).strip() for x in (new.get("nights") or []) if str(x).strip()]
+            rows = [{"title": str(x.get("title") or "").strip()[:28], "text": str(x.get("text") or "").strip()}
+                    for x in (new.get("nights") or []) if isinstance(x, dict) and str(x.get("text") or "").strip()]
             if len(rows) < len(new_days):
                 raise RuntimeError("밤 기록이 %d장보다 적게 왔습니다." % len(new_days))
             start = int(doc.get("nightStart") or now_ms or time.time() * 1000)
             doc["nightStart"] = start
             doc["nights"] = old_nights + [
-                {"day": d, "at": _night_at(start, d), "text": rows[i]} for i, d in enumerate(new_days)]
+                {"day": d, "at": _night_at(start, d), "title": rows[i]["title"], "text": rows[i]["text"]}
+                for i, d in enumerate(new_days)]
     if order.get("spot") in SPOTS and level >= 4:
         doc["spot"] = order["spot"]
     doc["level"] = max(level, int(doc.get("level") or 0))
     return doc
 
 
+# 6단계부터는 첫 밤 기록을 건 자리에서 바로 연다 (2026-10-11 온해님).
+# 그전에는 14,800원·29,800원을 낸 직후 화면에 「~가 지나면 열려요」만 줄줄이 보였다.
+# 5단계는 「새벽 2시가 지나야 열린다」가 그 단계의 내용이라 그대로 기다리게 둔다.
+OPEN_FIRST_FROM = 6
+
+
+def night_open(doc: dict[str, Any], night: dict[str, Any], now_ms: int) -> bool:
+    if int(night.get("day") or 0) == 1 and int(doc.get("level") or 0) >= OPEN_FIRST_FROM:
+        return True
+    return int(night.get("at") or 0) <= now_ms
+
+
 def veil(doc: dict[str, Any], now_ms: int | None = None) -> dict[str, Any]:
-    """아직 안 온 밤의 기록은 글을 빼고 내보낸다."""
+    """아직 안 온 밤의 기록은 본문을 빼고 내보낸다. 제목은 잠긴 동안에도 보인다."""
     now = now_ms or int(time.time() * 1000)
     out = dict(doc)
     if out.get("nights"):
-        out["nights"] = [n if n.get("at", 0) <= now else {"day": n.get("day"), "at": n.get("at"), "text": ""}
-                         for n in out["nights"]]
+        rows = []
+        for n in out["nights"]:
+            row = {"day": n.get("day"), "at": n.get("at"), "title": n.get("title") or "",
+                   "text": n.get("text") or "", "open": True}
+            if not night_open(doc, n, now):
+                row["text"] = ""
+                row["open"] = False
+            rows.append(row)
+        out["nights"] = rows
     return out
 
 
