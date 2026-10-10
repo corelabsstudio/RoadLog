@@ -223,6 +223,8 @@ def mine(email: str) -> list[dict[str, Any]]:
     """내가 건 저주 목록. 새것부터."""
     with _LOCK:
         rows = list(_read().get(email.lower(), []))
+    # 결제 전에 맡겨 두기만 한 주문서(1단계 이하)는 목록에 올리지 않는다
+    rows = [r for r in rows if int((r.get("doc") or {}).get("level") or 0) >= 2]
     return [{"ritual": r.get("ritual"), "at": r.get("at"),
              "level": int((r.get("doc") or {}).get("level") or 1),
              "nick": (r.get("order") or {}).get("nick") or "",

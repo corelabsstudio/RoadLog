@@ -1705,6 +1705,25 @@ def jeoju_cast(body: JeojuBody, authorization: str | None = Header(default=None)
     return {"ok": True, **row}
 
 
+@app.post("/api/jeoju/hold")
+def jeoju_hold(body: JeojuBody, authorization: str | None = Header(default=None)):
+    """결제창으로 가기 전에 주문서를 계정에 맡겨 둔다.
+
+    결제하고 돌아왔는데 브라우저에 주문서가 없으면 돈만 받고 써 드릴 수 없다.
+    이미 맡겨 둔 의식이면 건드리지 않는다(받은 글을 덮어쓰면 안 된다).
+    """
+    user = _token_user(authorization)
+    ritual = (body.ritual or "").strip().lower()
+    pair = (body.pair or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{24,64}", ritual) or not lamps_ops._PAIR_RE.match(pair):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
+    if jeoju_ops.get(user["email"], ritual):
+        return {"ok": True, "held": False}
+    order = _jeoju_order(body)
+    jeoju_ops.save(user["email"], ritual, pair, order, _jeoju_have(body.have))
+    return {"ok": True, "held": True}
+
+
 @app.get("/api/jeoju/mine")
 def jeoju_mine(authorization: str | None = Header(default=None)):
     user = _token_user(authorization)

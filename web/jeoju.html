@@ -6,26 +6,28 @@
   <meta name="theme-color" content="#0c0810" />
   <title>저주술사 무냥이 · 로드로그</title>
   <meta name="description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
-  <link rel="icon" href="/assets/face-D1JUG1d8.webp" />
+  <link rel="icon" href="/icons/jeoju-64.png" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="로드로그" />
   <meta property="og:locale" content="ko_KR" />
-  <meta property="og:url" content="https://roadlog.co.kr/jeoju.html" />
+  <meta property="og:url" content="https://roadlog.co.kr/" />
   <meta property="og:title" content="저주술사 무냥이 · 로드로그" />
   <meta property="og:description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
-  <meta property="og:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
+  <meta property="og:image" content="https://roadlog.co.kr/og/jeoju.jpg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="로드로그 — 마음이 지나간 길을 읽어요" />
+  <meta property="og:image:alt" content="검보라 로브를 입고 해골 지팡이를 든 저주술사 무냥이" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="저주술사 무냥이 · 로드로그" />
   <meta name="twitter:description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
-  <meta name="twitter:image" content="https://roadlog.co.kr/og/og-v3.jpg" />
-  <link rel="canonical" href="https://roadlog.co.kr/jeoju.html" />
-  <script type="module" crossorigin src="/assets/jeoju-CnW5a9fQ.js"></script>
+  <meta name="twitter:image" content="https://roadlog.co.kr/og/jeoju.jpg" />
+  <link rel="canonical" href="https://roadlog.co.kr/" />
+  <script type="module" crossorigin src="/assets/jeoju-pvhXOUUZ.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/signup-path-EMbcYZVS.js">
-  <link rel="stylesheet" crossorigin href="/assets/jeoju-BxT666u8.css">
+  <link rel="stylesheet" crossorigin href="/assets/jeoju-DZTnlUFs.css">
 </head>
 <body>
   <header class="top">
@@ -53,8 +55,24 @@
       <section class="block" aria-labelledby="menuTitle">
         <p class="eyebrow">맵기 7단계</p>
         <h2 id="menuTitle">단계가 오를수록<br />진짜 의식에 가까워진다</h2>
-        <p class="note">말로 하는 악담에서 시작해 저주문, 부적, 짚인형, 축시, 7일 밤, 49일까지 올라가요.</p>
-        <ol class="menu" id="menuList"></ol>
+        <p class="note">말로 하는 악담에서 시작해 저주문, 부적, 짚인형, 축시, 7일 밤, 49일까지 올라가요. 단계를 누르면 그 맵기로 바로 시작해요.</p>
+        <ol class="menu pick" id="menuList"></ol>
+      </section>
+
+      <section class="block" aria-labelledby="sampleTitle">
+        <p class="eyebrow">예시</p>
+        <h2 id="sampleTitle">이런 악담이<br />나와요</h2>
+        <p class="note">무냥이가 실제로 써 준 1단계 악담이에요. 사연에 맞춰 매번 다르게 나와요.</p>
+        <ul class="samples">
+          <li><b>우산을 빌려 가 놓고 비 오는 날 연락을 끊은 친구</b><span>우산도둑아, 빗방울 떨어질 제 네 양말 홀로 흠뻑 젖으리라.</span></li>
+          <li><b>퇴근 5분 전에 회의를 잡는 직장 사람</b><span>회의왕아, 네가 입 열 때마다 시계 초침이 거꾸로 돌리라냥.</span></li>
+        </ul>
+      </section>
+
+      <section class="block" id="lastBlock" hidden aria-labelledby="lastTitle">
+        <p class="eyebrow">이 기기에 남은 것</p>
+        <h2 id="lastTitle">방금 받은 저주장</h2>
+        <ul class="mine"><li><button type="button" id="lastOpen"><span class="t" id="lastName"></span><span class="l" id="lastLevel"></span><span class="d">눌러서 다시 보기</span></button></li></ul>
       </section>
 
       <section class="block" aria-labelledby="ruleTitle">
@@ -73,6 +91,11 @@
         <h2 id="mineTitle">내가 건 저주</h2>
         <ul class="mine" id="mineList"></ul>
       </section>
+
+      <div class="block home-end">
+        <button type="button" class="cta" data-go="order">저주 걸러 가기</button>
+        <p class="fine">1단계 간지럼맛은 무료 · 가입 없이 바로</p>
+      </div>
     </section>
 
     <!-- 주문서 -->
@@ -250,6 +273,6 @@
       <button type="button" class="ghost" id="logout">로그아웃</button>
     </div>
   </dialog>
-
+
 </body>
 </html>
