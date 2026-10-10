@@ -75,6 +75,19 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .packs b{font-size:1rem}
 .packs span.d{display:block;font-size:.8rem;color:var(--muted)}
 .packs .won{font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0}
+
+/* 2026-10-10 저주 사이트 색으로 맞춘다 — 밝은 화면·어두운 화면 설정과 상관없이 신단 색 하나만 쓴다 */
+:root, :root[data-theme="dark"]{
+  --shell:#07050a; --paper:#0c0810; --card:#151019; --line:rgba(232,210,160,.16); --ink:#f3e9d2;
+  --muted:rgba(243,233,210,.64); --faint:rgba(243,233,210,.4); --lilac:#2a1220; --peach:#3a2415; --mint:#1d2a24;
+  --accent:#d2a758; --btn-fg:#fff6ea; --good:#7fd0a6; --bad:#ff8c98; color-scheme:dark;
+}
+.top img{border-radius:6px;background:#0c0810;object-position:50% 50%}
+.top a{font-family:'Pretendard',serif;font-weight:800}
+.btn{color:#fff6ea;border-radius:6px;background:#c22a3c;box-shadow:0 10px 34px rgba(194,42,60,.32)}
+.btn:not(:disabled):hover{transform:none;filter:brightness(1.1);box-shadow:0 10px 34px rgba(194,42,60,.45)}
+.method.on{border-color:#d2a758;background:#2a1220}
+.pay-art{display:block;width:calc(100% + 44px);max-width:none;margin:-30px -22px 18px;aspect-ratio:16/9;object-fit:cover;object-position:50% 30%;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent)}
 </style>
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
@@ -96,10 +109,11 @@ input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 <body>
 <div class="doc">
   <header class="top">
-    <img src="/assets/face-D1JUG1d8.webp" alt="" />
+    <img src="/icons/jeoju-64.png" alt="" />
     <a href="/">로드로그</a>
   </header>
   <main>
+    <img class="pay-art" id="payArt" src="/assets/rite-Djhn9GUM.webp" alt="" hidden />
     <h1 id="payTitle">결제</h1>
     <p class="sub" id="paySub">저주 한 건씩 결제해서 보십니다. 정기결제나 자동갱신은 없습니다.</p>
 
@@ -241,6 +255,8 @@ if (PREMIUM) {
   $('lampRow').querySelector('.k').textContent = '함께 드리는 등불';
   $('lampLabel').textContent = giftFor(PREMIUM.amount) + '개';
   $('lampRow').hidden = false;
+  // 저주 상품은 등불과 상관없다. 등불 줄을 감추고 무냥이 장면을 보여 준다 (2026-10-10)
+  if (/^jeoju_[b-g]$/.test(PREMIUM.product)) { $('lampRow').hidden = true; $('payArt').hidden = false; $('paySub').textContent = '복채를 내시면 무냥이가 바로 의식을 시작합니다. 한 번만 내시고, 자동으로 다시 나가지 않습니다.'; }
   $('termRow').innerHTML = '<span class="k">다시 보기</span><span class="v">결제일로부터 12개월</span>';
   $('amountLabel').textContent = won(PREMIUM.amount);
 } else {

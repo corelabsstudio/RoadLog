@@ -77,6 +77,16 @@ th{width:170px;color:var(--muted);font-weight:600;background:var(--card);font-si
 .lampline .lamp{width:24px;height:auto;flex:0 0 auto;margin:-10px 0 -10px -3px}
 td span{line-height:1.5}
 @media(max-width:560px){ th{width:110px} .lampline .lamp{width:22px} }
+
+/* 2026-10-10 저주 사이트 색으로 맞춘다 — 밝은 화면·어두운 화면 설정과 상관없이 신단 색 하나만 쓴다 */
+:root, :root[data-theme="dark"]{
+  --shell:#07050a; --paper:#0c0810; --card:#151019; --line:rgba(232,210,160,.16); --ink:#f3e9d2;
+  --muted:rgba(243,233,210,.64); --faint:rgba(243,233,210,.4); --lilac:#2a1220; --peach:#3a2415; --mint:#1d2a24;
+  --accent:#d2a758; --btn-fg:#fff6ea; --good:#7fd0a6; --bad:#ff8c98; color-scheme:dark;
+}
+.top img{border-radius:6px;background:#0c0810;object-position:50% 50%}
+.top a{font-family:'Pretendard',serif;font-weight:800}
+.buy-btn{color:#fff6ea !important;border-radius:6px !important;background:#c22a3c !important;box-shadow:0 10px 34px rgba(194,42,60,.32) !important}
 </style>
   <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
   <meta property="og:type" content="website" />
@@ -98,7 +108,7 @@ td span{line-height:1.5}
 <body>
 <div class="doc">
   <header class="top">
-    <img src="/assets/face-D1JUG1d8.webp" alt="" />
+    <img src="/icons/jeoju-64.png" alt="" />
     <a href="/">로드로그</a>
   </header>
   <main>

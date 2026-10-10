@@ -25,9 +25,9 @@
   <meta name="twitter:description" content="나를 열받게 한 그 사람에게 저주술사 무냥이가 대신 저주를 걸어 드려요. 저주문, 부적, 짚인형, 축시 의식까지 맵기 7단계. 1단계는 무료." />
   <meta name="twitter:image" content="https://roadlog.co.kr/og/jeoju.jpg" />
   <link rel="canonical" href="https://roadlog.co.kr/" />
-  <script type="module" crossorigin src="/assets/jeoju-pvhXOUUZ.js"></script>
+  <script type="module" crossorigin src="/assets/jeoju-goUYGLvh.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/signup-path-EMbcYZVS.js">
-  <link rel="stylesheet" crossorigin href="/assets/jeoju-DZTnlUFs.css">
+  <link rel="stylesheet" crossorigin href="/assets/jeoju-DJQaX9qn.css">
 </head>
 <body>
   <header class="top">
@@ -126,6 +126,10 @@
             <em class="count" id="sinCount">0 / 300</em>
           </label>
           <p class="fine">자세히 적을수록 저주가 그 사람한테 딱 맞게 나와요.</p>
+          <div class="hints">
+            <p class="hints-t">뭘 쓸지 모르겠으면 눌러서 고쳐 쓰세요</p>
+            <ul id="sinHints"></ul>
+          </div>
         </div>
 
         <div class="step" data-step="3" hidden>
@@ -146,10 +150,11 @@
     <!-- 의식 -->
     <section class="view" id="viewRite" hidden aria-live="polite">
       <div class="rite">
-        <img class="rite-photo" src="/assets/munyang_cast-DufIDOtA.webp" width="768" height="1029" alt="수정구 위로 두 앞발을 들고 주문을 거는 저주술사 무냥이" />
+        <video class="rite-photo" id="riteLoop" width="720" height="960" muted loop playsinline preload="metadata" poster="/assets/rite-Djhn9GUM.webp" aria-label="수정구 위로 두 앞발을 돌리며 주문을 거는 저주술사 무냥이"><source src="/assets/rite_loop-C_c5Od6V.mp4" type="video/mp4" /></video>
         <div class="rite-copy">
           <p class="eyebrow">의식 중</p>
           <h2 id="riteLine">이름을 부적에 적는 중</h2>
+          <div class="rite-meter" id="riteMeter" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
           <p class="fine">20초쯤 걸려요. 창을 닫지 마세요.</p>
         </div>
       </div>
@@ -214,10 +219,18 @@
 
       <section class="block up" id="upBlock" hidden aria-labelledby="upTitle">
         <p class="eyebrow">아직 덜 맵다</p>
-        <h2 id="upTitle">더 맵게<br />걸 수 있어요</h2>
+        <h2 id="upTitle">다음 의식이<br />남아 있어요</h2>
         <p class="note">지금 받은 것은 그대로 두고, 다음 의식을 그 위에 얹어요.</p>
+        <div class="next" id="upNext"></div>
+        <p class="eyebrow up-more" id="upMoreTitle">더 센 단계</p>
         <ol class="menu pick" id="upList"></ol>
       </section>
+
+      <!-- 저주장을 보는 동안 아래에 붙어 있는 두 단추 -->
+      <div class="doc-bar" id="docBar">
+        <button type="button" class="ghost" id="barShare">친구한테 보내기</button>
+        <button type="button" class="cta" id="barUp">더 맵게 걸기</button>
+      </div>
 
       <div class="actions">
         <button type="button" class="cta" id="again">다른 사람도 저주하기</button>
