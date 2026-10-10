@@ -349,3 +349,34 @@ def send_password_changed(to: str) -> bool:
         )
     )
     return send_mail(to, "[로드로그] 비밀번호가 바뀌었어요", text, html=html)
+
+
+def send_night_open(to: str, link: str, *, day: int, total: int, last: bool = False) -> bool:
+    """저주 밤 기록이 열렸다는 알림 (2026-10-11).
+
+    🛑 제목·본문에 대상 이름과 기록 내용을 적지 않는다. 메일함은 남이 볼 수 있다.
+    """
+    what = "마지막 밤 기록이 열렸어요. 무냥이가 못을 뽑고 거뒀어요." if last else f"{day}번째 밤 기록이 열렸어요."
+    text = (
+        f"{what}\n\n"
+        f"지난 새벽 2시에 무냥이가 한 일을 적어 뒀어요.\n{link}\n\n"
+        f"밤 기록은 모두 {total}장이고, 날짜가 되면 한 장씩 열려요.\n"
+        "이 메일은 밤 기록이 있는 단계를 고르신 분께만 가요.\n"
+        "받고 싶지 않으시면 이 메일에 답장으로 알려 주세요.\n\n"
+        "놀이로 보는 글이에요. 실제 주술이 아니에요.\n"
+        "— 로드로그 · 코어랩스\n"
+    )
+    html = _WRAP.format(
+        body=(
+            f"<h2 style='font-size:1.15rem;margin:0 0 14px;color:#2f2d3a'>{what}</h2>"
+            "<p style='margin:0 0 20px'>지난 새벽 2시에 무냥이가 한 일을 적어 뒀어요.</p>"
+            f"<p style='margin:0 0 20px'><a href='{link}' "
+            "style='display:inline-block;background:#b62436;color:#fff;text-decoration:none;"
+            "font-weight:700;padding:14px 26px;border-radius:6px'>기록 보러 가기</a></p>"
+            f"<p style='margin:0 0 8px;color:#7a7785;font-size:.88rem'>밤 기록은 모두 {total}장이고, 날짜가 되면 한 장씩 열려요.</p>"
+            "<p style='margin:0 0 8px;color:#7a7785;font-size:.88rem'>이 메일은 밤 기록이 있는 단계를 고르신 분께만 가요. "
+            "받고 싶지 않으시면 이 메일에 답장으로 알려 주세요.</p>"
+            "<p style='margin:0;color:#9b96a9;font-size:.8rem'>놀이로 보는 글이에요. 실제 주술이 아니에요.</p>"
+        )
+    )
+    return send_mail(to, f"[로드로그] {day}번째 밤 기록이 열렸어요", text, html=html)

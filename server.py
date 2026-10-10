@@ -112,11 +112,44 @@ _cors_origins = cors_allow_origins()
 # credentials + "*" 조합은 브라우저에서 거부되므로 와일드카드일 때 credentials 비활성
 _cors_credentials = _cors_origins != ["*"]
 
+import threading
+
+_night_stop = threading.Event()
+
+
+def _night_notice_once() -> int:
+    """열린 밤 기록을 찾아 메일을 보낸다. 보낸 통수를 돌려준다."""
+    if os.getenv("JEOJU_NIGHT_MAIL", "1").strip().lower() in {"0", "false", "off", "no"}:
+        return 0
+    if not mailer.mail_configured():
+        return 0     # 보낼 길이 없으면 표시도 하지 않는다 — 설정한 뒤에 나가야 한다
+    sent = 0
+    for item in jeoju_ops.due_notices():
+        try:
+            link = "https://roadlog.co.kr/?o=%s" % item["ritual"]
+            if mailer.send_night_open(item["email"], link, day=int(item["day"]),
+                                          total=int(item["total"]), last=bool(item["last"])):
+                sent += 1
+        except Exception:
+            log.exception("jeoju night notice failed")
+    return sent
+
+
+def _night_notice_loop() -> None:
+    while not _night_stop.wait(600):
+        try:
+            _night_notice_once()
+        except Exception:
+            log.exception("jeoju night notice loop failed")
+
+
 @asynccontextmanager
 async def app_lifespan(_app: FastAPI):
     promotion.start()
+    threading.Thread(target=_night_notice_loop, name="jeoju-night-notice", daemon=True).start()
     yield
     promotion.stop.set()
+    _night_stop.set()
 
 
 app = FastAPI(title=APP_FULL, version="3.1", lifespan=app_lifespan)

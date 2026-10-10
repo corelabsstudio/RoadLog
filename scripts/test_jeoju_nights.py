@@ -70,6 +70,25 @@ class NightTest(unittest.TestCase):
         self.assertEqual(up["nights"][7]["title"], "제목 1")
         self.assertTrue(up["seal"])
 
+    def test_due_notices_once_and_skips_first_night_of_high_levels(self):
+        doc7 = jeoju.write(ORDER, 7, now_ms=NOW)
+        doc5 = jeoju.write(ORDER, 5, now_ms=NOW)
+        jeoju.save("a@example.com", "a" * 32, "b" * 32, ORDER, doc7)
+        jeoju.save("a@example.com", "c" * 32, "d" * 32, ORDER, doc5)
+        first = doc7["nights"][0]["at"]
+        # 첫 새벽 2시 직후: 7단계 첫 밤은 이미 열어 줬으니 안 보내고, 5단계 첫 밤만 보낸다
+        got = jeoju.due_notices(first + 60_000)
+        self.assertEqual([(x["ritual"][0], x["day"]) for x in got], [("c", 1)])
+        self.assertTrue(got[0]["last"])
+        self.assertEqual(jeoju.due_notices(first + 120_000), [])
+        # 둘째 새벽: 7단계 2번째 밤
+        got = jeoju.due_notices(doc7["nights"][1]["at"] + 60_000)
+        self.assertEqual([(x["ritual"][0], x["day"], x["last"]) for x in got], [("a", 2, False)])
+        # 오래 쉬었다 깨면 밀린 것은 표시만 하고 보내지 않는다
+        self.assertEqual(jeoju.due_notices(doc7["nights"][6]["at"] + 40 * 3600 * 1000), [])
+        # 저장된 본문은 그대로다
+        self.assertEqual(jeoju.get("a@example.com", "a" * 32)["doc"]["nights"][3]["text"], "본문 4")
+
 
 if __name__ == "__main__":
     unittest.main()

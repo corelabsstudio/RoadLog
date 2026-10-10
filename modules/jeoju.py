@@ -217,6 +217,42 @@ def veil(doc: dict[str, Any], now_ms: int | None = None) -> dict[str, Any]:
     return out
 
 
+# ── 밤 기록이 열리면 알린다 ──────────────────────────────
+# 6·7단계는 며칠에 걸쳐 열리는데 손님이 날짜를 외워 다시 올 수는 없다 (2026-10-11 온해님).
+# 새벽 2시가 지난 기록을 찾아 한 저주장에 한 통씩 메일을 보낸다.
+NOTICE_MAX_AGE_MS = 36 * 3600 * 1000   # 이보다 오래 지난 것은 보내지 않는다(서버가 쉬었다 깬 경우)
+
+
+def due_notices(now_ms: int | None = None) -> list[dict[str, Any]]:
+    """방금 열린 밤 기록 목록. 돌려준 것은 「알림」 표시를 해 두어 두 번 안 나온다."""
+    now = now_ms or int(time.time() * 1000)
+    out: list[dict[str, Any]] = []
+    with _LOCK:
+        data = _read()
+        changed = False
+        for email, rows in data.items():
+            for row in rows:
+                doc = row.get("doc") or {}
+                fresh = None
+                for n in doc.get("nights") or []:
+                    if n.get("told") or int(n.get("at") or 0) > now:
+                        continue
+                    n["told"] = True
+                    changed = True
+                    # 6단계부터 첫 밤은 건 자리에서 이미 열어 드렸다
+                    if int(n.get("day") or 0) == 1 and int(doc.get("level") or 0) >= OPEN_FIRST_FROM:
+                        continue
+                    if now - int(n.get("at") or 0) <= NOTICE_MAX_AGE_MS:
+                        fresh = n
+                if fresh:
+                    out.append({"email": email, "ritual": row.get("ritual"), "day": fresh.get("day"),
+                                "total": len(doc.get("nights") or []),
+                                "last": fresh is (doc.get("nights") or [None])[-1]})
+        if changed:
+            _write(data)
+    return out
+
+
 # ── 보관함 ─────────────────────────────────────────────
 def _read() -> dict[str, list[dict[str, Any]]]:
     if not _FILE.exists():
