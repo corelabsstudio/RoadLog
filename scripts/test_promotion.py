@@ -46,8 +46,8 @@ class Tests(unittest.TestCase):
         self.assertFalse(result['channels'][0].get('thread_parts'))
 
     def campaign(self, suffix='original'):
-        return {'channels': [dict(channel=ch, topic=f'{i}-{suffix}', product_id='today',
-                    caption=f'{i} {suffix} 마음을 한번 봐~ https://roadlog.co.kr/#p/today',
+        return {'channels': [dict(channel=ch, topic=f'{i}-{suffix}', product_id='jeoju_a',
+                    caption=f'{i} {suffix} 마음을 한번 봐~ https://roadlog.co.kr/?lv=jeoju_a',
                     cards=[] if ch.startswith('threads:') else [dict(title=f'{suffix} 질문 {i}-{n}',
                         body=f'{suffix} 표현 방식도 같이 봐.', scene=f'{suffix} scene {i}-{n}') for n in range(2)])
                     for i, ch in enumerate(CHANNELS)]}
@@ -79,13 +79,13 @@ class Tests(unittest.TestCase):
         for item in result['channels']:
             before=next(x for x in old['channels'] if x['channel']==item['channel'])
             self.assertNotEqual(item['caption'],before['caption'])
-            self.assertEqual(item['product_id'],'today')
+            self.assertTrue(item['product_id'].startswith('jeoju_'))
             if item['channel'].startswith('threads:'):
                 self.assertEqual(item['content_type'], 'conversation')
                 self.assertNotIn('https://', item['caption'])
                 self.assertNotIn('로드로그', item['caption'])
             else:
-                self.assertIn('https://roadlog.co.kr/#p/today',item['caption'])
+                self.assertIn('https://roadlog.co.kr/?lv=jeoju_',item['caption'])
             self.assertLessEqual(len(item['caption']),500)
             for card in item['cards']:
                 self.assertLessEqual(len(card['title']),28);self.assertLessEqual(len(card['body']),75)
@@ -148,15 +148,15 @@ class Tests(unittest.TestCase):
             plan = self.s.fresh_catalog_plan(previous)
             thread = plan['channels'][2]
             self.assertEqual(thread['content_type'], expected)
-            self.assertEqual('https://roadlog.co.kr/#p/today' in '\n'.join(thread.get('thread_parts') or [thread['caption']]), expected == 'product')
+            self.assertEqual('https://roadlog.co.kr/?lv=jeoju_' in '\n'.join(thread.get('thread_parts') or [thread['caption']]), expected == 'product')
             self.assertLessEqual(len(thread['caption']), 500)
             if expected != 'product':
-                self.assertIn('오늘 해야 할 일', thread['caption'])
+                self.assertIn('열받은 일을 한 줄로', thread['caption'])
             else:
                 self.assertEqual(len(thread['thread_parts']), 3)
                 self.assertNotIn('https://', thread['caption'])
             for instagram in plan['channels'][:2]:
-                self.assertIn('https://roadlog.co.kr/#p/today', instagram['caption'])
+                self.assertIn('https://roadlog.co.kr/?lv=jeoju_', instagram['caption'])
                 self.assertEqual(len(instagram['cards']), 2)
             previous.insert(0, plan)
 
@@ -166,7 +166,7 @@ class Tests(unittest.TestCase):
         result = self.s.plan_once(self.s.profile(), [], '')
         self.assertEqual(result['channels'][2]['content_type'], 'conversation')
         self.assertNotIn('https://', result['channels'][2]['caption'])
-        plan['channels'][2]['caption'] = '로드로그에서 오늘 운세를 확인하세요. https://roadlog.co.kr/#p/today'
+        plan['channels'][2]['caption'] = '로드로그에서 1단계 간지럼맛을 해보세요. https://roadlog.co.kr/?lv=jeoju_a'
         with self.assertRaisesRegex(ValueError, '독립적인 내용'):
             self.s.plan_once(self.s.profile(), [], '')
 
@@ -175,7 +175,7 @@ class Tests(unittest.TestCase):
         previous['channels'][2]['content_type'] = 'checklist'
         plan = self.campaign('new')
         plan['channels'][2]['caption'] = '답장 쓰다가 지운 적 있어?'
-        plan['channels'][2]['thread_parts'] = ['답장 쓰다가 지운 적 있어?', '근데 답장 하나로 마음을 알 수는 없잖아.', '오늘 운세에서 확인할 내용을 봐~ https://roadlog.co.kr/#p/today']
+        plan['channels'][2]['thread_parts'] = ['답장 쓰다가 지운 적 있어?', '근데 답장 하나로 마음을 알 수는 없잖아.', '1단계 간지럼맛부터 봐~ https://roadlog.co.kr/?lv=jeoju_a']
         self.s.gemini = lambda *args: [{'text': json.dumps(plan)}]
         result = self.s.plan_once(self.s.profile(), [json.dumps(previous)], '')
         self.assertEqual(result['channels'][2]['content_type'], 'product')
@@ -204,7 +204,7 @@ class Tests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.web = Path(self.temp.name) / 'web'
         (self.web / 'admin').mkdir(parents=True)
-        (self.web / 'admin/marketing-products.json').write_text(json.dumps({'products':[{'kind':'saju','product_id':'today','name':'오늘 운세','confirmed_results':[]}]}))
+        (self.web / 'admin/marketing-products.json').write_text(json.dumps({'products':[{'kind':'saju','product_id':'jeoju_a','name':'오늘 운세','confirmed_results':[]}]}))
         self.s = Promotion(Path(self.temp.name), self.web)
         self.s.identities = lambda: []
         self.env = patch.dict('os.environ', {'PROMO_GEMINI_API_KEY':'test', 'PROMO_IG_ROADLOG_SAJU_TOKEN':'test', 'PROMO_IG_MUMUNG_FACT_TOKEN':'test', 'THREADS_ACCESS_TOKEN':'test'})
@@ -250,7 +250,7 @@ class Tests(unittest.TestCase):
         self.s.gemini = gemini
         with self.assertRaises(RuntimeError): self.s.plan(self.s.profile())
         self.assertIn('무냥이', captured[0])
-        self.assertIn('오늘 운세', captured[0])
+        self.assertIn('1단계 간지럼맛', captured[0])
         self.assertIn('최근 홍보와 다른 내용', captured[0])
 
     def test_reference_private_and_auth(self):
@@ -275,10 +275,10 @@ class Tests(unittest.TestCase):
         self.s.gemini = stop_planner
         with self.assertRaises(RuntimeError): self.s.plan(p)
         self.assertIn('stands and walks upright on TWO hind feet', captured[0])
-        self.assertIn('NOT to ordinary four-legged cat anatomy', captured[0])
-        self.assertIn('WARDROBE IS MANDATORY', captured[0])
+        self.assertIn('No quadruped pose', captured[0])
+        self.assertIn('SIGNATURE ROBE', captured[0])
         self.assertIn('SIGNATURE MOON (required in EVERY card)', captured[0])
-        self.assertIn('pastel rainbow saekdong patchwork', captured[0])
+        self.assertIn('curse-shaman kitten', captured[0])
         channels = [dict(channel=ch, cards=[] if ch.startswith('threads:') else
                         [dict(title='title', body='body', scene='A cat crouching on the floor.') for _ in range(2)])
                     for ch in CHANNELS]
@@ -294,16 +294,13 @@ class Tests(unittest.TestCase):
         self.assertEqual(len(captured), 5)
         for prompt in captured[1:]:
             self.assertIn('stands and walks upright on TWO hind feet', prompt)
-            self.assertIn('front paws are arms and hands', prompt)
-            self.assertIn('full mint hanbok', prompt)
-            self.assertIn('both arms inside their sleeves', prompt)
-            self.assertIn('both legs inside their trousers', prompt)
-            self.assertIn('no exposed torso or slipping clothes', prompt)
-            self.assertIn('golden crescent floating just above the head', prompt)
-            self.assertIn('A background moon does not satisfy', prompt)
+            self.assertIn('front paws used as hands', prompt)
+            self.assertIn('SIGNATURE ROBE', prompt)
+            self.assertIn('golden crescent floating just above the hood', prompt)
             self.assertIn('lower 65 percent', prompt)
-            self.assertIn('pastel rainbow saekdong hood', prompt)
-            self.assertIn('brown eyes and pink nose', prompt)
+            self.assertIn('black-purple hooded ritual robe', prompt)
+            self.assertIn('amber eyes and pink nose', prompt)
+            self.assertIn('Never render an ordinary four-legged pet cat', prompt)
             self.assertIn('adapt all poses to the mandatory bipedal mascot', prompt)
             self.assertNotIn('retain natural proportions', prompt)
         self.assertEqual(self.s.state()['jobs'][0]['status'], 'READY')
@@ -313,17 +310,17 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError): self.s.plan_once(self.s.profile(), [], "")
 
     def test_plan_accepts_common_questions_but_rejects_fictional_anecdotes(self):
-        channels = [dict(channel=ch, topic=str(i), product_id='today',
-                         caption='대화가 자꾸 엇갈려? https://roadlog.co.kr/#p/today',
+        channels = [dict(channel=ch, topic=str(i), product_id='jeoju_a',
+                         caption='대화가 자꾸 엇갈려? https://roadlog.co.kr/?lv=jeoju_a',
                          cards=[] if ch.startswith('threads:') else [dict(title='무슨 마음일까?', body='표현 방식이 다른 건지 봐~', scene='A cat under warm lantern light.') for _ in range(2)])
                     for i, ch in enumerate(CHANNELS)]
         self.s.gemini = lambda *a: [{'text': json.dumps({'channels': channels})}]
         self.assertEqual(len(self.s.plan(self.s.profile())['channels']), 3)
         for text in ['(가상 상황: 3년 차 커플 B님)', 'A님은 상대의 침묵이 답답하다고 합니다.', '가상의 인물 이야기']:
             with self.subTest(text=text):
-                channels[2]['caption'] = text + ' https://roadlog.co.kr/#p/today'
+                channels[2]['caption'] = text + ' https://roadlog.co.kr/?lv=jeoju_a'
                 with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan_once(self.s.profile(), [], '')
-        channels[2]['caption'] = '연락할 타이밍이 고민인가요? https://roadlog.co.kr/#p/today'
+        channels[2]['caption'] = '연락할 타이밍이 고민인가요? https://roadlog.co.kr/?lv=jeoju_a'
         channels[0]['cards'][0]['body'] = '(가상 사례)'
         with self.assertRaisesRegex(ValueError, '공감 질문'): self.s.plan_once(self.s.profile(), [], '')
 
