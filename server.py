@@ -83,6 +83,8 @@ from modules import product_reviews as prev_ops
 from modules import records as rec_ops
 from modules import gwansang as gwansang_ops
 from modules import jeoju as jeoju_ops
+from modules import jeoju_free
+from modules import site_locale
 from modules import stats as stats_ops
 from modules import marketing_attribution as marketing_attr
 from modules.marketing_blog import BlogPublisher
@@ -1642,7 +1644,7 @@ class OpenBody(BaseModel):
 # ── 저주술사 무냥이 · 매운맛 7단계 (2026-10-10) ─────────────
 # 온해님 지시로 로드로그는 저주만 거는 사이트가 됐다. 옛 저주 신단(2026-10-07 철거)을
 # 되살린 것이 아니라 새로 짠 것이다. 정본은 modules/jeoju.py.
-# 1단계는 로그인 없이 무료, 2~7단계는 결제로만 연다(lamps.PREMIUM_ONLY).
+# 2026-10-13: 새 저주는 1~7단계 모두 가입·결제 없이 무료. 기존 구매 경로는 재열람용으로 유지.
 class JeojuBody(BaseModel):
     ritual: str = ""
     pair: str = ""
@@ -1653,6 +1655,7 @@ class JeojuBody(BaseModel):
     spot: str = ""
     level: int = 1
     have: dict = {}
+    language: str = ""
 
 
 def _jeoju_order(body: JeojuBody) -> dict[str, str]:
@@ -1684,18 +1687,110 @@ def _jeoju_have(raw: dict) -> dict:
     return doc
 
 
-@app.post("/api/jeoju/taste")
-def jeoju_taste(body: JeojuBody, request: Request):
-    """1단계 간지럼맛. 로그인 없이 악담 한 줄."""
-    _rate_limit_or_429("jeoju-taste:" + _client_ip(request), limit=8, window_sec=3600,
-                       what="무료 저주")
+@app.get("/api/ads/config")
+def jeoju_ads_config(request: Request):
+    cfg = jeoju_free.ads_config()
+    country = site_locale.locate(_client_ip(request), request.headers.get("accept-language", ""))["country"]
+    if country in jeoju_free.CONSENT_COUNTRIES and os.getenv("JEOJU_CERTIFIED_CMP", "0") != "1":
+        cfg = {**cfg, "enabled": False, "slot": ""}
+    return cfg
+
+
+@app.get("/api/site/locale")
+def jeoju_locale(request: Request):
+    return Response(json.dumps(site_locale.locate(_client_ip(request), request.headers.get("accept-language", ""))),
+                    media_type="application/json", headers={"Cache-Control": "private, no-store", "Vary": "Accept-Language"})
+
+
+@app.get("/ads.txt", include_in_schema=False)
+def ads_txt():
+    publisher = jeoju_free.ads_config()["client"].removeprefix("ca-")
+    return Response("google.com, %s, DIRECT, f08c47fec0942fa0\n" % publisher,
+                    media_type="text/plain", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/pay.html", include_in_schema=False)
+def legacy_payment_page(request: Request):
+    product = request.query_params.get("premium", "")
+    if re.fullmatch(r"jeoju_[a-g]", product) and not request.query_params.get("paymentId"):
+        return RedirectResponse("/?lv=" + product, status_code=303)
+    return FileResponse(WEB / "pay.html")
+
+
+@app.post("/api/jeoju/free")
+def jeoju_free_cast(body: JeojuBody, request: Request, response: Response):
+    """모든 맵기를 무료로 제공한다. 임의 ritual만으로 다른 방문자의 기록을 열 수 없다."""
+    if not 1 <= body.level <= jeoju_ops.MAX_LEVEL:
+        raise HTTPException(400, "맵기는 1단계부터 7단계까지 골라 주세요.")
+    ritual = (body.ritual or "").strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{24,64}", ritual):
+        raise HTTPException(400, "의식 번호가 올바르지 않아요.")
     order = _jeoju_order(body)
+    locale = site_locale.locate(_client_ip(request), request.headers.get("accept-language", ""))
+    order.update({"language": body.language if body.language in ("ko", "en") else locale["language"],
+                  "country": locale["country"], "country_name": locale["country_name"]})
+    visitor = jeoju_free.owner(request, response)
+    lock = jeoju_free.lock_for(visitor)
+    if not lock.acquire(blocking=False):
+        raise HTTPException(409, "앞선 저주를 적고 있어요. 잠시 뒤 다시 눌러 주세요.")
     try:
-        doc = jeoju_ops.write(order, 1)
-    except Exception as exc:
-        log.exception("jeoju taste failed")
-        raise HTTPException(503, "무냥이가 촛불을 다시 켜고 있어요. 잠시 뒤 다시 걸어 주세요.") from exc
-    return {"ok": True, "doc": doc}
+        saved = jeoju_ops.get(visitor, ritual)
+        if saved:
+            previous = saved.get("order") or {}
+            if any(previous.get(k, "") != order.get(k, "") for k in ("target", "nick", "year", "sin")):
+                raise HTTPException(400, "다른 사람에게 걸려면 새 저주를 시작해 주세요.")
+            order = dict(previous)
+            if not order.get("spot"):
+                order["spot"] = body.spot.strip() if body.spot.strip() in jeoju_ops.SPOTS else ""
+        if body.level >= 4 and not order.get("spot"):
+            raise HTTPException(400, "인형 어디에 못을 박을지 먼저 골라 주세요.")
+        base = (saved or {}).get("doc") or {}
+        if int(base.get("level") or 0) >= body.level:
+            return {"ok": True, **saved, "doc": jeoju_ops.veil(base)}
+        _rate_limit_or_429("jeoju-free:" + _client_ip(request), limit=30, window_sec=3600, what="무료 저주")
+        _rate_limit_or_429("jeoju-free-burst:" + visitor, limit=10, window_sec=60, what="무료 저주")
+        if not jeoju_free._SLOTS.acquire(blocking=False):
+            raise HTTPException(429, "무냥이가 앞선 주문을 적고 있어요. 잠시 뒤 다시 걸어 주세요.")
+        reserved = False
+        try:
+            jeoju_free.budget(1)
+            reserved = True
+            doc = jeoju_ops.write(order, body.level, base)
+            row = jeoju_ops.save(visitor, ritual, "", order, doc)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            if reserved:
+                jeoju_free.budget(-1)
+            log.exception("free jeoju failed")
+            raise HTTPException(503, "무냥이가 촛불을 다시 켜고 있어요. 잠시 뒤 다시 걸어 주세요.") from exc
+        finally:
+            jeoju_free._SLOTS.release()
+        return {"ok": True, **row, "doc": jeoju_ops.veil(doc)}
+    finally:
+        lock.release()
+
+
+@app.get("/api/jeoju/free/mine")
+def jeoju_free_mine(request: Request):
+    visitor = jeoju_free.owner(request)
+    return {"ok": True, "items": jeoju_ops.mine(visitor) if visitor else []}
+
+
+@app.get("/api/jeoju/free/{ritual}")
+def jeoju_free_saved(ritual: str, request: Request):
+    visitor = jeoju_free.owner(request)
+    row = jeoju_ops.get(visitor, ritual) if visitor and re.fullmatch(r"[0-9a-f]{24,64}", ritual) else None
+    if not row:
+        raise HTTPException(404, "이 브라우저에 보관된 저주장을 찾지 못했어요.")
+    return {"ok": True, **row, "doc": jeoju_ops.veil(row.get("doc") or {})}
+
+
+@app.post("/api/jeoju/taste")
+def jeoju_taste(body: JeojuBody, request: Request, response: Response):
+    """옛 무료 주소도 같은 보관함·한도·언어 정책을 적용한다."""
+    body = body.model_copy(update={"level": 1, "ritual": body.ritual or secrets.token_hex(12)})
+    return jeoju_free_cast(body, request, response)
 
 
 def _jeoju_owned_level(user: dict, pair: str, wanted: int) -> int:
