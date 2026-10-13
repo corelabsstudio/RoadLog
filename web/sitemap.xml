@@ -1,69 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://roadlog.co.kr/</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/index.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/index.html</loc></url>
-  <url><loc>https://roadlog.co.kr/buy.html</loc></url>
+  <url><loc>https://roadlog.co.kr/guide.html</loc></url>
+  <url><loc>https://roadlog.co.kr/examples.html</loc></url>
+  <url><loc>https://roadlog.co.kr/about.html</loc></url>
+  <url><loc>https://roadlog.co.kr/contact.html</loc></url>
   <url><loc>https://roadlog.co.kr/faq.html</loc></url>
   <url><loc>https://roadlog.co.kr/legal/refund.html</loc></url>
   <url><loc>https://roadlog.co.kr/legal/terms.html</loc></url>
   <url><loc>https://roadlog.co.kr/legal/privacy.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/today.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/past.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/god.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/solo.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/week.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/dday.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/newlove.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/think.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/loop.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/block.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/hour.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/first.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/mind.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/great.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/full.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/bond.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/ox.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/year.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/charm.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/luck.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/money.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/life.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/cool.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/again.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/marry.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/match.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/bed.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/divorce.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/secret.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/queer.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/eros.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/daejeom.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/jaehoe.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/ibyeol.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/timing.html</loc></url>
-  <url><loc>https://roadlog.co.kr/saju/nasaju.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/reunion-after-repeat-fight.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/blocked-after-breakup.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/reply-slow-meaning.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/reunion-minimum-conditions.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/contact-timing-basics.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/boredom-or-end.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/partner-inner-mind.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/unknown-birth-time.html</loc></url>
-  <url><loc>https://roadlog.co.kr/blog/first-time-saju.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_first.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_me.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_you.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_love.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_money.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_king.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_all.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_pair.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_flag.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_read.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_fix.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/face_luck.html</loc></url>
-  <url><loc>https://roadlog.co.kr/gwan/index.html</loc></url>
 </urlset>

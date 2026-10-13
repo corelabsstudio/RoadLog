@@ -4203,7 +4203,7 @@ def card_page(cid: str):
 #    로드로그는 저주만 거는 사이트다. 파일(web/saju · web/gwan · web/blog)과 DB 글은 지우지 않았고,
 #    서버가 그 주소를 전부 홈으로 보낸다. 되살리려면 이 묶음을 걷으면 된다.
 _CLOSED_PREFIXES = ("saju", "gwan", "blog")
-_SITEMAP_PATHS = ("/", "/legal/terms.html", "/legal/refund.html", "/legal/privacy.html")
+_SITEMAP_PATHS = ("/", "/guide.html", "/examples.html", "/about.html", "/contact.html", "/faq.html", "/legal/terms.html", "/legal/refund.html", "/legal/privacy.html")
 
 
 def _closed_page(path: str) -> bool:

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>문의와 오류 제보 · 로드로그</title>
+<meta name="description" content="문의와 오류 제보 · Contact RoadLog · 가입·결제 없는 한국풍 창작 놀이 K-Curse의 이용 안내." />
+<link rel="icon" href="/icons/jeoju-64.png" />
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Gugi&display=swap" rel="stylesheet" />
+<script>try{var t=localStorage.getItem('roadlog.theme.v1');document.documentElement.setAttribute('data-theme',t==='light'?'light':'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}</script>
+<style>
+:root{
+  --shell:#efe9f3;
+  --paper:#faf8f4; --card:#fffdf9; --line:#ebe6dc; --ink:#2f2d3a; --muted:#7a7785;
+  --faint:#a9a6b2; --lilac:#e6dcf7; --peach:#ffe0d0; --mint:#cfeee2; --accent:#6f5bd3; --btn-fg:#fff;
+  --font:'Pretendard',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --seal:url("data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='300'%20viewBox='0%200%20300%20300'>%20<g%20fill='%25236b5520'%20fill-opacity='0.2'%20font-family='serif'%20font-weight='700'>%20<text%20x='24'%20y='58'%20font-size='34'%20transform='rotate%28-8%2024%2058%29'>%E7%94%B2</text>%20<text%20x='120'%20y='36'%20font-size='26'>%E5%AD%90</text>%20<text%20x='214'%20y='72'%20font-size='38'%20transform='rotate%286%20214%2072%29'>%E4%B8%99</text>%20<text%20x='62'%20y='142'%20font-size='27'%20transform='rotate%285%2062%20142%29'>%E5%AF%85</text>%20<text%20x='166'%20y='128'%20font-size='33'>%E6%88%8A</text>%20<text%20x='252'%20y='166'%20font-size='25'%20transform='rotate%28-7%20252%20166%29'>%E5%8D%88</text>%20<text%20x='18'%20y='224'%20font-size='30'%20transform='rotate%284%2018%20224%29'>%E5%BA%9A</text>%20<text%20x='108'%20y='212'%20font-size='24'>%E7%94%B3</text>%20<text%20x='196'%20y='246'%20font-size='35'%20transform='rotate%28-5%20196%20246%29'>%E5%A3%AC</text>%20<text%20x='276'%20y='286'%20font-size='26'>%E4%BA%A5</text>%20<text%20x='84'%20y='288'%20font-size='28'%20transform='rotate%287%2084%20288%29'>%E4%B9%99</text>%20</g></svg>");
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --shell:#100e15; --paper:#17151d; --card:#201d29; --line:#322e3f; --ink:#ece9f2;
+  --muted:#9b96a9; --faint:#6f6a7d; --lilac:#332b4a; --peach:#43332c; --mint:#23413a;
+  --accent:#a493f0; --btn-fg:#17151d; --good:#5fc79a; --bad:#e9a0a0;
+  --seal:url("data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20width='300'%20height='300'%20viewBox='0%200%20300%20300'>%20<g%20fill='%2523f0e2be'%20fill-opacity='0.48'%20font-family='serif'%20font-weight='700'>%20<text%20x='24'%20y='58'%20font-size='34'%20transform='rotate%28-8%2024%2058%29'>%E7%94%B2</text>%20<text%20x='120'%20y='36'%20font-size='26'>%E5%AD%90</text>%20<text%20x='214'%20y='72'%20font-size='38'%20transform='rotate%286%20214%2072%29'>%E4%B8%99</text>%20<text%20x='62'%20y='142'%20font-size='27'%20transform='rotate%285%2062%20142%29'>%E5%AF%85</text>%20<text%20x='166'%20y='128'%20font-size='33'>%E6%88%8A</text>%20<text%20x='252'%20y='166'%20font-size='25'%20transform='rotate%28-7%20252%20166%29'>%E5%8D%88</text>%20<text%20x='18'%20y='224'%20font-size='30'%20transform='rotate%284%2018%20224%29'>%E5%BA%9A</text>%20<text%20x='108'%20y='212'%20font-size='24'>%E7%94%B3</text>%20<text%20x='196'%20y='246'%20font-size='35'%20transform='rotate%28-5%20196%20246%29'>%E5%A3%AC</text>%20<text%20x='276'%20y='286'%20font-size='26'>%E4%BA%A5</text>%20<text%20x='84'%20y='288'%20font-size='28'%20transform='rotate%287%2084%20288%29'>%E4%B9%99</text>%20</g></svg>");
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--shell)}
+body{margin:0;font-family:var(--font);background:var(--shell);color:var(--ink);
+     font-size:16px;line-height:1.8;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+body{background-image:var(--seal);background-size:300px 300px;background-repeat:repeat}
+.doc{max-width:760px;margin:0 auto;background-color:var(--paper);min-height:100dvh;
+     box-shadow:0 0 0 1px rgba(60,40,90,.06)}
+.top{height:60px;display:flex;align-items:center;gap:8px;padding:0 22px;border-bottom:1px solid var(--line)}
+.top img{width:30px;height:30px;object-fit:cover;object-position:50% 30%;border-radius:10px;background:var(--lilac)}
+.top a{color:var(--ink);text-decoration:none;font-family:'Gugi','Pretendard',serif;font-size:1.1rem}
+main{padding:30px 22px 40px}
+h1{font-size:1.5rem;margin:0 0 6px;letter-spacing:-.02em}
+h2{font-size:1.02rem;margin:30px 0 8px;letter-spacing:-.01em}
+h3{font-size:.95rem;margin:18px 0 6px}
+p{margin:0 0 10px}
+.updated{color:var(--muted);font-size:.86rem;margin-bottom:24px}
+ul,ol{margin:0 0 12px;padding-left:20px}
+li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0 16px;font-size:.94rem}
+th,td{border-top:1px solid var(--line);padding:9px 8px;text-align:left;vertical-align:top}
+th{width:170px;color:var(--muted);font-weight:600;background:var(--card);font-size:.9rem}
+.callout{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:14px 0}
+.callout.warn{background:var(--peach);border-color:#f6cdb4}
+.callout p:last-child{margin-bottom:0}
+.biz{border-top:1px solid var(--line);margin-top:36px;padding:22px;color:var(--muted);font-size:.82rem}
+.biz p{margin:0 0 4px}
+.biz .copy{margin-top:8px;color:var(--faint)}
+.back{display:inline-block;margin-top:24px;color:var(--muted);text-decoration:none;font-size:.9rem}
+/* buy */
+.price{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:6px 0 2px}
+.price b{font-size:2rem;letter-spacing:-.02em}
+.price span{color:var(--muted);font-size:.9rem}
+.buy-btn{display:block;width:100%;margin-top:16px;font:inherit;font-weight:700;font-size:1rem;
+         color:var(--btn-fg,#fff);background:var(--accent);border:0;border-radius:10px;padding:15px;cursor:pointer;
+         text-align:center;text-decoration:none}
+.gets{list-style:none;padding:0;margin:14px 0 0}
+.gets li{display:flex;align-items:flex-start;gap:14px;border-top:1px solid var(--line);padding:13px 0}
+.gets .gico{width:46px;height:auto;flex:0 0 auto;margin-top:1px}
+@media(max-width:560px){ .gets .gico{width:38px} }
+.gets li b{display:block}
+.gets li span{color:var(--muted);font-size:.9rem}
+/* 삽화 — 문서 폭을 꽉 채운다. 둥근 카드처럼 보이지 않게 모서리는 각지게 */
+.pic{display:block;width:calc(100% + 44px);margin:26px -22px;height:auto}
+.pic.top{margin:-30px -22px 26px}
+/* 등불 — 값이 클수록 밝은 그림 */
+.lampline{display:flex;align-items:center}
+.lampline{gap:8px}
+.lampline .lamp{width:24px;height:auto;flex:0 0 auto;margin:-10px 0 -10px -3px}
+td span{line-height:1.5}
+@media(max-width:560px){ th{width:110px} .lampline .lamp{width:22px} }
+
+/* 2026-10-10 저주 사이트 색으로 맞춘다 — 밝은 화면·어두운 화면 설정과 상관없이 신단 색 하나만 쓴다 */
+:root, :root[data-theme="dark"]{
+  --shell:#07050a; --paper:#0c0810; --card:#151019; --line:rgba(232,210,160,.16); --ink:#f3e9d2;
+  --muted:rgba(243,233,210,.64); --faint:rgba(243,233,210,.4); --lilac:#2a1220; --peach:#3a2415; --mint:#1d2a24;
+  --accent:#d2a758; --btn-fg:#fff6ea; --good:#7fd0a6; --bad:#ff8c98; color-scheme:dark;
+}
+.top img{border-radius:6px;background:#0c0810;object-position:50% 50%}
+.top a{font-family:'Pretendard',serif;font-weight:800}
+.buy-btn{color:#fff6ea !important;border-radius:6px !important;background:#c22a3c !important;box-shadow:0 10px 34px rgba(194,42,60,.32) !important}
+</style>
+<meta name="google-adsense-account" content="ca-pub-2523025753289844"><style>.help-nav{display:flex;flex-wrap:wrap;gap:10px 18px;padding:16px 22px;border-bottom:1px solid var(--line);font-size:.85rem}.help-language{display:flex;gap:14px;padding:16px 22px}.help-language a{padding:6px;border-bottom:1px solid var(--accent)}[data-help-lang][hidden]{display:none}body{overflow-wrap:break-word}.doc main{max-width:740px}h1{font-size:clamp(1.6rem,5vw,2.1rem);line-height:1.4}h2{font-size:1.15rem}table th{width:auto}.public-ad{margin:40px 0;padding:28px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}.public-ad>p{font-size:.75rem;color:var(--muted)}.ad-unit{min-height:100px}.privacy-choices{font:inherit;background:transparent;border:1px solid var(--line);border-radius:4px;color:var(--ink);padding:10px;cursor:pointer}</style>  <!-- 공유 카드 (tools/add_og.py 가 넣는다 — 손으로 고치지 말 것) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="로드로그" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:url" content="https://roadlog.co.kr/contact.html" />
+  <meta property="og:title" content="문의와 오류 제보 · 로드로그" />
+  <meta property="og:description" content="문의와 오류 제보 · Contact RoadLog · 가입·결제 없는 한국풍 창작 놀이 K-Curse의 이용 안내." />
+  <meta property="og:image" content="https://roadlog.co.kr/og/jeoju.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="검보라 로브를 입고 해골 지팡이를 든 저주술사 무냥이" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="문의와 오류 제보 · 로드로그" />
+  <meta name="twitter:description" content="문의와 오류 제보 · Contact RoadLog · 가입·결제 없는 한국풍 창작 놀이 K-Curse의 이용 안내." />
+  <meta name="twitter:image" content="https://roadlog.co.kr/og/jeoju.jpg" />
+  <link rel="canonical" href="https://roadlog.co.kr/contact.html" />
+  <script type="module" crossorigin src="/assets/modulepreload-polyfill-P2Xu9kJm.js"></script>
+  <script type="module" crossorigin src="/assets/curse-help-vTTkvqTZ.js"></script>
+</head>
+<body>
+<div class="doc">
+  <header class="top">
+    <img src="/icons/jeoju-64.png" alt="" />
+    <a href="/">로드로그</a>
+  </header>
+<nav class="help-nav" aria-label="사이트 안내"><a href="/">저주 걸기 / Play</a><a href="/guide.html">이용 가이드 / Guide</a><a href="/examples.html">예시 / Examples</a><a href="/about.html">소개 / About</a><a href="/contact.html">문의 / Contact</a></nav><div class="help-language"><a href="?lang=ko" lang="ko">한국어</a><a href="?lang=en" lang="en">English</a></div>  <main>
+<section data-help-lang="ko"><h1>문의 · 오류 제보</h1><p>로드로그 이용 중 문제가 생기거나 공개 안내에서 잘못된 내용을 발견하셨다면 코어랩스로 연락해 주세요.</p><p><b>이메일:</b> <a href="mailto:corelabs.studio@gmail.com">corelabs.studio@gmail.com</a><br><b>전화:</b> <a href="tel:0338182021">033-818-2021</a></p><h2>오류를 알려 주실 때</h2><p>사용한 기기와 브라우저, 발생 시각과 시간대, 오류가 난 화면 주소, 선택한 단계, 화면에 보인 오류 문구를 적어 주세요. 문의 제목은 ‘로드로그 이용 오류’처럼 적으시면 됩니다. 저주가 실제로 일어났는지 확인하는 서비스는 제공하지 않습니다.</p><h2>부적절한 결과 신고</h2><p>죽음·질병·상해·협박·차별·개인정보가 담긴 결과를 발견하면 발생 시각과 단계, 문제 구절을 알려 주세요. 신고에 필요한 범위로만 인용하고 실명·연락처는 가려 주세요. 접수 후 해당 내용과 생성 방식을 검토합니다. 다른 사람에게 결과를 보내 대응을 요구하지 마세요.</p><h2>비회원 기록 삭제</h2><p>삭제를 원하시면 이용 시각과 해당 결과의 식별 정보 등 본인 기록을 찾는 데 필요한 최소 정보로 문의해 주세요. 같은 브라우저에서 보관함을 열 수 있는지도 알려 주시면 확인에 도움이 됩니다. 남의 기록을 요청할 수는 없으며 확인되지 않는 기록의 접근·삭제를 보장하지 않습니다. 쿠키를 지우면 접근은 끊기지만 서버 기록 삭제 요청과는 다릅니다.</p><h2>예전 구매와 환불</h2><p>홈 아래 ‘예전 구매 내역’에서 로그인해 구매하신 결과를 확인할 수 있습니다. 환불은 <a href="/legal/refund.html">취소·환불 정책</a>을 참고하고 주문 확인에 필요한 최소 정보로 문의해 주세요. 비밀번호, 카드번호 전체, 인증번호는 보내지 마세요.</p><h2>광고와 개인정보</h2><p>광고가 보이지 않아도 무료 저주를 이용할 수 있습니다. 광고 클릭을 요청하거나 보상하지 않습니다. 데이터 처리와 광고 쿠키는 <a href="/legal/privacy.html">개인정보처리방침</a>을 확인해 주세요. 이 페이지의 이메일 링크를 누르면 사용 중인 메일 앱이 열리며 자동으로 발송되지는 않습니다.</p></section><section data-help-lang="en" lang="en" hidden><h1>Contact and report a problem</h1><p>Contact CoreLabs if a feature fails, a guide is incorrect or a result is inappropriate.</p><p><b>Email:</b> <a href="mailto:corelabs.studio@gmail.com">corelabs.studio@gmail.com</a><br><b>Phone (Korea):</b> <a href="tel:+82338182021">+82 33-818-2021</a></p><h2>For technical problems</h2><p>Include your device and browser, the time and time zone, page URL, selected level and the exact error message. “RoadLog support” is a suitable subject. We do not investigate whether a fictional curse came true.</p><h2>Report inappropriate results</h2><p>If a result contains threats, death, illness, injury, discrimination or private information, tell us the level, approximate generation time and the relevant passage. Quote only what is needed and remove real names and contact details. We review reported content and generation behaviour. Do not send the result to another person to demand a response.</p><h2>Guest record deletion</h2><p>Provide only the information needed to locate your own record, such as its identifier and approximate creation time. Tell us whether the collection is still accessible in the same browser. You cannot request someone else’s record; access or deletion cannot be guaranteed when ownership cannot be verified. Clearing a cookie removes browser access but is different from requesting server-side deletion.</p><h2>Past purchases</h2><p>Use Past purchases on the home footer to sign in. Read the <a href="/legal/refund.html">refund policy</a> and contact us with the minimum order details. Never send passwords, full card numbers or verification codes.</p><h2>Ads and privacy</h2><p>Free curses remain available when ads are unavailable. We do not request or reward ad clicks. Read the <a href="/legal/privacy.html">privacy policy</a> for data processing and advertising cookies. The email link opens your own mail app and does not send a message automatically.</p></section><p><a href="/legal/terms.html">이용약관 / Terms</a> · <a href="/legal/privacy.html">개인정보처리방침 / Privacy</a></p><button type="button" class="privacy-choices" id="privacyChoices" hidden>광고 개인정보 설정 / Privacy choices</button>
+    <a class="back" href="/">← 로드로그로 돌아가기</a>
+  </main>
+  <div class="biz">
+    <p><b>코어랩스</b> (CoreLabs) · 대표 <b>호현수</b> · 사업자등록번호 <b>705-04-02867</b> <b>(간이과세자)</b> · 통신판매업 신고 <b>제2026-강원춘천-0553호</b></p>
+    <p>강원특별자치도 춘천시 세실로192번길 8-3, 1층 왼쪽 상가(후평동) · TEL <b>033-818-2021</b> · <a href="mailto:corelabs.studio@gmail.com">corelabs.studio@gmail.com</a></p>
+    <p class="copy">&copy; 2026 CoreLabs. All rights reserved.</p>
+  </div>
+</div></body>
+</html>
